@@ -385,6 +385,7 @@
             <button type="button" class="markdown-tool-btn" data-md-action="emoji" title="Emoji shortcode" aria-label="Emoji shortcode"><i class="bi bi-emoji-smile"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="symbols" title="Symbols &amp; HTML entities" aria-label="Symbols &amp; HTML entities"><i class="bi bi-c-circle"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="alert" title="Markdown alert" aria-label="Markdown alert"><i class="bi bi-newspaper"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="diagram" title="Insert Diagram" aria-label="Insert Diagram"><i class="bi bi-diagram-3"></i></button>
           </div>
           <div class="markdown-toolbar-group">
             <button type="button" class="markdown-tool-btn" data-md-action="fullscreen" title="Fullscreen" aria-label="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
@@ -838,6 +839,49 @@
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="alert-modal-cancel">Cancel</button>
               <button class="reset-modal-btn" id="alert-modal-insert">Insert</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagram & Chart Modal -->
+        <div id="diagram-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diagram-modal-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box">
+            <div class="modal-header">
+              <p id="diagram-modal-title" class="reset-modal-message">Insert Diagram</p>
+              <button class="modal-close-btn" id="diagram-modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            
+            <div class="diagram-modal-body">
+              <!-- Sidebar Navigation -->
+              <div class="diagram-modal-sidebar" role="tablist" aria-label="Diagram Categories">
+                <!-- Populated dynamically via JS -->
+              </div>
+              
+              <!-- Content Area -->
+              <div class="diagram-modal-content">
+                <div class="diagram-modal-search-wrapper">
+                  <input type="text" id="diagram-modal-search" class="rename-modal-input" placeholder="Search diagrams..." />
+                </div>
+                
+                <!-- Diagram Cards Grid -->
+                <div id="diagram-modal-grid" class="diagram-grid" role="listbox" aria-label="Diagram templates">
+                  <!-- Populated dynamically via JS -->
+                </div>
+                <p id="diagram-modal-empty" class="modal-empty" style="display:none;">No diagrams found.</p>
+                
+                <!-- Preview Container -->
+                <div class="diagram-modal-preview-section">
+                  <p class="diagram-modal-preview-title">Preview</p>
+                  <div id="diagram-modal-preview" class="diagram-preview-container">
+                    <!-- Populated dynamically with selected template preview -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="diagram-modal-cancel">Cancel</button>
+              <button class="reset-modal-btn" id="diagram-modal-insert" disabled>Insert</button>
             </div>
           </div>
         </div>

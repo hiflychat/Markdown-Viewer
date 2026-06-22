@@ -5552,6 +5552,332 @@ document.addEventListener("DOMContentLoaded", async function () {
     modal.addEventListener('keydown', onKey);
   }
 
+  function openDiagramModal() {
+    const modal = document.getElementById('diagram-modal');
+    const sidebar = modal.querySelector('.diagram-modal-sidebar');
+    const grid = document.getElementById('diagram-modal-grid');
+    const emptyMessage = document.getElementById('diagram-modal-empty');
+    const searchInput = document.getElementById('diagram-modal-search');
+    const previewContainer = document.getElementById('diagram-modal-preview');
+    const confirmBtn = document.getElementById('diagram-modal-insert');
+    const cancelBtn = document.getElementById('diagram-modal-cancel');
+    const closeBtn = document.getElementById('diagram-modal-close');
+    
+    if (!modal || !sidebar || !grid || !emptyMessage || !searchInput || !previewContainer || !confirmBtn || !cancelBtn || !closeBtn) return;
+    
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+    modal.style.display = 'flex';
+    
+    // Clear and reset state
+    searchInput.value = '';
+    sidebar.textContent = '';
+    grid.textContent = '';
+    previewContainer.textContent = '';
+    confirmBtn.disabled = true;
+    
+    const categories = [
+      'Mermaid',
+      'PlantUML',
+      'Graphviz',
+      'D2',
+      'Vega-Lite',
+      'ABC Notation',
+      'WaveDrom',
+      'Markmap'
+    ];
+    
+    const svgFlowchart = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="10" y="25" width="40" height="30" rx="5" fill="#e1f5fe" stroke="#03a9f4" stroke-width="2"/><text x="30" y="44" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#01579b">Start</text><path d="M 50 40 L 110 40" stroke="#03a9f4" stroke-width="2" marker-end="url(#arrow)"/><rect x="110" y="25" width="40" height="30" rx="5" fill="#e1f5fe" stroke="#03a9f4" stroke-width="2"/><text x="130" y="44" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#01579b">End</text><defs><marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#03a9f4"/></marker></defs></svg>`;
+    const svgSequence = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="30" y1="10" x2="30" y2="70" stroke="#4caf50" stroke-width="2" stroke-dasharray="4"/><line x1="130" y1="10" x2="130" y2="70" stroke="#4caf50" stroke-width="2" stroke-dasharray="4"/><rect x="10" y="5" width="40" height="15" rx="3" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/><text x="30" y="15" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Alice</text><rect x="110" y="5" width="40" height="15" rx="3" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/><text x="130" y="15" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Bob</text><path d="M 30 35 L 130 35" stroke="#4caf50" stroke-width="2" marker-end="url(#arrow-g)"/><text x="80" y="30" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Hello</text><path d="M 130 55 L 30 55" stroke="#4caf50" stroke-dasharray="2" stroke-width="1.5" marker-end="url(#arrow-g)"/><text x="80" y="50" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Reply</text><defs><marker id="arrow-g" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4caf50"/></marker></defs></svg>`;
+    const svgEr = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="10" y="25" width="50" height="30" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/><text x="35" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#e65100" font-weight="bold">USER</text><line x1="60" y1="40" x2="100" y2="40" stroke="#ff9800" stroke-width="2"/><rect x="100" y="25" width="50" height="30" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/><text x="125" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#e65100" font-weight="bold">POST</text></svg>`;
+    const svgClass = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="40" y="10" width="80" height="50" rx="3" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/><line x1="40" y1="28" x2="120" y2="28" stroke="#673ab7" stroke-width="1"/><line x1="40" y1="44" x2="120" y2="44" stroke="#673ab7" stroke-width="1"/><text x="80" y="22" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#311b92" font-weight="bold">Animal</text><text x="45" y="38" font-size="7" font-family="sans-serif" fill="#311b92">+name: String</text><text x="45" y="54" font-size="7" font-family="sans-serif" fill="#311b92">+makeSound()</text></svg>`;
+    const svgState = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="20" cy="40" r="8" fill="#3f51b5" stroke="#303f9f" stroke-width="2"/><path d="M 28 40 L 60 40" stroke="#3f51b5" stroke-width="2" marker-end="url(#arrow-b)"/><rect x="60" y="25" width="40" height="30" rx="8" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/><text x="80" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#1a237e">Active</text><path d="M 100 40 L 132 40" stroke="#3f51b5" stroke-width="2" marker-end="url(#arrow-b)"/><circle cx="140" cy="40" r="8" fill="none" stroke="#3f51b5" stroke-width="2"/><circle cx="140" cy="40" r="5" fill="#3f51b5"/><defs><marker id="arrow-b" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker></defs></svg>`;
+    const svgGantt = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="15" x2="20" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="60" y1="15" x2="60" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="100" y1="15" x2="100" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="140" y1="15" x2="140" y2="70" stroke="#e0e0e0" stroke-width="1"/><rect x="25" y="20" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.5"/><text x="30" y="30" font-size="7" font-family="sans-serif" fill="#004d40">Design</text><rect x="80" y="45" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.5"/><text x="85" y="55" font-size="7" font-family="sans-serif" fill="#004d40">Code</text></svg>`;
+    const svgPie = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="80" cy="40" r="30" fill="#f44336" stroke="#d32f2f" stroke-width="1.5"/><path d="M 80 40 L 80 10 A 30 30 0 0 1 110 40 Z" fill="#4caf50"/><path d="M 80 40 L 110 40 A 30 30 0 0 1 80 70 Z" fill="#ffeb3b"/></svg>`;
+    const svgDirected = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="40" cy="25" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="40" y="29" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">A</text><circle cx="120" cy="25" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="120" y="29" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">B</text><circle cx="80" cy="60" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="80" y="64" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">C</text><path d="M 52 25 L 108 25" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><path d="M 46 35 L 70 51" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><path d="M 114 35 L 90 51" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><defs><marker id="arrow-br" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
+    const svgBar = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="10" x2="20" y2="70" stroke="#333" stroke-width="1.5"/><line x1="20" y1="70" x2="150" y2="70" stroke="#333" stroke-width="1.5"/><rect x="30" y="40" width="20" height="30" fill="#9c27b0"/><rect x="65" y="20" width="20" height="50" fill="#9c27b0"/><rect x="100" y="30" width="20" height="40" fill="#9c27b0"/></svg>`;
+    const svgLine = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="10" x2="20" y2="70" stroke="#333" stroke-width="1.5"/><line x1="20" y1="70" x2="150" y2="70" stroke="#333" stroke-width="1.5"/><path d="M 30 50 L 65 20 L 100 45 L 135 15" fill="none" stroke="#2196f3" stroke-width="2.5"/><circle cx="30" cy="50" r="3" fill="#2196f3"/><circle cx="65" cy="20" r="3" fill="#2196f3"/><circle cx="100" cy="45" r="3" fill="#2196f3"/><circle cx="135" cy="15" r="3" fill="#2196f3"/></svg>`;
+    const svgTiming = `<svg viewBox="0 0 160 80" width="100%" height="100%"><path d="M 20 40 L 40 40 L 40 20 L 60 20 L 60 40 L 80 40 L 80 20 L 100 20 L 100 40 L 140 40" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="30" font-size="8" font-family="sans-serif" fill="#ff5722">CLK</text></svg>`;
+    const svgMindmap = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="60" y="32" width="40" height="16" rx="3" fill="#eceff1" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#37474f" font-weight="bold">Root</text><path d="M 60 40 L 30 25" stroke="#607d8b" stroke-width="1.5"/><path d="M 60 40 L 30 55" stroke="#607d8b" stroke-width="1.5"/><path d="M 100 40 L 130 40" stroke="#607d8b" stroke-width="1.5"/><circle cx="30" cy="25" r="4" fill="#607d8b"/><circle cx="30" cy="55" r="4" fill="#607d8b"/><circle cx="130" cy="40" r="4" fill="#607d8b"/></svg>`;
+    const svgAbc = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="10" y1="20" x2="150" y2="20" stroke="#000" stroke-width="1"/><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><path d="M 30 15 L 30 55 A 8 8 0 1 1 20 48" fill="#000" stroke="#000" stroke-width="1"/><path d="M 60 25 L 60 65 A 8 8 0 1 1 50 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 90 20 L 90 60 A 8 8 0 1 1 80 53" fill="#000" stroke="#000" stroke-width="1"/><path d="M 120 15 L 120 55 A 8 8 0 1 1 110 48" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
+
+    const templates = [
+      // Mermaid
+      {
+        id: 'mermaid-flowchart',
+        category: 'Mermaid',
+        title: 'Flowchart',
+        label: 'Flowchart',
+        svg: svgFlowchart,
+        code: '```mermaid\ngraph TD\n    Start --> End\n```\n'
+      },
+      {
+        id: 'mermaid-sequence',
+        category: 'Mermaid',
+        title: 'Sequence preview',
+        label: 'Sequence Diagram',
+        svg: svgSequence,
+        code: '```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello Bob, how are you?\n    Bob-->>Alice: Jolly good!\n```\n'
+      },
+      {
+        id: 'mermaid-er',
+        category: 'Mermaid',
+        title: 'ER preview',
+        label: 'ER Diagram',
+        svg: svgEr,
+        code: '```mermaid\nerDiagram\n    CUSTOMER ||--o{ ORDER : places\n```\n'
+      },
+      {
+        id: 'mermaid-class',
+        category: 'Mermaid',
+        title: 'Class Diagram',
+        label: 'Class Diagram',
+        svg: svgClass,
+        code: '```mermaid\nclassDiagram\n    Animal <|-- Duck\n    class Animal {\n        +String name\n        +makeSound()\n    }\n```\n'
+      },
+      {
+        id: 'mermaid-state',
+        category: 'Mermaid',
+        title: 'State Diagram',
+        label: 'State Diagram',
+        svg: svgState,
+        code: '```mermaid\nstateDiagram-v2\n    [*] --> Active\n    Active --> [*]\n```\n'
+      },
+      {
+        id: 'mermaid-gantt',
+        category: 'Mermaid',
+        title: 'Gantt Chart',
+        label: 'Gantt Chart',
+        svg: svgGantt,
+        code: '```mermaid\ngantt\n    title A Gantt Diagram\n    section Section\n    A task :a1, 2026-06-23, 30d\n```\n'
+      },
+      {
+        id: 'mermaid-pie',
+        category: 'Mermaid',
+        title: 'Pie Chart',
+        label: 'Pie Chart',
+        svg: svgPie,
+        code: '```mermaid\npie title Pets owned by staff\n    "Dogs" : 386\n    "Cats" : 85\n```\n'
+      },
+      
+      // PlantUML
+      {
+        id: 'plantuml-sequence',
+        category: 'PlantUML',
+        title: 'Sequence Diagram',
+        label: 'Sequence Diagram',
+        svg: svgSequence,
+        code: '```plantuml\n@startuml\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n@enduml\n'
+      },
+      {
+        id: 'plantuml-usecase',
+        category: 'PlantUML',
+        title: 'Use Case Diagram',
+        label: 'Use Case Diagram',
+        svg: svgFlowchart,
+        code: '```plantuml\n@startuml\nleft to right direction\nactor Guest\nrectangle Hotel {\n  usecase "Book Room" as UC1\n}\nGuest --> UC1\n@enduml\n'
+      },
+      {
+        id: 'plantuml-class',
+        category: 'PlantUML',
+        title: 'Class Diagram',
+        label: 'Class Diagram',
+        svg: svgClass,
+        code: '```plantuml\n@startuml\nclass Dummy {\n  -field1\n  #field2\n  ~method1()\n  +method2()\n}\n@enduml\n'
+      },
+      
+      // Graphviz
+      {
+        id: 'graphviz-digraph',
+        category: 'Graphviz',
+        title: 'Directed Graph',
+        label: 'Directed Graph',
+        svg: svgDirected,
+        code: '```graphviz\ndigraph G {\n  Hello -> World\n}\n```\n'
+      },
+      
+      // D2
+      {
+        id: 'd2-flow',
+        category: 'D2',
+        title: 'Simple Flow',
+        label: 'Simple Flow',
+        svg: svgFlowchart,
+        code: '```d2\nx -> y: hello world\n```\n'
+      },
+      
+      // Vega-Lite
+      {
+        id: 'vega-bar',
+        category: 'Vega-Lite',
+        title: 'Bar Chart',
+        label: 'Bar Chart',
+        svg: svgBar,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "a", "type": "nominal"},\n    "y": {"field": "b", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-line',
+        category: 'Vega-Lite',
+        title: 'Line Chart',
+        label: 'Line Chart',
+        svg: svgLine,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10}, {"x": 2, "y": 15}, {"x": 3, "y": 13}\n    ]\n  },\n  "mark": "line",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      
+      // ABC Notation
+      {
+        id: 'abc-melody',
+        category: 'ABC Notation',
+        title: 'Simple Tune',
+        label: 'Simple Tune',
+        svg: svgAbc,
+        code: '```abc\nX: 1\nT: Simple Scale\nM: 4/4\nK: C\nC D E F | G A B c |\n```\n'
+      },
+      
+      // WaveDrom
+      {
+        id: 'wavedrom-timing',
+        category: 'WaveDrom',
+        title: 'Timing Diagram',
+        label: 'Timing Diagram',
+        svg: svgTiming,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk", wave: "p......" },\n  { name: "bus", wave: "x.==.x.", data: ["head", "body"] }\n]}\n```\n'
+      },
+      
+      // Markmap
+      {
+        id: 'markmap-mindmap',
+        category: 'Markmap',
+        title: 'Mindmap',
+        label: 'Mindmap',
+        svg: svgMindmap,
+        code: '```markmap\n# markmap\n## Features\n- Links\n- Formatting\n```\n'
+      }
+    ];
+    
+    let activeCategory = 'Mermaid';
+    let selectedTemplate = null;
+    
+    function renderSidebar() {
+      sidebar.textContent = '';
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'diagram-sidebar-btn';
+        if (cat === activeCategory) btn.classList.add('is-active');
+        btn.textContent = cat;
+        btn.addEventListener('click', () => {
+          activeCategory = cat;
+          renderSidebar();
+          renderGrid();
+        });
+        sidebar.appendChild(btn);
+      });
+    }
+    
+    function renderGrid() {
+      grid.textContent = '';
+      const query = searchInput.value.toLowerCase().trim();
+      
+      const filtered = templates.filter(t => {
+        const matchesCategory = activeCategory === t.category;
+        const matchesSearch = !query || 
+          t.title.toLowerCase().includes(query) || 
+          t.label.toLowerCase().includes(query) ||
+          t.category.toLowerCase().includes(query);
+        return matchesCategory && matchesSearch;
+      });
+      
+      if (filtered.length === 0) {
+        emptyMessage.style.display = 'block';
+      } else {
+        emptyMessage.style.display = 'none';
+      }
+      
+      filtered.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'diagram-card';
+        if (selectedTemplate && selectedTemplate.id === t.id) {
+          card.classList.add('is-selected');
+        }
+        
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'diagram-card-preview';
+        
+        let displayHtml = t.svg;
+        if (t.id === 'mermaid-sequence' || t.id === 'mermaid-er') {
+          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
+            <div style="font-size:10px; font-weight:bold; color:#ff4081; margin-bottom:4px;">${t.title}</div>
+            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
+          </div>`;
+        } else {
+          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
+            <div style="font-size:10px; color:var(--text-color); margin-bottom:4px;">${t.title}</div>
+            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
+          </div>`;
+        }
+        
+        previewDiv.innerHTML = displayHtml;
+        
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'diagram-card-label';
+        labelDiv.textContent = t.label;
+        
+        card.appendChild(previewDiv);
+        card.appendChild(labelDiv);
+        
+        card.addEventListener('click', () => {
+          selectedTemplate = t;
+          const cards = grid.querySelectorAll('.diagram-card');
+          cards.forEach(c => c.classList.remove('is-selected'));
+          card.classList.add('is-selected');
+          
+          previewContainer.innerHTML = t.svg;
+          confirmBtn.disabled = false;
+        });
+        
+        grid.appendChild(card);
+      });
+    }
+    
+    renderSidebar();
+    renderGrid();
+    
+    searchInput.addEventListener('input', renderGrid);
+    
+    function insertTemplate() {
+      if (!selectedTemplate) return;
+      modal.style.display = 'none';
+      cleanup();
+      insertMarkdownBlock(selectedTemplate.code, start, end);
+    }
+    
+    function closeModal() {
+      modal.style.display = 'none';
+      cleanup();
+    }
+    
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    }
+    
+    function cleanup() {
+      confirmBtn.removeEventListener('click', insertTemplate);
+      cancelBtn.removeEventListener('click', closeModal);
+      closeBtn.removeEventListener('click', closeModal);
+      modal.removeEventListener('keydown', onKey);
+      searchInput.removeEventListener('input', renderGrid);
+    }
+    
+    confirmBtn.addEventListener('click', insertTemplate);
+    cancelBtn.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('keydown', onKey);
+  }
+
   function insertMarkdownLink() {
     const modal = document.getElementById('link-modal');
     const urlInput = document.getElementById('link-modal-url');
@@ -7384,6 +7710,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     else if (action === 'symbols') openSymbolsModal();
     else if (action === 'alert') openAlertModal();
+    else if (action === 'diagram') openDiagramModal();
     else if (action === 'terminal-block') insertMarkdownBlock('```bash\nnpm run dev\n```\n');
     else if (action === 'fullscreen') {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
