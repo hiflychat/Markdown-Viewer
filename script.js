@@ -5552,7 +5552,64 @@ document.addEventListener("DOMContentLoaded", async function () {
     modal.addEventListener('keydown', onKey);
   }
 
-  function openDiagramModal() {
+  function getCleanCode(templateCode) {
+    if (!templateCode) return '';
+    let clean = templateCode.trim();
+    if (clean.startsWith('```')) {
+      const firstNewLine = clean.indexOf('\n');
+      if (firstNewLine !== -1) {
+        clean = clean.substring(firstNewLine + 1);
+      }
+    }
+    if (clean.endsWith('```')) {
+      clean = clean.substring(0, clean.length - 3).trim();
+    }
+    return clean;
+  }
+
+  function getDiagramApiUrl(template, theme) {
+    if (typeof pako === 'undefined') {
+      return null;
+    }
+    try {
+      const cleanCode = getCleanCode(template.code);
+      if (template.category === 'Mermaid') {
+        const obj = {
+          code: cleanCode,
+          mermaid: {
+            theme: theme === 'dark' ? 'dark' : 'default'
+          }
+        };
+        const json = JSON.stringify(obj);
+        const encoded = encodeKrokiD2(json);
+        return `https://mermaid.ink/svg/pako:${encoded}`;
+      } else if (template.category === 'PlantUML') {
+        const encoded = encodePlantUML(cleanCode);
+        return `https://www.plantuml.com/plantuml/svg/${encoded}`;
+      } else if (template.category === 'D2') {
+        const encoded = encodeKrokiD2(cleanCode);
+        const themeParam = theme === 'dark' ? '?theme=200' : '';
+        return `https://kroki.io/d2/svg/${encoded}${themeParam}`;
+      } else {
+        let engine = '';
+        switch (template.category) {
+          case 'Graphviz': engine = 'graphviz'; break;
+          case 'Vega-Lite': engine = 'vegalite'; break;
+          case 'ABC Notation': engine = 'abc'; break;
+          case 'WaveDrom': engine = 'wavedrom'; break;
+          case 'Markmap': engine = 'markmap'; break;
+          default: engine = template.category.toLowerCase().replace(/\s+/g, '');
+        }
+        const encoded = encodeKrokiD2(cleanCode);
+        return `https://kroki.io/${engine}/svg/${encoded}`;
+      }
+    } catch (e) {
+      console.warn('Failed to encode diagram for URL:', e);
+      return null;
+    }
+  }
+
+  async function openDiagramModal() {
     const modal = document.getElementById('diagram-modal');
     const sidebar = modal.querySelector('.diagram-modal-sidebar');
     const grid = document.getElementById('diagram-modal-grid');
@@ -5565,6 +5622,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const closeBtn = document.getElementById('diagram-modal-close');
     
     if (!modal || !sidebar || !grid || !emptyMessage || !searchInput || !previewContainer || !previewCode || !confirmBtn || !cancelBtn || !closeBtn) return;
+    
+    if (typeof pako === 'undefined') {
+      try {
+        await loadScript(CDN.pako);
+      } catch (e) {
+        console.warn('Failed to load pako library for diagram previews:', e);
+      }
+    }
     
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
@@ -6320,20 +6385,44 @@ document.addEventListener("DOMContentLoaded", async function () {
         const previewDiv = document.createElement('div');
         previewDiv.className = 'diagram-card-preview';
         
-        let displayHtml = t.svg;
-        if (t.id === 'mermaid-sequence' || t.id === 'mermaid-er') {
-          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
-            <div style="font-size:10px; font-weight:bold; color:#ff4081; margin-bottom:4px;">${t.title}</div>
-            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
-          </div>`;
-        } else {
-          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
-            <div style="font-size:10px; color:var(--text-color); margin-bottom:4px;">${t.title}</div>
-            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
-          </div>`;
-        }
+        const isMermaidSpecial = (t.id === 'mermaid-sequence' || t.id === 'mermaid-er');
+        const titleColor = isMermaidSpecial ? '#ff4081' : 'var(--text-color)';
+        const titleWeight = isMermaidSpecial ? 'bold' : 'normal';
+
+        previewDiv.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
+            <div style="font-size:10px; font-weight:${titleWeight}; color:${titleColor}; margin-bottom:4px;">${t.title}</div>
+            <div class="diagram-svg-container" style="flex:1; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              ${t.svg}
+            </div>
+          </div>
+        `;
         
-        previewDiv.innerHTML = displayHtml;
+        const theme = document.documentElement.getAttribute("data-theme") || "light";
+        const apiUrl = getDiagramApiUrl(t, theme);
+        
+        if (apiUrl) {
+          const img = document.createElement('img');
+          img.style.display = 'none';
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '100%';
+          img.style.objectFit = 'contain';
+          
+          img.onload = () => {
+            const svgContainer = previewDiv.querySelector('.diagram-svg-container');
+            if (svgContainer) {
+              svgContainer.textContent = '';
+              img.style.display = 'block';
+              svgContainer.appendChild(img);
+            }
+          };
+          
+          img.onerror = () => {
+            console.warn(`Failed to load card preview from API for ${t.id}. Falling back to local SVG.`);
+          };
+          
+          img.src = apiUrl;
+        }
         
         const labelDiv = document.createElement('div');
         labelDiv.className = 'diagram-card-label';
@@ -6349,8 +6438,40 @@ document.addEventListener("DOMContentLoaded", async function () {
           card.classList.add('is-selected');
           
           if (previewCode) previewCode.value = t.code.trim();
-          previewContainer.innerHTML = t.svg;
           confirmBtn.disabled = false;
+
+          // Render bottom preview container with API image & fallback
+          previewContainer.innerHTML = `
+            <div class="diagram-svg-container" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              ${t.svg}
+            </div>
+          `;
+          
+          const clickedTheme = document.documentElement.getAttribute("data-theme") || "light";
+          const clickedApiUrl = getDiagramApiUrl(t, clickedTheme);
+          
+          if (clickedApiUrl) {
+            const previewImg = document.createElement('img');
+            previewImg.style.display = 'none';
+            previewImg.style.maxWidth = '100%';
+            previewImg.style.maxHeight = '100%';
+            previewImg.style.objectFit = 'contain';
+            
+            previewImg.onload = () => {
+              const svgContainer = previewContainer.querySelector('.diagram-svg-container');
+              if (svgContainer) {
+                svgContainer.textContent = '';
+                previewImg.style.display = 'block';
+                svgContainer.appendChild(previewImg);
+              }
+            };
+            
+            previewImg.onerror = () => {
+              console.warn(`Failed to load bottom preview from API for ${t.id}. Falling back to local SVG.`);
+            };
+            
+            previewImg.src = clickedApiUrl;
+          }
         });
         
         grid.appendChild(card);
