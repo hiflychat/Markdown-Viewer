@@ -5590,28 +5590,81 @@ document.addEventListener("DOMContentLoaded", async function () {
     ];
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
-    const svgSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><line x1="35" y1="30" x2="35" y2="90" stroke="#673ab7" stroke-width="1" stroke-dasharray="3"/><rect x="15" y="90" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="35" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><rect x="105" y="10" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><line x1="125" y1="30" x2="125" y2="90" stroke="#673ab7" stroke-width="1" stroke-dasharray="3"/><rect x="105" y="90" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="125" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><path d="M 35 48 L 125 48" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Hello</text><path d="M 125 72 L 35 72" stroke="#333" stroke-width="1" stroke-dasharray="3" marker-end="url(#arrow-f)"/><text x="80" y="67" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Reply</text></svg>`;
+    const svgMermaidFlowchartLR = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Left</text><path d="M 50 60 L 110 60" stroke="#2e7d32" stroke-width="1.2" marker-end="url(#arrow-flr)"/><rect x="110" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="130" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Right</text><defs><marker id="arrow-flr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/></marker></defs></svg>`;
+    const svgSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><line x1="35" y1="30" x2="35" y2="90" stroke="#009688" stroke-width="1" stroke-dasharray="3"/><rect x="15" y="90" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="35" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><rect x="105" y="10" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><line x1="125" y1="30" x2="125" y2="90" stroke="#009688" stroke-width="1" stroke-dasharray="3"/><rect x="105" y="90" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="125" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><path d="M 35 48 L 125 48" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Hello</text><path d="M 125 72 L 35 72" stroke="#333" stroke-width="1" stroke-dasharray="3" marker-end="url(#arrow-f)"/><text x="80" y="67" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Reply</text></svg>`;
     const svgEr = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="10" y1="46" x2="60" y2="46" stroke="#ff9800" stroke-width="1"/><text x="35" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">CUSTOMER</text><text x="14" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="14" y="65" font-size="7" font-family="sans-serif" fill="#666">name</text><rect x="100" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="100" y1="46" x2="150" y2="46" stroke="#ff9800" stroke-width="1"/><text x="125" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">ORDER</text><text x="104" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="104" y="65" font-size="7" font-family="sans-serif" fill="#666">price</text><path d="M 60 50 L 100 50" stroke="#333" stroke-width="1.5"/></svg>`;
     const svgClass = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="30" y="20" width="100" height="65" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><line x1="30" y1="40" x2="130" y2="40" stroke="#673ab7" stroke-width="1"/><line x1="30" y1="60" x2="130" y2="60" stroke="#673ab7" stroke-width="1"/><text x="80" y="33" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Animal</text><text x="36" y="50" font-size="7" font-family="sans-serif" fill="#333">+name: String</text><text x="36" y="57" font-size="7" font-family="sans-serif" fill="#333">+age: int</text><text x="36" y="70" font-size="7" font-family="sans-serif" fill="#333">+makeSound()</text></svg>`;
     const svgState = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="20" cy="50" r="7" fill="#3f51b5"/><path d="M 27 50 L 60 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><rect x="60" y="35" width="50" height="30" rx="6" fill="#f4f5f7" stroke="#3f51b5" stroke-width="1.5"/><text x="85" y="53" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Active</text><path d="M 110 50 L 133 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><circle cx="140" cy="50" r="7" fill="none" stroke="#3f51b5" stroke-width="1.5"/><circle cx="140" cy="50" r="4" fill="#3f51b5"/><defs><marker id="arrow-s" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker></defs></svg>`;
     const svgGantt = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="20" y1="20" x2="20" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="60" y1="20" x2="60" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="100" y1="20" x2="100" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="140" y1="20" x2="140" y2="100" stroke="#e0e0e0" stroke-width="1"/><rect x="25" y="30" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="30" y="40" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Design</text><rect x="80" y="60" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="85" y="70" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Code</text></svg>`;
     const svgPie = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="55" r="35" fill="#f44336" stroke="#fff" stroke-width="1.5"/><path d="M 80 55 L 80 20 A 35 35 0 0 1 115 55 Z" fill="#4caf50" stroke="#fff" stroke-width="1"/><path d="M 80 55 L 115 55 A 35 35 0 0 1 80 90 Z" fill="#ffeb3b" stroke="#fff" stroke-width="1"/></svg>`;
-    const svgDirected = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="40" cy="35" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="40" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">A</text><circle cx="120" cy="35" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="120" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">B</text><circle cx="80" cy="80" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="80" y="84" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">C</text><path d="M 51 35 L 109 35" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><path d="M 46 45 L 71 69" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><path d="M 114 45 L 89 69" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><defs><marker id="arrow-d" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
-    const svgBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="35" y="55" width="22" height="35" fill="#9c27b0" rx="1"/><rect x="70" y="35" width="22" height="55" fill="#9c27b0" rx="1"/><rect x="105" y="45" width="22" height="45" fill="#9c27b0" rx="1"/></svg>`;
-    const svgLine = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 65 L 70 35 L 105 60 L 135 25" fill="none" stroke="#2196f3" stroke-width="2"/><circle cx="35" cy="65" r="2.5" fill="#2196f3"/><circle cx="70" cy="35" r="2.5" fill="#2196f3"/><circle cx="105" cy="60" r="2.5" fill="#2196f3"/><circle cx="135" cy="25" r="2.5" fill="#2196f3"/></svg>`;
-    const svgTiming = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 60 L 40 60 L 40 40 L 60 40 L 60 60 L 80 60 L 80 40 L 100 40 L 100 60 L 140 60" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="35" font-size="8" font-family="sans-serif" fill="#ff5722" font-weight="bold">CLK</text></svg>`;
-    const svgMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="60" y="47" width="40" height="16" rx="3" fill="#f4f5f7" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Root</text><path d="M 60 55 L 30 35" stroke="#607d8b" stroke-width="1.2"/><path d="M 60 55 L 30 75" stroke="#607d8b" stroke-width="1.2"/><path d="M 100 55 L 130 55" stroke="#607d8b" stroke-width="1.2"/><circle cx="30" cy="35" r="3.5" fill="#607d8b"/><circle cx="30" cy="75" r="3.5" fill="#607d8b"/><circle cx="130" cy="55" r="3.5" fill="#607d8b"/></svg>`;
-    const svgAbc = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000" stroke="#000" stroke-width="1"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
+    const svgGitGraph = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="40" x2="150" y2="40" stroke="#9c27b0" stroke-width="2"/><line x1="40" y1="40" x2="80" y2="80" stroke="#00bcd4" stroke-width="2"/><line x1="80" y1="80" x2="150" y2="80" stroke="#00bcd4" stroke-width="2"/><circle cx="30" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/><circle cx="70" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/><circle cx="80" cy="80" r="5" fill="#00bcd4" stroke="#fff" stroke-width="1"/><circle cx="120" cy="80" r="5" fill="#00bcd4" stroke="#fff" stroke-width="1"/><circle cx="130" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgJourney = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="20" width="65" height="80" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" rx="3"/><text x="42" y="35" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#f57f17" font-weight="bold">Stage 1</text><rect x="15" y="45" width="55" height="15" fill="#fff" rx="2"/><text x="20" y="55" font-size="6" font-family="sans-serif">Task A ⭐⭐⭐</text><rect x="85" y="20" width="65" height="80" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" rx="3"/><text x="117" y="35" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#f57f17" font-weight="bold">Stage 2</text><rect x="90" y="45" width="55" height="15" fill="#fff" rx="2"/><text x="95" y="55" font-size="6" font-family="sans-serif">Task B ⭐⭐⭐⭐</text></svg>`;
+    const svgMermaidMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="55" y="48" width="50" height="24" rx="12" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="80" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Goal</text><path d="M 55 60 C 35 60, 30 35, 15 35" fill="none" stroke="#e91e63" stroke-width="1.5"/><path d="M 55 60 C 35 60, 30 85, 15 85" fill="none" stroke="#00bcd4" stroke-width="1.5"/><path d="M 105 60 C 125 60, 130 35, 145 35" fill="none" stroke="#4caf50" stroke-width="1.5"/><path d="M 105 60 C 125 60, 130 85, 145 85" fill="none" stroke="#ff9800" stroke-width="1.5"/><circle cx="15" cy="35" r="3.5" fill="#e91e63"/><circle cx="15" cy="85" r="3.5" fill="#00bcd4"/><circle cx="145" cy="35" r="3.5" fill="#4caf50"/><circle cx="145" cy="85" r="3.5" fill="#ff9800"/></svg>`;
+    
+    // PlantUML distinct styling (Yellowish actor/notes backgrounds, red outlines, retro styling)
+    const svgPlantUmlSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">User</text><line x1="35" y1="30" x2="35" y2="90" stroke="#b71c1c" stroke-width="1.2"/><rect x="105" y="10" width="40" height="20" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">Server</text><line x1="125" y1="30" x2="125" y2="90" stroke="#b71c1c" stroke-width="1.2"/><path d="M 35 50 L 125 50" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-red)"/><path d="M 125 75 L 35 75" stroke="#000" stroke-width="1" stroke-dasharray="4" marker-end="url(#arrow-red)"/><defs><marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b71c1c"/></marker></defs></svg>`;
+    const svgPlantUmlUseCase = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="30" cy="40" r="6" fill="#fff" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="46" x2="30" y2="66" stroke="#0d47a1" stroke-width="1.5"/><line x1="20" y1="52" x2="40" y2="52" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="66" x2="20" y2="82" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="66" x2="40" y2="82" stroke="#0d47a1" stroke-width="1.5"/><ellipse cx="110" cy="50" rx="35" ry="18" fill="#e3f2fd" stroke="#0d47a1" stroke-width="1.5"/><text x="110" y="53" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0d47a1" font-weight="bold">Checkout</text><line x1="45" y1="52" x2="75" y2="50" stroke="#0d47a1" stroke-width="1.2" marker-end="url(#arrow-blue)"/><defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0d47a1"/></marker></defs></svg>`;
+    const svgPlantUmlActivity = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="15" r="7" fill="#000"/><path d="M 80 22 L 80 40" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-p)"/><rect x="40" y="40" width="80" height="25" rx="12" fill="#fff9c4" stroke="#f57f17" stroke-width="1.5"/><text x="80" y="55" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000">Initialization</text><path d="M 80 65 L 80 85" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-p)"/><circle cx="80" cy="95" r="10" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="80" cy="95" r="6" fill="#000"/><defs><marker id="arrow-p" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#000"/></marker></defs></svg>`;
+    const svgPlantUmlClass = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="25" y="15" width="110" height="85" fill="#fff9c4" stroke="#a20000" stroke-width="1.5" rx="2"/><line x1="25" y1="40" x2="135" y2="40" stroke="#a20000" stroke-width="1"/><line x1="25" y1="65" x2="135" y2="65" stroke="#a20000" stroke-width="1"/><circle cx="38" cy="27" r="7" fill="#b3e5fc" stroke="#01579b" stroke-width="1"/><text x="38" y="31" font-size="9" text-anchor="middle" font-family="monospace" fill="#01579b" font-weight="bold">C</text><text x="50" y="31" font-size="9" font-family="sans-serif" fill="#000" font-weight="bold">UserClass</text><text x="32" y="52" font-size="7" font-family="monospace" fill="#000">- id: Long</text><text x="32" y="60" font-size="7" font-family="monospace" fill="#000">- email: String</text><text x="32" y="78" font-size="7" font-family="monospace" fill="#000">+ login(): Boolean</text><text x="32" y="87" font-size="7" font-family="monospace" fill="#000">+ getRoles(): List</text></svg>`;
+    const svgPlantUmlState = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="40" width="50" height="30" rx="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="40" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">StateA</text><path d="M 65 55 L 95 55" stroke="#b71c1c" stroke-width="1.2" marker-end="url(#arrow-puml-st)"/><rect x="95" y="40" width="50" height="30" rx="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="120" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">StateB</text><defs><marker id="arrow-puml-st" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b71c1c"/></marker></defs></svg>`;
+    const svgPlantUmlComponent = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="130" height="90" fill="#f5f5f5" stroke="#333" stroke-width="1.5" rx="3"/><text x="80" y="28" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">[System Node]</text><rect x="35" y="45" width="90" height="45" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><rect x="27" y="52" width="16" height="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><rect x="27" y="70" width="16" height="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="80" y="72" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">Web GUI</text></svg>`;
+
+    // Graphviz (Aesthetic: beige/brown, thin strokes, distinct classic nodes)
+    const svgGraphvizDigraph = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="35" cy="35" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="35" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723" font-weight="bold">A</text><circle cx="125" cy="35" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="125" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723" font-weight="bold">B</text><path d="M 47 35 L 113 35" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><defs><marker id="arrow-br" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
+    const svgGraphvizTree = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="25" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="80" y="28" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">Root</text><line x1="80" y1="35" x2="45" y2="70" stroke="#004d40" stroke-width="1.2"/><line x1="80" y1="35" x2="115" y2="70" stroke="#004d40" stroke-width="1.2"/><circle cx="45" cy="80" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="45" y="83" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">L</text><circle cx="115" cy="80" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="115" y="83" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">R</text></svg>`;
+    const svgGraphvizStruct = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="20" y="35" width="120" height="40" fill="#f5f5f5" stroke="#212121" stroke-width="1.5"/><line x1="60" y1="35" x2="60" y2="75" stroke="#212121" stroke-width="1.5"/><line x1="100" y1="35" x2="100" y2="75" stroke="#212121" stroke-width="1.5"/><text x="40" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node0</text><text x="80" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node1</text><text x="120" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node2</text></svg>`;
+    const svgGraphvizFsm = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="35" cy="55" r="14" fill="#fafafa" stroke="#333" stroke-width="1.5"/><text x="35" y="59" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333">S1</text><path d="M 49 55 L 105 55" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-g-fsm)"/><circle cx="120" cy="55" r="14" fill="#fafafa" stroke="#333" stroke-width="1.5"/><circle cx="120" cy="55" r="10" fill="none" stroke="#333" stroke-width="1.2"/><text x="120" y="59" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333">S2</text><defs><marker id="arrow-g-fsm" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgGraphvizNetwork = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="45" width="35" height="25" rx="3" fill="#efebe9" stroke="#5d4037" stroke-width="1.5"/><text x="32" y="60" font-size="8" text-anchor="middle" fill="#5d4037" font-weight="bold">Router</text><ellipse cx="125" cy="57" rx="20" ry="15" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/><text x="125" y="60" font-size="8" text-anchor="middle" fill="#2e7d32" font-weight="bold">LAN</text><line x1="50" y1="57" x2="105" y2="57" stroke="#333" stroke-width="1.2"/></svg>`;
+
+    // D2 (Aesthetic: monospace font, bold slate outlines, soft purple/blue/green boxes)
+    const svgD2Flow = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="45" width="40" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="35" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333">x</text><path d="M 55 60 L 105 60" stroke="#333" stroke-width="2" marker-end="url(#arrow-d2)"/><rect x="105" y="45" width="40" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="125" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333">y</text><defs><marker id="arrow-d2" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgD2Arch = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="15" width="140" height="90" fill="#f5f5f5" stroke="#3f51b5" stroke-width="1.5" stroke-dasharray="3" rx="4"/><text x="80" y="27" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5" font-weight="bold">Cloud Platform</text><rect x="25" y="45" width="45" height="40" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" rx="3"/><text x="47" y="68" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5">App</text><rect x="90" y="45" width="45" height="40" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" rx="3"/><text x="112" y="68" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5">DB</text></svg>`;
+    const svgD2Sequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="40" height="24" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/><text x="35" y="30" font-size="8" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">client</text><line x1="35" y1="39" x2="35" y2="105" stroke="#5e35b1" stroke-width="1.5"/><rect x="105" y="15" width="40" height="24" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/><text x="125" y="30" font-size="8" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">server</text><line x1="125" y1="39" x2="125" y2="105" stroke="#5e35b1" stroke-width="1.5"/><path d="M 35 60 L 125 60" stroke="#333" stroke-width="1.8" marker-end="url(#arrow-d2)"/><path d="M 125 85 L 35 85" stroke="#333" stroke-width="1.5" stroke-dasharray="3" marker-end="url(#arrow-d2)"/></svg>`;
+    const svgD2Erd = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="25" width="50" height="50" fill="#f1f8e9" stroke="#558b2f" stroke-width="2" rx="2"/><rect x="15" y="25" width="50" height="15" fill="#c5e1a5" stroke="#558b2f" stroke-width="2" rx="2"/><text x="40" y="36" font-size="7" text-anchor="middle" font-family="monospace" fill="#33691e" font-weight="bold">users</text><text x="20" y="52" font-size="6" font-family="monospace" fill="#333">id (PK)</text><text x="20" y="65" font-size="6" font-family="monospace" fill="#333">name</text><rect x="95" y="25" width="50" height="50" fill="#f1f8e9" stroke="#558b2f" stroke-width="2" rx="2"/><rect x="95" y="25" width="50" height="15" fill="#c5e1a5" stroke="#558b2f" stroke-width="2" rx="2"/><text x="120" y="36" font-size="7" text-anchor="middle" font-family="monospace" fill="#33691e" font-weight="bold">posts</text><text x="100" y="52" font-size="6" font-family="monospace" fill="#333">id (PK)</text><text x="100" y="65" font-size="6" font-family="monospace" fill="#333">user_id</text><path d="M 65 50 L 95 50" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgD2Grid = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="60" height="40" fill="#e0f7fa" stroke="#00838f" stroke-width="2" rx="2"/><text x="45" y="38" font-size="8" text-anchor="middle" font-family="monospace" fill="#006064" font-weight="bold">Box 1</text><rect x="85" y="15" width="60" height="40" fill="#e0f7fa" stroke="#00838f" stroke-width="2" rx="2"/><text x="115" y="38" font-size="8" text-anchor="middle" font-family="monospace" fill="#006064" font-weight="bold">Box 2</text><rect x="15" y="65" width="130" height="40" fill="#fce4ec" stroke="#c2185b" stroke-width="2" rx="2"/><text x="80" y="88" font-size="8" text-anchor="middle" font-family="monospace" fill="#880e4f" font-weight="bold">Main Footer Box</text></svg>`;
+
+    // Vega-Lite (Aesthetic: statistical charts)
+    const svgVegaBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="35" y="55" width="22" height="35" fill="#2196f3"/><rect x="70" y="35" width="22" height="55" fill="#2196f3"/><rect x="105" y="45" width="22" height="45" fill="#2196f3"/></svg>`;
+    const svgVegaLine = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 65 L 70 35 L 105 60 L 135 25" fill="none" stroke="#e91e63" stroke-width="2"/><circle cx="35" cy="65" r="2.5" fill="#e91e63"/><circle cx="70" cy="35" r="2.5" fill="#e91e63"/><circle cx="105" cy="60" r="2.5" fill="#e91e63"/><circle cx="135" cy="25" r="2.5" fill="#e91e63"/></svg>`;
+    const svgVegaScatter = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><circle cx="45" cy="65" r="4.5" fill="#4caf50"/><circle cx="65" cy="45" r="4.5" fill="#4caf50"/><circle cx="95" cy="75" r="4.5" fill="#4caf50"/><circle cx="115" cy="30" r="4.5" fill="#4caf50"/><circle cx="130" cy="55" r="4.5" fill="#4caf50"/></svg>`;
+    const svgVegaArea = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 75 L 65 40 L 95 65 L 135 30 L 135 90 L 35 90 Z" fill="#9575cd" opacity="0.6" stroke="#5e35b1" stroke-width="1.5"/></svg>`;
+    const svgVegaStackedBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="40" y="60" width="20" height="30" fill="#2196f3"/><rect x="40" y="40" width="20" height="20" fill="#ff9800"/><rect x="80" y="50" width="20" height="40" fill="#2196f3"/><rect x="80" y="20" width="20" height="30" fill="#ff9800"/><rect x="120" y="70" width="20" height="20" fill="#2196f3"/><rect x="120" y="55" width="20" height="15" fill="#ff9800"/></svg>`;
+
+    // ABC Notation (Aesthetic: musical notation stave and notes)
+    const svgAbcMelody = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000" stroke="#000" stroke-width="1"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
+    const svgAbcDuet = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="15" x2="150" y2="15" stroke="#000" stroke-width="1"/><line x1="10" y1="25" x2="150" y2="25" stroke="#000" stroke-width="1"/><line x1="10" y1="35" x2="150" y2="35" stroke="#000" stroke-width="1"/><line x1="10" y1="45" x2="150" y2="45" stroke="#000" stroke-width="1"/><line x1="10" y1="55" x2="150" y2="55" stroke="#000" stroke-width="1"/><path d="M 30 10 L 30 50 A 8 8 0 1 1 20 43" fill="#000"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><line x1="10" y1="80" x2="150" y2="80" stroke="#000" stroke-width="1"/><line x1="10" y1="90" x2="150" y2="90" stroke="#000" stroke-width="1"/><line x1="10" y1="100" x2="150" y2="100" stroke="#000" stroke-width="1"/><line x1="10" y1="110" x2="150" y2="110" stroke="#000" stroke-width="1"/><path d="M 60 65 L 60 105 A 8 8 0 1 1 50 98" fill="#000"/></svg>`;
+    const svgAbcLyric = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000"/><text x="20" y="90" font-size="8" font-family="sans-serif">Do</text><text x="60" y="90" font-size="8" font-family="sans-serif">Re</text><text x="100" y="90" font-size="8" font-family="sans-serif">Mi</text></svg>`;
+    const svgAbcChords = `<svg viewBox="0 0 160 120" width="100%" height="100%"><text x="20" y="20" font-size="8" font-family="sans-serif" font-weight="bold" fill="blue">C</text><text x="80" y="20" font-size="8" font-family="sans-serif" font-weight="bold" fill="blue">G7</text><line x1="10" y1="35" x2="150" y2="35" stroke="#000" stroke-width="1"/><line x1="10" y1="45" x2="150" y2="45" stroke="#000" stroke-width="1"/><line x1="10" y1="55" x2="150" y2="55" stroke="#000" stroke-width="1"/><line x1="10" y1="65" x2="150" y2="65" stroke="#000" stroke-width="1"/><line x1="10" y1="75" x2="150" y2="75" stroke="#000" stroke-width="1"/><path d="M 30 30 L 30 70 A 8 8 0 1 1 20 63" fill="#000"/><path d="M 90 40 L 90 80 A 8 8 0 1 1 80 73" fill="#000"/></svg>`;
+
+    // WaveDrom (Aesthetic: digital waveform timing lines)
+    const svgWaveTiming = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 60 L 40 60 L 40 40 L 60 40 L 60 60 L 80 60 L 80 40 L 100 40 L 100 60 L 140 60" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="35" font-size="8" font-family="sans-serif" fill="#ff5722" font-weight="bold">CLK</text></svg>`;
+    const svgWaveCounter = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 40 L 40 40 L 40 25 L 60 25 L 60 40 L 80 40 L 80 25 L 100 25 L 100 40 L 140 40" fill="none" stroke="#009688" stroke-width="1.8"/><text x="15" y="20" font-size="7" fill="#009688" font-weight="bold">CLK0</text><path d="M 20 90 L 60 90 L 60 75 L 100 75 L 100 90 L 140 90" fill="none" stroke="#ff9800" stroke-width="1.8"/><text x="15" y="70" font-size="7" fill="#ff9800" font-weight="bold">CLK1</text></svg>`;
+    const svgWaveBus = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 50 L 40 50 L 48 40 L 80 40 L 88 50 L 120 50 L 128 40 L 140 40 M 20 50 L 40 50 L 48 60 L 80 60 L 88 50 L 120 50 L 128 60 L 140 60" fill="none" stroke="#00c853" stroke-width="1.8"/><text x="64" y="53" font-size="7" font-family="monospace" text-anchor="middle" fill="#00796b">DATA</text><text x="15" y="30" font-size="7" fill="#333" font-weight="bold">BUS</text></svg>`;
+    const svgWaveReset = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 30 L 70 30 L 70 50 L 140 50" fill="none" stroke="#d50000" stroke-width="1.8"/><text x="15" y="22" font-size="7" fill="#d50000" font-weight="bold">RESET</text><path d="M 20 90 L 90 90 L 90 70 L 140 70" fill="none" stroke="#2962ff" stroke-width="1.8"/><text x="15" y="82" font-size="7" fill="#2962ff" font-weight="bold">ENABLE</text></svg>`;
+
+    // Markmap (Aesthetic: colorful mindmaps, curved connection paths)
+    const svgMarkmapMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="60" y="47" width="40" height="16" rx="3" fill="#f4f5f7" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Root</text><path d="M 60 55 L 30 35" stroke="#607d8b" stroke-width="1.2"/><path d="M 60 55 L 30 75" stroke="#607d8b" stroke-width="1.2"/><path d="M 100 55 L 130 55" stroke="#607d8b" stroke-width="1.2"/><circle cx="30" cy="35" r="3.5" fill="#607d8b"/><circle cx="30" cy="75" r="3.5" fill="#607d8b"/><circle cx="130" cy="55" r="3.5" fill="#607d8b"/></svg>`;
+    const svgMarkmapRoadmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#2e7d32" font-weight="bold">Roadmap</text><path d="M 45 59 C 65 59, 75 30, 95 30" fill="none" stroke="#2e7d32" stroke-width="1.5"/><path d="M 45 59 C 65 59, 75 90, 95 90" fill="none" stroke="#2e7d32" stroke-width="1.5"/><circle cx="95" cy="30" r="3" fill="#2e7d32"/><circle cx="95" cy="90" r="3" fill="#2e7d32"/><text x="102" y="33" font-size="7" font-family="sans-serif">Q1 Plan</text><text x="102" y="93" font-size="7" font-family="sans-serif">Q2 Build</text></svg>`;
+    const svgMarkmapStudy = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#ef6c00" font-weight="bold">Course</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#ef6c00" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#ef6c00" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#ef6c00"/><circle cx="90" cy="90" r="3" fill="#ef6c00"/><text x="96" y="33" font-size="7" font-family="sans-serif">Math</text><text x="96" y="93" font-size="7" font-family="sans-serif">Science</text></svg>`;
+    const svgMarkmapStack = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="30" height="18" rx="2" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5"/><text x="25" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0288d1" font-weight="bold">Stack</text><path d="M 40 59 C 60 59, 70 30, 90 30" fill="none" stroke="#0288d1" stroke-width="1.5"/><path d="M 40 59 C 60 59, 70 90, 90 90" fill="none" stroke="#0288d1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#0288d1"/><circle cx="90" cy="90" r="3" fill="#0288d1"/><text x="96" y="33" font-size="7" font-family="sans-serif">Web</text><text x="96" y="93" font-size="7" font-family="sans-serif">Mobile</text></svg>`;
 
     const templates = [
       // Mermaid
       {
-        id: 'mermaid-flowchart',
+        id: 'mermaid-flowchart-td',
         category: 'Mermaid',
-        title: 'Flowchart',
-        label: 'Flowchart',
+        title: 'Flowchart (TD)',
+        label: 'Flowchart (Top-Down)',
         svg: svgFlowchart,
         code: '```mermaid\ngraph TD\n    Start --> End\n```\n'
+      },
+      {
+        id: 'mermaid-flowchart-lr',
+        category: 'Mermaid',
+        title: 'Flowchart (LR)',
+        label: 'Flowchart (Left-Right)',
+        svg: svgMermaidFlowchartLR,
+        code: '```mermaid\ngraph LR\n    Left --> Right\n```\n'
       },
       {
         id: 'mermaid-sequence',
@@ -5661,6 +5714,30 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgPie,
         code: '```mermaid\npie title Pets owned by staff\n    "Dogs" : 386\n    "Cats" : 85\n```\n'
       },
+      {
+        id: 'mermaid-git',
+        category: 'Mermaid',
+        title: 'Git Graph',
+        label: 'Git Graph',
+        svg: svgGitGraph,
+        code: '```mermaid\ngitGraph\n    commit\n    branch hotfix\n    checkout hotfix\n    commit\n    checkout main\n    merge hotfix\n```\n'
+      },
+      {
+        id: 'mermaid-journey',
+        category: 'Mermaid',
+        title: 'User Journey',
+        label: 'User Journey',
+        svg: svgJourney,
+        code: '```mermaid\njourney\n    title My working day\n    section Go to work\n      Make tea: 5: Me\n      Go upstairs: 3: Me\n```\n'
+      },
+      {
+        id: 'mermaid-mindmap',
+        category: 'Mermaid',
+        title: 'Mindmap',
+        label: 'Mindmap Diagram',
+        svg: svgMermaidMindmap,
+        code: '```mermaid\nmindmap\n  root((Goal))\n    Topic 1\n      Subtopic 1\n    Topic 2\n```\n'
+      },
       
       // PlantUML
       {
@@ -5668,7 +5745,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'PlantUML',
         title: 'Sequence Diagram',
         label: 'Sequence Diagram',
-        svg: svgSequence,
+        svg: svgPlantUmlSequence,
         code: '```plantuml\n@startuml\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n@enduml\n'
       },
       {
@@ -5676,16 +5753,40 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'PlantUML',
         title: 'Use Case Diagram',
         label: 'Use Case Diagram',
-        svg: svgFlowchart,
+        svg: svgPlantUmlUseCase,
         code: '```plantuml\n@startuml\nleft to right direction\nactor Guest\nrectangle Hotel {\n  usecase "Book Room" as UC1\n}\nGuest --> UC1\n@enduml\n'
+      },
+      {
+        id: 'plantuml-activity',
+        category: 'PlantUML',
+        title: 'Activity Diagram',
+        label: 'Activity Diagram',
+        svg: svgPlantUmlActivity,
+        code: '```plantuml\n@startuml\n:Start;\n:Hello World;\n:End;\n@enduml\n'
       },
       {
         id: 'plantuml-class',
         category: 'PlantUML',
         title: 'Class Diagram',
         label: 'Class Diagram',
-        svg: svgClass,
+        svg: svgPlantUmlClass,
         code: '```plantuml\n@startuml\nclass Dummy {\n  -field1\n  #field2\n  ~method1()\n  +method2()\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-state',
+        category: 'PlantUML',
+        title: 'State Diagram',
+        label: 'State Diagram',
+        svg: svgPlantUmlState,
+        code: '```plantuml\n@startuml\n[*] --> State1\nState1 --> State2 : Transition\n@enduml\n'
+      },
+      {
+        id: 'plantuml-component',
+        category: 'PlantUML',
+        title: 'Component Diagram',
+        label: 'Component Diagram',
+        svg: svgPlantUmlComponent,
+        code: '```plantuml\n@startuml\n[Web GUI] --> [App Service] : JSON HTTP\n@enduml\n'
       },
       
       // Graphviz
@@ -5694,8 +5795,40 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'Graphviz',
         title: 'Directed Graph',
         label: 'Directed Graph',
-        svg: svgDirected,
+        svg: svgGraphvizDigraph,
         code: '```graphviz\ndigraph G {\n  Hello -> World\n}\n```\n'
+      },
+      {
+        id: 'graphviz-tree',
+        category: 'Graphviz',
+        title: 'Hierarchy Tree',
+        label: 'Hierarchy Tree',
+        svg: svgGraphvizTree,
+        code: '```graphviz\ndigraph Tree {\n  node [shape=circle];\n  Parent -> Left;\n  Parent -> Right;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-struct',
+        category: 'Graphviz',
+        title: 'Record Struct',
+        label: 'Record Structure',
+        svg: svgGraphvizStruct,
+        code: '```graphviz\ndigraph G {\n  node [shape=record];\n  struct1 [label="<f0> left|<f1> mid|<f2> right"];\n}\n```\n'
+      },
+      {
+        id: 'graphviz-fsm',
+        category: 'Graphviz',
+        title: 'FSM Diagram',
+        label: 'Finite State Machine',
+        svg: svgGraphvizFsm,
+        code: '```graphviz\ndigraph FSM {\n  rankdir=LR;\n  S1 -> S2 [label="Input"];\n}\n```\n'
+      },
+      {
+        id: 'graphviz-network',
+        category: 'Graphviz',
+        title: 'Network Topology',
+        label: 'Network Topology',
+        svg: svgGraphvizNetwork,
+        code: '```graphviz\ngraph Net {\n  Router -- Switch;\n  Switch -- Client1;\n  Switch -- Client2;\n}\n```\n'
       },
       
       // D2
@@ -5704,8 +5837,40 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'D2',
         title: 'Simple Flow',
         label: 'Simple Flow',
-        svg: svgFlowchart,
+        svg: svgD2Flow,
         code: '```d2\nx -> y: hello world\n```\n'
+      },
+      {
+        id: 'd2-arch',
+        category: 'D2',
+        title: 'Architecture Diagram',
+        label: 'Architecture Diagram',
+        svg: svgD2Arch,
+        code: '```d2\ncloud platform {\n  app: Application Server\n  db: PostgreSQL Database\n  app -> db\n}\n```\n'
+      },
+      {
+        id: 'd2-sequence',
+        category: 'D2',
+        title: 'Sequence Diagram',
+        label: 'Sequence Diagram',
+        svg: svgD2Sequence,
+        code: '```d2\nclient -> server: Get User Profile\nserver -> client: Profile Data\n```\n'
+      },
+      {
+        id: 'd2-erd',
+        category: 'D2',
+        title: 'ERD Table',
+        label: 'Entity Relationship',
+        svg: svgD2Erd,
+        code: '```d2\nusers: {\n  id: int {constraint: primary_key}\n  name: string\n}\nposts: {\n  id: int {constraint: primary_key}\n  user_id: int\n}\nusers.id -> posts.user_id\n```\n'
+      },
+      {
+        id: 'd2-grid',
+        category: 'D2',
+        title: 'Grid Layout',
+        label: 'Grid Layout',
+        svg: svgD2Grid,
+        code: '```d2\ngrid-demo: {\n  style.layout: grid\n  Box 1\n  Box 2\n}\n```\n'
       },
       
       // Vega-Lite
@@ -5714,7 +5879,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'Vega-Lite',
         title: 'Bar Chart',
         label: 'Bar Chart',
-        svg: svgBar,
+        svg: svgVegaBar,
         code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "a", "type": "nominal"},\n    "y": {"field": "b", "type": "quantitative"}\n  }\n}\n```\n'
       },
       {
@@ -5722,8 +5887,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'Vega-Lite',
         title: 'Line Chart',
         label: 'Line Chart',
-        svg: svgLine,
+        svg: svgVegaLine,
         code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10}, {"x": 2, "y": 15}, {"x": 3, "y": 13}\n    ]\n  },\n  "mark": "line",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-scatter',
+        category: 'Vega-Lite',
+        title: 'Scatter Plot',
+        label: 'Scatter Plot',
+        svg: svgVegaScatter,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 1.5}, {"x": 2, "y": 2.5}, {"x": 3, "y": 1.0}\n    ]\n  },\n  "mark": "point",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-area',
+        category: 'Vega-Lite',
+        title: 'Area Chart',
+        label: 'Area Chart',
+        svg: svgVegaArea,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10}, {"x": 2, "y": 15}, {"x": 3, "y": 13}\n    ]\n  },\n  "mark": "area",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-stacked-bar',
+        category: 'Vega-Lite',
+        title: 'Stacked Bar',
+        label: 'Stacked Bar Chart',
+        svg: svgVegaStackedBar,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": "A", "y": 10, "group": "one"},\n      {"x": "A", "y": 15, "group": "two"},\n      {"x": "B", "y": 20, "group": "one"},\n      {"x": "B", "y": 5, "group": "two"}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "x", "type": "nominal"},\n    "y": {"field": "y", "type": "quantitative"},\n    "color": {"field": "group", "type": "nominal"}\n  }\n}\n```\n'
       },
       
       // ABC Notation
@@ -5732,8 +5921,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'ABC Notation',
         title: 'Simple Tune',
         label: 'Simple Tune',
-        svg: svgAbc,
+        svg: svgAbcMelody,
         code: '```abc\nX: 1\nT: Simple Scale\nM: 4/4\nK: C\nC D E F | G A B c |\n```\n'
+      },
+      {
+        id: 'abc-duet',
+        category: 'ABC Notation',
+        title: 'Duet Accord',
+        label: 'Duet Accord',
+        svg: svgAbcDuet,
+        code: '```abc\nX: 2\nT: Simple Duet\nM: 4/4\nK: C\nV:1\nC D E F | G A B c |\nV:2\nE F G A | B c d e |\n```\n'
+      },
+      {
+        id: 'abc-lyric',
+        category: 'ABC Notation',
+        title: 'Folk & Lyrics',
+        label: 'Lyrics Song',
+        svg: svgAbcLyric,
+        code: '```abc\nX: 3\nT: Folk Song\nM: 4/4\nK: C\nC D E C | E G G2 |\nw: Do Re Mi Do | Mi Sol Sol\n```\n'
+      },
+      {
+        id: 'abc-chords',
+        category: 'ABC Notation',
+        title: 'Chords Strum',
+        label: 'Guitar Chords',
+        svg: svgAbcChords,
+        code: '```abc\nX: 4\nT: Chords Strum\nM: 4/4\nK: C\n"C"C D E F | "G"G A B c |\n```\n'
       },
       
       // WaveDrom
@@ -5742,8 +5955,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'WaveDrom',
         title: 'Timing Diagram',
         label: 'Timing Diagram',
-        svg: svgTiming,
+        svg: svgWaveTiming,
         code: '```wavedrom\n{ signal: [\n  { name: "clk", wave: "p......" },\n  { name: "bus", wave: "x.==.x.", data: ["head", "body"] }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-counter',
+        category: 'WaveDrom',
+        title: 'Binary Counter',
+        label: 'Binary Counter',
+        svg: svgWaveCounter,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk", wave: "p......" },\n  { name: "q",   wave: "01.01.0" }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-bus',
+        category: 'WaveDrom',
+        title: 'Data Bus States',
+        label: 'Data Bus States',
+        svg: svgWaveBus,
+        code: '```wavedrom\n{ signal: [\n  { name: "bus", wave: "x.=.=.x", data: ["read", "write"] }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-reset',
+        category: 'WaveDrom',
+        title: 'Reset Sequence',
+        label: 'Reset & Enable',
+        svg: svgWaveReset,
+        code: '```wavedrom\n{ signal: [\n  { name: "reset",  wave: "1.0.1" },\n  { name: "enable", wave: "0.1.0" }\n]}\n```\n'
       },
       
       // Markmap
@@ -5752,8 +5989,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         category: 'Markmap',
         title: 'Mindmap',
         label: 'Mindmap',
-        svg: svgMindmap,
+        svg: svgMarkmapMindmap,
         code: '```markmap\n# markmap\n## Features\n- Links\n- Formatting\n```\n'
+      },
+      {
+        id: 'markmap-roadmap',
+        category: 'Markmap',
+        title: 'Roadmap',
+        label: 'Project Roadmap',
+        svg: svgMarkmapRoadmap,
+        code: '```markmap\n# Roadmap\n## Q1\n### Plan\n### Design\n## Q2\n### Build\n```\n'
+      },
+      {
+        id: 'markmap-study',
+        category: 'Markmap',
+        title: 'Study Plan',
+        label: 'Study Topics',
+        svg: svgMarkmapStudy,
+        code: '```markmap\n# Course\n## Math\n### Algebra\n### Calculus\n## Science\n### Physics\n```\n'
+      },
+      {
+        id: 'markmap-stack',
+        category: 'Markmap',
+        title: 'Tech Stack',
+        label: 'Tech Stack',
+        svg: svgMarkmapStack,
+        code: '```markmap\n# stack\n## frontend\n### HTML/JS\n## backend\n### Node.js\n```\n'
       }
     ];
     
