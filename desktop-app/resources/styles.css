@@ -4706,3 +4706,78 @@ html[data-theme="dark"] .diagram-preview-container {
     height: 120px;
   }
 }
+
+/* Theme adaptive fallbacks for offline mock SVGs */
+html[data-theme="dark"] .diagram-svg-container svg text {
+  fill: #e5e9f0 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-container svg line,
+html[data-theme="dark"] .diagram-svg-container svg path {
+  stroke: #81a1c1 !important;
+}
+
+/* Specific category mock tuning */
+html[data-theme="dark"] .diagram-svg-mermaid svg rect,
+html[data-theme="dark"] .diagram-svg-mermaid svg circle {
+  fill: #2e3440 !important;
+  stroke: #81a1c1 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-plantuml svg rect,
+html[data-theme="dark"] .diagram-svg-plantuml svg circle,
+html[data-theme="dark"] .diagram-svg-plantuml svg ellipse,
+html[data-theme="dark"] .diagram-svg-plantuml svg polygon {
+  fill: #3b2019 !important; /* retro mahogany adaptation */
+  stroke: #ff6b6b !important; /* soft red outline */
+}
+html[data-theme="dark"] .diagram-svg-plantuml svg text {
+  fill: #ffd8a8 !important; /* soft amber text */
+}
+
+html[data-theme="dark"] .diagram-svg-d2 svg rect,
+html[data-theme="dark"] .diagram-svg-d2 svg circle {
+  fill: #2d3748 !important;
+  stroke: #cbd5e0 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-graphviz svg rect,
+html[data-theme="dark"] .diagram-svg-graphviz svg circle,
+html[data-theme="dark"] .diagram-svg-graphviz svg ellipse {
+  fill: #2d2625 !important;
+  stroke: #a1887f !important;
+}
+
+html[data-theme="dark"] .diagram-svg-vegalite svg rect {
+  fill: #43a047 !important; /* glowing theme bar chart fill */
+}
+html[data-theme="dark"] .diagram-svg-vegalite svg circle {
+  fill: #ab47bc !important;
+}
+html[data-theme="dark"] .diagram-svg-vegalite svg line,
+html[data-theme="dark"] .diagram-svg-vegalite svg path {
+  stroke: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-wavedrom svg path {
+  stroke: #ff7043 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-markmap svg rect {
+  fill: #37474f !important;
+  stroke: #90a4ae !important;
+}
+html[data-theme="dark"] .diagram-svg-markmap svg path {
+  stroke: #90a4ae !important;
+}
+html[data-theme="dark"] .diagram-svg-markmap svg circle {
+  fill: #ff7043 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-abcnotation svg line {
+  stroke: #555555 !important;
+}
+html[data-theme="dark"] .diagram-svg-abcnotation svg path {
+  fill: #eceff4 !important;
+  stroke: #eceff4 !important;
+}

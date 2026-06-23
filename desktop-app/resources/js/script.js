@@ -3163,14 +3163,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       const plantumlNodes = queryPreviewRoots(roots, '.plantuml-diagram');
       if (plantumlNodes.length > 0) {
-        const renderPlantumlNodes = function() {
+        const renderPlantumlNodes = async function() {
           if (context.renderId !== previewRenderGeneration) return;
           
-          plantumlNodes.forEach(node => {
+          for (const node of plantumlNodes) {
             const container = node.closest('.plantuml-container');
             const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) return;
+            if (!originalCode) continue;
             const decodedCode = decodeURIComponent(originalCode);
+            
+            if (container) container.classList.add('is-loading');
             
             try {
               let modifiedCode = decodedCode;
@@ -3191,6 +3193,18 @@ document.addEventListener("DOMContentLoaded", async function () {
                   modifiedCode = lines.join('\n');
                 }
               }
+
+              // Try local compile first if in Neutralino
+              if (typeof Neutralino !== 'undefined') {
+                const localSvg = await compileDiagramLocally('plantuml', modifiedCode);
+                if (localSvg) {
+                  node.innerHTML = localSvg;
+                  if (container) container.classList.remove('is-loading');
+                  addPlantumlToolbars();
+                  continue;
+                }
+              }
+
               const encoded = encodePlantUML(modifiedCode);
               const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
               
@@ -3219,7 +3233,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
               if (container) container.classList.remove('is-loading');
             }
-          });
+          }
         };
         
         if (typeof pako === 'undefined') {
@@ -3244,7 +3258,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       const d2Nodes = queryPreviewRoots(roots, '.d2-diagram');
       if (d2Nodes.length > 0) {
-        const renderSingleD2Node = function(node) {
+        const renderSingleD2Node = async function(node) {
           const container = node.closest('.d2-container');
           const originalCode = node.getAttribute('data-original-code');
           if (!originalCode) return;
@@ -3257,6 +3271,18 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (!modifiedCode.includes('style.fill') && !/style\s*:\s*\{[^}]*fill/.test(modifiedCode)) {
               modifiedCode = `style.fill: transparent\n${modifiedCode}`;
             }
+
+            // Try local compile first if in Neutralino
+            if (typeof Neutralino !== 'undefined') {
+              const localSvg = await compileDiagramLocally('d2', modifiedCode);
+              if (localSvg) {
+                node.innerHTML = localSvg;
+                if (container) container.classList.remove('is-loading');
+                addD2Toolbars();
+                return;
+              }
+            }
+
             const encoded = encodeKrokiD2(modifiedCode);
             const url = 'https://kroki.io/d2/svg/' + encoded;
             
@@ -5609,6 +5635,83 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  async function compileDiagramLocally(engine, code) {
+    if (typeof Neutralino === 'undefined') return null;
+    try {
+      if (engine === 'd2') {
+        const result = await Neutralino.os.execCommand('d2 - -', { stdIn: code });
+        if (result && result.exitCode === 0 && result.stdOut) {
+          return result.stdOut;
+        }
+      } else if (engine === 'plantuml') {
+        try {
+          const result = await Neutralino.os.execCommand('plantuml -pipe -tsvg', { stdIn: code });
+          if (result && result.exitCode === 0 && result.stdOut) {
+            return result.stdOut;
+          }
+        } catch (e) {
+          const result = await Neutralino.os.execCommand('java -jar plantuml.jar -pipe -tsvg', { stdIn: code });
+          if (result && result.exitCode === 0 && result.stdOut) {
+            return result.stdOut;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`Local execution for ${engine} failed:`, e);
+    }
+    return null;
+  }
+
+  async function fetchDiagramPreview(apiUrl) {
+    if (typeof caches === 'undefined') {
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error('Failed to fetch');
+      return await response.text();
+    }
+    const cache = await caches.open('diagram-previews');
+    const cachedResponse = await cache.match(apiUrl);
+    if (cachedResponse) {
+      return await cachedResponse.text();
+    }
+    const response = await fetch(apiUrl);
+    if (!response.ok) throw new Error('Failed to fetch');
+    await cache.put(apiUrl, response.clone());
+    return await response.text();
+  }
+
+  async function getOrRenderDiagramPreview(template, theme, callback) {
+    const cleanCode = getCleanCode(template.code);
+    
+    if (typeof Neutralino !== 'undefined') {
+      if (template.category === 'D2') {
+        const localSvg = await compileDiagramLocally('d2', cleanCode);
+        if (localSvg) {
+          callback(localSvg);
+          return;
+        }
+      } else if (template.category === 'PlantUML') {
+        const localSvg = await compileDiagramLocally('plantuml', cleanCode);
+        if (localSvg) {
+          callback(localSvg);
+          return;
+        }
+      }
+    }
+    
+    const apiUrl = getDiagramApiUrl(template, theme);
+    if (!apiUrl) {
+      callback(null);
+      return;
+    }
+    
+    try {
+      const svgText = await fetchDiagramPreview(apiUrl);
+      callback(svgText);
+    } catch (e) {
+      callback(null);
+    }
+  }
+
   async function openDiagramModal() {
     const modal = document.getElementById('diagram-modal');
     const sidebar = modal.querySelector('.diagram-modal-sidebar');
@@ -6388,41 +6491,34 @@ document.addEventListener("DOMContentLoaded", async function () {
         const isMermaidSpecial = (t.id === 'mermaid-sequence' || t.id === 'mermaid-er');
         const titleColor = isMermaidSpecial ? '#ff4081' : 'var(--text-color)';
         const titleWeight = isMermaidSpecial ? 'bold' : 'normal';
+        const catClass = t.category.toLowerCase().replace(/\s+/g, '');
 
         previewDiv.innerHTML = `
           <div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
             <div style="font-size:10px; font-weight:${titleWeight}; color:${titleColor}; margin-bottom:4px;">${t.title}</div>
-            <div class="diagram-svg-container" style="flex:1; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <div class="diagram-svg-container diagram-svg-${catClass}" style="flex:1; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
               ${t.svg}
             </div>
           </div>
         `;
         
         const theme = document.documentElement.getAttribute("data-theme") || "light";
-        const apiUrl = getDiagramApiUrl(t, theme);
         
-        if (apiUrl) {
-          const img = document.createElement('img');
-          img.style.display = 'none';
-          img.style.maxWidth = '100%';
-          img.style.maxHeight = '100%';
-          img.style.objectFit = 'contain';
-          
-          img.onload = () => {
+        getOrRenderDiagramPreview(t, theme, svgText => {
+          if (svgText) {
             const svgContainer = previewDiv.querySelector('.diagram-svg-container');
             if (svgContainer) {
-              svgContainer.textContent = '';
-              img.style.display = 'block';
-              svgContainer.appendChild(img);
+              svgContainer.innerHTML = svgText;
+              const svgEl = svgContainer.querySelector('svg');
+              if (svgEl) {
+                svgEl.style.maxWidth = '100%';
+                svgEl.style.maxHeight = '100%';
+                svgEl.style.width = 'auto';
+                svgEl.style.height = 'auto';
+              }
             }
-          };
-          
-          img.onerror = () => {
-            console.warn(`Failed to load card preview from API for ${t.id}. Falling back to local SVG.`);
-          };
-          
-          img.src = apiUrl;
-        }
+          }
+        });
         
         const labelDiv = document.createElement('div');
         labelDiv.className = 'diagram-card-label';
@@ -6440,38 +6536,31 @@ document.addEventListener("DOMContentLoaded", async function () {
           if (previewCode) previewCode.value = t.code.trim();
           confirmBtn.disabled = false;
 
+          const catClass = t.category.toLowerCase().replace(/\s+/g, '');
           // Render bottom preview container with API image & fallback
           previewContainer.innerHTML = `
-            <div class="diagram-svg-container" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <div class="diagram-svg-container diagram-svg-${catClass}" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
               ${t.svg}
             </div>
           `;
           
           const clickedTheme = document.documentElement.getAttribute("data-theme") || "light";
-          const clickedApiUrl = getDiagramApiUrl(t, clickedTheme);
           
-          if (clickedApiUrl) {
-            const previewImg = document.createElement('img');
-            previewImg.style.display = 'none';
-            previewImg.style.maxWidth = '100%';
-            previewImg.style.maxHeight = '100%';
-            previewImg.style.objectFit = 'contain';
-            
-            previewImg.onload = () => {
+          getOrRenderDiagramPreview(t, clickedTheme, svgText => {
+            if (svgText) {
               const svgContainer = previewContainer.querySelector('.diagram-svg-container');
               if (svgContainer) {
-                svgContainer.textContent = '';
-                previewImg.style.display = 'block';
-                svgContainer.appendChild(previewImg);
+                svgContainer.innerHTML = svgText;
+                const svgEl = svgContainer.querySelector('svg');
+                if (svgEl) {
+                  svgEl.style.maxWidth = '100%';
+                  svgEl.style.maxHeight = '100%';
+                  svgEl.style.width = 'auto';
+                  svgEl.style.height = 'auto';
+                }
               }
-            };
-            
-            previewImg.onerror = () => {
-              console.warn(`Failed to load bottom preview from API for ${t.id}. Falling back to local SVG.`);
-            };
-            
-            previewImg.src = clickedApiUrl;
-          }
+            }
+          });
         });
         
         grid.appendChild(card);

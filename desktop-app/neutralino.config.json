@@ -20,6 +20,7 @@
     "os.showMessageBox",
     "os.open",
     "os.setTray",
+    "os.execCommand",
     "filesystem.readFile",
     "filesystem.writeFile",
     "storage.setData",
