@@ -5589,19 +5589,19 @@ document.addEventListener("DOMContentLoaded", async function () {
       'Markmap'
     ];
     
-    const svgFlowchart = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="10" y="25" width="40" height="30" rx="5" fill="#e1f5fe" stroke="#03a9f4" stroke-width="2"/><text x="30" y="44" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#01579b">Start</text><path d="M 50 40 L 110 40" stroke="#03a9f4" stroke-width="2" marker-end="url(#arrow)"/><rect x="110" y="25" width="40" height="30" rx="5" fill="#e1f5fe" stroke="#03a9f4" stroke-width="2"/><text x="130" y="44" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#01579b">End</text><defs><marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#03a9f4"/></marker></defs></svg>`;
-    const svgSequence = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="30" y1="10" x2="30" y2="70" stroke="#4caf50" stroke-width="2" stroke-dasharray="4"/><line x1="130" y1="10" x2="130" y2="70" stroke="#4caf50" stroke-width="2" stroke-dasharray="4"/><rect x="10" y="5" width="40" height="15" rx="3" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/><text x="30" y="15" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Alice</text><rect x="110" y="5" width="40" height="15" rx="3" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/><text x="130" y="15" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Bob</text><path d="M 30 35 L 130 35" stroke="#4caf50" stroke-width="2" marker-end="url(#arrow-g)"/><text x="80" y="30" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Hello</text><path d="M 130 55 L 30 55" stroke="#4caf50" stroke-dasharray="2" stroke-width="1.5" marker-end="url(#arrow-g)"/><text x="80" y="50" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20">Reply</text><defs><marker id="arrow-g" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4caf50"/></marker></defs></svg>`;
-    const svgEr = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="10" y="25" width="50" height="30" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/><text x="35" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#e65100" font-weight="bold">USER</text><line x1="60" y1="40" x2="100" y2="40" stroke="#ff9800" stroke-width="2"/><rect x="100" y="25" width="50" height="30" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/><text x="125" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#e65100" font-weight="bold">POST</text></svg>`;
-    const svgClass = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="40" y="10" width="80" height="50" rx="3" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/><line x1="40" y1="28" x2="120" y2="28" stroke="#673ab7" stroke-width="1"/><line x1="40" y1="44" x2="120" y2="44" stroke="#673ab7" stroke-width="1"/><text x="80" y="22" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#311b92" font-weight="bold">Animal</text><text x="45" y="38" font-size="7" font-family="sans-serif" fill="#311b92">+name: String</text><text x="45" y="54" font-size="7" font-family="sans-serif" fill="#311b92">+makeSound()</text></svg>`;
-    const svgState = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="20" cy="40" r="8" fill="#3f51b5" stroke="#303f9f" stroke-width="2"/><path d="M 28 40 L 60 40" stroke="#3f51b5" stroke-width="2" marker-end="url(#arrow-b)"/><rect x="60" y="25" width="40" height="30" rx="8" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/><text x="80" y="43" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#1a237e">Active</text><path d="M 100 40 L 132 40" stroke="#3f51b5" stroke-width="2" marker-end="url(#arrow-b)"/><circle cx="140" cy="40" r="8" fill="none" stroke="#3f51b5" stroke-width="2"/><circle cx="140" cy="40" r="5" fill="#3f51b5"/><defs><marker id="arrow-b" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker></defs></svg>`;
-    const svgGantt = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="15" x2="20" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="60" y1="15" x2="60" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="100" y1="15" x2="100" y2="70" stroke="#e0e0e0" stroke-width="1"/><line x1="140" y1="15" x2="140" y2="70" stroke="#e0e0e0" stroke-width="1"/><rect x="25" y="20" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.5"/><text x="30" y="30" font-size="7" font-family="sans-serif" fill="#004d40">Design</text><rect x="80" y="45" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.5"/><text x="85" y="55" font-size="7" font-family="sans-serif" fill="#004d40">Code</text></svg>`;
-    const svgPie = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="80" cy="40" r="30" fill="#f44336" stroke="#d32f2f" stroke-width="1.5"/><path d="M 80 40 L 80 10 A 30 30 0 0 1 110 40 Z" fill="#4caf50"/><path d="M 80 40 L 110 40 A 30 30 0 0 1 80 70 Z" fill="#ffeb3b"/></svg>`;
-    const svgDirected = `<svg viewBox="0 0 160 80" width="100%" height="100%"><circle cx="40" cy="25" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="40" y="29" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">A</text><circle cx="120" cy="25" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="120" y="29" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">B</text><circle cx="80" cy="60" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="80" y="64" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723">C</text><path d="M 52 25 L 108 25" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><path d="M 46 35 L 70 51" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><path d="M 114 35 L 90 51" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><defs><marker id="arrow-br" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
-    const svgBar = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="10" x2="20" y2="70" stroke="#333" stroke-width="1.5"/><line x1="20" y1="70" x2="150" y2="70" stroke="#333" stroke-width="1.5"/><rect x="30" y="40" width="20" height="30" fill="#9c27b0"/><rect x="65" y="20" width="20" height="50" fill="#9c27b0"/><rect x="100" y="30" width="20" height="40" fill="#9c27b0"/></svg>`;
-    const svgLine = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="20" y1="10" x2="20" y2="70" stroke="#333" stroke-width="1.5"/><line x1="20" y1="70" x2="150" y2="70" stroke="#333" stroke-width="1.5"/><path d="M 30 50 L 65 20 L 100 45 L 135 15" fill="none" stroke="#2196f3" stroke-width="2.5"/><circle cx="30" cy="50" r="3" fill="#2196f3"/><circle cx="65" cy="20" r="3" fill="#2196f3"/><circle cx="100" cy="45" r="3" fill="#2196f3"/><circle cx="135" cy="15" r="3" fill="#2196f3"/></svg>`;
-    const svgTiming = `<svg viewBox="0 0 160 80" width="100%" height="100%"><path d="M 20 40 L 40 40 L 40 20 L 60 20 L 60 40 L 80 40 L 80 20 L 100 20 L 100 40 L 140 40" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="30" font-size="8" font-family="sans-serif" fill="#ff5722">CLK</text></svg>`;
-    const svgMindmap = `<svg viewBox="0 0 160 80" width="100%" height="100%"><rect x="60" y="32" width="40" height="16" rx="3" fill="#eceff1" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#37474f" font-weight="bold">Root</text><path d="M 60 40 L 30 25" stroke="#607d8b" stroke-width="1.5"/><path d="M 60 40 L 30 55" stroke="#607d8b" stroke-width="1.5"/><path d="M 100 40 L 130 40" stroke="#607d8b" stroke-width="1.5"/><circle cx="30" cy="25" r="4" fill="#607d8b"/><circle cx="30" cy="55" r="4" fill="#607d8b"/><circle cx="130" cy="40" r="4" fill="#607d8b"/></svg>`;
-    const svgAbc = `<svg viewBox="0 0 160 80" width="100%" height="100%"><line x1="10" y1="20" x2="150" y2="20" stroke="#000" stroke-width="1"/><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><path d="M 30 15 L 30 55 A 8 8 0 1 1 20 48" fill="#000" stroke="#000" stroke-width="1"/><path d="M 60 25 L 60 65 A 8 8 0 1 1 50 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 90 20 L 90 60 A 8 8 0 1 1 80 53" fill="#000" stroke="#000" stroke-width="1"/><path d="M 120 15 L 120 55 A 8 8 0 1 1 110 48" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
+    const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><line x1="35" y1="30" x2="35" y2="90" stroke="#673ab7" stroke-width="1" stroke-dasharray="3"/><rect x="15" y="90" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="35" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><rect x="105" y="10" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><line x1="125" y1="30" x2="125" y2="90" stroke="#673ab7" stroke-width="1" stroke-dasharray="3"/><rect x="105" y="90" width="40" height="20" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="125" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><path d="M 35 48 L 125 48" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Hello</text><path d="M 125 72 L 35 72" stroke="#333" stroke-width="1" stroke-dasharray="3" marker-end="url(#arrow-f)"/><text x="80" y="67" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Reply</text></svg>`;
+    const svgEr = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="10" y1="46" x2="60" y2="46" stroke="#ff9800" stroke-width="1"/><text x="35" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">CUSTOMER</text><text x="14" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="14" y="65" font-size="7" font-family="sans-serif" fill="#666">name</text><rect x="100" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="100" y1="46" x2="150" y2="46" stroke="#ff9800" stroke-width="1"/><text x="125" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">ORDER</text><text x="104" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="104" y="65" font-size="7" font-family="sans-serif" fill="#666">price</text><path d="M 60 50 L 100 50" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgClass = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="30" y="20" width="100" height="65" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><line x1="30" y1="40" x2="130" y2="40" stroke="#673ab7" stroke-width="1"/><line x1="30" y1="60" x2="130" y2="60" stroke="#673ab7" stroke-width="1"/><text x="80" y="33" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Animal</text><text x="36" y="50" font-size="7" font-family="sans-serif" fill="#333">+name: String</text><text x="36" y="57" font-size="7" font-family="sans-serif" fill="#333">+age: int</text><text x="36" y="70" font-size="7" font-family="sans-serif" fill="#333">+makeSound()</text></svg>`;
+    const svgState = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="20" cy="50" r="7" fill="#3f51b5"/><path d="M 27 50 L 60 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><rect x="60" y="35" width="50" height="30" rx="6" fill="#f4f5f7" stroke="#3f51b5" stroke-width="1.5"/><text x="85" y="53" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Active</text><path d="M 110 50 L 133 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><circle cx="140" cy="50" r="7" fill="none" stroke="#3f51b5" stroke-width="1.5"/><circle cx="140" cy="50" r="4" fill="#3f51b5"/><defs><marker id="arrow-s" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker></defs></svg>`;
+    const svgGantt = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="20" y1="20" x2="20" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="60" y1="20" x2="60" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="100" y1="20" x2="100" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="140" y1="20" x2="140" y2="100" stroke="#e0e0e0" stroke-width="1"/><rect x="25" y="30" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="30" y="40" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Design</text><rect x="80" y="60" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="85" y="70" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Code</text></svg>`;
+    const svgPie = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="55" r="35" fill="#f44336" stroke="#fff" stroke-width="1.5"/><path d="M 80 55 L 80 20 A 35 35 0 0 1 115 55 Z" fill="#4caf50" stroke="#fff" stroke-width="1"/><path d="M 80 55 L 115 55 A 35 35 0 0 1 80 90 Z" fill="#ffeb3b" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgDirected = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="40" cy="35" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="40" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">A</text><circle cx="120" cy="35" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="120" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">B</text><circle cx="80" cy="80" r="11" fill="#f4f5f7" stroke="#795548" stroke-width="1.5"/><text x="80" y="84" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">C</text><path d="M 51 35 L 109 35" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><path d="M 46 45 L 71 69" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><path d="M 114 45 L 89 69" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-d)"/><defs><marker id="arrow-d" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
+    const svgBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="35" y="55" width="22" height="35" fill="#9c27b0" rx="1"/><rect x="70" y="35" width="22" height="55" fill="#9c27b0" rx="1"/><rect x="105" y="45" width="22" height="45" fill="#9c27b0" rx="1"/></svg>`;
+    const svgLine = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 65 L 70 35 L 105 60 L 135 25" fill="none" stroke="#2196f3" stroke-width="2"/><circle cx="35" cy="65" r="2.5" fill="#2196f3"/><circle cx="70" cy="35" r="2.5" fill="#2196f3"/><circle cx="105" cy="60" r="2.5" fill="#2196f3"/><circle cx="135" cy="25" r="2.5" fill="#2196f3"/></svg>`;
+    const svgTiming = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 60 L 40 60 L 40 40 L 60 40 L 60 60 L 80 60 L 80 40 L 100 40 L 100 60 L 140 60" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="35" font-size="8" font-family="sans-serif" fill="#ff5722" font-weight="bold">CLK</text></svg>`;
+    const svgMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="60" y="47" width="40" height="16" rx="3" fill="#f4f5f7" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Root</text><path d="M 60 55 L 30 35" stroke="#607d8b" stroke-width="1.2"/><path d="M 60 55 L 30 75" stroke="#607d8b" stroke-width="1.2"/><path d="M 100 55 L 130 55" stroke="#607d8b" stroke-width="1.2"/><circle cx="30" cy="35" r="3.5" fill="#607d8b"/><circle cx="30" cy="75" r="3.5" fill="#607d8b"/><circle cx="130" cy="55" r="3.5" fill="#607d8b"/></svg>`;
+    const svgAbc = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000" stroke="#000" stroke-width="1"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
 
     const templates = [
       // Mermaid
@@ -5819,10 +5819,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           </div>`;
         }
         
-        // Render the actual diagram template code dynamically!
-        const html = marked.parse(t.code);
-        const sanitized = sanitizePreviewHtml(html);
-        previewDiv.innerHTML = sanitized;
+        previewDiv.innerHTML = displayHtml;
         
         const labelDiv = document.createElement('div');
         labelDiv.className = 'diagram-card-label';
@@ -5838,213 +5835,15 @@ document.addEventListener("DOMContentLoaded", async function () {
           card.classList.add('is-selected');
           
           if (previewCode) previewCode.value = t.code.trim();
-          renderSelectedDiagramPreview(previewContainer, t.code);
+          previewContainer.innerHTML = t.svg;
           confirmBtn.disabled = false;
         });
         
         grid.appendChild(card);
       });
-      
-      // Render the actual diagram output inside all visible cards!
-      processDiagramsInContainer(grid);
     }
 
-    function renderSelectedDiagramPreview(container, code) {
-      const html = marked.parse(code);
-      const sanitized = sanitizePreviewHtml(html);
-      container.innerHTML = sanitized;
-      processDiagramsInContainer(container);
-    }
 
-    function processDiagramsInContainer(container) {
-      const roots = [container];
-      
-      try {
-        const mermaidNodes = queryPreviewRoots(roots, '.mermaid');
-        if (mermaidNodes.length > 0) {
-          const renderMermaidNodes = function() {
-            initMermaid(false);
-            Promise.resolve(mermaid.init(undefined, mermaidNodes))
-              .then(() => {
-                addMermaidToolbars();
-              })
-              .catch((e) => {
-                console.warn("Mermaid rendering failed in container:", e);
-                addMermaidToolbars();
-              });
-          };
-          if (typeof mermaid === 'undefined') {
-            loadScript(CDN.mermaid).then(function() {
-              initMermaid(true);
-              renderMermaidNodes();
-            }).catch(function(e) { console.warn('Failed to load mermaid:', e); });
-          } else {
-            renderMermaidNodes();
-          }
-        }
-      } catch (e) {
-        console.warn("Mermaid rendering failed:", e);
-      }
-
-      try {
-        const abcNodes = queryPreviewRoots(roots, '.abc-notation');
-        if (abcNodes.length > 0) {
-          abcNodes.forEach(node => {
-            const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) return;
-            const decodedCode = decodeURIComponent(originalCode);
-            try {
-              node.innerHTML = '';
-              ABCJS.renderAbc(node.id, decodedCode, {
-                responsive: "resize",
-                add_classes: true
-              });
-              node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
-            } catch (err) {
-              console.warn("ABC notation rendering failed:", err);
-            }
-          });
-        }
-      } catch (e) {
-        console.warn("ABC rendering failed:", e);
-      }
-
-      try {
-        const plantumlNodes = queryPreviewRoots(roots, '.plantuml-diagram');
-        if (plantumlNodes.length > 0) {
-          plantumlNodes.forEach(node => {
-            const containerEl = node.closest('.plantuml-container');
-            const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) return;
-            const decodedCode = decodeURIComponent(originalCode);
-            try {
-              let modifiedCode = decodedCode;
-              if (!modifiedCode.toLowerCase().includes('backgroundcolor')) {
-                const lines = modifiedCode.split('\n');
-                let inserted = false;
-                for (let i = 0; i < lines.length; i++) {
-                  const trimmed = lines[i].trim();
-                  if (trimmed.startsWith('@start')) {
-                    lines.splice(i + 1, 0, 'skinparam backgroundColor transparent');
-                    inserted = true;
-                    break;
-                  }
-                }
-                if (!inserted) {
-                  modifiedCode = 'skinparam backgroundColor transparent\n' + modifiedCode;
-                } else {
-                  modifiedCode = lines.join('\n');
-                }
-              }
-              const encoded = encodePlantUML(modifiedCode);
-              const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
-              
-              node.innerHTML = '';
-              const img = document.createElement('img');
-              img.crossOrigin = 'anonymous';
-              img.src = url;
-              img.alt = 'PlantUML Diagram';
-              img.className = 'plantuml-img';
-              img.draggable = false;
-              img.addEventListener('dragstart', e => e.preventDefault());
-              img.onload = function() {
-                if (containerEl) containerEl.classList.remove('is-loading');
-                addPlantumlToolbars();
-              };
-              img.onerror = function() {
-                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to PlantUML server</div>`;
-                if (containerEl) containerEl.classList.remove('is-loading');
-              };
-              node.appendChild(img);
-            } catch (err) {
-              console.error("PlantUML encoding failed:", err);
-            }
-          });
-        }
-      } catch (e) {
-        console.warn("PlantUML failed:", e);
-      }
-
-      try {
-        const d2Nodes = queryPreviewRoots(roots, '.d2-diagram');
-        if (d2Nodes.length > 0) {
-          d2Nodes.forEach(node => {
-            const containerEl = node.closest('.d2-container');
-            const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) return;
-            const decodedCode = decodeURIComponent(originalCode);
-            try {
-              let modifiedCode = decodedCode;
-              if (!modifiedCode.includes('style.fill') && !/style\s*:\s*\{[^}]*fill/.test(modifiedCode)) {
-                modifiedCode = `style.fill: transparent\n${modifiedCode}`;
-              }
-              const encoded = encodeKrokiD2(modifiedCode);
-              const url = 'https://kroki.io/d2/svg/' + encoded;
-              
-              node.innerHTML = '';
-              const img = document.createElement('img');
-              img.crossOrigin = 'anonymous';
-              img.src = url;
-              img.alt = 'D2 Diagram';
-              img.className = 'd2-img';
-              img.draggable = false;
-              img.addEventListener('dragstart', e => e.preventDefault());
-              img.onload = function() {
-                if (containerEl) containerEl.classList.remove('is-loading');
-                addD2Toolbars();
-              };
-              img.onerror = function() {
-                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
-                if (containerEl) containerEl.classList.remove('is-loading');
-              };
-              node.appendChild(img);
-            } catch (err) {
-              console.error("D2 encoding failed:", err);
-            }
-          });
-        }
-      } catch (e) {
-        console.warn("D2 failed:", e);
-      }
-
-      try {
-        const graphvizNodes = queryPreviewRoots(roots, '.graphviz-diagram');
-        if (graphvizNodes.length > 0) {
-          graphvizNodes.forEach(node => {
-            const containerEl = node.closest('.graphviz-container');
-            const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) return;
-            const decodedCode = decodeURIComponent(originalCode);
-            try {
-              const encoded = encodeKrokiGraphviz(decodedCode);
-              const url = 'https://kroki.io/graphviz/svg/' + encoded;
-              
-              node.innerHTML = '';
-              const img = document.createElement('img');
-              img.crossOrigin = 'anonymous';
-              img.src = url;
-              img.alt = 'Graphviz Diagram';
-              img.className = 'graphviz-img';
-              img.draggable = false;
-              img.addEventListener('dragstart', e => e.preventDefault());
-              img.onload = function() {
-                if (containerEl) containerEl.classList.remove('is-loading');
-                addGraphvizToolbars();
-              };
-              img.onerror = function() {
-                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
-                if (containerEl) containerEl.classList.remove('is-loading');
-              };
-              node.appendChild(img);
-            } catch (err) {
-              console.error("Graphviz encoding failed:", err);
-            }
-          });
-        }
-      } catch (e) {
-        console.warn("Graphviz failed:", e);
-      }
-    }
     
     renderSidebar();
     renderGrid();
