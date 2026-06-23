@@ -4580,16 +4580,48 @@ html[data-theme="dark"] .diagram-card-preview {
   color: var(--text-color);
 }
 
+.diagram-modal-preview-split {
+  display: flex;
+  gap: 16px;
+  height: 200px;
+}
+
+.diagram-preview-code-pane {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.diagram-preview-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg, #ffffff);
+  color: var(--text-color);
+  outline: none;
+}
+
+html[data-theme="dark"] .diagram-preview-textarea {
+  background: #1e1e1e;
+}
+
 .diagram-preview-container {
+  flex: 1;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: #ffffff;
-  height: 200px;
+  height: 100%;
   overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  min-width: 0;
 }
 
 html[data-theme="dark"] .diagram-preview-container {
@@ -4609,6 +4641,44 @@ html[data-theme="dark"] .diagram-preview-container {
   font-size: 0.9rem;
 }
 
+/* Dynamic Card Previews Styling */
+.diagram-card-preview svg,
+.diagram-card-preview img,
+.diagram-card-preview .mermaid-container,
+.diagram-card-preview .mermaid,
+.diagram-card-preview .abc-container,
+.diagram-card-preview .abc-notation,
+.diagram-card-preview .plantuml-container,
+.diagram-card-preview .plantuml-diagram,
+.diagram-card-preview .d2-container,
+.diagram-card-preview .d2-diagram,
+.diagram-card-preview .graphviz-container,
+.diagram-card-preview .graphviz-diagram {
+  max-width: 95% !important;
+  max-height: 80px !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.diagram-card-preview .mermaid-container,
+.diagram-card-preview .plantuml-container,
+.diagram-card-preview .d2-container,
+.diagram-card-preview .graphviz-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Hide card level toolbars to maintain clean card design */
+.diagram-card-preview .mermaid-toolbar,
+.diagram-card-preview .plantuml-toolbar,
+.diagram-card-preview .d2-toolbar,
+.diagram-card-preview .graphviz-toolbar {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
   .diagram-modal-body {
     flex-direction: column;
@@ -4624,7 +4694,15 @@ html[data-theme="dark"] .diagram-preview-container {
   .diagram-modal-box {
     height: 95vh;
   }
+  .diagram-modal-preview-split {
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+  .diagram-preview-code-pane {
+    height: 100px;
+  }
   .diagram-preview-container {
-    height: 140px;
+    height: 120px;
   }
 }

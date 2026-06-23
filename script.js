@@ -5559,11 +5559,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     const emptyMessage = document.getElementById('diagram-modal-empty');
     const searchInput = document.getElementById('diagram-modal-search');
     const previewContainer = document.getElementById('diagram-modal-preview');
+    const previewCode = document.getElementById('diagram-modal-preview-code');
     const confirmBtn = document.getElementById('diagram-modal-insert');
     const cancelBtn = document.getElementById('diagram-modal-cancel');
     const closeBtn = document.getElementById('diagram-modal-close');
     
-    if (!modal || !sidebar || !grid || !emptyMessage || !searchInput || !previewContainer || !confirmBtn || !cancelBtn || !closeBtn) return;
+    if (!modal || !sidebar || !grid || !emptyMessage || !searchInput || !previewContainer || !previewCode || !confirmBtn || !cancelBtn || !closeBtn) return;
     
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
@@ -5574,6 +5575,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     sidebar.textContent = '';
     grid.textContent = '';
     previewContainer.textContent = '';
+    if (previewCode) previewCode.value = '';
     confirmBtn.disabled = true;
     
     const categories = [
@@ -5817,7 +5819,10 @@ document.addEventListener("DOMContentLoaded", async function () {
           </div>`;
         }
         
-        previewDiv.innerHTML = displayHtml;
+        // Render the actual diagram template code dynamically!
+        const html = marked.parse(t.code);
+        const sanitized = sanitizePreviewHtml(html);
+        previewDiv.innerHTML = sanitized;
         
         const labelDiv = document.createElement('div');
         labelDiv.className = 'diagram-card-label';
@@ -5832,12 +5837,213 @@ document.addEventListener("DOMContentLoaded", async function () {
           cards.forEach(c => c.classList.remove('is-selected'));
           card.classList.add('is-selected');
           
-          previewContainer.innerHTML = t.svg;
+          if (previewCode) previewCode.value = t.code.trim();
+          renderSelectedDiagramPreview(previewContainer, t.code);
           confirmBtn.disabled = false;
         });
         
         grid.appendChild(card);
       });
+      
+      // Render the actual diagram output inside all visible cards!
+      processDiagramsInContainer(grid);
+    }
+
+    function renderSelectedDiagramPreview(container, code) {
+      const html = marked.parse(code);
+      const sanitized = sanitizePreviewHtml(html);
+      container.innerHTML = sanitized;
+      processDiagramsInContainer(container);
+    }
+
+    function processDiagramsInContainer(container) {
+      const roots = [container];
+      
+      try {
+        const mermaidNodes = queryPreviewRoots(roots, '.mermaid');
+        if (mermaidNodes.length > 0) {
+          const renderMermaidNodes = function() {
+            initMermaid(false);
+            Promise.resolve(mermaid.init(undefined, mermaidNodes))
+              .then(() => {
+                addMermaidToolbars();
+              })
+              .catch((e) => {
+                console.warn("Mermaid rendering failed in container:", e);
+                addMermaidToolbars();
+              });
+          };
+          if (typeof mermaid === 'undefined') {
+            loadScript(CDN.mermaid).then(function() {
+              initMermaid(true);
+              renderMermaidNodes();
+            }).catch(function(e) { console.warn('Failed to load mermaid:', e); });
+          } else {
+            renderMermaidNodes();
+          }
+        }
+      } catch (e) {
+        console.warn("Mermaid rendering failed:", e);
+      }
+
+      try {
+        const abcNodes = queryPreviewRoots(roots, '.abc-notation');
+        if (abcNodes.length > 0) {
+          abcNodes.forEach(node => {
+            const originalCode = node.getAttribute('data-original-code');
+            if (!originalCode) return;
+            const decodedCode = decodeURIComponent(originalCode);
+            try {
+              node.innerHTML = '';
+              ABCJS.renderAbc(node.id, decodedCode, {
+                responsive: "resize",
+                add_classes: true
+              });
+              node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
+            } catch (err) {
+              console.warn("ABC notation rendering failed:", err);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("ABC rendering failed:", e);
+      }
+
+      try {
+        const plantumlNodes = queryPreviewRoots(roots, '.plantuml-diagram');
+        if (plantumlNodes.length > 0) {
+          plantumlNodes.forEach(node => {
+            const containerEl = node.closest('.plantuml-container');
+            const originalCode = node.getAttribute('data-original-code');
+            if (!originalCode) return;
+            const decodedCode = decodeURIComponent(originalCode);
+            try {
+              let modifiedCode = decodedCode;
+              if (!modifiedCode.toLowerCase().includes('backgroundcolor')) {
+                const lines = modifiedCode.split('\n');
+                let inserted = false;
+                for (let i = 0; i < lines.length; i++) {
+                  const trimmed = lines[i].trim();
+                  if (trimmed.startsWith('@start')) {
+                    lines.splice(i + 1, 0, 'skinparam backgroundColor transparent');
+                    inserted = true;
+                    break;
+                  }
+                }
+                if (!inserted) {
+                  modifiedCode = 'skinparam backgroundColor transparent\n' + modifiedCode;
+                } else {
+                  modifiedCode = lines.join('\n');
+                }
+              }
+              const encoded = encodePlantUML(modifiedCode);
+              const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
+              
+              node.innerHTML = '';
+              const img = document.createElement('img');
+              img.crossOrigin = 'anonymous';
+              img.src = url;
+              img.alt = 'PlantUML Diagram';
+              img.className = 'plantuml-img';
+              img.draggable = false;
+              img.addEventListener('dragstart', e => e.preventDefault());
+              img.onload = function() {
+                if (containerEl) containerEl.classList.remove('is-loading');
+                addPlantumlToolbars();
+              };
+              img.onerror = function() {
+                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to PlantUML server</div>`;
+                if (containerEl) containerEl.classList.remove('is-loading');
+              };
+              node.appendChild(img);
+            } catch (err) {
+              console.error("PlantUML encoding failed:", err);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("PlantUML failed:", e);
+      }
+
+      try {
+        const d2Nodes = queryPreviewRoots(roots, '.d2-diagram');
+        if (d2Nodes.length > 0) {
+          d2Nodes.forEach(node => {
+            const containerEl = node.closest('.d2-container');
+            const originalCode = node.getAttribute('data-original-code');
+            if (!originalCode) return;
+            const decodedCode = decodeURIComponent(originalCode);
+            try {
+              let modifiedCode = decodedCode;
+              if (!modifiedCode.includes('style.fill') && !/style\s*:\s*\{[^}]*fill/.test(modifiedCode)) {
+                modifiedCode = `style.fill: transparent\n${modifiedCode}`;
+              }
+              const encoded = encodeKrokiD2(modifiedCode);
+              const url = 'https://kroki.io/d2/svg/' + encoded;
+              
+              node.innerHTML = '';
+              const img = document.createElement('img');
+              img.crossOrigin = 'anonymous';
+              img.src = url;
+              img.alt = 'D2 Diagram';
+              img.className = 'd2-img';
+              img.draggable = false;
+              img.addEventListener('dragstart', e => e.preventDefault());
+              img.onload = function() {
+                if (containerEl) containerEl.classList.remove('is-loading');
+                addD2Toolbars();
+              };
+              img.onerror = function() {
+                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
+                if (containerEl) containerEl.classList.remove('is-loading');
+              };
+              node.appendChild(img);
+            } catch (err) {
+              console.error("D2 encoding failed:", err);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("D2 failed:", e);
+      }
+
+      try {
+        const graphvizNodes = queryPreviewRoots(roots, '.graphviz-diagram');
+        if (graphvizNodes.length > 0) {
+          graphvizNodes.forEach(node => {
+            const containerEl = node.closest('.graphviz-container');
+            const originalCode = node.getAttribute('data-original-code');
+            if (!originalCode) return;
+            const decodedCode = decodeURIComponent(originalCode);
+            try {
+              const encoded = encodeKrokiGraphviz(decodedCode);
+              const url = 'https://kroki.io/graphviz/svg/' + encoded;
+              
+              node.innerHTML = '';
+              const img = document.createElement('img');
+              img.crossOrigin = 'anonymous';
+              img.src = url;
+              img.alt = 'Graphviz Diagram';
+              img.className = 'graphviz-img';
+              img.draggable = false;
+              img.addEventListener('dragstart', e => e.preventDefault());
+              img.onload = function() {
+                if (containerEl) containerEl.classList.remove('is-loading');
+                addGraphvizToolbars();
+              };
+              img.onerror = function() {
+                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
+                if (containerEl) containerEl.classList.remove('is-loading');
+              };
+              node.appendChild(img);
+            } catch (err) {
+              console.error("Graphviz encoding failed:", err);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Graphviz failed:", e);
+      }
     }
     
     renderSidebar();

@@ -872,8 +872,15 @@
                 <!-- Preview Container -->
                 <div class="diagram-modal-preview-section">
                   <p class="diagram-modal-preview-title">Preview</p>
-                  <div id="diagram-modal-preview" class="diagram-preview-container">
-                    <!-- Populated dynamically with selected template preview -->
+                  <div class="diagram-modal-preview-split">
+                    <!-- Left: Code -->
+                    <div class="diagram-preview-code-pane">
+                      <textarea id="diagram-modal-preview-code" readonly class="rename-modal-input diagram-preview-textarea" placeholder="Diagram source code..."></textarea>
+                    </div>
+                    <!-- Right: Visual Preview -->
+                    <div id="diagram-modal-preview" class="diagram-preview-container">
+                      <!-- Populated dynamically with selected template preview -->
+                    </div>
                   </div>
                 </div>
               </div>
