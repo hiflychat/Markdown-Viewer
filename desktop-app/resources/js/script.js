@@ -1084,6 +1084,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       return `<div class="d2-container is-loading"><div class="d2-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
     }
 
+    if (language === 'graphviz' || language === 'dot') {
+      const uniqueId = 'graphviz-diagram-' + Math.random().toString(36).substr(2, 9);
+      const escapedCode = code
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      return `<div class="graphviz-container is-loading"><div class="graphviz-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+    }
+
     if (language === 'math') {
       return `<div class="math-block">$$\n${code}\n$$</div>\n`;
     }
@@ -3187,6 +3196,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               
               node.innerHTML = '';
               const img = document.createElement('img');
+              img.crossOrigin = 'anonymous';
               img.src = url;
               img.alt = 'PlantUML Diagram';
               img.className = 'plantuml-img';
@@ -3252,6 +3262,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             
             node.innerHTML = '';
             const img = document.createElement('img');
+            img.crossOrigin = 'anonymous';
             img.src = url;
             img.alt = 'D2 Diagram';
             img.className = 'd2-img';
@@ -3302,6 +3313,76 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     } catch (e) {
       console.warn("D2 processing failed:", e);
+    }
+
+    try {
+      const graphvizNodes = queryPreviewRoots(roots, '.graphviz-diagram');
+      if (graphvizNodes.length > 0) {
+        const renderSingleGraphvizNode = function(node) {
+          const container = node.closest('.graphviz-container');
+          const originalCode = node.getAttribute('data-original-code');
+          if (!originalCode) return;
+          const decodedCode = decodeURIComponent(originalCode);
+          
+          if (container) container.classList.add('is-loading');
+          
+          try {
+            const encoded = encodeKrokiD2(decodedCode);
+            const url = 'https://kroki.io/graphviz/svg/' + encoded;
+            
+            node.innerHTML = '';
+            const img = document.createElement('img');
+            img.crossOrigin = 'anonymous';
+            img.src = url;
+            img.alt = 'Graphviz Diagram';
+            img.className = 'graphviz-img';
+            img.draggable = false;
+            img.addEventListener('dragstart', e => e.preventDefault());
+            
+            img.onload = function() {
+              if (container) container.classList.remove('is-loading');
+              addGraphvizToolbars();
+            };
+            
+            img.onerror = function() {
+              node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
+              if (container) container.classList.remove('is-loading');
+            };
+            
+            node.appendChild(img);
+          } catch (err) {
+            console.error("Graphviz encoding failed:", err);
+            node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
+            if (container) container.classList.remove('is-loading');
+          }
+        };
+
+        graphvizNodes.forEach(node => {
+          node.renderGraphviz = () => renderSingleGraphvizNode(node);
+        });
+
+        const renderGraphvizNodes = function() {
+          if (context.renderId !== previewRenderGeneration) return;
+          graphvizNodes.forEach(node => node.renderGraphviz());
+        };
+        
+        if (typeof pako === 'undefined') {
+          loadScript(CDN.pako).then(function() {
+            if (context.renderId !== previewRenderGeneration) return;
+            renderGraphvizNodes();
+          }).catch(function(e) {
+            console.warn('Failed to load pako for Graphviz:', e);
+            graphvizNodes.forEach(node => {
+              const container = node.closest('.graphviz-container');
+              if (container) container.classList.remove('is-loading');
+            });
+          });
+        } else {
+          renderGraphvizNodes();
+        }
+      }
+    } catch (e) {
+      console.warn("Graphviz processing failed:", e);
     }
 
     const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
@@ -5471,6 +5552,851 @@ document.addEventListener("DOMContentLoaded", async function () {
     modal.addEventListener('keydown', onKey);
   }
 
+  function openDiagramModal() {
+    const modal = document.getElementById('diagram-modal');
+    const sidebar = modal.querySelector('.diagram-modal-sidebar');
+    const grid = document.getElementById('diagram-modal-grid');
+    const emptyMessage = document.getElementById('diagram-modal-empty');
+    const searchInput = document.getElementById('diagram-modal-search');
+    const previewContainer = document.getElementById('diagram-modal-preview');
+    const previewCode = document.getElementById('diagram-modal-preview-code');
+    const confirmBtn = document.getElementById('diagram-modal-insert');
+    const cancelBtn = document.getElementById('diagram-modal-cancel');
+    const closeBtn = document.getElementById('diagram-modal-close');
+    
+    if (!modal || !sidebar || !grid || !emptyMessage || !searchInput || !previewContainer || !previewCode || !confirmBtn || !cancelBtn || !closeBtn) return;
+    
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+    modal.style.display = 'flex';
+    
+    // Clear and reset state
+    searchInput.value = '';
+    sidebar.textContent = '';
+    grid.textContent = '';
+    previewContainer.textContent = '';
+    if (previewCode) previewCode.value = '';
+    confirmBtn.disabled = true;
+    
+    const categories = [
+      'Mermaid',
+      'PlantUML',
+      'Graphviz',
+      'D2',
+      'Vega-Lite',
+      'ABC Notation',
+      'WaveDrom',
+      'Markmap'
+    ];
+    
+    const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgMermaidFlowchartLR = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Left</text><path d="M 50 60 L 110 60" stroke="#2e7d32" stroke-width="1.2" marker-end="url(#arrow-flr)"/><rect x="110" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="130" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Right</text><defs><marker id="arrow-flr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/></marker></defs></svg>`;
+    const svgSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><line x1="35" y1="30" x2="35" y2="90" stroke="#009688" stroke-width="1" stroke-dasharray="3"/><rect x="15" y="90" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="35" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Alice</text><rect x="105" y="10" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><line x1="125" y1="30" x2="125" y2="90" stroke="#009688" stroke-width="1" stroke-dasharray="3"/><rect x="105" y="90" width="40" height="20" fill="#f4f5f7" stroke="#009688" stroke-width="1.5" rx="3"/><text x="125" y="102" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Bob</text><path d="M 35 48 L 125 48" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><text x="80" y="43" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Hello</text><path d="M 125 72 L 35 72" stroke="#333" stroke-width="1" stroke-dasharray="3" marker-end="url(#arrow-f)"/><text x="80" y="67" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333">Reply</text></svg>`;
+    const svgEr = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="10" y1="46" x2="60" y2="46" stroke="#ff9800" stroke-width="1"/><text x="35" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">CUSTOMER</text><text x="14" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="14" y="65" font-size="7" font-family="sans-serif" fill="#666">name</text><rect x="100" y="30" width="50" height="40" fill="#f4f5f7" stroke="#ff9800" stroke-width="1.5" rx="3"/><line x1="100" y1="46" x2="150" y2="46" stroke="#ff9800" stroke-width="1"/><text x="125" y="41" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">ORDER</text><text x="104" y="56" font-size="7" font-family="sans-serif" fill="#666">id</text><text x="104" y="65" font-size="7" font-family="sans-serif" fill="#666">price</text><path d="M 60 50 L 100 50" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgClass = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="30" y="20" width="100" height="65" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><line x1="30" y1="40" x2="130" y2="40" stroke="#673ab7" stroke-width="1"/><line x1="30" y1="60" x2="130" y2="60" stroke="#673ab7" stroke-width="1"/><text x="80" y="33" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Animal</text><text x="36" y="50" font-size="7" font-family="sans-serif" fill="#333">+name: String</text><text x="36" y="57" font-size="7" font-family="sans-serif" fill="#333">+age: int</text><text x="36" y="70" font-size="7" font-family="sans-serif" fill="#333">+makeSound()</text></svg>`;
+    const svgState = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="20" cy="50" r="7" fill="#3f51b5"/><path d="M 27 50 L 60 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><rect x="60" y="35" width="50" height="30" rx="6" fill="#f4f5f7" stroke="#3f51b5" stroke-width="1.5"/><text x="85" y="53" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Active</text><path d="M 110 50 L 133 50" stroke="#3f51b5" stroke-width="1.5" marker-end="url(#arrow-s)"/><circle cx="140" cy="50" r="7" fill="none" stroke="#3f51b5" stroke-width="1.5"/><circle cx="140" cy="50" r="4" fill="#3f51b5"/><defs><marker id="arrow-s" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker></defs></svg>`;
+    const svgGantt = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="20" y1="20" x2="20" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="60" y1="20" x2="60" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="100" y1="20" x2="100" y2="100" stroke="#e0e0e0" stroke-width="1"/><line x1="140" y1="20" x2="140" y2="100" stroke="#e0e0e0" stroke-width="1"/><rect x="25" y="30" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="30" y="40" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Design</text><rect x="80" y="60" width="55" height="15" rx="3" fill="#e0f2f1" stroke="#009688" stroke-width="1.2"/><text x="85" y="70" font-size="7" font-family="sans-serif" fill="#004d40" font-weight="bold">Code</text></svg>`;
+    const svgPie = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="55" r="35" fill="#f44336" stroke="#fff" stroke-width="1.5"/><path d="M 80 55 L 80 20 A 35 35 0 0 1 115 55 Z" fill="#4caf50" stroke="#fff" stroke-width="1"/><path d="M 80 55 L 115 55 A 35 35 0 0 1 80 90 Z" fill="#ffeb3b" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgGitGraph = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="40" x2="150" y2="40" stroke="#9c27b0" stroke-width="2"/><line x1="40" y1="40" x2="80" y2="80" stroke="#00bcd4" stroke-width="2"/><line x1="80" y1="80" x2="150" y2="80" stroke="#00bcd4" stroke-width="2"/><circle cx="30" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/><circle cx="70" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/><circle cx="80" cy="80" r="5" fill="#00bcd4" stroke="#fff" stroke-width="1"/><circle cx="120" cy="80" r="5" fill="#00bcd4" stroke="#fff" stroke-width="1"/><circle cx="130" cy="40" r="5" fill="#9c27b0" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgJourney = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="20" width="65" height="80" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" rx="3"/><text x="42" y="35" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#f57f17" font-weight="bold">Stage 1</text><rect x="15" y="45" width="55" height="15" fill="#fff" rx="2"/><text x="20" y="55" font-size="6" font-family="sans-serif">Task A ⭐⭐⭐</text><rect x="85" y="20" width="65" height="80" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" rx="3"/><text x="117" y="35" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#f57f17" font-weight="bold">Stage 2</text><rect x="90" y="45" width="55" height="15" fill="#fff" rx="2"/><text x="95" y="55" font-size="6" font-family="sans-serif">Task B ⭐⭐⭐⭐</text></svg>`;
+    const svgMermaidMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="55" y="48" width="50" height="24" rx="12" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="80" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Goal</text><path d="M 55 60 C 35 60, 30 35, 15 35" fill="none" stroke="#e91e63" stroke-width="1.5"/><path d="M 55 60 C 35 60, 30 85, 15 85" fill="none" stroke="#00bcd4" stroke-width="1.5"/><path d="M 105 60 C 125 60, 130 35, 145 35" fill="none" stroke="#4caf50" stroke-width="1.5"/><path d="M 105 60 C 125 60, 130 85, 145 85" fill="none" stroke="#ff9800" stroke-width="1.5"/><circle cx="15" cy="35" r="3.5" fill="#e91e63"/><circle cx="15" cy="85" r="3.5" fill="#00bcd4"/><circle cx="145" cy="35" r="3.5" fill="#4caf50"/><circle cx="145" cy="85" r="3.5" fill="#ff9800"/></svg>`;
+    const svgMermaidQuadrant = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="60" height="40" fill="#ffe0b2" opacity="0.6"/><rect x="85" y="15" width="60" height="40" fill="#c8e6c9" opacity="0.6"/><rect x="15" y="65" width="60" height="40" fill="#ffcdd2" opacity="0.6"/><rect x="85" y="65" width="60" height="40" fill="#b3e5fc" opacity="0.6"/><line x1="80" y1="10" x2="80" y2="110" stroke="#333" stroke-width="1.5"/><line x1="10" y1="60" x2="150" y2="60" stroke="#333" stroke-width="1.5"/><circle cx="50" cy="35" r="3.5" fill="#e65100"/><circle cx="110" cy="85" r="3.5" fill="#01579b"/></svg>`;
+    const svgMermaidXy = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="20" y1="15" x2="20" y2="105" stroke="#333" stroke-width="1.5"/><line x1="20" y1="105" x2="150" y2="105" stroke="#333" stroke-width="1.5"/><path d="M 30 90 L 60 70 L 90 40 L 120 50 L 140 20" fill="none" stroke="#2196f3" stroke-width="2"/><rect x="35" y="70" width="12" height="35" fill="#4caf50" opacity="0.7"/><rect x="65" y="55" width="12" height="50" fill="#4caf50" opacity="0.7"/><rect x="95" y="45" width="12" height="60" fill="#4caf50" opacity="0.7"/><rect x="125" y="65" width="12" height="40" fill="#4caf50" opacity="0.7"/></svg>`;
+    const svgMermaidRequirement = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="55" height="35" fill="#eceff1" stroke="#37474f" stroke-width="1.5" rx="2"/><text x="42" y="27" font-size="6" text-anchor="middle" font-family="sans-serif" font-weight="bold">«requirement»</text><text x="42" y="36" font-size="7" text-anchor="middle" font-family="sans-serif">Req 1</text><rect x="90" y="15" width="55" height="35" fill="#eceff1" stroke="#37474f" stroke-width="1.5" rx="2"/><text x="117" y="27" font-size="6" text-anchor="middle" font-family="sans-serif" font-weight="bold">«element»</text><text x="117" y="36" font-size="7" text-anchor="middle" font-family="sans-serif">Test Case</text><path d="M 70 32 L 90 32" stroke="#37474f" stroke-width="1" stroke-dasharray="3" marker-end="url(#arrow-req)"/><defs><marker id="arrow-req" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#37474f"/></marker></defs></svg>`;
+    const svgMermaidC4 = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="10" width="140" height="100" fill="none" stroke="#0288d1" stroke-width="1.5" stroke-dasharray="4" rx="4"/><text x="80" y="22" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0288d1" font-weight="bold">System Boundary</text><rect x="25" y="40" width="45" height="40" fill="#1565c0" stroke="#0d47a1" stroke-width="1" rx="3"/><text x="47" y="55" font-size="7" text-anchor="middle" fill="#fff" font-weight="bold">Web App</text><text x="47" y="65" font-size="5" text-anchor="middle" fill="#bbdefb">Container: JS</text><rect x="90" y="40" width="45" height="40" fill="#1565c0" stroke="#0d47a1" stroke-width="1" rx="3"/><text x="112" y="55" font-size="7" text-anchor="middle" fill="#fff" font-weight="bold">API App</text><text x="112" y="65" font-size="5" text-anchor="middle" fill="#bbdefb">Container: Go</text><path d="M 70 60 L 90 60" stroke="#333" stroke-width="1" marker-end="url(#arrow-c4)"/><defs><marker id="arrow-c4" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgMermaidSankey = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="15" height="40" fill="#29b6f6" rx="1"/><rect x="15" y="65" width="15" height="40" fill="#ab47bc" rx="1"/><rect x="130" y="25" width="15" height="70" fill="#26a69a" rx="1"/><path d="M 30 25 C 60 25, 80 40, 130 40" fill="none" stroke="#29b6f6" stroke-width="12" opacity="0.4"/><path d="M 30 75 C 60 75, 80 65, 130 65" fill="none" stroke="#ab47bc" stroke-width="16" opacity="0.4"/></svg>`;
+    const svgMermaidTimeline = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="15" y1="60" x2="145" y2="60" stroke="#009688" stroke-width="3"/><rect x="25" y="20" width="30" height="24" fill="#e0f2f1" stroke="#009688" stroke-width="1" rx="2"/><text x="40" y="35" font-size="7" text-anchor="middle" font-family="sans-serif">2024</text><line x1="40" y1="44" x2="40" y2="60" stroke="#009688" stroke-width="1"/><rect x="105" y="75" width="30" height="24" fill="#e0f2f1" stroke="#009688" stroke-width="1" rx="2"/><text x="120" y="90" font-size="7" text-anchor="middle" font-family="sans-serif">2026</text><line x1="120" y1="60" x2="120" y2="75" stroke="#009688" stroke-width="1"/></svg>`;
+    
+    // PlantUML distinct styling (Yellowish actor/notes backgrounds, red outlines, retro styling)
+    const svgPlantUmlSequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="10" width="40" height="20" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><text x="35" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">User</text><line x1="35" y1="30" x2="35" y2="90" stroke="#b71c1c" stroke-width="1.2"/><rect x="105" y="10" width="40" height="20" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><text x="125" y="22" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">Server</text><line x1="125" y1="30" x2="125" y2="90" stroke="#b71c1c" stroke-width="1.2"/><path d="M 35 50 L 125 50" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-red)"/><path d="M 125 75 L 35 75" stroke="#000" stroke-width="1" stroke-dasharray="4" marker-end="url(#arrow-red)"/><defs><marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b71c1c"/></marker></defs></svg>`;
+    const svgPlantUmlUseCase = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="30" cy="40" r="6" fill="#fff" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="46" x2="30" y2="66" stroke="#0d47a1" stroke-width="1.5"/><line x1="20" y1="52" x2="40" y2="52" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="66" x2="20" y2="82" stroke="#0d47a1" stroke-width="1.5"/><line x1="30" y1="66" x2="40" y2="82" stroke="#0d47a1" stroke-width="1.5"/><ellipse cx="110" cy="50" rx="35" ry="18" fill="#e3f2fd" stroke="#0d47a1" stroke-width="1.5"/><text x="110" y="53" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0d47a1" font-weight="bold">Checkout</text><line x1="45" y1="52" x2="75" y2="50" stroke="#0d47a1" stroke-width="1.2" marker-end="url(#arrow-blue)"/><defs><marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0d47a1"/></marker></defs></svg>`;
+    const svgPlantUmlActivity = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="15" r="7" fill="#000"/><path d="M 80 22 L 80 40" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-p)"/><rect x="40" y="40" width="80" height="25" rx="12" fill="#fff9c4" stroke="#f57f17" stroke-width="1.5"/><text x="80" y="55" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000">Initialization</text><path d="M 80 65 L 80 85" stroke="#000" stroke-width="1.2" marker-end="url(#arrow-p)"/><circle cx="80" cy="95" r="10" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="80" cy="95" r="6" fill="#000"/><defs><marker id="arrow-p" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#000"/></marker></defs></svg>`;
+    const svgPlantUmlClass = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="25" y="15" width="110" height="85" fill="#fff9c4" stroke="#a20000" stroke-width="1.5" rx="2"/><line x1="25" y1="40" x2="135" y2="40" stroke="#a20000" stroke-width="1"/><line x1="25" y1="65" x2="135" y2="65" stroke="#a20000" stroke-width="1"/><circle cx="38" cy="27" r="7" fill="#b3e5fc" stroke="#01579b" stroke-width="1"/><text x="38" y="31" font-size="9" text-anchor="middle" font-family="monospace" fill="#01579b" font-weight="bold">C</text><text x="50" y="31" font-size="9" font-family="sans-serif" fill="#000" font-weight="bold">UserClass</text><text x="32" y="52" font-size="7" font-family="monospace" fill="#000">- id: Long</text><text x="32" y="60" font-size="7" font-family="monospace" fill="#000">- email: String</text><text x="32" y="78" font-size="7" font-family="monospace" fill="#000">+ login(): Boolean</text><text x="32" y="87" font-size="7" font-family="monospace" fill="#000">+ getRoles(): List</text></svg>`;
+    const svgPlantUmlState = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="40" width="50" height="30" rx="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="40" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">StateA</text><path d="M 65 55 L 95 55" stroke="#b71c1c" stroke-width="1.2" marker-end="url(#arrow-puml-st)"/><rect x="95" y="40" width="50" height="30" rx="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="120" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">StateB</text><defs><marker id="arrow-puml-st" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b71c1c"/></marker></defs></svg>`;
+    const svgPlantUmlComponent = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="130" height="90" fill="#f5f5f5" stroke="#333" stroke-width="1.5" rx="3"/><text x="80" y="28" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">[System Node]</text><rect x="35" y="45" width="90" height="45" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="2"/><rect x="27" y="52" width="16" height="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><rect x="27" y="70" width="16" height="8" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5"/><text x="80" y="72" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">Web GUI</text></svg>`;
+    const svgPlantUmlObject = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="25" y="20" width="110" height="75" fill="#fff9c4" stroke="#a20000" stroke-width="1.5" rx="2"/><line x1="25" y1="42" x2="135" y2="42" stroke="#a20000" stroke-width="1"/><text x="80" y="34" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold"><u>myUser : User</u></text><text x="32" y="58" font-size="8" font-family="monospace" fill="#000">name = "Alice"</text><text x="32" y="72" font-size="8" font-family="monospace" fill="#000">role = "Admin"</text></svg>`;
+    const svgPlantUmlDeployment = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 25 35 L 65 35 L 80 20 L 40 20 Z" fill="#fff9c4" stroke="#a20000" stroke-width="1.2"/><path d="M 65 35 L 80 20 L 80 75 L 65 90 Z" fill="#fff9c4" stroke="#a20000" stroke-width="1.2"/><rect x="25" y="35" width="40" height="55" fill="#fff9c4" stroke="#a20000" stroke-width="1.2"/><text x="45" y="65" font-size="8" text-anchor="middle" font-family="sans-serif" font-weight="bold">Node</text></svg>`;
+    const svgPlantUmlTiming = `<svg viewBox="0 0 160 120" width="100%" height="100%"><text x="15" y="35" font-size="8" font-family="monospace">WebState</text><path d="M 60 35 L 90 35 L 90 55 L 120 55 L 120 35 L 150 35" fill="none" stroke="#b71c1c" stroke-width="1.5"/><line x1="60" y1="20" x2="60" y2="70" stroke="#ccc" stroke-dasharray="2"/><line x1="90" y1="20" x2="90" y2="70" stroke="#ccc" stroke-dasharray="2"/><line x1="120" y1="20" x2="120" y2="70" stroke="#ccc" stroke-dasharray="2"/></svg>`;
+    const svgPlantUmlNetwork = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="20" y="25" width="40" height="24" rx="2" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/><text x="40" y="39" font-size="7" text-anchor="middle" font-family="sans-serif">Server</text><rect x="100" y="25" width="40" height="24" rx="2" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/><text x="120" y="39" font-size="7" text-anchor="middle" font-family="sans-serif">Database</text><line x1="40" y1="80" x2="120" y2="80" stroke="#333" stroke-width="2"/><line x1="40" y1="49" x2="40" y2="80" stroke="#b71c1c" stroke-width="1.2"/><line x1="120" y1="49" x2="120" y2="80" stroke="#b71c1c" stroke-width="1.2"/><text x="80" y="93" font-size="7" text-anchor="middle" font-family="monospace">192.168.1.0</text></svg>`;
+    const svgPlantUmlMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="60" y="48" width="40" height="24" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="3"/><text x="80" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" font-weight="bold">Idea</text><path d="M 60 60 L 25 40" stroke="#b71c1c" stroke-width="1.2"/><path d="M 60 60 L 25 80" stroke="#b71c1c" stroke-width="1.2"/><rect x="5" y="28" width="20" height="15" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/><rect x="5" y="70" width="20" height="15" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/></svg>`;
+    const svgPlantUmlWbs = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="50" y="15" width="60" height="22" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2" rx="2"/><text x="80" y="28" font-size="8" text-anchor="middle" font-family="sans-serif">Project</text><line x1="80" y1="37" x2="80" y2="70" stroke="#b71c1c" stroke-width="1.2"/><line x1="80" y1="70" x2="40" y2="70" stroke="#b71c1c" stroke-width="1.2"/><line x1="80" y1="90" x2="120" y2="90" stroke="#b71c1c" stroke-width="1.2"/><line x1="80" y1="70" x2="80" y2="90" stroke="#b71c1c" stroke-width="1.2"/><rect x="10" y="60" width="30" height="18" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/><rect x="120" y="81" width="30" height="18" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.2"/></svg>`;
+    const svgPlantUmlJson = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="20" y="20" width="120" height="80" fill="#fff9c4" stroke="#b71c1c" stroke-width="1.5" rx="3"/><text x="30" y="38" font-size="8" font-family="monospace" fill="#000">"name": "Widget"</text><text x="30" y="55" font-size="8" font-family="monospace" fill="#000">"count": 42</text><text x="30" y="72" font-size="8" font-family="monospace" fill="#000">"active": true</text></svg>`;
+
+    // Graphviz (Aesthetic: beige/brown, thin strokes, distinct classic nodes)
+    const svgGraphvizDigraph = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="35" cy="35" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="35" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723" font-weight="bold">A</text><circle cx="125" cy="35" r="12" fill="#efebe9" stroke="#795548" stroke-width="2"/><text x="125" y="39" font-size="10" text-anchor="middle" font-family="sans-serif" fill="#3e2723" font-weight="bold">B</text><path d="M 47 35 L 113 35" stroke="#795548" stroke-width="1.5" marker-end="url(#arrow-br)"/><defs><marker id="arrow-br" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
+    const svgGraphvizTree = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="25" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="80" y="28" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">Root</text><line x1="80" y1="35" x2="45" y2="70" stroke="#004d40" stroke-width="1.2"/><line x1="80" y1="35" x2="115" y2="70" stroke="#004d40" stroke-width="1.2"/><circle cx="45" cy="80" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="45" y="83" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">L</text><circle cx="115" cy="80" r="10" fill="#e0f2f1" stroke="#004d40" stroke-width="1.5"/><text x="115" y="83" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#004d40" font-weight="bold">R</text></svg>`;
+    const svgGraphvizStruct = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="20" y="35" width="120" height="40" fill="#f5f5f5" stroke="#212121" stroke-width="1.5"/><line x1="60" y1="35" x2="60" y2="75" stroke="#212121" stroke-width="1.5"/><line x1="100" y1="35" x2="100" y2="75" stroke="#212121" stroke-width="1.5"/><text x="40" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node0</text><text x="80" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node1</text><text x="120" y="58" font-size="8" text-anchor="middle" font-family="monospace" fill="#000">node2</text></svg>`;
+    const svgGraphvizFsm = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="35" cy="55" r="14" fill="#fafafa" stroke="#333" stroke-width="1.5"/><text x="35" y="59" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333">S1</text><path d="M 49 55 L 105 55" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-g-fsm)"/><circle cx="120" cy="55" r="14" fill="#fafafa" stroke="#333" stroke-width="1.5"/><circle cx="120" cy="55" r="10" fill="none" stroke="#333" stroke-width="1.2"/><text x="120" y="59" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333">S2</text><defs><marker id="arrow-g-fsm" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgGraphvizNetwork = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="45" width="35" height="25" rx="3" fill="#efebe9" stroke="#5d4037" stroke-width="1.5"/><text x="32" y="60" font-size="8" text-anchor="middle" fill="#5d4037" font-weight="bold">Router</text><ellipse cx="125" cy="57" rx="20" ry="15" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/><text x="125" y="60" font-size="8" text-anchor="middle" fill="#2e7d32" font-weight="bold">LAN</text><line x1="50" y1="57" x2="105" y2="57" stroke="#333" stroke-width="1.2"/></svg>`;
+    const svgGraphvizSubgraph = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="85" height="90" fill="#f5f5f5" stroke="#4e342e" stroke-width="1.5" stroke-dasharray="3" rx="4"/><text x="57" y="27" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#4e342e" font-weight="bold">cluster_0</text><circle cx="57" cy="50" r="10" fill="#efebe9" stroke="#795548" stroke-width="1.5"/><circle cx="57" cy="85" r="10" fill="#efebe9" stroke="#795548" stroke-width="1.5"/><circle cx="130" cy="65" r="10" fill="#efebe9" stroke="#795548" stroke-width="1.5"/><path d="M 67 50 L 120 65" stroke="#795548" stroke-width="1.2" marker-end="url(#arrow-g-sub)"/><defs><marker id="arrow-g-sub" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795548"/></marker></defs></svg>`;
+    const svgGraphvizEr = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#efebe9" stroke="#795548" stroke-width="1.5"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#000" font-weight="bold">Entity</text><polygon points="90,47 110,60 90,73 70,60" fill="#efebe9" stroke="#795548" stroke-width="1.5"/><text x="90" y="63" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#000">Rel</text><line x1="50" y1="60" x2="70" y2="60" stroke="#333" stroke-width="1.2"/></svg>`;
+
+    // D2 (Aesthetic: monospace font, bold slate outlines, soft purple/blue/green boxes)
+    const svgD2Flow = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="45" width="40" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="35" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333">x</text><path d="M 55 60 L 105 60" stroke="#333" stroke-width="2" marker-end="url(#arrow-d2)"/><rect x="105" y="45" width="40" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="125" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333">y</text><defs><marker id="arrow-d2" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
+    const svgD2Arch = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="15" width="140" height="90" fill="#f5f5f5" stroke="#3f51b5" stroke-width="1.5" stroke-dasharray="3" rx="4"/><text x="80" y="27" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5" font-weight="bold">Cloud Platform</text><rect x="25" y="45" width="45" height="40" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" rx="3"/><text x="47" y="68" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5">App</text><rect x="90" y="45" width="45" height="40" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" rx="3"/><text x="112" y="68" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#3f51b5">DB</text></svg>`;
+    const svgD2Sequence = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="40" height="24" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/><text x="35" y="30" font-size="8" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">client</text><line x1="35" y1="39" x2="35" y2="105" stroke="#5e35b1" stroke-width="1.5"/><rect x="105" y="15" width="40" height="24" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/><text x="125" y="30" font-size="8" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">server</text><line x1="125" y1="39" x2="125" y2="105" stroke="#5e35b1" stroke-width="1.5"/><path d="M 35 60 L 125 60" stroke="#333" stroke-width="1.8" marker-end="url(#arrow-d2)"/><path d="M 125 85 L 35 85" stroke="#333" stroke-width="1.5" stroke-dasharray="3" marker-end="url(#arrow-d2)"/></svg>`;
+    const svgD2Erd = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="25" width="50" height="50" fill="#f1f8e9" stroke="#558b2f" stroke-width="2" rx="2"/><rect x="15" y="25" width="50" height="15" fill="#c5e1a5" stroke="#558b2f" stroke-width="2" rx="2"/><text x="40" y="36" font-size="7" text-anchor="middle" font-family="monospace" fill="#33691e" font-weight="bold">users</text><text x="20" y="52" font-size="6" font-family="monospace" fill="#333">id (PK)</text><text x="20" y="65" font-size="6" font-family="monospace" fill="#333">name</text><rect x="95" y="25" width="50" height="50" fill="#f1f8e9" stroke="#558b2f" stroke-width="2" rx="2"/><rect x="95" y="25" width="50" height="15" fill="#c5e1a5" stroke="#558b2f" stroke-width="2" rx="2"/><text x="120" y="36" font-size="7" text-anchor="middle" font-family="monospace" fill="#33691e" font-weight="bold">posts</text><text x="100" y="52" font-size="6" font-family="monospace" fill="#333">id (PK)</text><text x="100" y="65" font-size="6" font-family="monospace" fill="#333">user_id</text><path d="M 65 50 L 95 50" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgD2Grid = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="15" y="15" width="60" height="40" fill="#e0f7fa" stroke="#00838f" stroke-width="2" rx="2"/><text x="45" y="38" font-size="8" text-anchor="middle" font-family="monospace" fill="#006064" font-weight="bold">Box 1</text><rect x="85" y="15" width="60" height="40" fill="#e0f7fa" stroke="#00838f" stroke-width="2" rx="2"/><text x="115" y="38" font-size="8" text-anchor="middle" font-family="monospace" fill="#006064" font-weight="bold">Box 2</text><rect x="15" y="65" width="130" height="40" fill="#fce4ec" stroke="#c2185b" stroke-width="2" rx="2"/><text x="80" y="88" font-size="8" text-anchor="middle" font-family="monospace" fill="#880e4f" font-weight="bold">Main Footer Box</text></svg>`;
+
+    // Vega-Lite (Aesthetic: statistical charts)
+    const svgVegaBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="35" y="55" width="22" height="35" fill="#2196f3"/><rect x="70" y="35" width="22" height="55" fill="#2196f3"/><rect x="105" y="45" width="22" height="45" fill="#2196f3"/></svg>`;
+    const svgVegaLine = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 65 L 70 35 L 105 60 L 135 25" fill="none" stroke="#e91e63" stroke-width="2"/><circle cx="35" cy="65" r="2.5" fill="#e91e63"/><circle cx="70" cy="35" r="2.5" fill="#e91e63"/><circle cx="105" cy="60" r="2.5" fill="#e91e63"/><circle cx="135" cy="25" r="2.5" fill="#e91e63"/></svg>`;
+    const svgVegaScatter = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><circle cx="45" cy="65" r="4.5" fill="#4caf50"/><circle cx="65" cy="45" r="4.5" fill="#4caf50"/><circle cx="95" cy="75" r="4.5" fill="#4caf50"/><circle cx="115" cy="30" r="4.5" fill="#4caf50"/><circle cx="130" cy="55" r="4.5" fill="#4caf50"/></svg>`;
+    const svgVegaArea = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><path d="M 35 75 L 65 40 L 95 65 L 135 30 L 135 90 L 35 90 Z" fill="#9575cd" opacity="0.6" stroke="#5e35b1" stroke-width="1.5"/></svg>`;
+    const svgVegaStackedBar = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="90" stroke="#333" stroke-width="1.5"/><line x1="25" y1="90" x2="145" y2="90" stroke="#333" stroke-width="1.5"/><rect x="40" y="60" width="20" height="30" fill="#2196f3"/><rect x="40" y="40" width="20" height="20" fill="#ff9800"/><rect x="80" y="50" width="20" height="40" fill="#2196f3"/><rect x="80" y="20" width="20" height="30" fill="#ff9800"/><rect x="120" y="70" width="20" height="20" fill="#2196f3"/><rect x="120" y="55" width="20" height="15" fill="#ff9800"/></svg>`;
+
+    // ABC Notation (Aesthetic: musical notation stave and notes)
+    const svgAbcMelody = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000" stroke="#000" stroke-width="1"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000" stroke="#000" stroke-width="1"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000" stroke="#000" stroke-width="1"/></svg>`;
+    const svgAbcDuet = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="15" x2="150" y2="15" stroke="#000" stroke-width="1"/><line x1="10" y1="25" x2="150" y2="25" stroke="#000" stroke-width="1"/><line x1="10" y1="35" x2="150" y2="35" stroke="#000" stroke-width="1"/><line x1="10" y1="45" x2="150" y2="45" stroke="#000" stroke-width="1"/><line x1="10" y1="55" x2="150" y2="55" stroke="#000" stroke-width="1"/><path d="M 30 10 L 30 50 A 8 8 0 1 1 20 43" fill="#000"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><line x1="10" y1="80" x2="150" y2="80" stroke="#000" stroke-width="1"/><line x1="10" y1="90" x2="150" y2="90" stroke="#000" stroke-width="1"/><line x1="10" y1="100" x2="150" y2="100" stroke="#000" stroke-width="1"/><line x1="10" y1="110" x2="150" y2="110" stroke="#000" stroke-width="1"/><path d="M 60 65 L 60 105 A 8 8 0 1 1 50 98" fill="#000"/></svg>`;
+    const svgAbcLyric = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 30 25 L 30 65 A 8 8 0 1 1 20 58" fill="#000"/><path d="M 70 35 L 70 75 A 8 8 0 1 1 60 68" fill="#000"/><path d="M 110 30 L 110 70 A 8 8 0 1 1 100 63" fill="#000"/><text x="20" y="90" font-size="8" font-family="sans-serif">Do</text><text x="60" y="90" font-size="8" font-family="sans-serif">Re</text><text x="100" y="90" font-size="8" font-family="sans-serif">Mi</text></svg>`;
+    const svgAbcChords = `<svg viewBox="0 0 160 120" width="100%" height="100%"><text x="20" y="20" font-size="8" font-family="sans-serif" font-weight="bold" fill="blue">C</text><text x="80" y="20" font-size="8" font-family="sans-serif" font-weight="bold" fill="blue">G7</text><line x1="10" y1="35" x2="150" y2="35" stroke="#000" stroke-width="1"/><line x1="10" y1="45" x2="150" y2="45" stroke="#000" stroke-width="1"/><line x1="10" y1="55" x2="150" y2="55" stroke="#000" stroke-width="1"/><line x1="10" y1="65" x2="150" y2="65" stroke="#000" stroke-width="1"/><line x1="10" y1="75" x2="150" y2="75" stroke="#000" stroke-width="1"/><path d="M 30 30 L 30 70 A 8 8 0 1 1 20 63" fill="#000"/><path d="M 90 40 L 90 80 A 8 8 0 1 1 80 73" fill="#000"/></svg>`;
+
+    // WaveDrom (Aesthetic: digital waveform timing lines)
+    const svgWaveTiming = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 60 L 40 60 L 40 40 L 60 40 L 60 60 L 80 60 L 80 40 L 100 40 L 100 60 L 140 60" fill="none" stroke="#ff5722" stroke-width="2"/><text x="15" y="35" font-size="8" font-family="sans-serif" fill="#ff5722" font-weight="bold">CLK</text></svg>`;
+    const svgWaveCounter = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 40 L 40 40 L 40 25 L 60 25 L 60 40 L 80 40 L 80 25 L 100 25 L 100 40 L 140 40" fill="none" stroke="#009688" stroke-width="1.8"/><text x="15" y="20" font-size="7" fill="#009688" font-weight="bold">CLK0</text><path d="M 20 90 L 60 90 L 60 75 L 100 75 L 100 90 L 140 90" fill="none" stroke="#ff9800" stroke-width="1.8"/><text x="15" y="70" font-size="7" fill="#ff9800" font-weight="bold">CLK1</text></svg>`;
+    const svgWaveBus = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 50 L 40 50 L 48 40 L 80 40 L 88 50 L 120 50 L 128 40 L 140 40 M 20 50 L 40 50 L 48 60 L 80 60 L 88 50 L 120 50 L 128 60 L 140 60" fill="none" stroke="#00c853" stroke-width="1.8"/><text x="64" y="53" font-size="7" font-family="monospace" text-anchor="middle" fill="#00796b">DATA</text><text x="15" y="30" font-size="7" fill="#333" font-weight="bold">BUS</text></svg>`;
+    const svgWaveReset = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 30 L 70 30 L 70 50 L 140 50" fill="none" stroke="#d50000" stroke-width="1.8"/><text x="15" y="22" font-size="7" fill="#d50000" font-weight="bold">RESET</text><path d="M 20 90 L 90 90 L 90 70 L 140 70" fill="none" stroke="#2962ff" stroke-width="1.8"/><text x="15" y="82" font-size="7" fill="#2962ff" font-weight="bold">ENABLE</text></svg>`;
+
+    // Markmap (Aesthetic: colorful mindmaps, curved connection paths)
+    const svgMarkmapMindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="60" y="47" width="40" height="16" rx="3" fill="#f4f5f7" stroke="#607d8b" stroke-width="1.5"/><text x="80" y="58" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Root</text><path d="M 60 55 L 30 35" stroke="#607d8b" stroke-width="1.2"/><path d="M 60 55 L 30 75" stroke="#607d8b" stroke-width="1.2"/><path d="M 100 55 L 130 55" stroke="#607d8b" stroke-width="1.2"/><circle cx="30" cy="35" r="3.5" fill="#607d8b"/><circle cx="30" cy="75" r="3.5" fill="#607d8b"/><circle cx="130" cy="55" r="3.5" fill="#607d8b"/></svg>`;
+    const svgMarkmapRoadmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#2e7d32" font-weight="bold">Roadmap</text><path d="M 45 59 C 65 59, 75 30, 95 30" fill="none" stroke="#2e7d32" stroke-width="1.5"/><path d="M 45 59 C 65 59, 75 90, 95 90" fill="none" stroke="#2e7d32" stroke-width="1.5"/><circle cx="95" cy="30" r="3" fill="#2e7d32"/><circle cx="95" cy="90" r="3" fill="#2e7d32"/><text x="102" y="33" font-size="7" font-family="sans-serif">Q1 Plan</text><text x="102" y="93" font-size="7" font-family="sans-serif">Q2 Build</text></svg>`;
+    const svgMarkmapStudy = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#ef6c00" font-weight="bold">Course</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#ef6c00" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#ef6c00" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#ef6c00"/><circle cx="90" cy="90" r="3" fill="#ef6c00"/><text x="96" y="33" font-size="7" font-family="sans-serif">Math</text><text x="96" y="93" font-size="7" font-family="sans-serif">Science</text></svg>`;
+    const svgMarkmapStack = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="30" height="18" rx="2" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5"/><text x="25" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0288d1" font-weight="bold">Stack</text><path d="M 40 59 C 60 59, 70 30, 90 30" fill="none" stroke="#0288d1" stroke-width="1.5"/><path d="M 40 59 C 60 59, 70 90, 90 90" fill="none" stroke="#0288d1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#0288d1"/><circle cx="90" cy="90" r="3" fill="#0288d1"/><text x="96" y="33" font-size="7" font-family="sans-serif">Web</text><text x="96" y="93" font-size="7" font-family="sans-serif">Mobile</text></svg>`;
+
+    // D2 additional (Aesthetic: monospace font, bold slate outlines, soft purple/blue/green boxes)
+    const svgD2Mindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="50" y="45" width="60" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="80" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">Root</text><path d="M 50 60 L 25 35" stroke="#333" stroke-width="1.5"/><path d="M 50 60 L 25 85" stroke="#333" stroke-width="1.5"/><path d="M 110 60 L 135 60" stroke="#333" stroke-width="1.5"/><rect x="5" y="20" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/><rect x="5" y="75" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/><rect x="135" y="50" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgD2Class = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="25" y="20" width="110" height="80" fill="#f5f5f5" stroke="#455a64" stroke-width="2" rx="2"/><line x1="25" y1="45" x2="135" y2="45" stroke="#455a64" stroke-width="1.5"/><line x1="25" y1="70" x2="135" y2="70" stroke="#455a64" stroke-width="1.5"/><text x="80" y="36" font-size="9" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">Product</text><text x="32" y="58" font-size="7" font-family="monospace" fill="#333">sku: string</text><text x="32" y="85" font-size="7" font-family="monospace" fill="#333">price: float</text></svg>`;
+    const svgD2Venn = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="65" cy="60" r="30" fill="#2196f3" opacity="0.5" stroke="#1976d2" stroke-width="1.5"/><circle cx="95" cy="60" r="30" fill="#ff9800" opacity="0.5" stroke="#f57c00" stroke-width="1.5"/><text x="50" y="63" font-size="8" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">A</text><text x="110" y="63" font-size="8" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">B</text></svg>`;
+
+    // Vega-Lite additional (Aesthetic: statistical charts)
+    const svgVegaPie = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="60" r="35" fill="#e91e63" stroke="#fff" stroke-width="1"/><path d="M 80 60 L 80 25 A 35 35 0 0 1 115 60 Z" fill="#9c27b0" stroke="#fff" stroke-width="1"/><path d="M 80 60 L 115 60 A 35 35 0 0 1 80 95 Z" fill="#00bcd4" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgVegaHeatmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="30" y="20" width="30" height="25" fill="#e0f2f1"/><rect x="65" y="20" width="30" height="25" fill="#80cbc4"/><rect x="100" y="20" width="30" height="25" fill="#004d40"/><rect x="30" y="50" width="30" height="25" fill="#b2dfdb"/><rect x="65" y="50" width="30" height="25" fill="#26a69a"/><rect x="100" y="50" width="30" height="25" fill="#00796b"/><rect x="30" y="80" width="30" height="25" fill="#e0f2f1"/><rect x="65" y="80" width="30" height="25" fill="#80cbc4"/><rect x="100" y="80" width="30" height="25" fill="#004d40"/></svg>`;
+    const svgVegaBubble = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="95" stroke="#333" stroke-width="1.5"/><line x1="25" y1="95" x2="145" y2="95" stroke="#333" stroke-width="1.5"/><circle cx="45" cy="75" r="5" fill="#ff5722" opacity="0.7"/><circle cx="65" cy="45" r="12" fill="#ff5722" opacity="0.7"/><circle cx="95" cy="80" r="8" fill="#ff5722" opacity="0.7"/><circle cx="120" cy="35" r="16" fill="#ff5722" opacity="0.7"/></svg>`;
+
+    // ABC Notation additional (Aesthetic: musical notation stave and notes)
+    const svgAbcPolyphony = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 45 40 L 45 15 A 8 8 0 1 1 35 25" fill="#000"/><path d="M 45 50 L 45 75 A 8 8 0 1 1 35 68" fill="#000"/><path d="M 95 30 L 95 10 A 8 8 0 1 1 85 18" fill="#000"/><path d="M 95 60 L 95 85 A 8 8 0 1 1 85 78" fill="#000"/></svg>`;
+    const svgAbcKeySignature = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><text x="15" y="60" font-size="28" font-family="serif" font-weight="bold" fill="#000">𝄞</text><text x="38" y="38" font-size="12" font-family="serif" font-weight="bold" fill="#000">♯</text><text x="48" y="52" font-size="12" font-family="serif" font-weight="bold" fill="#000">♯</text><path d="M 80 30 L 80 70 A 8 8 0 1 1 70 63" fill="#000"/><path d="M 120 40 L 120 80 A 8 8 0 1 1 110 73" fill="#000"/></svg>`;
+
+    // WaveDrom additional (Aesthetic: digital waveform timing lines)
+    const svgWaveGlitches = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 50 L 50 50 L 52 35 L 54 65 L 56 35 L 58 65 L 60 50 L 100 50 L 102 35 L 104 65 L 106 35 L 108 65 L 110 50 L 140 50" fill="none" stroke="#e91e63" stroke-width="2"/><text x="15" y="25" font-size="8" font-family="sans-serif" fill="#e91e63" font-weight="bold">GLITCH</text></svg>`;
+    const svgWaveComplexBus = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 40 L 40 40 L 45 30 L 75 30 L 80 40 L 110 40 L 115 50 L 140 50 M 20 40 L 40 40 L 45 50 L 75 50 L 80 40 L 110 40 L 115 30 L 140 30" fill="none" stroke="#2196f3" stroke-width="1.8"/><path d="M 20 80 L 50 80 L 55 70 L 95 70 L 100 80 L 140 80 M 20 80 L 50 80 L 55 90 L 95 90 L 100 80 L 140 80" fill="none" stroke="#4caf50" stroke-width="1.8"/><text x="60" y="43" font-size="6" font-family="monospace" text-anchor="middle" fill="#000">ADDR</text><text x="75" y="83" font-size="6" font-family="monospace" text-anchor="middle" fill="#000">DATA</text></svg>`;
+
+    // Markmap additional (Aesthetic: colorful mindmaps, checklist notation)
+    const svgMarkmapChecklist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Tasks</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#5e35b1" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#5e35b1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#5e35b1"/><circle cx="90" cy="90" r="3" fill="#5e35b1"/><text x="96" y="33" font-size="7" font-family="sans-serif">☒ Todo A</text><text x="96" y="93" font-size="7" font-family="sans-serif">☑ Todo B</text></svg>`;
+    const svgMarkmapCode = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#eceff1" stroke="#455a64" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#455a64" font-weight="bold">Project</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#455a64" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#455a64" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#455a64"/><circle cx="90" cy="90" r="3" fill="#455a64"/><text x="96" y="33" font-size="7" font-family="monospace">code()</text><text x="96" y="93" font-size="7" font-family="monospace">test()</text></svg>`;
+
+    const templates = [
+      // Mermaid
+      {
+        id: 'mermaid-flowchart-td',
+        category: 'Mermaid',
+        title: 'Flowchart (TD)',
+        label: 'Flowchart (Top-Down)',
+        svg: svgFlowchart,
+        code: '```mermaid\ngraph TD\n    Start --> End\n```\n'
+      },
+      {
+        id: 'mermaid-flowchart-lr',
+        category: 'Mermaid',
+        title: 'Flowchart (LR)',
+        label: 'Flowchart (Left-Right)',
+        svg: svgMermaidFlowchartLR,
+        code: '```mermaid\ngraph LR\n    Left --> Right\n```\n'
+      },
+      {
+        id: 'mermaid-sequence',
+        category: 'Mermaid',
+        title: 'Sequence preview',
+        label: 'Sequence Diagram',
+        svg: svgSequence,
+        code: '```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello Bob, how are you?\n    Bob-->>Alice: Jolly good!\n```\n'
+      },
+      {
+        id: 'mermaid-er',
+        category: 'Mermaid',
+        title: 'ER preview',
+        label: 'ER Diagram',
+        svg: svgEr,
+        code: '```mermaid\nerDiagram\n    CUSTOMER ||--o{ ORDER : places\n```\n'
+      },
+      {
+        id: 'mermaid-class',
+        category: 'Mermaid',
+        title: 'Class Diagram',
+        label: 'Class Diagram',
+        svg: svgClass,
+        code: '```mermaid\nclassDiagram\n    Animal <|-- Duck\n    class Animal {\n        +String name\n        +makeSound()\n    }\n```\n'
+      },
+      {
+        id: 'mermaid-state',
+        category: 'Mermaid',
+        title: 'State Diagram',
+        label: 'State Diagram',
+        svg: svgState,
+        code: '```mermaid\nstateDiagram-v2\n    [*] --> Active\n    Active --> [*]\n```\n'
+      },
+      {
+        id: 'mermaid-gantt',
+        category: 'Mermaid',
+        title: 'Gantt Chart',
+        label: 'Gantt Chart',
+        svg: svgGantt,
+        code: '```mermaid\ngantt\n    title A Gantt Diagram\n    section Section\n    A task :a1, 2026-06-23, 30d\n```\n'
+      },
+      {
+        id: 'mermaid-pie',
+        category: 'Mermaid',
+        title: 'Pie Chart',
+        label: 'Pie Chart',
+        svg: svgPie,
+        code: '```mermaid\npie title Pets owned by staff\n    "Dogs" : 386\n    "Cats" : 85\n```\n'
+      },
+      {
+        id: 'mermaid-git',
+        category: 'Mermaid',
+        title: 'Git Graph',
+        label: 'Git Graph',
+        svg: svgGitGraph,
+        code: '```mermaid\ngitGraph\n    commit\n    branch hotfix\n    checkout hotfix\n    commit\n    checkout main\n    merge hotfix\n```\n'
+      },
+      {
+        id: 'mermaid-journey',
+        category: 'Mermaid',
+        title: 'User Journey',
+        label: 'User Journey',
+        svg: svgJourney,
+        code: '```mermaid\njourney\n    title My working day\n    section Go to work\n      Make tea: 5: Me\n      Go upstairs: 3: Me\n```\n'
+      },
+      {
+        id: 'mermaid-mindmap',
+        category: 'Mermaid',
+        title: 'Mindmap',
+        label: 'Mindmap Diagram',
+        svg: svgMermaidMindmap,
+        code: '```mermaid\nmindmap\n  root((Goal))\n    Topic 1\n      Subtopic 1\n    Topic 2\n```\n'
+      },
+      {
+        id: 'mermaid-quadrant',
+        category: 'Mermaid',
+        title: 'Quadrant Chart',
+        label: 'Quadrant Chart',
+        svg: svgMermaidQuadrant,
+        code: '```mermaid\nquadrantChart\n    title Reach and Engagement\n    x-axis Low Reach --> High Reach\n    y-axis Low Engagement --> High Engagement\n    quadrant-1 We should expand\n    quadrant-2 Need to promote\n    quadrant-3 Re-evaluate\n    quadrant-4 Keep improving\n    Campaign A: [0.3, 0.6]\n    Campaign B: [0.45, 0.23]\n```\n'
+      },
+      {
+        id: 'mermaid-xy',
+        category: 'Mermaid',
+        title: 'XY Chart',
+        label: 'XY Chart',
+        svg: svgMermaidXy,
+        code: '```mermaid\nxychart-beta\n    title "Sales Revenue"\n    x-axis [jan, feb, mar, apr, may]\n    y-axis "Revenue ($)" 0 --> 1000\n    bar [500, 600, 700, 800, 900]\n    line [480, 580, 710, 820, 910]\n```\n'
+      },
+      {
+        id: 'mermaid-requirement',
+        category: 'Mermaid',
+        title: 'Requirements',
+        label: 'Requirements Diagram',
+        svg: svgMermaidRequirement,
+        code: '```mermaid\nrequirementDiagram\n    requirement test_req {\n    id: 1\n    text: "Verify system response time."\n    risk: medium\n    verifymethod: test\n    }\n    element test_case {\n    type: "simulation"\n    }\n    test_case - satisfies -> test_req\n```\n'
+      },
+      {
+        id: 'mermaid-c4',
+        category: 'Mermaid',
+        title: 'C4 Container',
+        label: 'C4 Container Diagram',
+        svg: svgMermaidC4,
+        code: '```mermaid\nC4Context\n    title System Context for Internet Banking\n    Enterprise_Boundary(b1, "Banking") {\n        System(banking_sys, "Banking System", "Stores accounts")\n    }\n```\n'
+      },
+      {
+        id: 'mermaid-sankey',
+        category: 'Mermaid',
+        title: 'Sankey Chart',
+        label: 'Sankey Flow Chart',
+        svg: svgMermaidSankey,
+        code: '```mermaid\nsankey-beta\n    source,target,value\n    Electricity,Grid,120\n    Gas,Grid,80\n```\n'
+      },
+      {
+        id: 'mermaid-timeline',
+        category: 'Mermaid',
+        title: 'Timeline',
+        label: 'Timeline Diagram',
+        svg: svgMermaidTimeline,
+        code: '```mermaid\ntimeline\n    title History of Web\n    2000 : HTML4\n    2014 : HTML5\n```\n'
+      },
+      
+      // PlantUML
+      {
+        id: 'plantuml-sequence',
+        category: 'PlantUML',
+        title: 'Sequence Diagram',
+        label: 'Sequence Diagram',
+        svg: svgPlantUmlSequence,
+        code: '```plantuml\n@startuml\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n@enduml\n'
+      },
+      {
+        id: 'plantuml-usecase',
+        category: 'PlantUML',
+        title: 'Use Case Diagram',
+        label: 'Use Case Diagram',
+        svg: svgPlantUmlUseCase,
+        code: '```plantuml\n@startuml\nleft to right direction\nactor Guest\nrectangle Hotel {\n  usecase "Book Room" as UC1\n}\nGuest --> UC1\n@enduml\n'
+      },
+      {
+        id: 'plantuml-activity',
+        category: 'PlantUML',
+        title: 'Activity Diagram',
+        label: 'Activity Diagram',
+        svg: svgPlantUmlActivity,
+        code: '```plantuml\n@startuml\n:Start;\n:Hello World;\n:End;\n@enduml\n'
+      },
+      {
+        id: 'plantuml-class',
+        category: 'PlantUML',
+        title: 'Class Diagram',
+        label: 'Class Diagram',
+        svg: svgPlantUmlClass,
+        code: '```plantuml\n@startuml\nclass Dummy {\n  -field1\n  #field2\n  ~method1()\n  +method2()\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-state',
+        category: 'PlantUML',
+        title: 'State Diagram',
+        label: 'State Diagram',
+        svg: svgPlantUmlState,
+        code: '```plantuml\n@startuml\n[*] --> State1\nState1 --> State2 : Transition\n@enduml\n'
+      },
+      {
+        id: 'plantuml-component',
+        category: 'PlantUML',
+        title: 'Component Diagram',
+        label: 'Component Diagram',
+        svg: svgPlantUmlComponent,
+        code: '```plantuml\n@startuml\n[Web GUI] --> [App Service] : JSON HTTP\n@enduml\n'
+      },
+      {
+        id: 'plantuml-object',
+        category: 'PlantUML',
+        title: 'Object Diagram',
+        label: 'Object Instances',
+        svg: svgPlantUmlObject,
+        code: '```plantuml\n@startuml\nobject user1 {\n  name = "Alice"\n  role = "Admin"\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-deployment',
+        category: 'PlantUML',
+        title: 'Deployment',
+        label: 'Deployment Nodes',
+        svg: svgPlantUmlDeployment,
+        code: '```plantuml\n@startuml\nnode "Application Server" {\n  component [Web Application]\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-timing',
+        category: 'PlantUML',
+        title: 'Timing Diagram',
+        label: 'Timing Signal Wave',
+        svg: svgPlantUmlTiming,
+        code: '```plantuml\n@startuml\nrobust "WebState" as WS\n@0\nWS is Idle\n@100\nWS is Busy\n@enduml\n'
+      },
+      {
+        id: 'plantuml-network',
+        category: 'PlantUML',
+        title: 'Network (nwdiag)',
+        label: 'Network Map',
+        svg: svgPlantUmlNetwork,
+        code: '```plantuml\n@startuml\nnwdiag {\n  network dmz {\n    web [address = "192.168.1.1"];\n    db  [address = "192.168.1.2"];\n  }\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-mindmap',
+        category: 'PlantUML',
+        title: 'Mindmap',
+        label: 'Mindmap Outline',
+        svg: svgPlantUmlMindmap,
+        code: '```plantuml\n@startmindmap\n* Idea\n** Topic A\n** Topic B\n@endmindmap\n'
+      },
+      {
+        id: 'plantuml-wbs',
+        category: 'PlantUML',
+        title: 'WBS Hierarchy',
+        label: 'Work Breakdown',
+        svg: svgPlantUmlWbs,
+        code: '```plantuml\n@startwbs\n* Project\n** Phase 1\n** Phase 2\n@endwbs\n'
+      },
+      {
+        id: 'plantuml-json',
+        category: 'PlantUML',
+        title: 'JSON Viewer',
+        label: 'JSON Document',
+        svg: svgPlantUmlJson,
+        code: '```plantuml\n@startjson\n{\n  "name": "Widget",\n  "count": 42,\n  "active": true\n}\n@endjson\n'
+      },
+      
+      // Graphviz
+      {
+        id: 'graphviz-digraph',
+        category: 'Graphviz',
+        title: 'Directed Graph',
+        label: 'Directed Graph',
+        svg: svgGraphvizDigraph,
+        code: '```graphviz\ndigraph G {\n  Hello -> World\n}\n```\n'
+      },
+      {
+        id: 'graphviz-tree',
+        category: 'Graphviz',
+        title: 'Hierarchy Tree',
+        label: 'Hierarchy Tree',
+        svg: svgGraphvizTree,
+        code: '```graphviz\ndigraph Tree {\n  node [shape=circle];\n  Parent -> Left;\n  Parent -> Right;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-struct',
+        category: 'Graphviz',
+        title: 'Record Struct',
+        label: 'Record Structure',
+        svg: svgGraphvizStruct,
+        code: '```graphviz\ndigraph G {\n  node [shape=record];\n  struct1 [label="<f0> left|<f1> mid|<f2> right"];\n}\n```\n'
+      },
+      {
+        id: 'graphviz-fsm',
+        category: 'Graphviz',
+        title: 'FSM Diagram',
+        label: 'Finite State Machine',
+        svg: svgGraphvizFsm,
+        code: '```graphviz\ndigraph FSM {\n  rankdir=LR;\n  S1 -> S2 [label="Input"];\n}\n```\n'
+      },
+      {
+        id: 'graphviz-network',
+        category: 'Graphviz',
+        title: 'Network Topology',
+        label: 'Network Topology',
+        svg: svgGraphvizNetwork,
+        code: '```graphviz\ngraph Net {\n  Router -- Switch;\n  Switch -- Client1;\n  Switch -- Client2;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-subgraph',
+        category: 'Graphviz',
+        title: 'Cluster Subgraph',
+        label: 'Grouped Nodes',
+        svg: svgGraphvizSubgraph,
+        code: '```graphviz\ndigraph G {\n  subgraph cluster_0 {\n    label="Group A";\n    A -> B;\n  }\n  B -> C;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-er',
+        category: 'Graphviz',
+        title: 'ER Diagram',
+        label: 'ER (Graphviz style)',
+        svg: svgGraphvizEr,
+        code: '```graphviz\ndigraph ER {\n  node [shape=box]; Entity;\n  node [shape=diamond]; Rel;\n  Entity -> Rel;\n}\n```\n'
+      },
+      
+      // D2
+      {
+        id: 'd2-flow',
+        category: 'D2',
+        title: 'Simple Flow',
+        label: 'Simple Flow',
+        svg: svgD2Flow,
+        code: '```d2\nx -> y: hello world\n```\n'
+      },
+      {
+        id: 'd2-arch',
+        category: 'D2',
+        title: 'Architecture Diagram',
+        label: 'Architecture Diagram',
+        svg: svgD2Arch,
+        code: '```d2\ncloud platform {\n  app: Application Server\n  db: PostgreSQL Database\n  app -> db\n}\n```\n'
+      },
+      {
+        id: 'd2-sequence',
+        category: 'D2',
+        title: 'Sequence Diagram',
+        label: 'Sequence Diagram',
+        svg: svgD2Sequence,
+        code: '```d2\nclient -> server: Get User Profile\nserver -> client: Profile Data\n```\n'
+      },
+      {
+        id: 'd2-erd',
+        category: 'D2',
+        title: 'ERD Table',
+        label: 'Entity Relationship',
+        svg: svgD2Erd,
+        code: '```d2\nusers: {\n  id: int {constraint: primary_key}\n  name: string\n}\nposts: {\n  id: int {constraint: primary_key}\n  user_id: int\n}\nusers.id -> posts.user_id\n```\n'
+      },
+      {
+        id: 'd2-grid',
+        category: 'D2',
+        title: 'Grid Layout',
+        label: 'Grid Layout',
+        svg: svgD2Grid,
+        code: '```d2\ngrid-demo: {\n  style.layout: grid\n  Box 1\n  Box 2\n}\n```\n'
+      },
+      {
+        id: 'd2-mindmap',
+        category: 'D2',
+        title: 'Mindmap',
+        label: 'Mindmap Outline',
+        svg: svgD2Mindmap,
+        code: '```d2\nmindmap-demo: {\n  shape: mindmap\n  Root\n  Topic A\n  Topic B\n}\n```\n'
+      },
+      {
+        id: 'd2-class',
+        category: 'D2',
+        title: 'Class Diagram',
+        label: 'Object Types',
+        svg: svgD2Class,
+        code: '```d2\nProduct: {\n  sku: string\n  price: float\n}\n```\n'
+      },
+      {
+        id: 'd2-venn',
+        category: 'D2',
+        title: 'Venn Diagram',
+        label: 'Overlap Set',
+        svg: svgD2Venn,
+        code: '```d2\nvenn-demo: {\n  shape: venn\n  A\n  B\n}\n```\n'
+      },
+      
+      // Vega-Lite
+      {
+        id: 'vega-bar',
+        category: 'Vega-Lite',
+        title: 'Bar Chart',
+        label: 'Bar Chart',
+        svg: svgVegaBar,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "a", "type": "nominal"},\n    "y": {"field": "b", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-line',
+        category: 'Vega-Lite',
+        title: 'Line Chart',
+        label: 'Line Chart',
+        svg: svgVegaLine,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10}, {"x": 2, "y": 15}, {"x": 3, "y": 13}\n    ]\n  },\n  "mark": "line",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-scatter',
+        category: 'Vega-Lite',
+        title: 'Scatter Plot',
+        label: 'Scatter Plot',
+        svg: svgVegaScatter,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 1.5}, {"x": 2, "y": 2.5}, {"x": 3, "y": 1.0}\n    ]\n  },\n  "mark": "point",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-area',
+        category: 'Vega-Lite',
+        title: 'Area Chart',
+        label: 'Area Chart',
+        svg: svgVegaArea,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10}, {"x": 2, "y": 15}, {"x": 3, "y": 13}\n    ]\n  },\n  "mark": "area",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-stacked-bar',
+        category: 'Vega-Lite',
+        title: 'Stacked Bar',
+        label: 'Stacked Bar Chart',
+        svg: svgVegaStackedBar,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": "A", "y": 10, "group": "one"},\n      {"x": "A", "y": 15, "group": "two"},\n      {"x": "B", "y": 20, "group": "one"},\n      {"x": "B", "y": 5, "group": "two"}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "x", "type": "nominal"},\n    "y": {"field": "y", "type": "quantitative"},\n    "color": {"field": "group", "type": "nominal"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-pie',
+        category: 'Vega-Lite',
+        title: 'Pie Chart',
+        label: 'Pie Chart',
+        svg: svgVegaPie,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "description": "A simple pie chart.",\n  "data": {\n    "values": [\n      {"category": 1, "value": 4},\n      {"category": 2, "value": 6},\n      {"category": 3, "value": 10}\n    ]\n  },\n  "mark": "arc",\n  "encoding": {\n    "theta": {"field": "value", "type": "quantitative"},\n    "color": {"field": "category", "type": "nominal"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-heatmap',
+        category: 'Vega-Lite',
+        title: 'Heatmap',
+        label: 'Heatmap Matrix',
+        svg: svgVegaHeatmap,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 1, "z": 10},\n      {"x": 1, "y": 2, "z": 20},\n      {"x": 2, "y": 1, "z": 30},\n      {"x": 2, "y": 2, "z": 40}\n    ]\n  },\n  "mark": "rect",\n  "encoding": {\n    "x": {"field": "x", "type": "ordinal"},\n    "y": {"field": "y", "type": "ordinal"},\n    "color": {"field": "z", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-bubble',
+        category: 'Vega-Lite',
+        title: 'Bubble Plot',
+        label: 'Bubble Plot',
+        svg: svgVegaBubble,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10, "size": 100},\n      {"x": 2, "y": 20, "size": 400},\n      {"x": 3, "y": 15, "size": 200}\n    ]\n  },\n  "mark": "point",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"},\n    "size": {"field": "size", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      
+      // ABC Notation
+      {
+        id: 'abc-melody',
+        category: 'ABC Notation',
+        title: 'Simple Tune',
+        label: 'Simple Tune',
+        svg: svgAbcMelody,
+        code: '```abc\nX: 1\nT: Simple Scale\nM: 4/4\nK: C\nC D E F | G A B c |\n```\n'
+      },
+      {
+        id: 'abc-duet',
+        category: 'ABC Notation',
+        title: 'Duet Accord',
+        label: 'Duet Accord',
+        svg: svgAbcDuet,
+        code: '```abc\nX: 2\nT: Simple Duet\nM: 4/4\nK: C\nV:1\nC D E F | G A B c |\nV:2\nE F G A | B c d e |\n```\n'
+      },
+      {
+        id: 'abc-lyric',
+        category: 'ABC Notation',
+        title: 'Folk & Lyrics',
+        label: 'Lyrics Song',
+        svg: svgAbcLyric,
+        code: '```abc\nX: 3\nT: Folk Song\nM: 4/4\nK: C\nC D E C | E G G2 |\nw: Do Re Mi Do | Mi Sol Sol\n```\n'
+      },
+      {
+        id: 'abc-chords',
+        category: 'ABC Notation',
+        title: 'Chords Strum',
+        label: 'Guitar Chords',
+        svg: svgAbcChords,
+        code: '```abc\nX: 4\nT: Chords Strum\nM: 4/4\nK: C\n"C"C D E F | "G"G A B c |\n```\n'
+      },
+      {
+        id: 'abc-polyphony',
+        category: 'ABC Notation',
+        title: 'Polyphony Voices',
+        label: 'Multi-Voice Harmony',
+        svg: svgAbcPolyphony,
+        code: '```abc\nX: 5\nT: Polyphonic Harmony\nM: 4/4\nK: C\n%%score V1 V2\nV:1 clef=treble\nC2 E2 G2 c2 | e4 z4 |\nV:2 clef=bass\nC,,4 E,,4 | G,,4 C,,4 |\n```\n'
+      },
+      {
+        id: 'abc-keysig',
+        category: 'ABC Notation',
+        title: 'Key Signature & Tempo',
+        label: 'Signature and Speed',
+        svg: svgAbcKeySignature,
+        code: '```abc\nX: 6\nT: Major Tune\nM: 3/4\nL: 1/8\nQ: 1/4=120\nK: G\n|: G2 B2 d2 | g4 fg | a2 A2 B2 | c4 z2 :|\n```\n'
+      },
+      
+      // WaveDrom
+      {
+        id: 'wavedrom-timing',
+        category: 'WaveDrom',
+        title: 'Timing Diagram',
+        label: 'Timing Diagram',
+        svg: svgWaveTiming,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk", wave: "p......" },\n  { name: "bus", wave: "x.==.x.", data: ["head", "body"] }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-counter',
+        category: 'WaveDrom',
+        title: 'Binary Counter',
+        label: 'Binary Counter',
+        svg: svgWaveCounter,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk", wave: "p......" },\n  { name: "q",   wave: "01.01.0" }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-bus',
+        category: 'WaveDrom',
+        title: 'Data Bus States',
+        label: 'Data Bus States',
+        svg: svgWaveBus,
+        code: '```wavedrom\n{ signal: [\n  { name: "bus", wave: "x.=.=.x", data: ["read", "write"] }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-reset',
+        category: 'WaveDrom',
+        title: 'Reset Sequence',
+        label: 'Reset & Enable',
+        svg: svgWaveReset,
+        code: '```wavedrom\n{ signal: [\n  { name: "reset",  wave: "1.0.1" },\n  { name: "enable", wave: "0.1.0" }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-glitches',
+        category: 'WaveDrom',
+        title: 'Signal Glitches',
+        label: 'Glitchy Waveform',
+        svg: svgWaveGlitches,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk",    wave: "p......" },\n  { name: "signal", wave: "0.h.l.h.0" }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-complex-bus',
+        category: 'WaveDrom',
+        title: 'Complex Transaction',
+        label: 'Address & Data Buses',
+        svg: svgWaveComplexBus,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk",  wave: "p......" },\n  { name: "addr", wave: "x.=.x.=", data: ["A0", "A1"] },\n  { name: "data", wave: "x...=.x", data: ["D0"] }\n]}\n```\n'
+      },
+      
+      // Markmap
+      {
+        id: 'markmap-mindmap',
+        category: 'Markmap',
+        title: 'Mindmap',
+        label: 'Mindmap',
+        svg: svgMarkmapMindmap,
+        code: '```markmap\n# markmap\n## Features\n- Links\n- Formatting\n```\n'
+      },
+      {
+        id: 'markmap-roadmap',
+        category: 'Markmap',
+        title: 'Roadmap',
+        label: 'Project Roadmap',
+        svg: svgMarkmapRoadmap,
+        code: '```markmap\n# Roadmap\n## Q1\n### Plan\n### Design\n## Q2\n### Build\n```\n'
+      },
+      {
+        id: 'markmap-study',
+        category: 'Markmap',
+        title: 'Study Plan',
+        label: 'Study Topics',
+        svg: svgMarkmapStudy,
+        code: '```markmap\n# Course\n## Math\n### Algebra\n### Calculus\n## Science\n### Physics\n```\n'
+      },
+      {
+        id: 'markmap-stack',
+        category: 'Markmap',
+        title: 'Tech Stack',
+        label: 'Tech Stack',
+        svg: svgMarkmapStack,
+        code: '```markmap\n# stack\n## frontend\n### HTML/JS\n## backend\n### Node.js\n```\n'
+      },
+      {
+        id: 'markmap-checklist',
+        category: 'Markmap',
+        title: 'Checklist Map',
+        label: 'Checkbox Map',
+        svg: svgMarkmapChecklist,
+        code: '```markmap\n# Project Tasks\n## Done\n- [x] Initial design\n- [x] Codebase setup\n## Pending\n- [ ] Write tests\n- [ ] Deploy release\n```\n'
+      },
+      {
+        id: 'markmap-code',
+        category: 'Markmap',
+        title: 'Code Mindmap',
+        label: 'Inline Code Blocks',
+        svg: svgMarkmapCode,
+        code: '```markmap\n# Development\n## Languages\n- `JavaScript`\n- `Python`\n## Functions\n- `main()`\n- `helper_func()`\n```\n'
+      }
+    ];
+    
+    let activeCategory = 'Mermaid';
+    let selectedTemplate = null;
+    
+    function renderSidebar() {
+      sidebar.textContent = '';
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'diagram-sidebar-btn';
+        if (cat === activeCategory) btn.classList.add('is-active');
+        btn.textContent = cat;
+        btn.addEventListener('click', () => {
+          activeCategory = cat;
+          renderSidebar();
+          renderGrid();
+        });
+        sidebar.appendChild(btn);
+      });
+    }
+    
+    function renderGrid() {
+      grid.textContent = '';
+      const query = searchInput.value.toLowerCase().trim();
+      
+      const filtered = templates.filter(t => {
+        const matchesCategory = activeCategory === t.category;
+        const matchesSearch = !query || 
+          t.title.toLowerCase().includes(query) || 
+          t.label.toLowerCase().includes(query) ||
+          t.category.toLowerCase().includes(query);
+        return matchesCategory && matchesSearch;
+      });
+      
+      if (filtered.length === 0) {
+        emptyMessage.style.display = 'block';
+      } else {
+        emptyMessage.style.display = 'none';
+      }
+      
+      filtered.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'diagram-card';
+        if (selectedTemplate && selectedTemplate.id === t.id) {
+          card.classList.add('is-selected');
+        }
+        
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'diagram-card-preview';
+        
+        let displayHtml = t.svg;
+        if (t.id === 'mermaid-sequence' || t.id === 'mermaid-er') {
+          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
+            <div style="font-size:10px; font-weight:bold; color:#ff4081; margin-bottom:4px;">${t.title}</div>
+            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
+          </div>`;
+        } else {
+          displayHtml = `<div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
+            <div style="font-size:10px; color:var(--text-color); margin-bottom:4px;">${t.title}</div>
+            <div style="flex:1; width:100%; display:flex; align-items:center; justify-content:center;">${t.svg}</div>
+          </div>`;
+        }
+        
+        previewDiv.innerHTML = displayHtml;
+        
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'diagram-card-label';
+        labelDiv.textContent = t.label;
+        
+        card.appendChild(previewDiv);
+        card.appendChild(labelDiv);
+        
+        card.addEventListener('click', () => {
+          selectedTemplate = t;
+          const cards = grid.querySelectorAll('.diagram-card');
+          cards.forEach(c => c.classList.remove('is-selected'));
+          card.classList.add('is-selected');
+          
+          if (previewCode) previewCode.value = t.code.trim();
+          previewContainer.innerHTML = t.svg;
+          confirmBtn.disabled = false;
+        });
+        
+        grid.appendChild(card);
+      });
+    }
+
+
+    
+    renderSidebar();
+    renderGrid();
+    
+    searchInput.addEventListener('input', renderGrid);
+    
+    function insertTemplate() {
+      if (!selectedTemplate) return;
+      modal.style.display = 'none';
+      cleanup();
+      insertMarkdownBlock(selectedTemplate.code, start, end);
+    }
+    
+    function closeModal() {
+      modal.style.display = 'none';
+      cleanup();
+    }
+    
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    }
+    
+    function cleanup() {
+      confirmBtn.removeEventListener('click', insertTemplate);
+      cancelBtn.removeEventListener('click', closeModal);
+      closeBtn.removeEventListener('click', closeModal);
+      modal.removeEventListener('keydown', onKey);
+      searchInput.removeEventListener('input', renderGrid);
+    }
+    
+    confirmBtn.addEventListener('click', insertTemplate);
+    cancelBtn.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('keydown', onKey);
+  }
+
   function insertMarkdownLink() {
     const modal = document.getElementById('link-modal');
     const urlInput = document.getElementById('link-modal-url');
@@ -7303,6 +8229,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     else if (action === 'symbols') openSymbolsModal();
     else if (action === 'alert') openAlertModal();
+    else if (action === 'diagram') openDiagramModal();
     else if (action === 'terminal-block') insertMarkdownBlock('```bash\nnpm run dev\n```\n');
     else if (action === 'fullscreen') {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
@@ -10168,7 +11095,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function svgToCanvas(svgEl) {
     return new Promise((resolve, reject) => {
       const bbox = svgEl.getBoundingClientRect();
-      const scale = window.devicePixelRatio || 1;
+      const scale = 2; // 2x scale for high quality without excessive file size
       const width  = Math.max(Math.round(bbox.width),  1);
       const height = Math.max(Math.round(bbox.height), 1);
 
@@ -10685,6 +11612,169 @@ document.addEventListener("DOMContentLoaded", async function () {
   // PLANTUML TOOLBARS & EXPORT ENGINE
   // ==========================================================================
 
+  /** Adds a solid white background to a transparent PNG blob. */
+  function addWhiteBackgroundToPngBlob(blob) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(newBlob => {
+            if (newBlob) {
+              resolve(newBlob);
+            } else {
+              reject(new Error('Canvas toBlob failed'));
+            }
+          }, 'image/png');
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image for background addition'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function getSvgOriginalDimensions(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const text = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (!svg) return null;
+      
+      let width = parseFloat(svg.getAttribute('width'));
+      let height = parseFloat(svg.getAttribute('height'));
+      
+      const viewBox = svg.getAttribute('viewBox');
+      if (viewBox) {
+        const parts = viewBox.trim().split(/\s+/);
+        if (parts.length === 4) {
+          const vbWidth = parseFloat(parts[2]);
+          const vbHeight = parseFloat(parts[3]);
+          if (!isNaN(vbWidth) && !isNaN(vbHeight)) {
+            width = vbWidth;
+            height = vbHeight;
+          }
+        }
+      }
+      
+      if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+        return { width, height, text };
+      }
+    } catch (e) {
+      console.warn('Failed to parse SVG dimensions:', e);
+    }
+    return null;
+  }
+
+  /** Generates a high-quality PNG blob from a rendered diagram image. */
+  async function getDiagramPngBlob(imgEl, pngUrl) {
+    // Attempt to fetch SVG text to parse the exact original coordinates (viewBox)
+    const originalDim = await getSvgOriginalDimensions(imgEl.src);
+
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        const scale = 2; // 2x scale for high quality without being excessively large
+        
+        let width = imgEl.naturalWidth || imgEl.width || 800;
+        let height = imgEl.naturalHeight || imgEl.height || 600;
+        
+        if (originalDim) {
+          width = originalDim.width;
+          height = originalDim.height;
+        }
+        
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.scale(scale, scale);
+        
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(blob => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Canvas toBlob failed'));
+            }
+          }, 'image/png');
+        };
+        img.onerror = () => {
+          // Fallback to direct imgEl drawing if data URL loading fails
+          try {
+            ctx.drawImage(imgEl, 0, 0, width, height);
+            canvas.toBlob(blob => {
+              if (blob) resolve(blob);
+              else reject(new Error('Canvas toBlob failed'));
+            }, 'image/png');
+          } catch (err) {
+            reject(err);
+          }
+        };
+        
+        if (originalDim && originalDim.text) {
+          const blob = new Blob([originalDim.text], { type: 'image/svg+xml;charset=utf-8' });
+          img.src = URL.createObjectURL(blob);
+        } else {
+          img.src = imgEl.src;
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  /** Helper to download an SVG diagram with fallback if fetch fails. */
+  async function downloadSvgHelper(imgEl, filename, btn, originalHtml) {
+    try {
+      const res = await fetch(imgEl.src);
+      if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
+    } catch (e) {
+      console.warn('SVG fetch download failed, attempting fallback direct link download:', e);
+      try {
+        const a = document.createElement('a');
+        a.href = imgEl.src;
+        a.download = filename;
+        a.target = '_blank';
+        a.click();
+        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      } catch (err) {
+        console.error('SVG download completely failed:', err);
+        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+      }
+      setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
+    }
+  }
+
   /** Downloads the PlantUML diagram in the given container as a PNG file. */
   async function downloadPlantumlPng(container, btn) {
     const imgEl = container.querySelector('img');
@@ -10693,8 +11783,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
-      const res = await fetch(pngUrl);
-      const blob = await res.blob();
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -10717,8 +11806,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
-      const res = await fetch(pngUrl);
-      const blob = await res.blob();
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
       try {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
@@ -10741,21 +11829,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!imgEl) return;
     const original = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
-    try {
-      const res = await fetch(imgEl.src);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `diagram-${Date.now()}.svg`;
-      a.click();
-      URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
-      setTimeout(() => { btn.innerHTML = original; }, 1500);
-    } catch (e) {
-      console.error('PlantUML SVG export failed:', e);
-      btn.innerHTML = original;
-    }
+    await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
   /** Opens the zoom modal with the PlantUML image from the given container. */
@@ -10842,8 +11916,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
-      const res = await fetch(pngUrl);
-      const blob = await res.blob();
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -10866,8 +11939,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
-      const res = await fetch(pngUrl);
-      const blob = await res.blob();
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
       try {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
@@ -10890,21 +11962,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!imgEl) return;
     const original = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
-    try {
-      const res = await fetch(imgEl.src);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `diagram-${Date.now()}.svg`;
-      a.click();
-      URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
-      setTimeout(() => { btn.innerHTML = original; }, 1500);
-    } catch (e) {
-      console.error('D2 SVG export failed:', e);
-      btn.innerHTML = original;
-    }
+    await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
   /** Opens the zoom modal with the D2 image from the given container. */
@@ -10970,6 +12028,139 @@ document.addEventListener("DOMContentLoaded", async function () {
       btnSvg.setAttribute('aria-label', 'Download SVG');
       btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
       btnSvg.addEventListener('click', () => downloadD2Svg(container, btnSvg));
+
+      toolbar.appendChild(btnZoom);
+      toolbar.appendChild(btnCopy);
+      toolbar.appendChild(btnPng);
+      toolbar.appendChild(btnSvg);
+      container.appendChild(toolbar);
+    });
+  }
+
+  // ==========================================================================
+  // GRAPHVIZ TOOLBARS & EXPORT ENGINE
+  // ==========================================================================
+
+  /** Downloads the Graphviz diagram in the given container as a PNG file. */
+  async function downloadGraphvizPng(container, btn) {
+    const imgEl = container.querySelector('img');
+    if (!imgEl) return;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    try {
+      const pngUrl = imgEl.src.replace('/svg/', '/png/');
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diagram-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      setTimeout(() => { btn.innerHTML = original; }, 1500);
+    } catch (e) {
+      console.error('Graphviz PNG export failed:', e);
+      btn.innerHTML = original;
+    }
+  }
+
+  /** Copies the Graphviz diagram in the given container as a PNG image to the clipboard. */
+  async function copyGraphvizImage(container, btn) {
+    const imgEl = container.querySelector('img');
+    if (!imgEl) return;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    try {
+      const pngUrl = imgEl.src.replace('/svg/', '/png/');
+      const blob = await getDiagramPngBlob(imgEl, pngUrl);
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+      } catch (clipErr) {
+        console.error('Clipboard write failed:', clipErr);
+        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+      }
+      setTimeout(() => { btn.innerHTML = original; }, 1800);
+    } catch (e) {
+      console.error('Graphviz copy failed:', e);
+      btn.innerHTML = original;
+    }
+  }
+
+  /** Downloads the SVG source of a Graphviz diagram. */
+  async function downloadGraphvizSvg(container, btn) {
+    const imgEl = container.querySelector('img');
+    if (!imgEl) return;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
+  }
+
+  /** Opens the zoom modal with the Graphviz image from the given container. */
+  function openGraphvizZoomModal(container) {
+    const imgEl = container.querySelector('img');
+    if (!imgEl) return;
+
+    mermaidModalDiagram.textContent = '';
+    modalZoomScale = 1;
+    modalPanX = 0;
+    modalPanY = 0;
+
+    const imgClone = imgEl.cloneNode(true);
+    imgClone.removeAttribute('width');
+    imgClone.removeAttribute('height');
+    imgClone.style.width  = 'auto';
+    imgClone.style.height = 'auto';
+    imgClone.style.maxWidth  = '80vw';
+    imgClone.style.maxHeight = '60vh';
+    imgClone.style.transformOrigin = 'center';
+    imgClone.draggable = false;
+    imgClone.addEventListener('dragstart', e => e.preventDefault());
+    mermaidModalDiagram.appendChild(imgClone);
+    modalCurrentSvgEl = imgClone;
+
+    mermaidZoomModal.classList.add('active');
+  }
+
+  function addGraphvizToolbars() {
+    markdownPreview.querySelectorAll('.graphviz-container').forEach(container => {
+      if (container.querySelector('.graphviz-toolbar')) return; // already added
+      const imgEl = container.querySelector('img');
+      if (!imgEl) return; // diagram not yet rendered or failed
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'graphviz-toolbar';
+      toolbar.setAttribute('aria-label', 'Diagram actions');
+
+      const btnZoom = document.createElement('button');
+      btnZoom.className = 'graphviz-toolbar-btn';
+      btnZoom.title = 'Zoom diagram';
+      btnZoom.setAttribute('aria-label', 'Zoom diagram');
+      btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+      btnZoom.addEventListener('click', () => openGraphvizZoomModal(container));
+
+      const btnPng = document.createElement('button');
+      btnPng.className = 'graphviz-toolbar-btn';
+      btnPng.title = 'Download PNG';
+      btnPng.setAttribute('aria-label', 'Download PNG');
+      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
+      btnPng.addEventListener('click', () => downloadGraphvizPng(container, btnPng));
+
+      const btnCopy = document.createElement('button');
+      btnCopy.className = 'graphviz-toolbar-btn';
+      btnCopy.title = 'Copy image to clipboard';
+      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
+      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
+      btnCopy.addEventListener('click', () => copyGraphvizImage(container, btnCopy));
+
+      const btnSvg = document.createElement('button');
+      btnSvg.className = 'graphviz-toolbar-btn';
+      btnSvg.title = 'Download SVG';
+      btnSvg.setAttribute('aria-label', 'Download SVG');
+      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
+      btnSvg.addEventListener('click', () => downloadGraphvizSvg(container, btnSvg));
 
       toolbar.appendChild(btnZoom);
       toolbar.appendChild(btnCopy);

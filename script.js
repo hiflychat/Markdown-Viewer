@@ -5663,6 +5663,28 @@ document.addEventListener("DOMContentLoaded", async function () {
     const svgMarkmapStudy = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#ef6c00" font-weight="bold">Course</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#ef6c00" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#ef6c00" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#ef6c00"/><circle cx="90" cy="90" r="3" fill="#ef6c00"/><text x="96" y="33" font-size="7" font-family="sans-serif">Math</text><text x="96" y="93" font-size="7" font-family="sans-serif">Science</text></svg>`;
     const svgMarkmapStack = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="30" height="18" rx="2" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5"/><text x="25" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#0288d1" font-weight="bold">Stack</text><path d="M 40 59 C 60 59, 70 30, 90 30" fill="none" stroke="#0288d1" stroke-width="1.5"/><path d="M 40 59 C 60 59, 70 90, 90 90" fill="none" stroke="#0288d1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#0288d1"/><circle cx="90" cy="90" r="3" fill="#0288d1"/><text x="96" y="33" font-size="7" font-family="sans-serif">Web</text><text x="96" y="93" font-size="7" font-family="sans-serif">Mobile</text></svg>`;
 
+    // D2 additional (Aesthetic: monospace font, bold slate outlines, soft purple/blue/green boxes)
+    const svgD2Mindmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="50" y="45" width="60" height="30" fill="#eceff1" stroke="#333" stroke-width="2"/><text x="80" y="63" font-size="9" text-anchor="middle" font-family="monospace" fill="#333" font-weight="bold">Root</text><path d="M 50 60 L 25 35" stroke="#333" stroke-width="1.5"/><path d="M 50 60 L 25 85" stroke="#333" stroke-width="1.5"/><path d="M 110 60 L 135 60" stroke="#333" stroke-width="1.5"/><rect x="5" y="20" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/><rect x="5" y="75" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/><rect x="135" y="50" width="20" height="20" fill="#eceff1" stroke="#333" stroke-width="1.5"/></svg>`;
+    const svgD2Class = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="25" y="20" width="110" height="80" fill="#f5f5f5" stroke="#455a64" stroke-width="2" rx="2"/><line x1="25" y1="45" x2="135" y2="45" stroke="#455a64" stroke-width="1.5"/><line x1="25" y1="70" x2="135" y2="70" stroke="#455a64" stroke-width="1.5"/><text x="80" y="36" font-size="9" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">Product</text><text x="32" y="58" font-size="7" font-family="monospace" fill="#333">sku: string</text><text x="32" y="85" font-size="7" font-family="monospace" fill="#333">price: float</text></svg>`;
+    const svgD2Venn = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="65" cy="60" r="30" fill="#2196f3" opacity="0.5" stroke="#1976d2" stroke-width="1.5"/><circle cx="95" cy="60" r="30" fill="#ff9800" opacity="0.5" stroke="#f57c00" stroke-width="1.5"/><text x="50" y="63" font-size="8" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">A</text><text x="110" y="63" font-size="8" text-anchor="middle" font-family="monospace" fill="#000" font-weight="bold">B</text></svg>`;
+
+    // Vega-Lite additional (Aesthetic: statistical charts)
+    const svgVegaPie = `<svg viewBox="0 0 160 120" width="100%" height="100%"><circle cx="80" cy="60" r="35" fill="#e91e63" stroke="#fff" stroke-width="1"/><path d="M 80 60 L 80 25 A 35 35 0 0 1 115 60 Z" fill="#9c27b0" stroke="#fff" stroke-width="1"/><path d="M 80 60 L 115 60 A 35 35 0 0 1 80 95 Z" fill="#00bcd4" stroke="#fff" stroke-width="1"/></svg>`;
+    const svgVegaHeatmap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="30" y="20" width="30" height="25" fill="#e0f2f1"/><rect x="65" y="20" width="30" height="25" fill="#80cbc4"/><rect x="100" y="20" width="30" height="25" fill="#004d40"/><rect x="30" y="50" width="30" height="25" fill="#b2dfdb"/><rect x="65" y="50" width="30" height="25" fill="#26a69a"/><rect x="100" y="50" width="30" height="25" fill="#00796b"/><rect x="30" y="80" width="30" height="25" fill="#e0f2f1"/><rect x="65" y="80" width="30" height="25" fill="#80cbc4"/><rect x="100" y="80" width="30" height="25" fill="#004d40"/></svg>`;
+    const svgVegaBubble = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="25" y1="20" x2="25" y2="95" stroke="#333" stroke-width="1.5"/><line x1="25" y1="95" x2="145" y2="95" stroke="#333" stroke-width="1.5"/><circle cx="45" cy="75" r="5" fill="#ff5722" opacity="0.7"/><circle cx="65" cy="45" r="12" fill="#ff5722" opacity="0.7"/><circle cx="95" cy="80" r="8" fill="#ff5722" opacity="0.7"/><circle cx="120" cy="35" r="16" fill="#ff5722" opacity="0.7"/></svg>`;
+
+    // ABC Notation additional (Aesthetic: musical notation stave and notes)
+    const svgAbcPolyphony = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><path d="M 45 40 L 45 15 A 8 8 0 1 1 35 25" fill="#000"/><path d="M 45 50 L 45 75 A 8 8 0 1 1 35 68" fill="#000"/><path d="M 95 30 L 95 10 A 8 8 0 1 1 85 18" fill="#000"/><path d="M 95 60 L 95 85 A 8 8 0 1 1 85 78" fill="#000"/></svg>`;
+    const svgAbcKeySignature = `<svg viewBox="0 0 160 120" width="100%" height="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#000" stroke-width="1"/><line x1="10" y1="40" x2="150" y2="40" stroke="#000" stroke-width="1"/><line x1="10" y1="50" x2="150" y2="50" stroke="#000" stroke-width="1"/><line x1="10" y1="60" x2="150" y2="60" stroke="#000" stroke-width="1"/><line x1="10" y1="70" x2="150" y2="70" stroke="#000" stroke-width="1"/><text x="15" y="60" font-size="28" font-family="serif" font-weight="bold" fill="#000">𝄞</text><text x="38" y="38" font-size="12" font-family="serif" font-weight="bold" fill="#000">♯</text><text x="48" y="52" font-size="12" font-family="serif" font-weight="bold" fill="#000">♯</text><path d="M 80 30 L 80 70 A 8 8 0 1 1 70 63" fill="#000"/><path d="M 120 40 L 120 80 A 8 8 0 1 1 110 73" fill="#000"/></svg>`;
+
+    // WaveDrom additional (Aesthetic: digital waveform timing lines)
+    const svgWaveGlitches = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 50 L 50 50 L 52 35 L 54 65 L 56 35 L 58 65 L 60 50 L 100 50 L 102 35 L 104 65 L 106 35 L 108 65 L 110 50 L 140 50" fill="none" stroke="#e91e63" stroke-width="2"/><text x="15" y="25" font-size="8" font-family="sans-serif" fill="#e91e63" font-weight="bold">GLITCH</text></svg>`;
+    const svgWaveComplexBus = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M 20 40 L 40 40 L 45 30 L 75 30 L 80 40 L 110 40 L 115 50 L 140 50 M 20 40 L 40 40 L 45 50 L 75 50 L 80 40 L 110 40 L 115 30 L 140 30" fill="none" stroke="#2196f3" stroke-width="1.8"/><path d="M 20 80 L 50 80 L 55 70 L 95 70 L 100 80 L 140 80 M 20 80 L 50 80 L 55 90 L 95 90 L 100 80 L 140 80" fill="none" stroke="#4caf50" stroke-width="1.8"/><text x="60" y="43" font-size="6" font-family="monospace" text-anchor="middle" fill="#000">ADDR</text><text x="75" y="83" font-size="6" font-family="monospace" text-anchor="middle" fill="#000">DATA</text></svg>`;
+
+    // Markmap additional (Aesthetic: colorful mindmaps, checklist notation)
+    const svgMarkmapChecklist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Tasks</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#5e35b1" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#5e35b1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#5e35b1"/><circle cx="90" cy="90" r="3" fill="#5e35b1"/><text x="96" y="33" font-size="7" font-family="sans-serif">☒ Todo A</text><text x="96" y="93" font-size="7" font-family="sans-serif">☑ Todo B</text></svg>`;
+    const svgMarkmapCode = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#eceff1" stroke="#455a64" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#455a64" font-weight="bold">Project</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#455a64" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#455a64" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#455a64"/><circle cx="90" cy="90" r="3" fill="#455a64"/><text x="96" y="33" font-size="7" font-family="monospace">code()</text><text x="96" y="93" font-size="7" font-family="monospace">test()</text></svg>`;
+
     const templates = [
       // Mermaid
       {
@@ -5753,6 +5775,54 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgMermaidMindmap,
         code: '```mermaid\nmindmap\n  root((Goal))\n    Topic 1\n      Subtopic 1\n    Topic 2\n```\n'
       },
+      {
+        id: 'mermaid-quadrant',
+        category: 'Mermaid',
+        title: 'Quadrant Chart',
+        label: 'Quadrant Chart',
+        svg: svgMermaidQuadrant,
+        code: '```mermaid\nquadrantChart\n    title Reach and Engagement\n    x-axis Low Reach --> High Reach\n    y-axis Low Engagement --> High Engagement\n    quadrant-1 We should expand\n    quadrant-2 Need to promote\n    quadrant-3 Re-evaluate\n    quadrant-4 Keep improving\n    Campaign A: [0.3, 0.6]\n    Campaign B: [0.45, 0.23]\n```\n'
+      },
+      {
+        id: 'mermaid-xy',
+        category: 'Mermaid',
+        title: 'XY Chart',
+        label: 'XY Chart',
+        svg: svgMermaidXy,
+        code: '```mermaid\nxychart-beta\n    title "Sales Revenue"\n    x-axis [jan, feb, mar, apr, may]\n    y-axis "Revenue ($)" 0 --> 1000\n    bar [500, 600, 700, 800, 900]\n    line [480, 580, 710, 820, 910]\n```\n'
+      },
+      {
+        id: 'mermaid-requirement',
+        category: 'Mermaid',
+        title: 'Requirements',
+        label: 'Requirements Diagram',
+        svg: svgMermaidRequirement,
+        code: '```mermaid\nrequirementDiagram\n    requirement test_req {\n    id: 1\n    text: "Verify system response time."\n    risk: medium\n    verifymethod: test\n    }\n    element test_case {\n    type: "simulation"\n    }\n    test_case - satisfies -> test_req\n```\n'
+      },
+      {
+        id: 'mermaid-c4',
+        category: 'Mermaid',
+        title: 'C4 Container',
+        label: 'C4 Container Diagram',
+        svg: svgMermaidC4,
+        code: '```mermaid\nC4Context\n    title System Context for Internet Banking\n    Enterprise_Boundary(b1, "Banking") {\n        System(banking_sys, "Banking System", "Stores accounts")\n    }\n```\n'
+      },
+      {
+        id: 'mermaid-sankey',
+        category: 'Mermaid',
+        title: 'Sankey Chart',
+        label: 'Sankey Flow Chart',
+        svg: svgMermaidSankey,
+        code: '```mermaid\nsankey-beta\n    source,target,value\n    Electricity,Grid,120\n    Gas,Grid,80\n```\n'
+      },
+      {
+        id: 'mermaid-timeline',
+        category: 'Mermaid',
+        title: 'Timeline',
+        label: 'Timeline Diagram',
+        svg: svgMermaidTimeline,
+        code: '```mermaid\ntimeline\n    title History of Web\n    2000 : HTML4\n    2014 : HTML5\n```\n'
+      },
       
       // PlantUML
       {
@@ -5803,6 +5873,62 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgPlantUmlComponent,
         code: '```plantuml\n@startuml\n[Web GUI] --> [App Service] : JSON HTTP\n@enduml\n'
       },
+      {
+        id: 'plantuml-object',
+        category: 'PlantUML',
+        title: 'Object Diagram',
+        label: 'Object Instances',
+        svg: svgPlantUmlObject,
+        code: '```plantuml\n@startuml\nobject user1 {\n  name = "Alice"\n  role = "Admin"\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-deployment',
+        category: 'PlantUML',
+        title: 'Deployment',
+        label: 'Deployment Nodes',
+        svg: svgPlantUmlDeployment,
+        code: '```plantuml\n@startuml\nnode "Application Server" {\n  component [Web Application]\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-timing',
+        category: 'PlantUML',
+        title: 'Timing Diagram',
+        label: 'Timing Signal Wave',
+        svg: svgPlantUmlTiming,
+        code: '```plantuml\n@startuml\nrobust "WebState" as WS\n@0\nWS is Idle\n@100\nWS is Busy\n@enduml\n'
+      },
+      {
+        id: 'plantuml-network',
+        category: 'PlantUML',
+        title: 'Network (nwdiag)',
+        label: 'Network Map',
+        svg: svgPlantUmlNetwork,
+        code: '```plantuml\n@startuml\nnwdiag {\n  network dmz {\n    web [address = "192.168.1.1"];\n    db  [address = "192.168.1.2"];\n  }\n}\n@enduml\n'
+      },
+      {
+        id: 'plantuml-mindmap',
+        category: 'PlantUML',
+        title: 'Mindmap',
+        label: 'Mindmap Outline',
+        svg: svgPlantUmlMindmap,
+        code: '```plantuml\n@startmindmap\n* Idea\n** Topic A\n** Topic B\n@endmindmap\n'
+      },
+      {
+        id: 'plantuml-wbs',
+        category: 'PlantUML',
+        title: 'WBS Hierarchy',
+        label: 'Work Breakdown',
+        svg: svgPlantUmlWbs,
+        code: '```plantuml\n@startwbs\n* Project\n** Phase 1\n** Phase 2\n@endwbs\n'
+      },
+      {
+        id: 'plantuml-json',
+        category: 'PlantUML',
+        title: 'JSON Viewer',
+        label: 'JSON Document',
+        svg: svgPlantUmlJson,
+        code: '```plantuml\n@startjson\n{\n  "name": "Widget",\n  "count": 42,\n  "active": true\n}\n@endjson\n'
+      },
       
       // Graphviz
       {
@@ -5844,6 +5970,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: 'Network Topology',
         svg: svgGraphvizNetwork,
         code: '```graphviz\ngraph Net {\n  Router -- Switch;\n  Switch -- Client1;\n  Switch -- Client2;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-subgraph',
+        category: 'Graphviz',
+        title: 'Cluster Subgraph',
+        label: 'Grouped Nodes',
+        svg: svgGraphvizSubgraph,
+        code: '```graphviz\ndigraph G {\n  subgraph cluster_0 {\n    label="Group A";\n    A -> B;\n  }\n  B -> C;\n}\n```\n'
+      },
+      {
+        id: 'graphviz-er',
+        category: 'Graphviz',
+        title: 'ER Diagram',
+        label: 'ER (Graphviz style)',
+        svg: svgGraphvizEr,
+        code: '```graphviz\ndigraph ER {\n  node [shape=box]; Entity;\n  node [shape=diamond]; Rel;\n  Entity -> Rel;\n}\n```\n'
       },
       
       // D2
@@ -5887,6 +6029,30 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgD2Grid,
         code: '```d2\ngrid-demo: {\n  style.layout: grid\n  Box 1\n  Box 2\n}\n```\n'
       },
+      {
+        id: 'd2-mindmap',
+        category: 'D2',
+        title: 'Mindmap',
+        label: 'Mindmap Outline',
+        svg: svgD2Mindmap,
+        code: '```d2\nmindmap-demo: {\n  shape: mindmap\n  Root\n  Topic A\n  Topic B\n}\n```\n'
+      },
+      {
+        id: 'd2-class',
+        category: 'D2',
+        title: 'Class Diagram',
+        label: 'Object Types',
+        svg: svgD2Class,
+        code: '```d2\nProduct: {\n  sku: string\n  price: float\n}\n```\n'
+      },
+      {
+        id: 'd2-venn',
+        category: 'D2',
+        title: 'Venn Diagram',
+        label: 'Overlap Set',
+        svg: svgD2Venn,
+        code: '```d2\nvenn-demo: {\n  shape: venn\n  A\n  B\n}\n```\n'
+      },
       
       // Vega-Lite
       {
@@ -5929,6 +6095,30 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgVegaStackedBar,
         code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": "A", "y": 10, "group": "one"},\n      {"x": "A", "y": 15, "group": "two"},\n      {"x": "B", "y": 20, "group": "one"},\n      {"x": "B", "y": 5, "group": "two"}\n    ]\n  },\n  "mark": "bar",\n  "encoding": {\n    "x": {"field": "x", "type": "nominal"},\n    "y": {"field": "y", "type": "quantitative"},\n    "color": {"field": "group", "type": "nominal"}\n  }\n}\n```\n'
       },
+      {
+        id: 'vega-pie',
+        category: 'Vega-Lite',
+        title: 'Pie Chart',
+        label: 'Pie Chart',
+        svg: svgVegaPie,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "description": "A simple pie chart.",\n  "data": {\n    "values": [\n      {"category": 1, "value": 4},\n      {"category": 2, "value": 6},\n      {"category": 3, "value": 10}\n    ]\n  },\n  "mark": "arc",\n  "encoding": {\n    "theta": {"field": "value", "type": "quantitative"},\n    "color": {"field": "category", "type": "nominal"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-heatmap',
+        category: 'Vega-Lite',
+        title: 'Heatmap',
+        label: 'Heatmap Matrix',
+        svg: svgVegaHeatmap,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 1, "z": 10},\n      {"x": 1, "y": 2, "z": 20},\n      {"x": 2, "y": 1, "z": 30},\n      {"x": 2, "y": 2, "z": 40}\n    ]\n  },\n  "mark": "rect",\n  "encoding": {\n    "x": {"field": "x", "type": "ordinal"},\n    "y": {"field": "y", "type": "ordinal"},\n    "color": {"field": "z", "type": "quantitative"}\n  }\n}\n```\n'
+      },
+      {
+        id: 'vega-bubble',
+        category: 'Vega-Lite',
+        title: 'Bubble Plot',
+        label: 'Bubble Plot',
+        svg: svgVegaBubble,
+        code: '```vega-lite\n{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",\n  "data": {\n    "values": [\n      {"x": 1, "y": 10, "size": 100},\n      {"x": 2, "y": 20, "size": 400},\n      {"x": 3, "y": 15, "size": 200}\n    ]\n  },\n  "mark": "point",\n  "encoding": {\n    "x": {"field": "x", "type": "quantitative"},\n    "y": {"field": "y", "type": "quantitative"},\n    "size": {"field": "size", "type": "quantitative"}\n  }\n}\n```\n'
+      },
       
       // ABC Notation
       {
@@ -5962,6 +6152,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: 'Guitar Chords',
         svg: svgAbcChords,
         code: '```abc\nX: 4\nT: Chords Strum\nM: 4/4\nK: C\n"C"C D E F | "G"G A B c |\n```\n'
+      },
+      {
+        id: 'abc-polyphony',
+        category: 'ABC Notation',
+        title: 'Polyphony Voices',
+        label: 'Multi-Voice Harmony',
+        svg: svgAbcPolyphony,
+        code: '```abc\nX: 5\nT: Polyphonic Harmony\nM: 4/4\nK: C\n%%score V1 V2\nV:1 clef=treble\nC2 E2 G2 c2 | e4 z4 |\nV:2 clef=bass\nC,,4 E,,4 | G,,4 C,,4 |\n```\n'
+      },
+      {
+        id: 'abc-keysig',
+        category: 'ABC Notation',
+        title: 'Key Signature & Tempo',
+        label: 'Signature and Speed',
+        svg: svgAbcKeySignature,
+        code: '```abc\nX: 6\nT: Major Tune\nM: 3/4\nL: 1/8\nQ: 1/4=120\nK: G\n|: G2 B2 d2 | g4 fg | a2 A2 B2 | c4 z2 :|\n```\n'
       },
       
       // WaveDrom
@@ -5997,6 +6203,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         svg: svgWaveReset,
         code: '```wavedrom\n{ signal: [\n  { name: "reset",  wave: "1.0.1" },\n  { name: "enable", wave: "0.1.0" }\n]}\n```\n'
       },
+      {
+        id: 'wavedrom-glitches',
+        category: 'WaveDrom',
+        title: 'Signal Glitches',
+        label: 'Glitchy Waveform',
+        svg: svgWaveGlitches,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk",    wave: "p......" },\n  { name: "signal", wave: "0.h.l.h.0" }\n]}\n```\n'
+      },
+      {
+        id: 'wavedrom-complex-bus',
+        category: 'WaveDrom',
+        title: 'Complex Transaction',
+        label: 'Address & Data Buses',
+        svg: svgWaveComplexBus,
+        code: '```wavedrom\n{ signal: [\n  { name: "clk",  wave: "p......" },\n  { name: "addr", wave: "x.=.x.=", data: ["A0", "A1"] },\n  { name: "data", wave: "x...=.x", data: ["D0"] }\n]}\n```\n'
+      },
       
       // Markmap
       {
@@ -6030,6 +6252,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: 'Tech Stack',
         svg: svgMarkmapStack,
         code: '```markmap\n# stack\n## frontend\n### HTML/JS\n## backend\n### Node.js\n```\n'
+      },
+      {
+        id: 'markmap-checklist',
+        category: 'Markmap',
+        title: 'Checklist Map',
+        label: 'Checkbox Map',
+        svg: svgMarkmapChecklist,
+        code: '```markmap\n# Project Tasks\n## Done\n- [x] Initial design\n- [x] Codebase setup\n## Pending\n- [ ] Write tests\n- [ ] Deploy release\n```\n'
+      },
+      {
+        id: 'markmap-code',
+        category: 'Markmap',
+        title: 'Code Mindmap',
+        label: 'Inline Code Blocks',
+        svg: svgMarkmapCode,
+        code: '```markmap\n# Development\n## Languages\n- `JavaScript`\n- `Python`\n## Functions\n- `main()`\n- `helper_func()`\n```\n'
       }
     ];
     

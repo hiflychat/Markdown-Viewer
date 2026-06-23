@@ -1609,7 +1609,8 @@ a:focus {
 .mermaid-container:hover .mermaid-toolbar,
 .abc-container:hover .abc-toolbar,
 .plantuml-container:hover .plantuml-toolbar,
-.d2-container:hover .d2-toolbar {
+.d2-container:hover .d2-toolbar,
+.graphviz-container:hover .graphviz-toolbar {
   opacity: 1;
 }
 
@@ -1617,7 +1618,8 @@ a:focus {
 .abc-toolbar-btn,
 .stl-toolbar-btn,
 .plantuml-toolbar-btn,
-.d2-toolbar-btn {
+.d2-toolbar-btn,
+.graphviz-toolbar-btn {
   background-color: var(--button-bg);
   border: 1px solid var(--border-color);
   color: var(--text-color);
@@ -1636,7 +1638,8 @@ a:focus {
 .abc-toolbar-btn:hover,
 .stl-toolbar-btn:hover,
 .plantuml-toolbar-btn:hover,
-.d2-toolbar-btn:hover {
+.d2-toolbar-btn:hover,
+.graphviz-toolbar-btn:hover {
   background-color: var(--button-hover);
   color: var(--accent-color);
 }
@@ -1645,7 +1648,8 @@ a:focus {
 .abc-toolbar-btn:active,
 .stl-toolbar-btn:active,
 .plantuml-toolbar-btn:active,
-.d2-toolbar-btn:active {
+.d2-toolbar-btn:active,
+.graphviz-toolbar-btn:active {
   background-color: var(--button-active);
 }
 
@@ -1653,7 +1657,8 @@ a:focus {
 .abc-toolbar-btn i,
 .stl-toolbar-btn i,
 .plantuml-toolbar-btn i,
-.d2-toolbar-btn i {
+.d2-toolbar-btn i,
+.graphviz-toolbar-btn i {
   font-size: 14px;
 }
 
@@ -4233,7 +4238,9 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 [data-theme="dark"] .plantuml-diagram img,
 [data-theme="dark"] .plantuml-img,
 [data-theme="dark"] .d2-diagram img,
-[data-theme="dark"] .d2-img {
+[data-theme="dark"] .d2-img,
+[data-theme="dark"] .graphviz-diagram img,
+[data-theme="dark"] .graphviz-img {
   filter: invert(0.9) hue-rotate(180deg);
 }
 
@@ -4321,6 +4328,74 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   opacity: 1;
 }
 
+/* --- Graphviz Styles --- */
+.graphviz-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1.5em 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+.graphviz-container.is-loading {
+  min-height: 120px;
+  background-color: var(--skeleton-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  animation: skeleton-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.graphviz-container.is-loading .graphviz-diagram {
+  opacity: 0;
+}
+
+.graphviz-container.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--skeleton-glow) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.graphviz-diagram {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.graphviz-diagram img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* --- Graphviz Toolbar Styling --- */
+.graphviz-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.graphviz-container:hover .graphviz-toolbar {
+  opacity: 1;
+}
+
 /* Accessibility: respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .skeleton-placeholder,
@@ -4338,7 +4413,9 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   .plantuml-container.is-loading,
   .plantuml-container.is-loading::after,
   .d2-container.is-loading,
-  .d2-container.is-loading::after {
+  .d2-container.is-loading::after,
+  .graphviz-container.is-loading,
+  .graphviz-container.is-loading::after {
     animation: none;
   }
   .drag-overlay-inner {
@@ -4365,4 +4442,267 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 .abcjs-cursor {
   stroke: red;
   stroke-width: 2px;
+}
+
+/* Insert Diagram Modal Styles */
+.diagram-modal-box {
+  max-width: 1000px !important;
+  width: 95vw;
+  height: 90vh;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagram-modal-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.diagram-modal-sidebar {
+  width: 220px;
+  border-right: 1px solid var(--border-color);
+  padding: 16px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.diagram-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.diagram-sidebar-btn:hover {
+  background-color: var(--button-hover-bg, rgba(120, 120, 120, 0.1));
+}
+
+.diagram-sidebar-btn.is-active {
+  background-color: var(--accent-color, #0076ff);
+  color: #fff;
+}
+
+.diagram-modal-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.diagram-modal-search-wrapper {
+  margin-bottom: 16px;
+}
+
+.diagram-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.diagram-card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--button-bg, rgba(200, 200, 200, 0.05));
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 140px;
+}
+
+.diagram-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-color, #0076ff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.diagram-card.is-selected {
+  border-color: var(--accent-color, #0076ff);
+  outline: 2px solid var(--accent-color, #0076ff);
+}
+
+.diagram-card-preview {
+  flex: 1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  min-height: 90px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+html[data-theme="dark"] .diagram-card-preview {
+  background: #1e1e1e;
+}
+
+.diagram-card-label {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-color);
+  background: var(--header-bg);
+}
+
+.diagram-modal-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.diagram-modal-preview-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.diagram-modal-preview-split {
+  display: flex;
+  gap: 16px;
+  height: 200px;
+}
+
+.diagram-preview-code-pane {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.diagram-preview-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg, #ffffff);
+  color: var(--text-color);
+  outline: none;
+}
+
+html[data-theme="dark"] .diagram-preview-textarea {
+  background: #1e1e1e;
+}
+
+.diagram-preview-container {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #ffffff;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  min-width: 0;
+}
+
+html[data-theme="dark"] .diagram-preview-container {
+  background: #1e1e1e;
+}
+
+.diagram-preview-container svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+.diagram-preview-placeholder {
+  color: var(--text-muted, #888);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Dynamic Card Previews Styling */
+.diagram-card-preview svg,
+.diagram-card-preview img,
+.diagram-card-preview .mermaid-container,
+.diagram-card-preview .mermaid,
+.diagram-card-preview .abc-container,
+.diagram-card-preview .abc-notation,
+.diagram-card-preview .plantuml-container,
+.diagram-card-preview .plantuml-diagram,
+.diagram-card-preview .d2-container,
+.diagram-card-preview .d2-diagram,
+.diagram-card-preview .graphviz-container,
+.diagram-card-preview .graphviz-diagram {
+  max-width: 95% !important;
+  max-height: 80px !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.diagram-card-preview .mermaid-container,
+.diagram-card-preview .plantuml-container,
+.diagram-card-preview .d2-container,
+.diagram-card-preview .graphviz-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Hide card level toolbars to maintain clean card design */
+.diagram-card-preview .mermaid-toolbar,
+.diagram-card-preview .plantuml-toolbar,
+.diagram-card-preview .d2-toolbar,
+.diagram-card-preview .graphviz-toolbar {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .diagram-modal-body {
+    flex-direction: column;
+  }
+  .diagram-modal-sidebar {
+    width: 100%;
+    height: 60px;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px;
+  }
+  .diagram-modal-box {
+    height: 95vh;
+  }
+  .diagram-modal-preview-split {
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+  .diagram-preview-code-pane {
+    height: 100px;
+  }
+  .diagram-preview-container {
+    height: 120px;
+  }
 }
