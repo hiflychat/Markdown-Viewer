@@ -1445,12 +1445,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     let normalized = String(source || '');
     const changes = [];
 
-    if (engine === 'plantuml' && /@startuml[\s\S]*?\bnwdiag\s*\{/i.test(normalized)) {
-      normalized = normalized
-        .replace(/@startuml/i, '')
-        .replace(/\bnwdiag\s*\{/i, '@startnwdiag')
-        .replace(/\n\s*\}\s*\n\s*@enduml\s*$/i, '\n@endnwdiag');
-      changes.push('legacy-nwdiag-wrapper');
+    if (engine === 'plantuml') {
+      if (/@startuml[\s\S]*?\bnwdiag\s*\{/i.test(normalized)) {
+        normalized = normalized
+          .replace(/@startuml/i, '')
+          .replace(/\bnwdiag\s*\{/i, '@startnwdiag')
+          .replace(/\n\s*\}\s*\n\s*@enduml\s*$/i, '\n@endnwdiag');
+        changes.push('legacy-nwdiag-wrapper');
+      }
+      
+      const hasDefaultFont = /skinparam\s+defaultFontName\b/i.test(normalized);
+      if (!hasDefaultFont) {
+        const startRegex = /^(\s*@start[a-z]+)/mi;
+        if (startRegex.test(normalized)) {
+          normalized = normalized.replace(startRegex, '$1\nskinparam defaultFontName sans-serif');
+        } else {
+          normalized = 'skinparam defaultFontName sans-serif\n' + normalized;
+        }
+        changes.push('plantuml-default-font-fallback');
+      }
     }
 
     if (engine === 'd2') {
