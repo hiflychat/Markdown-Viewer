@@ -1606,6 +1606,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const canvasWidth = parseFloat(canvas.getAttribute('width')) || 0;
     const canvasHeight = parseFloat(canvas.getAttribute('height')) || 0;
     canvas.querySelectorAll('rect').forEach(rect => {
+      // D2 uses full-size white rectangles inside masks to reveal connector
+      // paths. Those are rendering primitives, not canvas backgrounds.
+      if (rect.closest('defs, mask, clipPath, clippath')) return;
       const width = parseFloat(rect.getAttribute('width')) || 0;
       const height = parseFloat(rect.getAttribute('height')) || 0;
       if (isLightCanvasFill(rect.getAttribute('fill')) && width >= canvasWidth * 0.9 && height >= canvasHeight * 0.9) {
@@ -11913,10 +11916,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     mermaidZoomModal.setAttribute('aria-hidden', 'true');
     // PERF-007: Clear elements using textContent
     mermaidModalDiagram.textContent = '';
+    mermaidModalDiagram.style.backgroundColor = '';
     modalCurrentSvgEl = null;
     modalZoomScale = 1;
     modalPanX = 0;
     modalPanY = 0;
+  }
+
+  function getDiagramBackdropColor(element) {
+    let current = element;
+    while (current) {
+      const color = getComputedStyle(current).backgroundColor;
+      if (color && color !== 'transparent' && !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/i.test(color)) {
+        return color;
+      }
+      current = current.parentElement;
+    }
+    return getComputedStyle(document.body).backgroundColor;
   }
 
   /** Opens the zoom modal with the SVG from the given container. */
@@ -11931,6 +11947,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     modalPanY = 0;
 
     const svgClone = svgEl.cloneNode(true);
+    const renderedStyle = getComputedStyle(svgEl);
     const viewBox = svgEl.viewBox && svgEl.viewBox.baseVal;
     const renderedBounds = svgEl.getBoundingClientRect();
     const intrinsicWidth = viewBox && viewBox.width > 0 ? viewBox.width : renderedBounds.width;
@@ -11942,8 +11959,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     svgClone.style.maxWidth = 'none';
     svgClone.style.maxHeight = 'none';
     svgClone.style.transformOrigin = 'center';
+    // The preview applies engine-specific theme correction on the SVG root.
+    // Preserve that computed appearance after the clone leaves its renderer
+    // container, where those selectors no longer match.
+    svgClone.style.filter = renderedStyle.filter;
+    svgClone.style.backgroundColor = renderedStyle.backgroundColor;
+    svgClone.style.color = renderedStyle.color;
+    svgClone.style.opacity = renderedStyle.opacity;
     svgClone.dataset.intrinsicWidth = String(Math.max(intrinsicWidth, 1));
     svgClone.dataset.intrinsicHeight = String(Math.max(intrinsicHeight, 1));
+    mermaidModalDiagram.style.backgroundColor = getDiagramBackdropColor(container);
     mermaidModalDiagram.appendChild(svgClone);
     modalCurrentSvgEl = svgClone;
 
