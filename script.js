@@ -3175,37 +3175,21 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (container) container.classList.add('is-loading');
             
             try {
-              let modifiedCode = decodedCode;
-              if (!modifiedCode.toLowerCase().includes('backgroundcolor')) {
-                const lines = modifiedCode.split('\n');
-                let inserted = false;
-                for (let i = 0; i < lines.length; i++) {
-                  const trimmed = lines[i].trim();
-                  if (trimmed.startsWith('@start')) {
-                    lines.splice(i + 1, 0, 'skinparam backgroundColor transparent');
-                    inserted = true;
-                    break;
-                  }
-                }
-                if (!inserted) {
-                  modifiedCode = 'skinparam backgroundColor transparent\n' + modifiedCode;
-                } else {
-                  modifiedCode = lines.join('\n');
-                }
-              }
+              const renderCode = decodedCode;
 
               // Try local compile first if in Neutralino
               if (typeof Neutralino !== 'undefined') {
-                const localSvg = await compileDiagramLocally('plantuml', modifiedCode);
+                const localSvg = await compileDiagramLocally('plantuml', renderCode);
                 if (localSvg) {
                   node.innerHTML = localSvg;
+                  normalizePlantUmlSvg(node, renderCode);
                   if (container) container.classList.remove('is-loading');
                   addPlantumlToolbars();
                   continue;
                 }
               }
 
-              const encoded = encodePlantUML(modifiedCode);
+              const encoded = encodePlantUML(renderCode);
               const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
               
               try {
@@ -3213,11 +3197,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 if (!res.ok) throw new Error();
                 const svgText = await res.text();
                 node.innerHTML = svgText;
-                const svgEl = node.querySelector('svg');
-                if (svgEl) {
-                  svgEl.style.maxWidth = '100%';
-                  svgEl.style.height = 'auto';
-                }
+                normalizePlantUmlSvg(node, renderCode);
                 if (container) container.classList.remove('is-loading');
                 addPlantumlToolbars();
               } catch (err) {
@@ -5581,6 +5561,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     return clean;
   }
 
+  function normalizePlantUmlSvg(container, sourceCode, constrainHeight = false) {
+    const svg = container ? container.querySelector('svg') : null;
+    if (!svg) return null;
+
+    const hasExplicitBackground = typeof sourceCode === 'string' &&
+      sourceCode.toLowerCase().includes('backgroundcolor');
+    if (!hasExplicitBackground) {
+      svg.style.background = 'transparent';
+    }
+
+    svg.style.maxWidth = '100%';
+    svg.style.width = 'auto';
+    svg.style.height = 'auto';
+    if (constrainHeight) {
+      svg.style.maxHeight = '100%';
+    }
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    return svg;
+  }
+
   function getDiagramApiUrl(template, theme) {
     if (typeof pako === 'undefined') {
       return null;
@@ -6497,8 +6497,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             const svgContainer = previewDiv.querySelector('.diagram-svg-container');
             if (svgContainer) {
               svgContainer.innerHTML = svgText;
-              const svgEl = svgContainer.querySelector('svg');
-              if (svgEl) {
+              const svgEl = t.category === 'PlantUML'
+                ? normalizePlantUmlSvg(svgContainer, t.code, true)
+                : svgContainer.querySelector('svg');
+              if (svgEl && t.category !== 'PlantUML') {
                 svgEl.style.maxWidth = '100%';
                 svgEl.style.maxHeight = '100%';
                 svgEl.style.width = 'auto';
@@ -6539,8 +6541,10 @@ document.addEventListener("DOMContentLoaded", async function () {
               const svgContainer = previewContainer.querySelector('.diagram-svg-container');
               if (svgContainer) {
                 svgContainer.innerHTML = svgText;
-                const svgEl = svgContainer.querySelector('svg');
-                if (svgEl) {
+                const svgEl = t.category === 'PlantUML'
+                  ? normalizePlantUmlSvg(svgContainer, t.code, true)
+                  : svgContainer.querySelector('svg');
+                if (svgEl && t.category !== 'PlantUML') {
                   svgEl.style.maxWidth = '100%';
                   svgEl.style.maxHeight = '100%';
                   svgEl.style.width = 'auto';
