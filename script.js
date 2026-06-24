@@ -1421,8 +1421,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         return await fetchDiagramSvgRequest(getUrl, { method: 'GET' }, adapter.label);
       } catch (error) {
         getError = error;
-        const definitiveClientError = error.status >= 400 && error.status < 500 && ![408, 414, 429].includes(error.status);
-        if (definitiveClientError) throw error;
       }
     }
 
@@ -1443,6 +1441,42 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  function normalizeDiagramSourceForRenderer(engine, source) {
+    let normalized = String(source || '');
+    const changes = [];
+
+    if (engine === 'plantuml' && /@startuml[\s\S]*?\bnwdiag\s*\{/i.test(normalized)) {
+      normalized = normalized
+        .replace(/@startuml/i, '')
+        .replace(/\bnwdiag\s*\{/i, '@startnwdiag')
+        .replace(/\n\s*\}\s*\n\s*@enduml\s*$/i, '\n@endnwdiag');
+      changes.push('legacy-nwdiag-wrapper');
+    }
+
+    if (engine === 'd2') {
+      normalized = normalized.replace(/^([ \t]*[\w.-]+:\s*\{\s*\n)([\s\S]*?)(^[ \t]*\})/gm, (block, opening, body, closing) => {
+        if (/\bconstraint\s*:/i.test(body) && !/^\s*shape\s*:\s*sql_table\s*$/im.test(body)) {
+          changes.push('sql-table-shape');
+          return `${opening}  shape: sql_table\n${body}${closing}`;
+        }
+        return block;
+      });
+      if (/^\s*style\.layout\s*:\s*grid\s*$/im.test(normalized)) {
+        normalized = normalized.replace(/^([ \t]*)style\.layout\s*:\s*grid\s*$/gim, '$1grid-columns: 2');
+        changes.push('grid-layout-property');
+      }
+      if (/^\s*shape\s*:\s*(?:mindmap|venn)\s*$/im.test(normalized)) {
+        normalized = normalized.replace(/^([ \t]*)shape\s*:\s*(?:mindmap|venn)\s*$/gim, '$1direction: right');
+        changes.push('unsupported-composite-shape');
+      }
+    }
+
+    if (changes.length > 0) {
+      console.info('Applied diagram source compatibility normalization', { engine, changes });
+    }
+    return normalized;
+  }
+
   async function renderDiagramThroughAdapter(engine, source) {
     const adapter = REMOTE_DIAGRAM_ENGINES[engine];
     if (!adapter) throw new Error(`Unsupported diagram engine: ${engine}`);
@@ -1451,9 +1485,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       return renderMarkmapSvg(source);
     }
 
+    const rendererSource = normalizeDiagramSourceForRenderer(engine, source);
+
     if (adapter.local && typeof Neutralino !== 'undefined') {
       try {
-        const localSvg = await compileDiagramLocally(engine, source);
+        const localSvg = await compileDiagramLocally(engine, rendererSource);
         if (localSvg) return localSvg;
       } catch (error) {
         console.warn('Local diagram renderer failed; using remote fallback', {
@@ -1465,7 +1501,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (engine === 'plantuml') {
       try {
-        const encoded = encodePlantUML(source);
+        const encoded = encodePlantUML(rendererSource);
         return await fetchDiagramSvgRequest(
           `https://www.plantuml.com/plantuml/svg/${encoded}`,
           { method: 'GET' },
@@ -1479,7 +1515,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     }
 
-    return fetchKrokiDiagramSvg(engine, source);
+    return fetchKrokiDiagramSvg(engine, rendererSource);
   }
 
   function escapeDiagramXml(value) {
@@ -1543,7 +1579,60 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
     });
     node.replaceChildren(document.importNode(svg, true));
+    prepareDiagramSvg(node.querySelector('svg'), engine);
     normalizeDiagramSvg(node, engine, source);
+  }
+
+  function isLightCanvasFill(fill) {
+    return /^(?:#fff(?:fff)?|white|rgb\(255\s*,\s*255\s*,\s*255\))$/i.test(String(fill || '').trim());
+  }
+
+  function prepareDiagramSvg(svg, engine) {
+    if (!svg) return;
+    svg.style.background = 'transparent';
+
+    if (engine === 'graphviz') {
+      const background = svg.querySelector('g.graph > polygon');
+      if (background && isLightCanvasFill(background.getAttribute('fill'))) {
+        background.remove();
+      }
+      return;
+    }
+
+    if (engine !== 'd2') return;
+    const canvas = svg.matches('svg.d2-svg') ? svg : svg.querySelector('svg.d2-svg');
+    if (!canvas) return;
+
+    const canvasWidth = parseFloat(canvas.getAttribute('width')) || 0;
+    const canvasHeight = parseFloat(canvas.getAttribute('height')) || 0;
+    canvas.querySelectorAll('rect').forEach(rect => {
+      const width = parseFloat(rect.getAttribute('width')) || 0;
+      const height = parseFloat(rect.getAttribute('height')) || 0;
+      if (isLightCanvasFill(rect.getAttribute('fill')) && width >= canvasWidth * 0.9 && height >= canvasHeight * 0.9) {
+        rect.remove();
+      }
+    });
+
+    try {
+      const bounds = canvas.getBBox();
+      if (!(bounds.width > 0 && bounds.height > 0)) return;
+      const padding = 12;
+      const x = bounds.x - padding;
+      const y = bounds.y - padding;
+      const width = bounds.width + padding * 2;
+      const height = bounds.height + padding * 2;
+      canvas.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+      if (canvas !== svg) {
+        canvas.setAttribute('width', width);
+        canvas.setAttribute('height', height);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+      }
+      svg.dataset.trimmedViewBox = `${x} ${y} ${width} ${height}`;
+    } catch (error) {
+      console.warn('Unable to trim D2 SVG bounds', { message: error.message });
+    }
   }
 
   function normalizeDiagramSvg(node, engine, source) {
@@ -1570,6 +1659,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const hasExplicitBackground = typeof source === 'string' && /backgroundcolor/i.test(source);
     if (engine === 'plantuml' && !hasExplicitBackground) svg.style.background = 'transparent';
+    if (engine === 'd2' && /theme-id\s*:\s*[23]\d{2}\b/i.test(source || '')) {
+      svg.dataset.diagramNativeDark = 'true';
+    }
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', `${REMOTE_DIAGRAM_ENGINES[engine]?.label || 'Diagram'} preview`);
@@ -6137,7 +6229,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Network (nwdiag)',
         label: 'Network Map',
         svg: svgPlantUmlNetwork,
-        code: '```plantuml\n@startuml\nnwdiag {\n  network dmz {\n    web [address = "192.168.1.1"];\n    db  [address = "192.168.1.2"];\n  }\n}\n@enduml\n```\n'
+        code: '```plantuml\n@startnwdiag\nnetwork dmz {\n  address = "192.168.1.0/24"\n  web [address = "192.168.1.1"];\n  db  [address = "192.168.1.2"];\n}\n@endnwdiag\n```\n'
       },
       {
         id: 'plantuml-mindmap',
@@ -6253,7 +6345,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'ERD Table',
         label: 'Entity Relationship',
         svg: svgD2Erd,
-        code: '```d2\nusers: {\n  id: int {constraint: primary_key}\n  name: string\n}\nposts: {\n  id: int {constraint: primary_key}\n  user_id: int\n}\nusers.id -> posts.user_id\n```\n'
+        code: '```d2\nusers: {\n  shape: sql_table\n  id: int {constraint: primary_key}\n  name: string\n}\nposts: {\n  shape: sql_table\n  id: int {constraint: primary_key}\n  user_id: int\n}\nusers.id -> posts.user_id\n```\n'
       },
       {
         id: 'd2-grid',
@@ -6261,7 +6353,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Grid Layout',
         label: 'Grid Layout',
         svg: svgD2Grid,
-        code: '```d2\ngrid-demo: {\n  style.layout: grid\n  Box 1\n  Box 2\n}\n```\n'
+        code: '```d2\ngrid-demo: {\n  grid-columns: 2\n  box-1: Box 1\n  box-2: Box 2\n}\n```\n'
       },
       {
         id: 'd2-mindmap',
@@ -6269,7 +6361,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Mindmap',
         label: 'Mindmap Outline',
         svg: svgD2Mindmap,
-        code: '```d2\nmindmap-demo: {\n  shape: mindmap\n  Root\n  Topic A\n  Topic B\n}\n```\n'
+        code: '```d2\nroot: Root\nroot -> topic-a: Topic A\nroot -> topic-b: Topic B\n```\n'
       },
       {
         id: 'd2-class',
@@ -6285,7 +6377,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Venn Diagram',
         label: 'Overlap Set',
         svg: svgD2Venn,
-        code: '```d2\nvenn-demo: {\n  shape: venn\n  A\n  B\n}\n```\n'
+        code: '```d2\nset-a: Set A {\n  shape: circle\n}\nset-b: Set B {\n  shape: circle\n}\nset-a -> set-b: overlap\n```\n'
       },
       
       // Vega-Lite

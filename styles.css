@@ -4244,6 +4244,12 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   filter: invert(0.9) hue-rotate(180deg);
 }
 
+html[data-theme="dark"] .plantuml-diagram > svg,
+html[data-theme="dark"] .graphviz-diagram > svg,
+html[data-theme="dark"] .d2-diagram > svg:not([data-diagram-native-dark="true"]) {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
 /* --- PlantUML Toolbar Styling --- */
 .plantuml-toolbar {
   position: absolute;
@@ -4418,9 +4424,7 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 }
 
 .diagram-viewer.is-ready {
-  width: min(100%, var(--diagram-natural-width, 100%));
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
 }
 
 .diagram-viewer.is-ready > .diagram-surface {
@@ -4553,10 +4557,10 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 @media (max-width: 768px), (hover: none) {
   .diagram-toolbar {
     position: static;
-    width: max-content;
-    max-width: calc(100vw - 32px);
+    width: 100%;
+    max-width: 100%;
     margin-top: 8px;
-    justify-content: center;
+    justify-content: flex-end;
     flex-wrap: wrap;
     opacity: 1;
   }
