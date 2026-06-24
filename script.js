@@ -5999,7 +5999,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Sequence Diagram',
         label: 'Sequence Diagram',
         svg: svgPlantUmlSequence,
-        code: '```plantuml\n@startuml\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n@enduml\n'
+        code: '```plantuml\n@startuml\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n@enduml\n```\n'
       },
       {
         id: 'plantuml-usecase',
@@ -6007,7 +6007,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Use Case Diagram',
         label: 'Use Case Diagram',
         svg: svgPlantUmlUseCase,
-        code: '```plantuml\n@startuml\nleft to right direction\nactor Guest\nrectangle Hotel {\n  usecase "Book Room" as UC1\n}\nGuest --> UC1\n@enduml\n'
+        code: '```plantuml\n@startuml\nleft to right direction\nactor Guest\nrectangle Hotel {\n  usecase "Book Room" as UC1\n}\nGuest --> UC1\n@enduml\n```\n'
       },
       {
         id: 'plantuml-activity',
@@ -6015,7 +6015,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Activity Diagram',
         label: 'Activity Diagram',
         svg: svgPlantUmlActivity,
-        code: '```plantuml\n@startuml\n:Start;\n:Hello World;\n:End;\n@enduml\n'
+        code: '```plantuml\n@startuml\n:Start;\n:Hello World;\n:End;\n@enduml\n```\n'
       },
       {
         id: 'plantuml-class',
@@ -6023,7 +6023,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Class Diagram',
         label: 'Class Diagram',
         svg: svgPlantUmlClass,
-        code: '```plantuml\n@startuml\nclass Dummy {\n  -field1\n  #field2\n  ~method1()\n  +method2()\n}\n@enduml\n'
+        code: '```plantuml\n@startuml\nclass Dummy {\n  -field1\n  #field2\n  ~method1()\n  +method2()\n}\n@enduml\n```\n'
       },
       {
         id: 'plantuml-state',
@@ -6031,7 +6031,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'State Diagram',
         label: 'State Diagram',
         svg: svgPlantUmlState,
-        code: '```plantuml\n@startuml\n[*] --> State1\nState1 --> State2 : Transition\n@enduml\n'
+        code: '```plantuml\n@startuml\n[*] --> State1\nState1 --> State2 : Transition\n@enduml\n```\n'
       },
       {
         id: 'plantuml-component',
@@ -6039,7 +6039,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Component Diagram',
         label: 'Component Diagram',
         svg: svgPlantUmlComponent,
-        code: '```plantuml\n@startuml\n[Web GUI] --> [App Service] : JSON HTTP\n@enduml\n'
+        code: '```plantuml\n@startuml\n[Web GUI] --> [App Service] : JSON HTTP\n@enduml\n```\n'
       },
       {
         id: 'plantuml-object',
@@ -6047,7 +6047,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Object Diagram',
         label: 'Object Instances',
         svg: svgPlantUmlObject,
-        code: '```plantuml\n@startuml\nobject user1 {\n  name = "Alice"\n  role = "Admin"\n}\n@enduml\n'
+        code: '```plantuml\n@startuml\nobject user1 {\n  name = "Alice"\n  role = "Admin"\n}\n@enduml\n```\n'
       },
       {
         id: 'plantuml-deployment',
@@ -6055,7 +6055,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Deployment',
         label: 'Deployment Nodes',
         svg: svgPlantUmlDeployment,
-        code: '```plantuml\n@startuml\nnode "Application Server" {\n  component [Web Application]\n}\n@enduml\n'
+        code: '```plantuml\n@startuml\nnode "Application Server" {\n  component [Web Application]\n}\n@enduml\n```\n'
       },
       {
         id: 'plantuml-timing',
@@ -6063,7 +6063,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Timing Diagram',
         label: 'Timing Signal Wave',
         svg: svgPlantUmlTiming,
-        code: '```plantuml\n@startuml\nrobust "WebState" as WS\n@0\nWS is Idle\n@100\nWS is Busy\n@enduml\n'
+        code: '```plantuml\n@startuml\nrobust "WebState" as WS\n@0\nWS is Idle\n@100\nWS is Busy\n@enduml\n```\n'
       },
       {
         id: 'plantuml-network',
@@ -6071,7 +6071,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Network (nwdiag)',
         label: 'Network Map',
         svg: svgPlantUmlNetwork,
-        code: '```plantuml\n@startuml\nnwdiag {\n  network dmz {\n    web [address = "192.168.1.1"];\n    db  [address = "192.168.1.2"];\n  }\n}\n@enduml\n'
+        code: '```plantuml\n@startuml\nnwdiag {\n  network dmz {\n    web [address = "192.168.1.1"];\n    db  [address = "192.168.1.2"];\n  }\n}\n@enduml\n```\n'
       },
       {
         id: 'plantuml-mindmap',
@@ -6079,7 +6079,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'Mindmap',
         label: 'Mindmap Outline',
         svg: svgPlantUmlMindmap,
-        code: '```plantuml\n@startmindmap\n* Idea\n** Topic A\n** Topic B\n@endmindmap\n'
+        code: '```plantuml\n@startmindmap\n* Idea\n** Topic A\n** Topic B\n@endmindmap\n```\n'
       },
       {
         id: 'plantuml-wbs',
@@ -6087,7 +6087,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'WBS Hierarchy',
         label: 'Work Breakdown',
         svg: svgPlantUmlWbs,
-        code: '```plantuml\n@startwbs\n* Project\n** Phase 1\n** Phase 2\n@endwbs\n'
+        code: '```plantuml\n@startwbs\n* Project\n** Phase 1\n** Phase 2\n@endwbs\n```\n'
       },
       {
         id: 'plantuml-json',
@@ -6095,7 +6095,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         title: 'JSON Viewer',
         label: 'JSON Document',
         svg: svgPlantUmlJson,
-        code: '```plantuml\n@startjson\n{\n  "name": "Widget",\n  "count": 42,\n  "active": true\n}\n@endjson\n'
+        code: '```plantuml\n@startjson\n{\n  "name": "Widget",\n  "count": 42,\n  "active": true\n}\n@endjson\n```\n'
       },
       
       // Graphviz
