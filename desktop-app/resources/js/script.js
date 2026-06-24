@@ -3208,26 +3208,22 @@ document.addEventListener("DOMContentLoaded", async function () {
               const encoded = encodePlantUML(modifiedCode);
               const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
               
-              node.innerHTML = '';
-              const img = document.createElement('img');
-              img.crossOrigin = 'anonymous';
-              img.src = url;
-              img.alt = 'PlantUML Diagram';
-              img.className = 'plantuml-img';
-              img.draggable = false;
-              img.addEventListener('dragstart', e => e.preventDefault());
-              
-              img.onload = function() {
+              try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error();
+                const svgText = await res.text();
+                node.innerHTML = svgText;
+                const svgEl = node.querySelector('svg');
+                if (svgEl) {
+                  svgEl.style.maxWidth = '100%';
+                  svgEl.style.height = 'auto';
+                }
                 if (container) container.classList.remove('is-loading');
                 addPlantumlToolbars();
-              };
-              
-              img.onerror = function() {
+              } catch (err) {
                 node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to PlantUML server</div>`;
                 if (container) container.classList.remove('is-loading');
-              };
-              
-              node.appendChild(img);
+              }
             } catch (err) {
               console.error("PlantUML encoding failed:", err);
               node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
@@ -3286,26 +3282,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             const encoded = encodeKrokiD2(modifiedCode);
             const url = 'https://kroki.io/d2/svg/' + encoded;
             
-            node.innerHTML = '';
-            const img = document.createElement('img');
-            img.crossOrigin = 'anonymous';
-            img.src = url;
-            img.alt = 'D2 Diagram';
-            img.className = 'd2-img';
-            img.draggable = false;
-            img.addEventListener('dragstart', e => e.preventDefault());
-            
-            img.onload = function() {
+            try {
+              const res = await fetch(url);
+              if (!res.ok) throw new Error();
+              const svgText = await res.text();
+              node.innerHTML = svgText;
+              const svgEl = node.querySelector('svg');
+              if (svgEl) {
+                svgEl.style.maxWidth = '100%';
+                svgEl.style.height = 'auto';
+              }
               if (container) container.classList.remove('is-loading');
               addD2Toolbars();
-            };
-            
-            img.onerror = function() {
+            } catch (err) {
               node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
               if (container) container.classList.remove('is-loading');
-            };
-            
-            node.appendChild(img);
+            }
           } catch (err) {
             console.error("D2 encoding failed:", err);
             node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
@@ -3344,7 +3336,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       const graphvizNodes = queryPreviewRoots(roots, '.graphviz-diagram');
       if (graphvizNodes.length > 0) {
-        const renderSingleGraphvizNode = function(node) {
+        const renderSingleGraphvizNode = async function(node) {
           const container = node.closest('.graphviz-container');
           const originalCode = node.getAttribute('data-original-code');
           if (!originalCode) return;
@@ -3356,26 +3348,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             const encoded = encodeKrokiD2(decodedCode);
             const url = 'https://kroki.io/graphviz/svg/' + encoded;
             
-            node.innerHTML = '';
-            const img = document.createElement('img');
-            img.crossOrigin = 'anonymous';
-            img.src = url;
-            img.alt = 'Graphviz Diagram';
-            img.className = 'graphviz-img';
-            img.draggable = false;
-            img.addEventListener('dragstart', e => e.preventDefault());
-            
-            img.onload = function() {
+            try {
+              const res = await fetch(url);
+              if (!res.ok) throw new Error();
+              const svgText = await res.text();
+              node.innerHTML = svgText;
+              const svgEl = node.querySelector('svg');
+              if (svgEl) {
+                svgEl.style.maxWidth = '100%';
+                svgEl.style.height = 'auto';
+              }
               if (container) container.classList.remove('is-loading');
               addGraphvizToolbars();
-            };
-            
-            img.onerror = function() {
+            } catch (err) {
               node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
               if (container) container.classList.remove('is-loading');
-            };
-            
-            node.appendChild(img);
+            }
           } catch (err) {
             console.error("Graphviz encoding failed:", err);
             node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
