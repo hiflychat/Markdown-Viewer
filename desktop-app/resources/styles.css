@@ -4223,14 +4223,14 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 
 .plantuml-diagram {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  text-align: center;
 }
 
-.plantuml-diagram img {
+.plantuml-diagram img,
+.plantuml-diagram svg {
   max-width: 100%;
   height: auto;
-  display: block;
+  display: inline-block;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -4300,14 +4300,14 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 
 .d2-diagram {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  text-align: center;
 }
 
-.d2-diagram img {
+.d2-diagram img,
+.d2-diagram svg {
   max-width: 100%;
   height: auto;
-  display: block;
+  display: inline-block;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -4368,14 +4368,14 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 
 .graphviz-diagram {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  text-align: center;
 }
 
-.graphviz-diagram img {
+.graphviz-diagram img,
+.graphviz-diagram svg {
   max-width: 100%;
   height: auto;
-  display: block;
+  display: inline-block;
   user-select: none;
   -webkit-user-drag: none;
 }
