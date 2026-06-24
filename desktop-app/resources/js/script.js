@@ -1020,23 +1020,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     },
   };
 
+  function renderDiagramShell(engine, containerClass, surfaceClass, uniqueId, code) {
+    const escapedCode = code
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const label = REMOTE_DIAGRAM_ENGINES[engine]?.label ||
+      (engine === 'mermaid' ? 'Mermaid' : engine === 'abc' ? 'ABC notation' : 'Diagram');
+    return `<div class="diagram-viewer ${containerClass} is-loading" data-diagram-engine="${engine}">` +
+      `<div class="diagram-status" role="status"><span class="diagram-status-spinner" aria-hidden="true"></span>` +
+      `<span>Rendering ${label}…</span></div>` +
+      `<div class="diagram-surface ${surfaceClass}" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div>` +
+      `</div>`;
+  }
+
   renderer.code = function (code, language) {
     if (language === 'mermaid') {
       const uniqueId = 'mermaid-diagram-' + Math.random().toString(36).substr(2, 9);
-      const escapedCode = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<div class="mermaid-container is-loading"><div class="mermaid" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+      return renderDiagramShell('mermaid', 'mermaid-container', 'mermaid', uniqueId, code);
     }
 
     if (language === 'abc') {
       const uniqueId = 'abc-notation-' + Math.random().toString(36).substr(2, 9);
-      const escapedCode = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<div class="abc-container is-loading"><div class="abc-notation" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+      return renderDiagramShell('abc', 'abc-container', 'abc-notation', uniqueId, code);
     }
 
     if (language === 'geojson') {
@@ -1068,29 +1074,29 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (language === 'plantuml') {
       const uniqueId = 'plantuml-diagram-' + Math.random().toString(36).substr(2, 9);
-      const escapedCode = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<div class="plantuml-container is-loading"><div class="plantuml-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+      return renderDiagramShell('plantuml', 'plantuml-container', 'plantuml-diagram', uniqueId, code);
     }
 
     if (language === 'd2') {
       const uniqueId = 'd2-diagram-' + Math.random().toString(36).substr(2, 9);
-      const escapedCode = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<div class="d2-container is-loading"><div class="d2-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+      return renderDiagramShell('d2', 'd2-container', 'd2-diagram', uniqueId, code);
     }
 
     if (language === 'graphviz' || language === 'dot') {
       const uniqueId = 'graphviz-diagram-' + Math.random().toString(36).substr(2, 9);
-      const escapedCode = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<div class="graphviz-container is-loading"><div class="graphviz-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapedCode}</div></div>`;
+      return renderDiagramShell('graphviz', 'graphviz-container', 'graphviz-diagram', uniqueId, code);
+    }
+
+    const krokiLanguages = {
+      'vega-lite': 'vegalite',
+      vegalite: 'vegalite',
+      wavedrom: 'wavedrom',
+      markmap: 'markmap'
+    };
+    if (krokiLanguages[language]) {
+      const engine = krokiLanguages[language];
+      const uniqueId = `${engine}-diagram-` + Math.random().toString(36).substr(2, 9);
+      return renderDiagramShell(engine, 'kroki-container', 'kroki-diagram', uniqueId, code);
     }
 
     if (language === 'math') {
@@ -1336,6 +1342,268 @@ document.addEventListener("DOMContentLoaded", async function () {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
+  }
+
+  const REMOTE_DIAGRAM_ENGINES = Object.freeze({
+    mermaid: { label: 'Mermaid', krokiType: 'mermaid' },
+    plantuml: { label: 'PlantUML', krokiType: 'plantuml', local: true },
+    d2: { label: 'D2', krokiType: 'd2', local: true },
+    graphviz: { label: 'Graphviz', krokiType: 'graphviz' },
+    vegalite: { label: 'Vega-Lite', krokiType: 'vegalite' },
+    wavedrom: { label: 'WaveDrom', krokiType: 'wavedrom' },
+    markmap: { label: 'Markmap', krokiType: 'markmap' }
+  });
+  const DIAGRAM_REQUEST_TIMEOUT = 15000;
+  const DIAGRAM_REQUEST_RETRIES = 2;
+
+  function loadDiagramLibrary(url) {
+    return Promise.race([
+      loadScript(url),
+      new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error(`Timed out loading diagram library: ${url}`)), DIAGRAM_REQUEST_TIMEOUT);
+      })
+    ]);
+  }
+
+  function delayDiagramRetry(attempt) {
+    return new Promise(resolve => setTimeout(resolve, 300 * attempt));
+  }
+
+  async function fetchDiagramSvgRequest(url, options, engine, attempts = DIAGRAM_REQUEST_RETRIES) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), DIAGRAM_REQUEST_TIMEOUT);
+      try {
+        const response = await fetch(url, Object.assign({}, options, {
+          signal: controller.signal,
+          headers: Object.assign({ Accept: 'image/svg+xml' }, options && options.headers)
+        }));
+        const body = await response.text();
+        if (!response.ok) {
+          const error = new Error(`${engine} renderer returned HTTP ${response.status}`);
+          error.status = response.status;
+          error.responseBody = body.slice(0, 300);
+          throw error;
+        }
+        if (!/<svg[\s>]/i.test(body)) {
+          throw new Error(`${engine} renderer returned a non-SVG response`);
+        }
+        return body;
+      } catch (error) {
+        lastError = error;
+        const transient = !error.status || error.status === 408 || error.status === 429 || error.status >= 500;
+        console.warn('Diagram renderer request failed', {
+          engine,
+          attempt,
+          status: error.status || null,
+          message: error.message,
+          url
+        });
+        if (!transient || attempt === attempts) break;
+        await delayDiagramRetry(attempt);
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+    throw lastError || new Error(`${engine} renderer request failed`);
+  }
+
+  async function fetchKrokiDiagramSvg(engine, source) {
+    const adapter = REMOTE_DIAGRAM_ENGINES[engine];
+    if (!adapter) throw new Error(`Unsupported diagram engine: ${engine}`);
+
+    let getError = null;
+    if (typeof pako !== 'undefined') {
+      const encoded = encodeKrokiD2(source);
+      const getUrl = `https://kroki.io/${adapter.krokiType}/svg/${encoded}`;
+      try {
+        return await fetchDiagramSvgRequest(getUrl, { method: 'GET' }, adapter.label);
+      } catch (error) {
+        getError = error;
+        const definitiveClientError = error.status >= 400 && error.status < 500 && ![408, 414, 429].includes(error.status);
+        if (definitiveClientError) throw error;
+      }
+    }
+
+    try {
+      return await fetchDiagramSvgRequest('https://kroki.io/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagram_source: source,
+          diagram_type: adapter.krokiType,
+          output_format: 'svg'
+        })
+      }, adapter.label);
+    } catch (postError) {
+      if (getError && getError.status && !postError.status) throw getError;
+      if (getError && !postError.status) postError.cause = getError;
+      throw postError;
+    }
+  }
+
+  async function renderDiagramThroughAdapter(engine, source) {
+    const adapter = REMOTE_DIAGRAM_ENGINES[engine];
+    if (!adapter) throw new Error(`Unsupported diagram engine: ${engine}`);
+
+    if (engine === 'markmap') {
+      return renderMarkmapSvg(source);
+    }
+
+    if (adapter.local && typeof Neutralino !== 'undefined') {
+      try {
+        const localSvg = await compileDiagramLocally(engine, source);
+        if (localSvg) return localSvg;
+      } catch (error) {
+        console.warn('Local diagram renderer failed; using remote fallback', {
+          engine,
+          message: error.message
+        });
+      }
+    }
+
+    if (engine === 'plantuml') {
+      try {
+        const encoded = encodePlantUML(source);
+        return await fetchDiagramSvgRequest(
+          `https://www.plantuml.com/plantuml/svg/${encoded}`,
+          { method: 'GET' },
+          adapter.label
+        );
+      } catch (plantUmlError) {
+        console.warn('Primary PlantUML renderer failed; using Kroki fallback', {
+          status: plantUmlError.status || null,
+          message: plantUmlError.message
+        });
+      }
+    }
+
+    return fetchKrokiDiagramSvg(engine, source);
+  }
+
+  function escapeDiagramXml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderMarkmapSvg(source) {
+    const nodes = [];
+    String(source || '').split(/\r?\n/).forEach(line => {
+      const heading = /^(#{1,6})\s+(.+)$/.exec(line);
+      const list = /^(\s*)[-*+]\s+(.+)$/.exec(line);
+      if (!heading && !list) return;
+      const level = heading ? heading[1].length : Math.floor(list[1].replace(/\t/g, '  ').length / 2) + 2;
+      const label = (heading ? heading[2] : list[2]).replace(/[`*_~]/g, '').trim();
+      if (!label) return;
+      let parent = -1;
+      for (let index = nodes.length - 1; index >= 0; index -= 1) {
+        if (nodes[index].level < level) {
+          parent = index;
+          break;
+        }
+      }
+      nodes.push({ level, label, parent });
+    });
+
+    if (!nodes.length) nodes.push({ level: 1, label: 'Mind map', parent: -1 });
+    const minLevel = Math.min(...nodes.map(node => node.level));
+    const horizontalGap = 190;
+    const verticalGap = 64;
+    const padding = 32;
+    nodes.forEach((node, index) => {
+      node.x = padding + (node.level - minLevel) * horizontalGap;
+      node.y = padding + index * verticalGap;
+      node.width = Math.min(Math.max(node.label.length * 7.2 + 28, 96), 176);
+      node.height = 36;
+    });
+    const width = Math.max(...nodes.map(node => node.x + node.width)) + padding;
+    const height = nodes[nodes.length - 1].y + nodes[nodes.length - 1].height + padding;
+    const edges = nodes.filter(node => node.parent >= 0).map(node => {
+      const parent = nodes[node.parent];
+      return `<path d="M ${parent.x + parent.width} ${parent.y + parent.height / 2} C ${parent.x + parent.width + 48} ${parent.y + parent.height / 2}, ${node.x - 48} ${node.y + node.height / 2}, ${node.x} ${node.y + node.height / 2}" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>`;
+    }).join('');
+    const boxes = nodes.map((node, index) => `<g><rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="8" fill="${index === 0 ? '#dbeafe' : '#f3f4f6'}" stroke="${index === 0 ? '#2563eb' : '#64748b'}"/><text x="${node.x + 14}" y="${node.y + 23}" font-family="system-ui, sans-serif" font-size="13" fill="#172033">${escapeDiagramXml(node.label)}</text></g>`).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">${edges}${boxes}</svg>`;
+  }
+
+  function importDiagramSvg(node, svgText, engine, source) {
+    const parsed = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+    const svg = parsed.documentElement;
+    if (!svg || svg.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+      throw new Error(`${REMOTE_DIAGRAM_ENGINES[engine].label} returned invalid SVG`);
+    }
+    svg.querySelectorAll('script').forEach(script => script.remove());
+    svg.querySelectorAll('*').forEach(element => {
+      Array.from(element.attributes).forEach(attribute => {
+        if (/^on/i.test(attribute.name)) element.removeAttribute(attribute.name);
+      });
+    });
+    node.replaceChildren(document.importNode(svg, true));
+    normalizeDiagramSvg(node, engine, source);
+  }
+
+  function normalizeDiagramSvg(node, engine, source) {
+    const svg = node ? node.querySelector('svg') : null;
+    if (!svg) return null;
+
+    if (!svg.getAttribute('viewBox')) {
+      const width = parseFloat(svg.getAttribute('width'));
+      const height = parseFloat(svg.getAttribute('height'));
+      if (width > 0 && height > 0) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
+
+    const hasExplicitBackground = typeof source === 'string' && /backgroundcolor/i.test(source);
+    if (engine === 'plantuml' && !hasExplicitBackground) svg.style.background = 'transparent';
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `${REMOTE_DIAGRAM_ENGINES[engine]?.label || 'Diagram'} preview`);
+    svg.style.width = 'auto';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = '100%';
+    svg.style.maxHeight = 'min(70vh, 720px)';
+    return svg;
+  }
+
+  function getDiagramFailureMessage(engine, error) {
+    const label = REMOTE_DIAGRAM_ENGINES[engine]?.label || 'Diagram';
+    if (error && (error.status === 400 || error.status === 422)) {
+      return `${label} source was rejected by the renderer. Check the diagram syntax and retry.`;
+    }
+    if (error && error.name === 'AbortError') {
+      return `${label} rendering timed out. Retry when the renderer is available.`;
+    }
+    return `${label} renderer is unavailable. Check your connection and retry.`;
+  }
+
+  async function renderRemoteDiagramNode(node, engine, context) {
+    const container = node.closest('[data-diagram-engine], .plantuml-container, .d2-container, .graphviz-container, .kroki-container');
+    const originalCode = node.getAttribute('data-original-code');
+    if (!container || !originalCode) return;
+    const source = decodeURIComponent(originalCode);
+
+    setDiagramRenderState(container, 'loading', `Rendering ${REMOTE_DIAGRAM_ENGINES[engine].label}…`);
+    try {
+      const svgText = await renderDiagramThroughAdapter(engine, source);
+      if (context.renderId !== previewRenderGeneration || !document.body.contains(node)) return;
+      importDiagramSvg(node, svgText, engine, source);
+      setDiagramRenderState(container, 'ready');
+      mountDiagramViewer(container, engine);
+    } catch (error) {
+      if (context.renderId !== previewRenderGeneration || !document.body.contains(node)) return;
+      console.error('Diagram rendering failed', {
+        engine,
+        status: error.status || null,
+        message: error.message,
+        response: error.responseBody || null
+      });
+      setDiagramRenderState(container, 'error', getDiagramFailureMessage(engine, error), () => {
+        renderRemoteDiagramNode(node, engine, context);
+      });
+    }
   }
 
   // PERF-012: Inlined default template to eliminate network request, FOUC, and layout shifts
@@ -2333,10 +2601,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function markPreviewRootsReady(roots) {
     queryPreviewRoots(roots, '.mermaid-container.is-loading').forEach(function(container) {
-      container.classList.remove('is-loading');
+      setDiagramRenderState(container, 'ready');
     });
     queryPreviewRoots(roots, '.abc-container.is-loading').forEach(function(container) {
-      container.classList.remove('is-loading');
+      setDiagramRenderState(container, 'ready');
     });
   }
 
@@ -2898,6 +3166,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       const mermaidNodes = queryPreviewRoots(roots, '.mermaid');
       if (mermaidNodes.length > 0) {
+        const renderMermaidFallback = function() {
+          mermaidNodes.forEach(node => renderRemoteDiagramNode(node, 'mermaid', context));
+        };
         const renderMermaidNodes = function() {
           if (context.renderId !== previewRenderGeneration) return;
           initMermaid(false);
@@ -2910,16 +3181,18 @@ document.addEventListener("DOMContentLoaded", async function () {
             .catch((e) => {
               if (context.renderId !== previewRenderGeneration) return;
               console.warn("Mermaid rendering failed:", e);
-              markPreviewRootsReady(roots);
-              addMermaidToolbars();
+              renderMermaidFallback();
             });
         };
         if (typeof mermaid === 'undefined') {
-          loadScript(CDN.mermaid).then(function() {
+          loadDiagramLibrary(CDN.mermaid).then(function() {
             if (context.renderId !== previewRenderGeneration) return;
             initMermaid(true);
             renderMermaidNodes();
-          }).catch(function(e) { console.warn('Failed to load mermaid:', e); });
+          }).catch(function(e) {
+            console.warn('Failed to load mermaid:', e);
+            renderMermaidFallback();
+          });
         } else {
           renderMermaidNodes();
         }
@@ -2978,67 +3251,32 @@ document.addEventListener("DOMContentLoaded", async function () {
                     }
                     
                     if (container) {
-                      container.classList.remove('is-loading');
-                      
-                      const oldToolbar = container.querySelector('.abc-toolbar');
-                      if (oldToolbar) oldToolbar.remove();
+                      setDiagramRenderState(container, 'ready');
+
                       const oldRaw = container.querySelector('.abc-raw-code');
                       if (oldRaw) oldRaw.remove();
                       const oldSrOnly = container.querySelector('.abc-sr-only');
                       if (oldSrOnly) oldSrOnly.remove();
 
-                      const toolbar = document.createElement('div');
-                      toolbar.className = 'abc-toolbar';
-                      toolbar.setAttribute('aria-label', 'ABC notation actions');
-
-                      const btnListen = document.createElement('button');
-                      btnListen.type = 'button';
-                      btnListen.className = 'abc-toolbar-btn';
-                      btnListen.title = 'Listen to score';
-                      btnListen.setAttribute('aria-label', 'Listen to score');
-                      btnListen.innerHTML = '<i class="bi bi-play-fill"></i> Listen';
-                      btnListen.addEventListener('click', () => toggleAbcPlay(visualObj, btnListen, container));
-
-                      const btnCopy = document.createElement('button');
-                      btnCopy.type = 'button';
-                      btnCopy.className = 'abc-toolbar-btn';
-                      btnCopy.title = 'Copy image to clipboard';
-                      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-                      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
-                      btnCopy.addEventListener('click', () => copyAbcImage(container, btnCopy));
-
-                      const btnPng = document.createElement('button');
-                      btnPng.type = 'button';
-                      btnPng.className = 'abc-toolbar-btn';
-                      btnPng.title = 'Download PNG';
-                      btnPng.setAttribute('aria-label', 'Download PNG');
-                      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
-                      btnPng.addEventListener('click', () => downloadAbcPng(container, btnPng));
-
-                      const btnSvg = document.createElement('button');
-                      btnSvg.type = 'button';
-                      btnSvg.className = 'abc-toolbar-btn';
-                      btnSvg.title = 'Download SVG';
-                      btnSvg.setAttribute('aria-label', 'Download SVG');
-                      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
-                      btnSvg.addEventListener('click', () => downloadAbcSvg(container, btnSvg));
-
-                      toolbar.appendChild(btnListen);
-                      toolbar.appendChild(btnCopy);
-                      toolbar.appendChild(btnPng);
-                      toolbar.appendChild(btnSvg);
+                      mountDiagramViewer(container, 'abc', [{
+                        title: 'Listen to score',
+                        ariaLabel: 'Listen to score',
+                        html: '<i class="bi bi-play-fill"></i> Listen',
+                        onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
+                      }]);
 
                       const srOnlyDiv = document.createElement('div');
                       srOnlyDiv.className = 'abc-sr-only';
                       srOnlyDiv.id = 'abc-source-' + node.id;
                       srOnlyDiv.textContent = decodedCode;
 
-                      container.insertBefore(toolbar, node);
                       container.appendChild(srOnlyDiv);
                     }
                   } catch (err) {
                     console.error("ABCJS rendering failed:", err);
-                    if (container) container.classList.remove('is-loading');
+                    if (container) {
+                      setDiagramRenderState(container, 'error', 'ABC notation could not be rendered. Check the score syntax and retry.');
+                    }
                   }
                 }, 0);
               }
@@ -3048,17 +3286,22 @@ document.addEventListener("DOMContentLoaded", async function () {
           abcNodes.forEach(node => observer.observe(node));
         };
         
-        if (typeof ABCJS === 'undefined') {
-          loadScript(CDN.abcjs).then(function() {
+        const loadAndRenderAbc = function() {
+          loadDiagramLibrary(CDN.abcjs).then(function() {
             if (context.renderId !== previewRenderGeneration) return;
             renderAbcNodes();
-          }).catch(function(e) { 
+          }).catch(function(e) {
             console.warn('Failed to load abcjs:', e);
             abcNodes.forEach(function(node) {
               const container = node.closest('.abc-container');
-              if (container) container.classList.remove('is-loading');
+              if (container) {
+                setDiagramRenderState(container, 'error', 'ABC notation renderer is unavailable. Check your connection and retry.', loadAndRenderAbc);
+              }
             });
           });
+        };
+        if (typeof ABCJS === 'undefined') {
+          loadAndRenderAbc();
         } else {
           renderAbcNodes();
         }
@@ -3161,222 +3404,34 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     try {
-      const plantumlNodes = queryPreviewRoots(roots, '.plantuml-diagram');
-      if (plantumlNodes.length > 0) {
-        const renderPlantumlNodes = async function() {
-          if (context.renderId !== previewRenderGeneration) return;
-          
-          for (const node of plantumlNodes) {
-            const container = node.closest('.plantuml-container');
-            const originalCode = node.getAttribute('data-original-code');
-            if (!originalCode) continue;
-            const decodedCode = decodeURIComponent(originalCode);
-            
-            if (container) container.classList.add('is-loading');
-            
-            try {
-              const renderCode = decodedCode;
-
-              // Try local compile first if in Neutralino
-              if (typeof Neutralino !== 'undefined') {
-                const localSvg = await compileDiagramLocally('plantuml', renderCode);
-                if (localSvg) {
-                  node.innerHTML = localSvg;
-                  normalizePlantUmlSvg(node, renderCode);
-                  if (container) container.classList.remove('is-loading');
-                  addPlantumlToolbars();
-                  continue;
-                }
-              }
-
-              const encoded = encodePlantUML(renderCode);
-              const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
-              
-              try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error();
-                const svgText = await res.text();
-                node.innerHTML = svgText;
-                normalizePlantUmlSvg(node, renderCode);
-                if (container) container.classList.remove('is-loading');
-                addPlantumlToolbars();
-              } catch (err) {
-                node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to PlantUML server</div>`;
-                if (container) container.classList.remove('is-loading');
-              }
-            } catch (err) {
-              console.error("PlantUML encoding failed:", err);
-              node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
-              if (container) container.classList.remove('is-loading');
+      const adapterTargets = [
+        ['.plantuml-diagram', 'plantuml'],
+        ['.d2-diagram', 'd2'],
+        ['.graphviz-diagram', 'graphviz'],
+        ['.kroki-diagram', null]
+      ];
+      const renderAdapterTargets = function() {
+        if (context.renderId !== previewRenderGeneration) return;
+        adapterTargets.forEach(([selector, fixedEngine]) => {
+          queryPreviewRoots(roots, selector).forEach(node => {
+            const engine = fixedEngine || node.closest('[data-diagram-engine]')?.dataset.diagramEngine;
+            if (engine && REMOTE_DIAGRAM_ENGINES[engine]) {
+              renderRemoteDiagramNode(node, engine, context);
             }
-          }
-        };
-        
-        if (typeof pako === 'undefined') {
-          loadScript(CDN.pako).then(function() {
-            if (context.renderId !== previewRenderGeneration) return;
-            renderPlantumlNodes();
-          }).catch(function(e) {
-            console.warn('Failed to load pako for PlantUML:', e);
-            plantumlNodes.forEach(node => {
-              const container = node.closest('.plantuml-container');
-              if (container) container.classList.remove('is-loading');
-            });
           });
-        } else {
-          renderPlantumlNodes();
-        }
-      }
-    } catch (e) {
-      console.warn("PlantUML processing failed:", e);
-    }
-
-    try {
-      const d2Nodes = queryPreviewRoots(roots, '.d2-diagram');
-      if (d2Nodes.length > 0) {
-        const renderSingleD2Node = async function(node) {
-          const container = node.closest('.d2-container');
-          const originalCode = node.getAttribute('data-original-code');
-          if (!originalCode) return;
-          const decodedCode = decodeURIComponent(originalCode);
-          
-          if (container) container.classList.add('is-loading');
-          
-          try {
-            let modifiedCode = decodedCode;
-            if (!modifiedCode.includes('style.fill') && !/style\s*:\s*\{[^}]*fill/.test(modifiedCode)) {
-              modifiedCode = `style.fill: transparent\n${modifiedCode}`;
-            }
-
-            // Try local compile first if in Neutralino
-            if (typeof Neutralino !== 'undefined') {
-              const localSvg = await compileDiagramLocally('d2', modifiedCode);
-              if (localSvg) {
-                node.innerHTML = localSvg;
-                if (container) container.classList.remove('is-loading');
-                addD2Toolbars();
-                return;
-              }
-            }
-
-            const encoded = encodeKrokiD2(modifiedCode);
-            const url = 'https://kroki.io/d2/svg/' + encoded;
-            
-            try {
-              const res = await fetch(url);
-              if (!res.ok) throw new Error();
-              const svgText = await res.text();
-              node.innerHTML = svgText;
-              const svgEl = node.querySelector('svg');
-              if (svgEl) {
-                svgEl.style.maxWidth = '100%';
-                svgEl.style.height = 'auto';
-              }
-              if (container) container.classList.remove('is-loading');
-              addD2Toolbars();
-            } catch (err) {
-              node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
-              if (container) container.classList.remove('is-loading');
-            }
-          } catch (err) {
-            console.error("D2 encoding failed:", err);
-            node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
-            if (container) container.classList.remove('is-loading');
-          }
-        };
-
-        d2Nodes.forEach(node => {
-          node.renderD2 = () => renderSingleD2Node(node);
         });
+      };
 
-        const renderD2Nodes = function() {
-          if (context.renderId !== previewRenderGeneration) return;
-          d2Nodes.forEach(node => node.renderD2());
-        };
-        
-        if (typeof pako === 'undefined') {
-          loadScript(CDN.pako).then(function() {
-            if (context.renderId !== previewRenderGeneration) return;
-            renderD2Nodes();
-          }).catch(function(e) {
-            console.warn('Failed to load pako for D2:', e);
-            d2Nodes.forEach(node => {
-              const container = node.closest('.d2-container');
-              if (container) container.classList.remove('is-loading');
-            });
-          });
-        } else {
-          renderD2Nodes();
-        }
-      }
-    } catch (e) {
-      console.warn("D2 processing failed:", e);
-    }
-
-    try {
-      const graphvizNodes = queryPreviewRoots(roots, '.graphviz-diagram');
-      if (graphvizNodes.length > 0) {
-        const renderSingleGraphvizNode = async function(node) {
-          const container = node.closest('.graphviz-container');
-          const originalCode = node.getAttribute('data-original-code');
-          if (!originalCode) return;
-          const decodedCode = decodeURIComponent(originalCode);
-          
-          if (container) container.classList.add('is-loading');
-          
-          try {
-            const encoded = encodeKrokiD2(decodedCode);
-            const url = 'https://kroki.io/graphviz/svg/' + encoded;
-            
-            try {
-              const res = await fetch(url);
-              if (!res.ok) throw new Error();
-              const svgText = await res.text();
-              node.innerHTML = svgText;
-              const svgEl = node.querySelector('svg');
-              if (svgEl) {
-                svgEl.style.maxWidth = '100%';
-                svgEl.style.height = 'auto';
-              }
-              if (container) container.classList.remove('is-loading');
-              addGraphvizToolbars();
-            } catch (err) {
-              node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);"><i class="bi bi-wifi-off me-2"></i>Offline or unable to connect to Kroki server</div>`;
-              if (container) container.classList.remove('is-loading');
-            }
-          } catch (err) {
-            console.error("Graphviz encoding failed:", err);
-            node.innerHTML = `<div class="render-error-msg" style="padding: 1.5em; text-align: center; color: var(--text-color);">Error encoding diagram: ${escapeHtml(err.message)}</div>`;
-            if (container) container.classList.remove('is-loading');
-          }
-        };
-
-        graphvizNodes.forEach(node => {
-          node.renderGraphviz = () => renderSingleGraphvizNode(node);
+      if (typeof pako === 'undefined') {
+        loadDiagramLibrary(CDN.pako).then(renderAdapterTargets).catch(error => {
+          console.warn('Failed to load diagram encoder; POST fallbacks remain available', error);
+          renderAdapterTargets();
         });
-
-        const renderGraphvizNodes = function() {
-          if (context.renderId !== previewRenderGeneration) return;
-          graphvizNodes.forEach(node => node.renderGraphviz());
-        };
-        
-        if (typeof pako === 'undefined') {
-          loadScript(CDN.pako).then(function() {
-            if (context.renderId !== previewRenderGeneration) return;
-            renderGraphvizNodes();
-          }).catch(function(e) {
-            console.warn('Failed to load pako for Graphviz:', e);
-            graphvizNodes.forEach(node => {
-              const container = node.closest('.graphviz-container');
-              if (container) container.classList.remove('is-loading');
-            });
-          });
-        } else {
-          renderGraphvizNodes();
-        }
+      } else {
+        renderAdapterTargets();
       }
-    } catch (e) {
-      console.warn("Graphviz processing failed:", e);
+    } catch (error) {
+      console.error('Diagram adapter processing failed', error);
     }
 
     const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
@@ -5562,22 +5617,32 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function normalizePlantUmlSvg(container, sourceCode, constrainHeight = false) {
-    const svg = container ? container.querySelector('svg') : null;
+    const svg = normalizeDiagramSvg(container, 'plantuml', sourceCode);
     if (!svg) return null;
-
-    const hasExplicitBackground = typeof sourceCode === 'string' &&
-      sourceCode.toLowerCase().includes('backgroundcolor');
-    if (!hasExplicitBackground) {
-      svg.style.background = 'transparent';
-    }
-
-    svg.style.maxWidth = '100%';
-    svg.style.width = 'auto';
-    svg.style.height = 'auto';
     if (constrainHeight) {
       svg.style.maxHeight = '100%';
     }
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    return svg;
+  }
+
+  function getDiagramEngineForCategory(category) {
+    const engines = {
+      PlantUML: 'plantuml',
+      D2: 'd2',
+      Graphviz: 'graphviz',
+      'Vega-Lite': 'vegalite',
+      WaveDrom: 'wavedrom',
+      Markmap: 'markmap',
+      Mermaid: 'mermaid',
+      'ABC Notation': 'abc'
+    };
+    return engines[category] || null;
+  }
+
+  function normalizeDiagramPreviewSvg(container, template) {
+    const engine = getDiagramEngineForCategory(template.category);
+    const svg = normalizeDiagramSvg(container, engine, getCleanCode(template.code));
+    if (svg) svg.style.maxHeight = '100%';
     return svg;
   }
 
@@ -5669,33 +5734,25 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   async function getOrRenderDiagramPreview(template, theme, callback) {
     const cleanCode = getCleanCode(template.code);
-    
-    if (typeof Neutralino !== 'undefined') {
-      if (template.category === 'D2') {
-        const localSvg = await compileDiagramLocally('d2', cleanCode);
-        if (localSvg) {
-          callback(localSvg);
-          return;
-        }
-      } else if (template.category === 'PlantUML') {
-        const localSvg = await compileDiagramLocally('plantuml', cleanCode);
-        if (localSvg) {
-          callback(localSvg);
-          return;
-        }
-      }
-    }
-    
-    const apiUrl = getDiagramApiUrl(template, theme);
-    if (!apiUrl) {
-      callback(null);
-      return;
-    }
-    
+    const engine = getDiagramEngineForCategory(template.category);
     try {
-      const svgText = await fetchDiagramPreview(apiUrl);
-      callback(svgText);
+      if (REMOTE_DIAGRAM_ENGINES[engine]) {
+        callback(await renderDiagramThroughAdapter(engine, cleanCode));
+        return;
+      }
+
+      const apiUrl = getDiagramApiUrl(template, theme);
+      if (apiUrl) {
+        callback(await fetchDiagramPreview(apiUrl));
+        return;
+      }
+      callback(null);
     } catch (e) {
+      console.warn('Diagram modal preview failed', {
+        engine: engine || template.category,
+        status: e.status || null,
+        message: e.message
+      });
       callback(null);
     }
   }
@@ -5716,7 +5773,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     
     if (typeof pako === 'undefined') {
       try {
-        await loadScript(CDN.pako);
+        await loadDiagramLibrary(CDN.pako);
       } catch (e) {
         console.warn('Failed to load pako library for diagram previews:', e);
       }
@@ -6497,15 +6554,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             const svgContainer = previewDiv.querySelector('.diagram-svg-container');
             if (svgContainer) {
               svgContainer.innerHTML = svgText;
-              const svgEl = t.category === 'PlantUML'
-                ? normalizePlantUmlSvg(svgContainer, t.code, true)
-                : svgContainer.querySelector('svg');
-              if (svgEl && t.category !== 'PlantUML') {
-                svgEl.style.maxWidth = '100%';
-                svgEl.style.maxHeight = '100%';
-                svgEl.style.width = 'auto';
-                svgEl.style.height = 'auto';
-              }
+              normalizeDiagramPreviewSvg(svgContainer, t);
             }
           }
         });
@@ -6541,15 +6590,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               const svgContainer = previewContainer.querySelector('.diagram-svg-container');
               if (svgContainer) {
                 svgContainer.innerHTML = svgText;
-                const svgEl = t.category === 'PlantUML'
-                  ? normalizePlantUmlSvg(svgContainer, t.code, true)
-                  : svgContainer.querySelector('svg');
-                if (svgEl && t.category !== 'PlantUML') {
-                  svgEl.style.maxWidth = '100%';
-                  svgEl.style.maxHeight = '100%';
-                  svgEl.style.width = 'auto';
-                  svgEl.style.height = 'auto';
-                }
+                normalizeDiagramPreviewSvg(svgContainer, t);
               }
             }
           });
@@ -11285,8 +11326,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     const clone = svgEl.cloneNode(true);
     // Ensure explicit width/height so the canvas has the right dimensions
     const bbox = svgEl.getBoundingClientRect();
-    if (!clone.getAttribute('width'))  clone.setAttribute('width',  Math.round(bbox.width));
-    if (!clone.getAttribute('height')) clone.setAttribute('height', Math.round(bbox.height));
+    const intrinsicWidth = Number(svgEl.dataset.intrinsicWidth);
+    const intrinsicHeight = Number(svgEl.dataset.intrinsicHeight);
+    if (intrinsicWidth > 0 && intrinsicHeight > 0) clone.style.transform = 'none';
+    if (!clone.getAttribute('width'))  clone.setAttribute('width',  Math.round(intrinsicWidth || bbox.width));
+    if (!clone.getAttribute('height')) clone.setAttribute('height', Math.round(intrinsicHeight || bbox.height));
     const serialized = new XMLSerializer().serializeToString(clone);
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(serialized);
   }
@@ -11298,8 +11342,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     return new Promise((resolve, reject) => {
       const bbox = svgEl.getBoundingClientRect();
       const scale = 2; // 2x scale for high quality without excessive file size
-      const width  = Math.max(Math.round(bbox.width),  1);
-      const height = Math.max(Math.round(bbox.height), 1);
+      const width  = Math.max(Math.round(Number(svgEl.dataset.intrinsicWidth) || bbox.width),  1);
+      const height = Math.max(Math.round(Number(svgEl.dataset.intrinsicHeight) || bbox.height), 1);
 
       const canvas = document.createElement('canvas');
       canvas.width  = width  * scale;
@@ -11318,6 +11362,129 @@ document.addEventListener("DOMContentLoaded", async function () {
       img.onerror = reject;
       img.src = svgToDataUrl(svgEl);
     });
+  }
+
+  // ========================================
+  // SHARED DIAGRAM VIEWER
+  // ========================================
+
+  function getDiagramEngineLabel(engine) {
+    const labels = {
+      mermaid: 'Mermaid',
+      abc: 'ABC notation'
+    };
+    return REMOTE_DIAGRAM_ENGINES[engine]?.label || labels[engine] || 'Diagram';
+  }
+
+  function setDiagramRenderState(container, state, message, retry) {
+    if (!container) return;
+
+    container.classList.toggle('is-loading', state === 'loading');
+    container.classList.toggle('is-error', state === 'error');
+    container.classList.toggle('is-ready', state === 'ready');
+    const surface = container.querySelector('.diagram-surface');
+    if (surface) surface.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+
+    let status = container.querySelector(':scope > .diagram-status');
+    if (!status) {
+      status = document.createElement('div');
+      status.className = 'diagram-status';
+      status.setAttribute('role', 'status');
+      container.insertBefore(status, container.firstChild);
+    }
+
+    status.replaceChildren();
+    status.hidden = state === 'ready';
+    if (state === 'ready') return;
+
+    if (state === 'loading') {
+      const spinner = document.createElement('span');
+      spinner.className = 'diagram-status-spinner';
+      spinner.setAttribute('aria-hidden', 'true');
+      status.appendChild(spinner);
+    } else {
+      const icon = document.createElement('i');
+      icon.className = 'bi bi-exclamation-triangle';
+      icon.setAttribute('aria-hidden', 'true');
+      status.appendChild(icon);
+    }
+
+    const text = document.createElement('span');
+    text.textContent = message || (state === 'loading' ? 'Rendering diagram…' : 'Unable to render diagram.');
+    status.appendChild(text);
+
+    if (state === 'error' && typeof retry === 'function') {
+      const retryButton = document.createElement('button');
+      retryButton.type = 'button';
+      retryButton.className = 'diagram-retry-btn';
+      retryButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry';
+      retryButton.addEventListener('click', retry);
+      status.appendChild(retryButton);
+    }
+  }
+
+  function createDiagramToolbarButton(action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'diagram-toolbar-btn';
+    button.title = action.title;
+    button.setAttribute('aria-label', action.ariaLabel || action.title);
+    button.innerHTML = action.html;
+    button.addEventListener('click', () => action.onClick(button));
+    return button;
+  }
+
+  function mountDiagramViewer(container, engine, extraActions = []) {
+    if (!container) return;
+    const surface = container.querySelector('.diagram-surface') || container;
+    const svg = surface.querySelector('svg');
+    if (!svg) return;
+
+    container.classList.add('diagram-viewer');
+    container.setAttribute('data-diagram-engine', engine);
+    surface.classList.add('diagram-surface');
+    let source = '';
+    try {
+      source = decodeURIComponent(surface.getAttribute('data-original-code') || '');
+    } catch (error) {
+      source = surface.getAttribute('data-original-code') || '';
+    }
+    normalizeDiagramSvg(surface, engine, source);
+    svg.setAttribute('aria-label', `${getDiagramEngineLabel(engine)} diagram`);
+
+    container.querySelectorAll(':scope > .diagram-toolbar, :scope > .mermaid-toolbar, :scope > .abc-toolbar, :scope > .plantuml-toolbar, :scope > .d2-toolbar, :scope > .graphviz-toolbar').forEach(toolbar => toolbar.remove());
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'diagram-toolbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', `${getDiagramEngineLabel(engine)} diagram actions`);
+
+    extraActions.forEach(action => toolbar.appendChild(createDiagramToolbarButton(action)));
+    const actions = [
+      {
+        title: 'Open diagram viewer',
+        ariaLabel: 'Open diagram viewer with zoom and pan controls',
+        html: '<i class="bi bi-arrows-fullscreen"></i>',
+        onClick: () => openMermaidZoomModal(container)
+      },
+      {
+        title: 'Copy image to clipboard',
+        html: '<i class="bi bi-clipboard-image"></i> Copy',
+        onClick: button => copyMermaidImage(container, button)
+      },
+      {
+        title: 'Download PNG',
+        html: '<i class="bi bi-file-image"></i> PNG',
+        onClick: button => downloadMermaidPng(container, button)
+      },
+      {
+        title: 'Download SVG',
+        html: '<i class="bi bi-filetype-svg"></i> SVG',
+        onClick: button => downloadMermaidSvg(container, button)
+      }
+    ];
+    actions.forEach(action => toolbar.appendChild(createDiagramToolbarButton(action)));
+    container.appendChild(toolbar);
   }
 
   // ========================================
@@ -11630,6 +11797,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function closeMermaidModal() {
     if (!mermaidZoomModal.classList.contains('active')) return;
     mermaidZoomModal.classList.remove('active');
+    mermaidZoomModal.setAttribute('aria-hidden', 'true');
     // PERF-007: Clear elements using textContent
     mermaidModalDiagram.textContent = '';
     modalCurrentSvgEl = null;
@@ -11650,18 +11818,40 @@ document.addEventListener("DOMContentLoaded", async function () {
     modalPanY = 0;
 
     const svgClone = svgEl.cloneNode(true);
-    // Remove fixed dimensions so it sizes naturally inside the modal
+    const viewBox = svgEl.viewBox && svgEl.viewBox.baseVal;
+    const renderedBounds = svgEl.getBoundingClientRect();
+    const intrinsicWidth = viewBox && viewBox.width > 0 ? viewBox.width : renderedBounds.width;
+    const intrinsicHeight = viewBox && viewBox.height > 0 ? viewBox.height : renderedBounds.height;
     svgClone.removeAttribute('width');
     svgClone.removeAttribute('height');
-    svgClone.style.width  = 'auto';
-    svgClone.style.height = 'auto';
-    svgClone.style.maxWidth  = '80vw';
-    svgClone.style.maxHeight = '60vh';
+    svgClone.style.width = `${Math.max(intrinsicWidth, 1)}px`;
+    svgClone.style.height = `${Math.max(intrinsicHeight, 1)}px`;
+    svgClone.style.maxWidth = 'none';
+    svgClone.style.maxHeight = 'none';
     svgClone.style.transformOrigin = 'center';
+    svgClone.dataset.intrinsicWidth = String(Math.max(intrinsicWidth, 1));
+    svgClone.dataset.intrinsicHeight = String(Math.max(intrinsicHeight, 1));
     mermaidModalDiagram.appendChild(svgClone);
     modalCurrentSvgEl = svgClone;
 
+    const engine = container.getAttribute('data-diagram-engine') || 'diagram';
+    const title = document.getElementById('diagram-modal-title');
+    if (title) title.textContent = `${getDiagramEngineLabel(engine)} Viewer`;
     mermaidZoomModal.classList.add('active');
+    mermaidZoomModal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(fitModalDiagram);
+  }
+
+  function fitModalDiagram() {
+    if (!modalCurrentSvgEl) return;
+    const width = Number(modalCurrentSvgEl.dataset.intrinsicWidth) || modalCurrentSvgEl.getBoundingClientRect().width;
+    const height = Number(modalCurrentSvgEl.dataset.intrinsicHeight) || modalCurrentSvgEl.getBoundingClientRect().height;
+    const availableWidth = Math.max(mermaidModalDiagram.clientWidth - 32, 1);
+    const availableHeight = Math.max(mermaidModalDiagram.clientHeight - 32, 1);
+    modalZoomScale = Math.min(availableWidth / width, availableHeight / height, 10);
+    modalPanX = 0;
+    modalPanY = 0;
+    applyModalTransform();
   }
 
   // Modal close button
@@ -11684,6 +11874,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     modalZoomScale = 1; modalPanX = 0; modalPanY = 0;
     applyModalTransform();
   });
+  document.getElementById('mermaid-modal-zoom-fit').addEventListener('click', fitModalDiagram);
 
   // Mouse-wheel zoom inside modal
   mermaidModalDiagram.addEventListener('wheel', function(e) {
@@ -11693,24 +11884,28 @@ document.addEventListener("DOMContentLoaded", async function () {
     applyModalTransform();
   }, { passive: false });
 
-  // Drag to pan inside modal
-  mermaidModalDiagram.addEventListener('mousedown', function(e) {
+  // Pointer events provide the same pan behavior for mouse, pen, and touch.
+  mermaidModalDiagram.addEventListener('pointerdown', function(e) {
+    if (!modalCurrentSvgEl) return;
     modalIsDragging = true;
     modalDragStart = { x: e.clientX - modalPanX, y: e.clientY - modalPanY };
     mermaidModalDiagram.classList.add('dragging');
+    mermaidModalDiagram.setPointerCapture(e.pointerId);
   });
-  document.addEventListener('mousemove', function(e) {
+  mermaidModalDiagram.addEventListener('pointermove', function(e) {
     if (!modalIsDragging) return;
     modalPanX = e.clientX - modalDragStart.x;
     modalPanY = e.clientY - modalDragStart.y;
     applyModalTransform();
   });
-  document.addEventListener('mouseup', function() {
+  function finishModalPan() {
     if (modalIsDragging) {
       modalIsDragging = false;
       mermaidModalDiagram.classList.remove('dragging');
     }
-  });
+  }
+  mermaidModalDiagram.addEventListener('pointerup', finishModalPan);
+  mermaidModalDiagram.addEventListener('pointercancel', finishModalPan);
 
   // Modal download buttons (operate on the currently displayed SVG or Image)
   document.getElementById('mermaid-modal-download-png').addEventListener('click', async function() {
@@ -11801,7 +11996,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         })
         .catch(e => console.error('Modal SVG download failed:', e));
     } else {
-      const serialized = new XMLSerializer().serializeToString(modalCurrentSvgEl);
+      const exportSvg = modalCurrentSvgEl.cloneNode(true);
+      exportSvg.style.transform = 'none';
+      delete exportSvg.dataset.intrinsicWidth;
+      delete exportSvg.dataset.intrinsicHeight;
+      const serialized = new XMLSerializer().serializeToString(exportSvg);
       const blob = new Blob([serialized], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -12062,47 +12261,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function addPlantumlToolbars() {
     markdownPreview.querySelectorAll('.plantuml-container').forEach(container => {
-      if (container.querySelector('.plantuml-toolbar')) return; // already added
-      const imgEl = container.querySelector('img');
-      if (!imgEl) return; // diagram not yet rendered or failed
-
-      const toolbar = document.createElement('div');
-      toolbar.className = 'plantuml-toolbar';
-      toolbar.setAttribute('aria-label', 'Diagram actions');
-
-      const btnZoom = document.createElement('button');
-      btnZoom.className = 'plantuml-toolbar-btn';
-      btnZoom.title = 'Zoom diagram';
-      btnZoom.setAttribute('aria-label', 'Zoom diagram');
-      btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
-      btnZoom.addEventListener('click', () => openPlantumlZoomModal(container));
-
-      const btnPng = document.createElement('button');
-      btnPng.className = 'plantuml-toolbar-btn';
-      btnPng.title = 'Download PNG';
-      btnPng.setAttribute('aria-label', 'Download PNG');
-      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
-      btnPng.addEventListener('click', () => downloadPlantumlPng(container, btnPng));
-
-      const btnCopy = document.createElement('button');
-      btnCopy.className = 'plantuml-toolbar-btn';
-      btnCopy.title = 'Copy image to clipboard';
-      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
-      btnCopy.addEventListener('click', () => copyPlantumlImage(container, btnCopy));
-
-      const btnSvg = document.createElement('button');
-      btnSvg.className = 'plantuml-toolbar-btn';
-      btnSvg.title = 'Download SVG';
-      btnSvg.setAttribute('aria-label', 'Download SVG');
-      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
-      btnSvg.addEventListener('click', () => downloadPlantumlSvg(container, btnSvg));
-
-      toolbar.appendChild(btnZoom);
-      toolbar.appendChild(btnCopy);
-      toolbar.appendChild(btnPng);
-      toolbar.appendChild(btnSvg);
-      container.appendChild(toolbar);
+      mountDiagramViewer(container, 'plantuml');
     });
   }
 
@@ -12195,47 +12354,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function addD2Toolbars() {
     markdownPreview.querySelectorAll('.d2-container').forEach(container => {
-      if (container.querySelector('.d2-toolbar')) return; // already added
-      const imgEl = container.querySelector('img');
-      if (!imgEl) return; // diagram not yet rendered or failed
-
-      const toolbar = document.createElement('div');
-      toolbar.className = 'd2-toolbar';
-      toolbar.setAttribute('aria-label', 'Diagram actions');
-
-      const btnZoom = document.createElement('button');
-      btnZoom.className = 'd2-toolbar-btn';
-      btnZoom.title = 'Zoom diagram';
-      btnZoom.setAttribute('aria-label', 'Zoom diagram');
-      btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
-      btnZoom.addEventListener('click', () => openD2ZoomModal(container));
-
-      const btnPng = document.createElement('button');
-      btnPng.className = 'd2-toolbar-btn';
-      btnPng.title = 'Download PNG';
-      btnPng.setAttribute('aria-label', 'Download PNG');
-      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
-      btnPng.addEventListener('click', () => downloadD2Png(container, btnPng));
-
-      const btnCopy = document.createElement('button');
-      btnCopy.className = 'd2-toolbar-btn';
-      btnCopy.title = 'Copy image to clipboard';
-      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
-      btnCopy.addEventListener('click', () => copyD2Image(container, btnCopy));
-
-      const btnSvg = document.createElement('button');
-      btnSvg.className = 'd2-toolbar-btn';
-      btnSvg.title = 'Download SVG';
-      btnSvg.setAttribute('aria-label', 'Download SVG');
-      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
-      btnSvg.addEventListener('click', () => downloadD2Svg(container, btnSvg));
-
-      toolbar.appendChild(btnZoom);
-      toolbar.appendChild(btnCopy);
-      toolbar.appendChild(btnPng);
-      toolbar.appendChild(btnSvg);
-      container.appendChild(toolbar);
+      mountDiagramViewer(container, 'd2');
     });
   }
 
@@ -12328,47 +12447,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function addGraphvizToolbars() {
     markdownPreview.querySelectorAll('.graphviz-container').forEach(container => {
-      if (container.querySelector('.graphviz-toolbar')) return; // already added
-      const imgEl = container.querySelector('img');
-      if (!imgEl) return; // diagram not yet rendered or failed
-
-      const toolbar = document.createElement('div');
-      toolbar.className = 'graphviz-toolbar';
-      toolbar.setAttribute('aria-label', 'Diagram actions');
-
-      const btnZoom = document.createElement('button');
-      btnZoom.className = 'graphviz-toolbar-btn';
-      btnZoom.title = 'Zoom diagram';
-      btnZoom.setAttribute('aria-label', 'Zoom diagram');
-      btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
-      btnZoom.addEventListener('click', () => openGraphvizZoomModal(container));
-
-      const btnPng = document.createElement('button');
-      btnPng.className = 'graphviz-toolbar-btn';
-      btnPng.title = 'Download PNG';
-      btnPng.setAttribute('aria-label', 'Download PNG');
-      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
-      btnPng.addEventListener('click', () => downloadGraphvizPng(container, btnPng));
-
-      const btnCopy = document.createElement('button');
-      btnCopy.className = 'graphviz-toolbar-btn';
-      btnCopy.title = 'Copy image to clipboard';
-      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
-      btnCopy.addEventListener('click', () => copyGraphvizImage(container, btnCopy));
-
-      const btnSvg = document.createElement('button');
-      btnSvg.className = 'graphviz-toolbar-btn';
-      btnSvg.title = 'Download SVG';
-      btnSvg.setAttribute('aria-label', 'Download SVG');
-      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
-      btnSvg.addEventListener('click', () => downloadGraphvizSvg(container, btnSvg));
-
-      toolbar.appendChild(btnZoom);
-      toolbar.appendChild(btnCopy);
-      toolbar.appendChild(btnPng);
-      toolbar.appendChild(btnSvg);
-      container.appendChild(toolbar);
+      mountDiagramViewer(container, 'graphviz');
     });
   }
 
@@ -12462,47 +12541,7 @@ document.addEventListener("DOMContentLoaded", async function () {
    */
   function addMermaidToolbars() {
     markdownPreview.querySelectorAll('.mermaid-container').forEach(container => {
-      if (container.querySelector('.mermaid-toolbar')) return; // already added
-      const svgEl = container.querySelector('svg');
-      if (!svgEl) return; // diagram not yet rendered
-
-      const toolbar = document.createElement('div');
-      toolbar.className = 'mermaid-toolbar';
-      toolbar.setAttribute('aria-label', 'Diagram actions');
-
-      const btnZoom = document.createElement('button');
-      btnZoom.className = 'mermaid-toolbar-btn';
-      btnZoom.title = 'Zoom diagram';
-      btnZoom.setAttribute('aria-label', 'Zoom diagram');
-      btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
-      btnZoom.addEventListener('click', () => openMermaidZoomModal(container));
-
-      const btnPng = document.createElement('button');
-      btnPng.className = 'mermaid-toolbar-btn';
-      btnPng.title = 'Download PNG';
-      btnPng.setAttribute('aria-label', 'Download PNG');
-      btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
-      btnPng.addEventListener('click', () => downloadMermaidPng(container, btnPng));
-
-      const btnCopy = document.createElement('button');
-      btnCopy.className = 'mermaid-toolbar-btn';
-      btnCopy.title = 'Copy image to clipboard';
-      btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-      btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
-      btnCopy.addEventListener('click', () => copyMermaidImage(container, btnCopy));
-
-      const btnSvg = document.createElement('button');
-      btnSvg.className = 'mermaid-toolbar-btn';
-      btnSvg.title = 'Download SVG';
-      btnSvg.setAttribute('aria-label', 'Download SVG');
-      btnSvg.innerHTML = '<i class="bi bi-filetype-svg"></i> SVG';
-      btnSvg.addEventListener('click', () => downloadMermaidSvg(container, btnSvg));
-
-      toolbar.appendChild(btnZoom);
-      toolbar.appendChild(btnCopy);
-      toolbar.appendChild(btnPng);
-      toolbar.appendChild(btnSvg);
-      container.appendChild(toolbar);
+      mountDiagramViewer(container, 'mermaid');
     });
   }
 

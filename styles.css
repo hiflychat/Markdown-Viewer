@@ -4396,6 +4396,162 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   opacity: 1;
 }
 
+/* --- Shared diagram viewer --- */
+.diagram-viewer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 1.5em 0;
+  border-radius: 8px;
+}
+
+.diagram-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: auto;
+  text-align: center;
+}
+
+.diagram-surface > svg,
+.diagram-surface > div > svg {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: min(70vh, 720px) !important;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.diagram-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.diagram-viewer:hover > .diagram-toolbar,
+.diagram-viewer:focus-within > .diagram-toolbar {
+  opacity: 1;
+}
+
+.diagram-toolbar-btn,
+.diagram-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.diagram-toolbar-btn:hover,
+.diagram-retry-btn:hover {
+  background-color: var(--button-hover);
+  color: var(--accent-color);
+}
+
+.diagram-toolbar-btn:focus-visible,
+.diagram-retry-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.diagram-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 120px;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--skeleton-bg);
+  color: var(--text-color);
+  text-align: center;
+}
+
+.diagram-status[hidden] {
+  display: none;
+}
+
+.diagram-status-spinner {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: diagram-spinner 0.8s linear infinite;
+}
+
+@keyframes diagram-spinner {
+  to { transform: rotate(360deg); }
+}
+
+.diagram-viewer.is-loading,
+.diagram-viewer.is-error {
+  min-height: 120px;
+  animation: none;
+}
+
+.diagram-viewer.is-loading::after,
+.diagram-viewer.is-error::after {
+  display: none;
+}
+
+.diagram-viewer.is-loading > .diagram-surface,
+.diagram-viewer.is-error > .diagram-surface,
+.diagram-viewer.is-loading > .diagram-toolbar,
+.diagram-viewer.is-error > .diagram-toolbar {
+  display: none;
+}
+
+.diagram-viewer.is-error > .diagram-status {
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--danger-color, #cf222e) 8%, var(--bg-color));
+}
+
+.mermaid-modal-diagram {
+  touch-action: none;
+}
+
+@media (max-width: 768px), (hover: none) {
+  .diagram-toolbar {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    opacity: 1;
+  }
+
+  .diagram-toolbar-btn {
+    min-height: 36px;
+  }
+
+  .diagram-surface > svg,
+  .diagram-surface > div > svg {
+    max-height: 65vh !important;
+  }
+}
+
 /* Accessibility: respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .skeleton-placeholder,

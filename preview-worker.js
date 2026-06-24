@@ -10,6 +10,7 @@ let stlIdCounter = 0;
 let plantumlIdCounter = 0;
 let d2IdCounter = 0;
 let graphvizIdCounter = 0;
+let krokiIdCounter = 0;
 
 const markedOptions = {
   gfm: true,
@@ -313,15 +314,23 @@ function configureMarked() {
     },
   };
 
+  function renderDiagramShell(engine, containerClass, surfaceClass, uniqueId, code, label) {
+    return `<div class="diagram-viewer ${containerClass} is-loading" data-diagram-engine="${engine}">` +
+      `<div class="diagram-status" role="status"><span class="diagram-status-spinner" aria-hidden="true"></span>` +
+      `<span>Rendering ${label}…</span></div>` +
+      `<div class="diagram-surface ${surfaceClass}" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div>` +
+      `</div>`;
+  }
+
   renderer.code = function(code, language) {
     if (language === "mermaid") {
       const uniqueId = `mermaid-diagram-worker-${mermaidIdCounter++}`;
-      return `<div class="mermaid-container is-loading"><div class="mermaid" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div></div>`;
+      return renderDiagramShell('mermaid', 'mermaid-container', 'mermaid', uniqueId, code, 'Mermaid');
     }
 
     if (language === "abc") {
       const uniqueId = `abc-notation-worker-${abcIdCounter++}`;
-      return `<div class="abc-container is-loading"><div class="abc-notation" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div></div>`;
+      return renderDiagramShell('abc', 'abc-container', 'abc-notation', uniqueId, code, 'ABC notation');
     }
 
     if (language === "geojson") {
@@ -341,17 +350,29 @@ function configureMarked() {
 
     if (language === "plantuml") {
       const uniqueId = `plantuml-diagram-worker-${plantumlIdCounter++}`;
-      return `<div class="plantuml-container is-loading"><div class="plantuml-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div></div>`;
+      return renderDiagramShell('plantuml', 'plantuml-container', 'plantuml-diagram', uniqueId, code, 'PlantUML');
     }
 
     if (language === "d2") {
       const uniqueId = `d2-diagram-worker-${d2IdCounter++}`;
-      return `<div class="d2-container is-loading"><div class="d2-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div></div>`;
+      return renderDiagramShell('d2', 'd2-container', 'd2-diagram', uniqueId, code, 'D2');
     }
 
     if (language === "graphviz" || language === "dot") {
       const uniqueId = `graphviz-diagram-worker-${graphvizIdCounter++}`;
-      return `<div class="graphviz-container is-loading"><div class="graphviz-diagram" id="${uniqueId}" data-original-code="${encodeURIComponent(code)}">${escapeHtml(code)}</div></div>`;
+      return renderDiagramShell('graphviz', 'graphviz-container', 'graphviz-diagram', uniqueId, code, 'Graphviz');
+    }
+
+    const krokiLanguages = {
+      'vega-lite': ['vegalite', 'Vega-Lite'],
+      vegalite: ['vegalite', 'Vega-Lite'],
+      wavedrom: ['wavedrom', 'WaveDrom'],
+      markmap: ['markmap', 'Markmap']
+    };
+    if (krokiLanguages[language]) {
+      const [engine, label] = krokiLanguages[language];
+      const uniqueId = `${engine}-diagram-worker-${krokiIdCounter++}`;
+      return renderDiagramShell(engine, 'kroki-container', 'kroki-diagram', uniqueId, code, label);
     }
 
     if (language === "math") {
@@ -537,6 +558,7 @@ self.onmessage = function(event) {
     plantumlIdCounter = 0;
     d2IdCounter = 0;
     graphvizIdCounter = 0;
+    krokiIdCounter = 0;
     const result = renderSegmentedMarkdown(data.markdown || "", options);
     self.postMessage({
       type: "render-result",
