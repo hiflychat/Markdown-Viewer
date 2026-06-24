@@ -4516,7 +4516,14 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   display: none;
 }
 
-.diagram-viewer.is-loading > .diagram-surface,
+.diagram-viewer.is-loading > .diagram-surface {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .diagram-viewer.is-error > .diagram-surface,
 .diagram-viewer.is-loading > .diagram-toolbar,
 .diagram-viewer.is-error > .diagram-toolbar {
