@@ -1550,10 +1550,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     const svg = node ? node.querySelector('svg') : null;
     if (!svg) return null;
 
+    let intrinsicWidth = 0;
+    let intrinsicHeight = 0;
+    const viewBox = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    if (viewBox.length === 4 && viewBox.every(Number.isFinite)) {
+      intrinsicWidth = Math.abs(viewBox[2]);
+      intrinsicHeight = Math.abs(viewBox[3]);
+    }
+
     if (!svg.getAttribute('viewBox')) {
       const width = parseFloat(svg.getAttribute('width'));
       const height = parseFloat(svg.getAttribute('height'));
-      if (width > 0 && height > 0) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      if (width > 0 && height > 0) {
+        intrinsicWidth = width;
+        intrinsicHeight = height;
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      }
     }
 
     const hasExplicitBackground = typeof source === 'string' && /backgroundcolor/i.test(source);
@@ -1561,7 +1573,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', `${REMOTE_DIAGRAM_ENGINES[engine]?.label || 'Diagram'} preview`);
-    svg.style.width = 'auto';
+    if (intrinsicWidth > 0 && intrinsicHeight > 0) {
+      const naturalWidth = `${intrinsicWidth}px`;
+      svg.style.setProperty('--diagram-natural-width', naturalWidth);
+      node.style.setProperty('--diagram-natural-width', naturalWidth);
+      const viewer = node.closest('.diagram-viewer');
+      if (viewer) viewer.style.setProperty('--diagram-natural-width', naturalWidth);
+      svg.style.width = `min(100%, ${intrinsicWidth}px)`;
+    } else {
+      svg.style.width = 'auto';
+    }
     svg.style.height = 'auto';
     svg.style.maxWidth = '100%';
     svg.style.maxHeight = 'min(70vh, 720px)';

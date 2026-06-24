@@ -4417,10 +4417,21 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   text-align: center;
 }
 
+.diagram-viewer.is-ready {
+  width: min(100%, var(--diagram-natural-width, 100%));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.diagram-viewer.is-ready > .diagram-surface {
+  width: 100%;
+  overflow: visible;
+}
+
 .diagram-surface > svg,
 .diagram-surface > div > svg {
   display: block;
-  width: auto !important;
+  width: min(100%, var(--diagram-natural-width, 100%)) !important;
   height: auto !important;
   max-width: 100% !important;
   max-height: min(70vh, 720px) !important;
@@ -4542,7 +4553,8 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
 @media (max-width: 768px), (hover: none) {
   .diagram-toolbar {
     position: static;
-    width: 100%;
+    width: max-content;
+    max-width: calc(100vw - 32px);
     margin-top: 8px;
     justify-content: center;
     flex-wrap: wrap;
