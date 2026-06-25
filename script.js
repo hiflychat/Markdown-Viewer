@@ -2905,58 +2905,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     node.removeAttribute('data-processed');
   }
 
-  function shouldRenderMermaidRemotely(code) {
-    return /^\s*sankey-beta\b/i.test(code);
-  }
-
-  function getMermaidInkImageUrl(code) {
-    if (typeof pako === 'undefined') {
-      return null;
-    }
-    const theme = document.documentElement.getAttribute("data-theme") === 'dark' ? 'dark' : 'default';
-    const encoded = encodeKrokiD2(JSON.stringify({
-      code,
-      mermaid: { theme }
-    }));
-    return `https://mermaid.ink/img/pako:${encoded}`;
-  }
-
-  async function ensurePakoLoaded() {
-    if (typeof pako !== 'undefined') return;
-    await loadDiagramLibrary(CDN.pako);
-  }
-
-  async function renderMermaidImageNode(node, context) {
-    const container = node.closest('.mermaid-container');
-    const code = getDiagramNodeSource(node);
-    setDiagramRenderState(container, 'loading', 'Rendering Mermaid…');
-    await ensurePakoLoaded();
-    if (context && context.renderId !== previewRenderGeneration) return false;
-    const imageUrl = getMermaidInkImageUrl(code);
-    if (!imageUrl) throw new Error('Mermaid image renderer is unavailable.');
-
-    return new Promise(function(resolve, reject) {
-      const img = new Image();
-      img.className = 'diagram-image mermaid-img';
-      img.alt = 'Mermaid diagram preview';
-      img.decoding = 'async';
-      img.onload = function() {
-        if (context && context.renderId !== previewRenderGeneration) {
-          resolve(false);
-          return;
-        }
-        node.replaceChildren(img);
-        setDiagramRenderState(container, 'ready');
-        mountDiagramViewer(container, 'mermaid');
-        resolve(true);
-      };
-      img.onerror = function() {
-        reject(new Error('Mermaid image renderer failed.'));
-      };
-      img.src = imageUrl;
-    });
-  }
-
   function withMutedMermaidConsole(callback) {
     const originalError = console.error;
     const originalWarn = console.warn;
@@ -2991,18 +2939,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     const renderId = `${node.id || 'mermaid-diagram'}-render-${Math.random().toString(36).slice(2)}`;
 
     try {
-      if (shouldRenderMermaidRemotely(code)) {
-        return await renderMermaidImageNode(node, context);
-      }
       setDiagramRenderState(container, 'loading', 'Rendering Mermaid…');
       restoreDiagramNodeSource(node);
       const result = await withMutedMermaidConsole(function() {
         return mermaid.render(renderId, code);
       });
       if (context && context.renderId !== previewRenderGeneration) return false;
-      if (!result || !result.svg || /\b(?:NaN|undefined)\b/.test(result.svg)) {
-        throw new Error('Mermaid returned invalid SVG geometry.');
-      }
       node.innerHTML = result.svg;
       if (typeof result.bindFunctions === 'function') {
         result.bindFunctions(node);
@@ -3011,13 +2953,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       return true;
     } catch (error) {
       if (context && context.renderId !== previewRenderGeneration) return false;
-      if (shouldRenderMermaidRemotely(code)) {
-        setDiagramRenderState(container, 'error', 'Mermaid renderer is unavailable. Check your connection and retry.', () => {
-          renderMermaidNode(node, context);
-        });
-        return false;
-      }
-      renderRemoteDiagramNode(node, 'mermaid', context);
+      setDiagramRenderState(container, 'error', 'Mermaid could not be rendered. Check the diagram syntax and retry.', () => {
+        renderMermaidNode(node, context);
+      });
       return false;
     }
   }
@@ -3590,9 +3528,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       const mermaidNodes = queryPreviewRoots(roots, '.mermaid');
       if (mermaidNodes.length > 0) {
-        const renderMermaidFallback = function() {
-          mermaidNodes.forEach(node => renderRemoteDiagramNode(node, 'mermaid', context));
-        };
         const renderMermaidNodes = function() {
           if (context.renderId !== previewRenderGeneration) return;
           initMermaid(false);
@@ -3600,7 +3535,14 @@ document.addEventListener("DOMContentLoaded", async function () {
             .catch((e) => {
               if (context.renderId !== previewRenderGeneration) return;
               console.warn("Mermaid rendering failed:", e);
-              renderMermaidFallback();
+              mermaidNodes.forEach(function(node) {
+                setDiagramRenderState(
+                  node.closest('.mermaid-container'),
+                  'error',
+                  'Mermaid could not be rendered. Check the diagram syntax and retry.',
+                  () => renderMermaidNode(node, context)
+                );
+              });
             });
         };
         if (typeof mermaid === 'undefined') {
@@ -3610,7 +3552,14 @@ document.addEventListener("DOMContentLoaded", async function () {
             renderMermaidNodes();
           }).catch(function(e) {
             console.warn('Failed to load mermaid:', e);
-            renderMermaidFallback();
+            mermaidNodes.forEach(function(node) {
+              setDiagramRenderState(
+                node.closest('.mermaid-container'),
+                'error',
+                'Mermaid renderer is unavailable. Check your connection and retry.',
+                () => renderMermaidNode(node, context)
+              );
+            });
           });
         } else {
           renderMermaidNodes();
