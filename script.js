@@ -11794,7 +11794,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         onClick: button => downloadMermaidSvg(container, button)
       }
     ];
-    actions.forEach(action => toolbar.appendChild(createDiagramToolbarButton(action)));
+    actions
+      .filter(action => !(engine === 'abc' && action.title === 'Open diagram viewer'))
+      .forEach(action => toolbar.appendChild(createDiagramToolbarButton(action)));
     container.appendChild(toolbar);
   }
 
