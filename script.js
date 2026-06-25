@@ -13794,9 +13794,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   // Register Service Worker for offline capabilities
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('sw.js').then(function(registration) {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      }, function(err) {
+      navigator.serviceWorker.register('sw.js').catch(function(err) {
         console.log('ServiceWorker registration failed: ', err);
       });
     });
