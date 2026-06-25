@@ -6863,15 +6863,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         const previewDiv = document.createElement('div');
         previewDiv.className = 'diagram-card-preview';
         
-        const isMermaidSpecial = (t.id === 'mermaid-sequence' || t.id === 'mermaid-er');
-        const titleColor = isMermaidSpecial ? '#ff4081' : 'var(--text-color)';
-        const titleWeight = isMermaidSpecial ? 'bold' : 'normal';
         const catClass = t.category.toLowerCase().replace(/\s+/g, '');
 
         previewDiv.innerHTML = `
-          <div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%;">
-            <div style="font-size:10px; font-weight:${titleWeight}; color:${titleColor}; margin-bottom:4px;">${t.title}</div>
-            <div class="diagram-svg-container diagram-svg-${catClass}" style="flex:1; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
+            <div class="diagram-svg-container diagram-svg-${catClass}" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
               ${t.svg}
             </div>
           </div>
