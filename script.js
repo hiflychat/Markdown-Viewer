@@ -1611,14 +1611,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     return 1 + Math.max(...node.children.map(getMarkmapDepth));
   }
 
-  function getMarkmapHeight(root, compact) {
+  function getMarkmapViewportSize(node, root, compact) {
     const nodeCount = getMarkmapNodeCount(root);
     const depth = getMarkmapDepth(root);
-    const baseHeight = compact ? 220 : 340;
-    const estimated = baseHeight + nodeCount * (compact ? 14 : 20) + depth * 24;
-    const min = compact ? 260 : 360;
-    const max = compact ? 520 : 900;
-    return Math.max(min, Math.min(max, estimated));
+    const viewer = node.closest ? node.closest('.diagram-viewer') : null;
+    const measuredWidth = Math.max(
+      node.getBoundingClientRect ? node.getBoundingClientRect().width : 0,
+      viewer && viewer.getBoundingClientRect ? viewer.getBoundingClientRect().width : 0
+    );
+    const width = compact ? 960 : Math.max(1, Math.min(1400, Math.round(measuredWidth || 960)));
+    const estimatedHeight = width * 0.56 + nodeCount * (compact ? 4 : 6) + depth * 12;
+    const minHeight = compact ? 360 : 480;
+    const maxHeight = compact ? 560 : 760;
+    const height = Math.max(minHeight, Math.min(maxHeight, Math.round(estimatedHeight)));
+    return { width, height };
   }
 
   async function buildMarkmap(source) {
@@ -1646,9 +1652,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   async function renderMarkmapIntoElement(node, source, compact) {
     const { markmap, root, options } = await buildMarkmap(source);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const height = getMarkmapHeight(root, compact);
-    const measuredWidth = node.getBoundingClientRect ? node.getBoundingClientRect().width : 0;
-    const width = compact ? 960 : Math.max(640, Math.min(1200, Math.round(measuredWidth || 960)));
+    const { width, height } = getMarkmapViewportSize(node, root, compact);
     svg.setAttribute('width', String(width));
     svg.setAttribute('height', String(height));
     svg.setAttribute('role', 'img');
@@ -1661,10 +1665,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     svg.style.maxHeight = compact ? '100%' : 'min(70vh, 900px)';
     node.replaceChildren(svg);
     const instance = markmap.Markmap.create(svg, options, root);
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    if (instance && typeof instance.fit === 'function') {
-      instance.fit();
-    }
+    const fitMarkmap = () => {
+      if (instance && typeof instance.fit === 'function' && document.body.contains(svg)) {
+        instance.fit();
+      }
+    };
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    fitMarkmap();
+    setTimeout(fitMarkmap, 120);
+    setTimeout(fitMarkmap, 500);
+    svg.querySelectorAll('image, img').forEach(image => {
+      image.addEventListener('load', fitMarkmap, { once: true });
+      image.addEventListener('error', fitMarkmap, { once: true });
+    });
     normalizeDiagramSvg(node, 'markmap', source);
     return svg;
   }
