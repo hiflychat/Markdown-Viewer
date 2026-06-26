@@ -366,13 +366,16 @@ function configureMarked() {
     const krokiLanguages = {
       'vega-lite': ['vegalite', 'Vega-Lite'],
       vegalite: ['vegalite', 'Vega-Lite'],
-      wavedrom: ['wavedrom', 'WaveDrom'],
-      markmap: ['markmap', 'Markmap']
+      wavedrom: ['wavedrom', 'WaveDrom']
     };
     if (krokiLanguages[language]) {
       const [engine, label] = krokiLanguages[language];
       const uniqueId = `${engine}-diagram-worker-${krokiIdCounter++}`;
       return renderDiagramShell(engine, 'kroki-container', 'kroki-diagram', uniqueId, code, label);
+    }
+    if (language === 'markmap') {
+      const uniqueId = `markmap-diagram-worker-${krokiIdCounter++}`;
+      return renderDiagramShell('markmap', 'markmap-container', 'markmap-diagram', uniqueId, code, 'Markmap');
     }
 
     if (language === "math") {
