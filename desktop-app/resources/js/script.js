@@ -1727,16 +1727,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     node.style.setProperty('--markmap-height', `${height}px`);
     svg.style.setProperty('--markmap-height', `${height}px`);
     svg.style.width = '100%';
-    svg.style.height = `${height}px`;
-    svg.style.minHeight = `${height}px`;
-    svg.style.maxHeight = compact ? '100%' : 'min(70vh, 900px)';
+    if (compact) {
+      svg.style.height = '100%';
+      svg.style.minHeight = '0';
+      svg.style.maxHeight = '100%';
+    } else {
+      svg.style.height = `${height}px`;
+      svg.style.minHeight = `${height}px`;
+      svg.style.maxHeight = 'min(70vh, 900px)';
+    }
     node.replaceChildren(svg);
     const markmapOptions = Object.assign({
       zoom: false,
-      pan: false
+      pan: false,
+      autoFit: false
     }, options, compact ? { duration: 0 } : {});
     const instance = markmap.Markmap.create(svg, markmapOptions, root);
     const fitMarkmap = () => {
+      if (compact) return;
       if (instance && typeof instance.fit === 'function' && document.body.contains(svg)) {
         instance.fit();
       }
@@ -1744,13 +1752,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     if (instance.state && instance.state.rect) {
       const rect = instance.state.rect;
+      const treeWidth = rect.x2 - rect.x1;
       const treeHeight = rect.y2 - rect.y1;
-      const computedHeight = Math.max(compact ? 120 : 200, Math.ceil(treeHeight) + 40);
-      svg.setAttribute('height', String(computedHeight));
-      node.style.setProperty('--markmap-height', `${computedHeight}px`);
-      svg.style.setProperty('--markmap-height', `${computedHeight}px`);
-      svg.style.height = `${computedHeight}px`;
-      svg.style.minHeight = `${computedHeight}px`;
+      if (compact) {
+        const pad = 16;
+        svg.setAttribute('viewBox', `${rect.x1 - pad} ${rect.y1 - pad} ${treeWidth + pad * 2} ${treeHeight + pad * 2}`);
+        svg.setAttribute('width', String(treeWidth + pad * 2));
+        svg.setAttribute('height', String(treeHeight + pad * 2));
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.minHeight = '0';
+        svg.style.maxHeight = '100%';
+      } else {
+        const computedHeight = Math.max(200, Math.ceil(treeHeight) + 40);
+        svg.setAttribute('height', String(computedHeight));
+        node.style.setProperty('--markmap-height', `${computedHeight}px`);
+        svg.style.setProperty('--markmap-height', `${computedHeight}px`);
+        svg.style.height = `${computedHeight}px`;
+        svg.style.minHeight = `${computedHeight}px`;
+      }
     }
     fitMarkmap();
     setTimeout(fitMarkmap, 120);
