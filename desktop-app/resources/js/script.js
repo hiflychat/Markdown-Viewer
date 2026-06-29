@@ -1742,17 +1742,22 @@ document.addEventListener("DOMContentLoaded", async function () {
       pan: false,
       autoFit: false
     }, options, compact ? { duration: 0 } : {});
-    const instance = markmap.Markmap.create(svg, markmapOptions, root);
+    // Avoid Markmap.create() which fires setData() in a detached promise chain.
+    // Instead, construct manually and await setData() so rendering is guaranteed
+    // to complete before we measure bounds or serialize the SVG.
+    const instance = new markmap.Markmap(svg, markmapOptions);
     if (compact) {
+      // Override D3 transitions to apply attributes synchronously
       instance.transition = (sel) => sel;
     }
+    // Await setData to ensure all nodes, paths, and transforms are in the DOM
+    await instance.setData(root);
     const fitMarkmap = () => {
       if (compact) return;
       if (instance && typeof instance.fit === 'function' && document.body.contains(svg)) {
         instance.fit();
       }
     };
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     if (instance.state && instance.state.rect) {
       const rect = instance.state.rect;
       const treeWidth = rect.x2 - rect.x1;
