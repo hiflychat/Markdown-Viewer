@@ -510,11 +510,12 @@ function splitMarkdownBlocks(markdown) {
 }
 
 function renderSegmentedMarkdown(markdown, options) {
-  if (!isSegmentedPreviewSafe(markdown)) {
+  const normalizedMarkdown = normalizeMarkmapFences(markdown);
+  if (!isSegmentedPreviewSafe(normalizedMarkdown)) {
     return { mode: "full-required", reason: "unsafe-markdown" };
   }
 
-  const blocks = splitMarkdownBlocks(markdown);
+  const blocks = splitMarkdownBlocks(normalizedMarkdown);
   if (blocks.length < (options.minimumBlocks || 1)) {
     return { mode: "full-required", reason: "too-few-blocks" };
   }
