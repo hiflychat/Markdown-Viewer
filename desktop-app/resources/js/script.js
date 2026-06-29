@@ -1743,6 +1743,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       autoFit: false
     }, options, compact ? { duration: 0 } : {});
     const instance = markmap.Markmap.create(svg, markmapOptions, root);
+    if (compact) {
+      instance.transition = (sel) => sel;
+    }
     const fitMarkmap = () => {
       if (compact) return;
       if (instance && typeof instance.fit === 'function' && document.body.contains(svg)) {
