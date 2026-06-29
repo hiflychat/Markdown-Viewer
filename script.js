@@ -1731,13 +1731,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     svg.style.minHeight = `${height}px`;
     svg.style.maxHeight = compact ? '100%' : 'min(70vh, 900px)';
     node.replaceChildren(svg);
-    const instance = markmap.Markmap.create(svg, options, root);
+    const markmapOptions = Object.assign({
+      zoom: false,
+      pan: false
+    }, options, compact ? { duration: 0 } : {});
+    const instance = markmap.Markmap.create(svg, markmapOptions, root);
     const fitMarkmap = () => {
       if (instance && typeof instance.fit === 'function' && document.body.contains(svg)) {
         instance.fit();
       }
     };
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    if (instance.state && instance.state.rect) {
+      const rect = instance.state.rect;
+      const treeHeight = rect.y2 - rect.y1;
+      const computedHeight = Math.max(compact ? 120 : 200, Math.ceil(treeHeight) + 40);
+      svg.setAttribute('height', String(computedHeight));
+      node.style.setProperty('--markmap-height', `${computedHeight}px`);
+      svg.style.setProperty('--markmap-height', `${computedHeight}px`);
+      svg.style.height = `${computedHeight}px`;
+      svg.style.minHeight = `${computedHeight}px`;
+    }
     fitMarkmap();
     setTimeout(fitMarkmap, 120);
     setTimeout(fitMarkmap, 500);

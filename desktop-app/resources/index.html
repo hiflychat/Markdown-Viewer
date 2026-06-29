@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME='; worker-src 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; upgrade-insecure-requests">
     <!-- PERF-015: Preload critical-path resources for faster discovery -->
     <link rel="preload" href="/styles.css" as="style">
     <link rel="preload" href="script.js" as="script">
@@ -13,13 +14,12 @@
     <!-- JSON-LD Structured Data Schema for Search Rich Snippets -->
     
 
-    <title>Markdown Viewer</title>
+    <title>Markdown Viewer - Secure Online Markdown Editor and Previewer</title>
     <link href="/assets/icon.jpg" rel="icon" type="image/jpg">
     <!-- Updated libraries to latest versions with Subresource Integrity (SRI) -->
     <link rel="stylesheet" href="/libs/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="/libs/github-markdown.min.css" integrity="sha384-hZuxRjC/Dsr4zEx1JlUhDQqkvqBPp2VLHsgXfnxPq1ULDy1eIdWCiux7nvO1RIZP" crossorigin="anonymous">
-    <link rel="preload" href="/libs/bootstrap-icons.min.css" as="style" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/libs/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous"></noscript>
+    <link rel="stylesheet" href="/libs/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
     <link rel="stylesheet" href="/styles.css">
     
     <!-- Loading order optimized - ensure libraries are loaded asynchronously using defer -->
@@ -973,7 +973,7 @@
         </div>
     </div>
 
-    <script type="text/markdown" id="default-markdown">---
+    <textarea id="default-markdown" hidden aria-hidden="true">---
 title: Welcome to Markdown Viewer
 description: A GitHub-style Markdown renderer with live preview, math, diagrams, and export support.
 author: ThisIs-Developer
@@ -1140,12 +1140,10 @@ Quote someone famous:
 ## 🛡️ Security Note
 
 This is a fully client-side application. Your content never leaves your browser and stays secure on your device.
-</script>
+</textarea>
 
-    <script src="/libs/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    <script src="/js/neutralino.js"></script>
-    <script src="/js/main.js"></script>
-    <script src="/js/script.js"></script>
+    <script src="/libs/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous" defer></script>
+    <script src="script.js" defer></script>
     <!-- Screen reader dynamic accessibility announcer -->
     <div id="app-accessibility-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 </body>
