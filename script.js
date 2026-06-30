@@ -236,6 +236,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const exportMd = document.getElementById("export-md");
   const exportHtml = document.getElementById("export-html");
   const exportPdf = document.getElementById("export-pdf");
+  const exportPdfRaster = document.getElementById("export-pdf-raster");
   const exportPng = document.getElementById("export-png");
   const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dragOverlay = document.getElementById("drag-overlay");
@@ -274,6 +275,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileExportMd      = document.getElementById("mobile-export-md");
   const mobileExportHtml    = document.getElementById("mobile-export-html");
   const mobileExportPdf     = document.getElementById("mobile-export-pdf");
+  const mobileExportPdfRaster = document.getElementById("mobile-export-pdf-raster");
   const mobileExportPng     = document.getElementById("mobile-export-png");
   const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
@@ -9247,6 +9249,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   mobileExportMd.addEventListener("click", () => exportMd.click());
   mobileExportHtml.addEventListener("click", () => exportHtml.click());
   mobileExportPdf.addEventListener("click", () => exportPdf.click());
+  if (mobileExportPdfRaster) mobileExportPdfRaster.addEventListener("click", () => exportPdfRaster.click());
   mobileExportPng.addEventListener("click", () => exportPng.click());
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
@@ -10091,7 +10094,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const isPng = state.exportType === "png";
     const triggers = isPng
       ? [exportPng, mobileExportPng].filter(Boolean)
-      : [exportPdf, mobileExportPdf].filter(Boolean);
+      : [exportPdf, mobileExportPdf, exportPdfRaster, mobileExportPdfRaster].filter(Boolean);
     triggers.forEach((trigger, index) => {
       if (busy) {
         state.triggerHtml.set(trigger, trigger.innerHTML);
@@ -10948,8 +10951,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   // End Oversized Graphics Scaling Functions
   // ============================================
 
-  exportPdf.addEventListener("click", async function (event) {
+  exportPdf.addEventListener("click", function (event) {
     event.preventDefault();
+    logPdfExportDebug("PDF (Vector) export button clicked!");
+    window.print();
+  });
+
+  if (exportPdfRaster) {
+    exportPdfRaster.addEventListener("click", async function (event) {
+      event.preventDefault();
     logPdfExportDebug("PDF export button clicked!");
     if (activePdfExport) {
       logPdfExportDebug("PDF export already active, ignoring click");
@@ -11269,6 +11279,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       cleanupPdfExport(progressState);
     }
   });
+  }
 
   exportPng.addEventListener("click", async function (event) {
     event.preventDefault();
