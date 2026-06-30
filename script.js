@@ -2929,6 +2929,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       return true;
     }
 
+    const currentCodeNode = currentEl.querySelector && currentEl.querySelector('[data-original-code]');
+    const nextCodeNode = nextEl.querySelector && nextEl.querySelector('[data-original-code]');
+    if (currentCodeNode && nextCodeNode) {
+      const currentCode = currentCodeNode.getAttribute('data-original-code');
+      const nextCode = nextCodeNode.getAttribute('data-original-code');
+      if (currentCode && currentCode === nextCode && currentCodeNode.className === nextCodeNode.className) {
+        return true;
+      }
+    }
+
     if (currentEl.outerHTML === nextEl.outerHTML) return true;
 
     if (currentEl.tagName === 'DETAILS' && nextEl.tagName === 'DETAILS' && currentEl.hasAttribute('open')) {
