@@ -4978,3 +4978,31 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 
+
+
+@media print {
+  .app-header, .tab-bar, .markdown-format-toolbar, .editor-pane, .resize-divider, .mobile-menu, #mobile-menu-overlay, .pdf-progress-overlay {
+    display: none !important;
+  }
+  .preview-pane {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+  }
+  .app-container, .content-container, .markdown-body {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+  body, html {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+}
+

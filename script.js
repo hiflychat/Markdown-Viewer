@@ -236,6 +236,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   const exportMd = document.getElementById("export-md");
   const exportHtml = document.getElementById("export-html");
   const exportPdf = document.getElementById("export-pdf");
+  const pdfExportModal = document.getElementById("pdf-export-modal");
+  const pdfExportClose = document.getElementById("pdf-export-close");
+  const pdfExportCancelBtn = document.getElementById("pdf-export-cancel");
+  const pdfExportConfirmBtn = document.getElementById("pdf-export-confirm");
+  const pdfExportCardVector = document.getElementById("pdf-export-card-vector");
+  const pdfExportCardRaster = document.getElementById("pdf-export-card-raster");
+  const pdfExportModeVector = document.getElementById("pdf-export-mode-vector");
+  const pdfExportModeRaster = document.getElementById("pdf-export-mode-raster");
   const exportPng = document.getElementById("export-png");
   const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dragOverlay = document.getElementById("drag-overlay");
@@ -10948,13 +10956,43 @@ document.addEventListener("DOMContentLoaded", async function () {
   // End Oversized Graphics Scaling Functions
   // ============================================
 
-  exportPdf.addEventListener("click", async function (event) {
+  pdfExportClose?.addEventListener("click", () => closeAppModal(pdfExportModal));
+
+  exportPdf.addEventListener("click", function (event) {
     event.preventDefault();
-    logPdfExportDebug("PDF export button clicked!");
-    if (activePdfExport) {
-      logPdfExportDebug("PDF export already active, ignoring click");
-      return;
+    openAppModal(pdfExportModal);
+  });
+
+  function syncPdfExportCardStyles() {
+    if (pdfExportModeVector?.checked) {
+      pdfExportCardVector?.classList.add('is-selected');
+      pdfExportCardRaster?.classList.remove('is-selected');
+    } else {
+      pdfExportCardRaster?.classList.add('is-selected');
+      pdfExportCardVector?.classList.remove('is-selected');
     }
+  }
+
+  pdfExportModeVector?.addEventListener('change', syncPdfExportCardStyles);
+  pdfExportModeRaster?.addEventListener('change', syncPdfExportCardStyles);
+
+  pdfExportCancelBtn?.addEventListener("click", () => closeAppModal(pdfExportModal));
+
+  pdfExportConfirmBtn?.addEventListener("click", async function (event) {
+    event.preventDefault();
+    closeAppModal(pdfExportModal);
+
+    const selectedMode = document.querySelector('input[name="pdf-export-mode"]:checked')?.value;
+
+    if (selectedMode === "vector") {
+      logPdfExportDebug("PDF (Vector) export button clicked!");
+      window.print();
+    } else if (selectedMode === "raster") {
+      logPdfExportDebug("PDF export button clicked!");
+      if (activePdfExport) {
+        logPdfExportDebug("PDF export already active, ignoring click");
+        return;
+      }
 
     const progressState = createPdfProgressState();
     activePdfExport = progressState;
@@ -11267,6 +11305,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     } finally {
       cleanupPdfExport(progressState);
+    }
     }
   });
 
