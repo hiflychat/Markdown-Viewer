@@ -1,6 +1,6 @@
 # Detailed Features & Implementation Deep Dive
 
-This document details the features of **Markdown Viewer**, focusing on their architectural execution, performance strategies, and code-level configurations for version v3.8.0.
+This document details the features of **Markdown Viewer**, focusing on their architectural execution, performance strategies, and code-level configurations for version v3.8.1.
 
 ---
 

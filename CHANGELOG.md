@@ -3,6 +3,19 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## v3.8.1
+
+- **Description:** Included various bug fixes and improvements around diagram rendering, Markmap optimizations, ABC notation fixes, and security hardenings.
+  - **Diagram Optimizations:** Prevented unnecessary diagram re-rendering when editor changes are outside the block. Resolved DOM shift issues and post-processing bugs.
+  - **Markmap Render Improvements:** Switched to the official Markmap renderer. Fixed nested code blocks, centered previews, and ensured correct SVG serialization by enforcing synchronous transitions.
+  - **ABC & Mermaid Fixes:** Removed the zoom toolbar for ABC notation, allowed soundfont audio requests. Fixed duplicate card titles and Sankey rendering errors in Mermaid.
+  - **Security & Performance:** Optimized SEO metadata and hardened security, allowing CDN source map connections. Fixed duplicate inline render on paste for MathJax.
+  - **CI & Docs:** Documented advanced diagram engines. Published desktop assets and generated Neutralino client in release builds.
+- **Date:** 2026-06-30
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/commit/144b4b0dafb118cb4a66f27a8cbf6c51102d8eee
+
+---
+
 ## v3.8.0
 
 - **Description:** Delivered substantial new feature expansions and reliability enhancements, including diagram insertion workflow with live card previews, client-side rendering engines (PlantUML, D2, Graphviz), interactive ABC notation playback sync, export quality boosts, desktop data persistence, and layout fixes for squished or overlapping diagrams.
