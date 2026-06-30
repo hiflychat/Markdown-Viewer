@@ -2929,6 +2929,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       return true;
     }
 
+    const currentCodeNode = currentEl.querySelector && currentEl.querySelector('[data-original-code]');
+    const nextCodeNode = nextEl.querySelector && nextEl.querySelector('[data-original-code]');
+    if (currentCodeNode && nextCodeNode) {
+      const currentCode = currentCodeNode.getAttribute('data-original-code');
+      const nextCode = nextCodeNode.getAttribute('data-original-code');
+      if (currentCode && currentCode === nextCode && currentCodeNode.className === nextCodeNode.className) {
+        return true;
+      }
+    }
+
     if (currentEl.outerHTML === nextEl.outerHTML) return true;
 
     if (currentEl.tagName === 'DETAILS' && nextEl.tagName === 'DETAILS' && currentEl.hasAttribute('open')) {
@@ -2963,32 +2973,61 @@ document.addEventListener("DOMContentLoaded", async function () {
       return result;
     }
 
-    let index = 0;
-    while (index < nextNodes.length || index < container.childNodes.length) {
-      const currentNode = container.childNodes[index];
-      const nextNode = nextNodes[index];
-
-      if (!nextNode) {
-        currentNode.remove();
-        continue;
+    function getNodeKey(node) {
+      if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+      if (node.dataset && node.dataset.previewBlockHash) {
+        return 'hash:' + node.dataset.previewBlockHash;
       }
-
-      if (!currentNode) {
-        container.appendChild(nextNode);
-        result.updatedNodes.push(nextNode);
-        index += 1;
-        continue;
+      const codeNode = node.hasAttribute('data-original-code') ? node : (node.querySelector && node.querySelector('[data-original-code]'));
+      if (codeNode) {
+        return 'diagram:' + codeNode.className + ':' + codeNode.getAttribute('data-original-code');
       }
-
-      if (canReusePreviewNode(currentNode, nextNode, options)) {
-        index += 1;
-        continue;
-      }
-
-      result.updatedNodes.push(nextNode);
-      currentNode.replaceWith(nextNode);
-      index += 1;
+      return null;
     }
+
+    const currentNodes = Array.from(container.childNodes);
+
+    for (let j = 0; j < nextNodes.length; j++) {
+      const nextNode = nextNodes[j];
+      const nextKey = getNodeKey(nextNode);
+
+      let matchedIndex = -1;
+      if (nextKey) {
+        for (let k = 0; k < currentNodes.length; k++) {
+          if (getNodeKey(currentNodes[k]) === nextKey) {
+            matchedIndex = k;
+            break;
+          }
+        }
+      }
+
+      if (matchedIndex === -1 && currentNodes.length > 0) {
+        const lookAhead = Math.min(10, currentNodes.length);
+        for (let k = 0; k < lookAhead; k++) {
+          if (canReusePreviewNode(currentNodes[k], nextNode, options)) {
+            matchedIndex = k;
+            break;
+          }
+        }
+      }
+
+      if (matchedIndex !== -1) {
+        const matchedNode = currentNodes[matchedIndex];
+        currentNodes.splice(matchedIndex, 1);
+        if (container.childNodes[j] !== matchedNode) {
+          container.insertBefore(matchedNode, container.childNodes[j] || null);
+        }
+      } else {
+        container.insertBefore(nextNode, container.childNodes[j] || null);
+        result.updatedNodes.push(nextNode);
+      }
+    }
+
+    currentNodes.forEach(function(node) {
+      if (node.parentNode === container) {
+        node.remove();
+      }
+    });
 
     return result;
   }
@@ -3016,8 +3055,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getPreviewPostProcessRoots(patchResult) {
-    if (!patchResult || patchResult.fullReplace || !patchResult.updatedNodes || patchResult.updatedNodes.length === 0) {
+    if (!patchResult || patchResult.fullReplace) {
       return [markdownPreview];
+    }
+    if (!patchResult.updatedNodes || patchResult.updatedNodes.length === 0) {
+      return [];
     }
 
     const roots = [];
@@ -3030,7 +3072,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     });
 
-    return roots.length ? roots : [markdownPreview];
+    return roots;
   }
 
   function queryPreviewRoots(roots, selector) {
