@@ -240,6 +240,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const pdfExportClose = document.getElementById("pdf-export-close");
   const pdfExportCancelBtn = document.getElementById("pdf-export-cancel");
   const pdfExportConfirmBtn = document.getElementById("pdf-export-confirm");
+  const pdfExportCardVector = document.getElementById("pdf-export-card-vector");
+  const pdfExportCardRaster = document.getElementById("pdf-export-card-raster");
+  const pdfExportModeVector = document.getElementById("pdf-export-mode-vector");
+  const pdfExportModeRaster = document.getElementById("pdf-export-mode-raster");
   const exportPng = document.getElementById("export-png");
   const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dragOverlay = document.getElementById("drag-overlay");
@@ -10958,6 +10962,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     event.preventDefault();
     openAppModal(pdfExportModal);
   });
+
+  function syncPdfExportCardStyles() {
+    if (pdfExportModeVector?.checked) {
+      pdfExportCardVector?.classList.add('is-selected');
+      pdfExportCardRaster?.classList.remove('is-selected');
+    } else {
+      pdfExportCardRaster?.classList.add('is-selected');
+      pdfExportCardVector?.classList.remove('is-selected');
+    }
+  }
+
+  pdfExportModeVector?.addEventListener('change', syncPdfExportCardStyles);
+  pdfExportModeRaster?.addEventListener('change', syncPdfExportCardStyles);
 
   pdfExportCancelBtn?.addEventListener("click", () => closeAppModal(pdfExportModal));
 
