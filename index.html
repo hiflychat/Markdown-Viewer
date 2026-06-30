@@ -443,15 +443,32 @@
                 <i class="bi bi-x-lg"></i>
               </button>
             </div>
-            <div class="pdf-export-options" style="display: flex; flex-direction: column; gap: 1rem; margin: 1rem 0;">
-              <button class="pdf-export-option-btn reset-modal-btn" id="pdf-export-vector" style="text-align: left; padding: 1rem; height: auto;">
-                <strong><i class="bi bi-file-earmark-pdf"></i> Browser Print (Recommended)</strong>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.85em; font-weight: normal; white-space: normal;">Faster, suggested for large documents. Note: images, diagrams, etc. might break.</p>
-              </button>
-              <button class="pdf-export-option-btn reset-modal-btn" id="pdf-export-raster" style="text-align: left; padding: 1rem; height: auto;">
-                <strong><i class="bi bi-file-earmark-pdf-fill"></i> Legacy Raster PDF</strong>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.85em; font-weight: normal; white-space: normal;">Intelligently plans page breaks to keep images, tables, equations, and diagrams together. Blocks move to the next page when there is not enough space. Recommended for short documents.</p>
-              </button>
+            <div class="modal-body">
+              <p class="share-modal-description">Choose how the PDF should be generated.</p>
+              <div class="share-mode-cards">
+                <label class="share-mode-card" id="pdf-export-card-vector" for="pdf-export-mode-vector">
+                  <input type="radio" id="pdf-export-mode-vector" name="pdf-export-mode" value="vector" checked />
+                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf"></i></span>
+                  <span class="share-card-body">
+                    <span class="share-card-title">Browser Print (Recommended)</span>
+                    <span class="share-card-desc">Faster, suggested for large documents. Note: images, diagrams, etc. might break.</span>
+                  </span>
+                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                </label>
+                <label class="share-mode-card" id="pdf-export-card-raster" for="pdf-export-mode-raster">
+                  <input type="radio" id="pdf-export-mode-raster" name="pdf-export-mode" value="raster" />
+                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></span>
+                  <span class="share-card-body">
+                    <span class="share-card-title">Legacy Raster PDF</span>
+                    <span class="share-card-desc">Intelligently plans page breaks to keep images, tables, equations, and diagrams together. Blocks move to the next page when there is not enough space. Recommended for short documents.</span>
+                  </span>
+                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                </label>
+              </div>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="pdf-export-cancel">Cancel</button>
+              <button class="reset-modal-btn reset-modal-confirm" id="pdf-export-confirm">Export</button>
             </div>
           </div>
         </div>

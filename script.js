@@ -238,8 +238,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const exportPdf = document.getElementById("export-pdf");
   const pdfExportModal = document.getElementById("pdf-export-modal");
   const pdfExportClose = document.getElementById("pdf-export-close");
-  const pdfExportVectorBtn = document.getElementById("pdf-export-vector");
-  const pdfExportRasterBtn = document.getElementById("pdf-export-raster");
+  const pdfExportCancelBtn = document.getElementById("pdf-export-cancel");
+  const pdfExportConfirmBtn = document.getElementById("pdf-export-confirm");
   const exportPng = document.getElementById("export-png");
   const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dragOverlay = document.getElementById("drag-overlay");
@@ -10959,20 +10959,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     openAppModal(pdfExportModal);
   });
 
-  pdfExportVectorBtn?.addEventListener("click", function (event) {
+  pdfExportCancelBtn?.addEventListener("click", () => closeAppModal(pdfExportModal));
+
+  pdfExportConfirmBtn?.addEventListener("click", async function (event) {
     event.preventDefault();
     closeAppModal(pdfExportModal);
-    logPdfExportDebug("PDF (Vector) export button clicked!");
-    window.print();
-  });
 
-  pdfExportRasterBtn?.addEventListener("click", async function (event) {
-    event.preventDefault();
-    logPdfExportDebug("PDF export button clicked!");
-    if (activePdfExport) {
-      logPdfExportDebug("PDF export already active, ignoring click");
-      return;
-    }
+    const selectedMode = document.querySelector('input[name="pdf-export-mode"]:checked')?.value;
+
+    if (selectedMode === "vector") {
+      logPdfExportDebug("PDF (Vector) export button clicked!");
+      window.print();
+    } else if (selectedMode === "raster") {
+      logPdfExportDebug("PDF export button clicked!");
+      if (activePdfExport) {
+        logPdfExportDebug("PDF export already active, ignoring click");
+        return;
+      }
 
     const progressState = createPdfProgressState();
     activePdfExport = progressState;
@@ -11285,6 +11288,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     } finally {
       cleanupPdfExport(progressState);
+    }
     }
   });
 
