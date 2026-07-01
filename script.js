@@ -104,7 +104,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     orbitControls: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
     d3: 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
     markmapLib: 'https://cdn.jsdelivr.net/npm/markmap-lib@0.18.12/dist/browser/index.iife.js',
-    markmapView: 'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js'
+    markmapView: 'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js',
+    yjs: 'https://esm.sh/yjs@13.6.10/es2022/yjs.mjs',
+    ywebrtc: 'https://esm.sh/y-webrtc@10.3.0?bundle&deps=yjs@13.6.10'
   };
 
   // Resolve local paths for desktop (Neutralinojs) offline support
@@ -287,6 +289,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
   const shareButton         = document.getElementById("share-button");
   const mobileShareButton   = document.getElementById("mobile-share-button");
+  const liveShareButton     = document.getElementById("live-share-button");
+  const mobileLiveShareButton = document.getElementById("mobile-live-share-button");
   const githubImportModal = document.getElementById("github-import-modal");
   const githubImportTitle = document.getElementById("github-import-title");
   const githubImportUrlInput = document.getElementById("github-import-url");
@@ -2093,6 +2097,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   let draggedTabId = null;
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
+  let liveCollaboration = null;
+  let liveCollaborationModulesPromise = null;
+  const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
@@ -2121,10 +2128,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     }, 500);
   }
 
+  function getTabsForStorage(tabsArr) {
+    const sourceTabs = tabsArr || tabs;
+    if (!liveCollaboration || !liveCollaboration.originalTabSnapshot) {
+      return sourceTabs;
+    }
+
+    return sourceTabs.map(function(tab) {
+      if (tab.id !== liveCollaboration.tabId) return tab;
+      return Object.assign({}, tab, liveCollaboration.originalTabSnapshot);
+    });
+  }
+
   function _flushTabsToStorage(tabsArr) {
     clearTimeout(saveTabStateTimeout);
     try {
-      saveStorageItem(STORAGE_KEY, JSON.stringify(tabsArr || tabs));
+      saveStorageItem(STORAGE_KEY, JSON.stringify(getTabsForStorage(tabsArr)));
     } catch (e) {
       console.warn('Failed to save tabs to localStorage:', e);
     }
@@ -2545,6 +2564,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
     tab.viewMode = currentViewMode || 'split';
+    if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
+      return;
+    }
     saveTabsToStorage(tabs);
   }
 
@@ -9352,6 +9374,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   markdownEditor.addEventListener("input", function(e) {
     handleKeystrokeHistory(e);
+    if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
+      syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
+    }
     debouncedRender();
     clearTimeout(saveTabStateTimeout);
     saveTabStateTimeout = setTimeout(saveCurrentTabState, 500);
@@ -11726,9 +11751,461 @@ document.addEventListener("DOMContentLoaded", async function () {
   shareModal.addEventListener('click', function (e) {
     if (e.target === shareModal) closeShareModal();
   });
+
+  // ============================================
+  // Live Share (Yjs + y-webrtc, in-memory only)
+  // ============================================
+
+  const LIVE_SHARE_DEFAULT_DISPLAY_NAME_KEY = 'markdownViewerLiveDisplayName';
+  const liveShareModal        = document.getElementById('live-share-modal');
+  const liveShareModalCloseX  = document.getElementById('live-share-modal-close-icon');
+  const liveShareStartBtn     = document.getElementById('live-share-start-btn');
+  const liveShareEndBtn       = document.getElementById('live-share-end-btn');
+  const liveShareCopyBtn      = document.getElementById('live-share-copy-btn');
+  const liveShareUrlInput     = document.getElementById('live-share-url-input');
+  const liveShareDisplayName  = document.getElementById('live-share-display-name');
+  const liveShareDirectOnly   = document.getElementById('live-share-direct-only');
+  const liveShareStatus       = document.getElementById('live-share-status');
+  const liveShareStatusText   = document.getElementById('live-share-status-text');
+  const liveShareParticipants = document.getElementById('live-share-participants');
+
+  function getRandomBase64Url(byteLength) {
+    const bytes = new Uint8Array(byteLength);
+    crypto.getRandomValues(bytes);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function generateGuestName() {
+    return 'Guest ' + Math.floor(100 + Math.random() * 900);
+  }
+
+  function getLiveDisplayName() {
+    const inputName = liveShareDisplayName ? liveShareDisplayName.value.trim() : '';
+    if (inputName) {
+      saveStorageItem(LIVE_SHARE_DEFAULT_DISPLAY_NAME_KEY, inputName);
+      return inputName;
+    }
+
+    const savedName = localStorage.getItem(LIVE_SHARE_DEFAULT_DISPLAY_NAME_KEY);
+    if (savedName) return savedName;
+
+    const generated = generateGuestName();
+    if (liveShareDisplayName) {
+      liveShareDisplayName.value = generated;
+    }
+    saveStorageItem(LIVE_SHARE_DEFAULT_DISPLAY_NAME_KEY, generated);
+    return generated;
+  }
+
+  function getLiveSignalingUrls() {
+    if (Array.isArray(window.MARKDOWN_VIEWER_SIGNALING_URLS) && window.MARKDOWN_VIEWER_SIGNALING_URLS.length) {
+      return window.MARKDOWN_VIEWER_SIGNALING_URLS.filter(Boolean);
+    }
+
+    if (typeof Neutralino !== 'undefined' || window.location.protocol === 'file:') {
+      return ['wss://markdownviewer.pages.dev/live-signal'];
+    }
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return [wsProtocol + '//' + window.location.host + '/live-signal'];
+  }
+
+  function getLiveIceServers() {
+    const stunServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    if (liveShareDirectOnly && liveShareDirectOnly.checked) {
+      return stunServers;
+    }
+
+    if (Array.isArray(window.MARKDOWN_VIEWER_RELAY_ICE_SERVERS)) {
+      return stunServers.concat(window.MARKDOWN_VIEWER_RELAY_ICE_SERVERS);
+    }
+
+    return stunServers;
+  }
+
+  function buildLiveInviteUrl(roomId, secret) {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    const baseUrl = isLocal
+      ? 'https://markdownviewer.pages.dev/'
+      : window.location.origin + window.location.pathname;
+
+    return baseUrl + '#live=' + encodeURIComponent(roomId + '.' + secret);
+  }
+
+  function parseLiveHash() {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#live=')) return null;
+    const rest = decodeURIComponent(hash.slice('#live='.length));
+    const separatorIndex = rest.indexOf('.');
+    if (separatorIndex === -1) return null;
+    const roomId = rest.slice(0, separatorIndex);
+    const secret = rest.slice(separatorIndex + 1);
+    if (!roomId || !secret) return null;
+    return { roomId, secret };
+  }
+
+  function loadLiveCollaborationModules() {
+    if (!liveCollaborationModulesPromise) {
+      liveCollaborationModulesPromise = Promise.all([
+        import(CDN.yjs),
+        import(CDN.ywebrtc)
+      ]).then(function(modules) {
+        return {
+          Y: modules[0],
+          WebrtcProvider: modules[1].WebrtcProvider
+        };
+      });
+    }
+    return liveCollaborationModulesPromise;
+  }
+
+  function setLiveShareStatus(message, state) {
+    if (liveShareStatusText) {
+      liveShareStatusText.textContent = message;
+    }
+    if (liveShareStatus) {
+      liveShareStatus.dataset.state = state || 'idle';
+    }
+  }
+
+  function renderLiveParticipants() {
+    if (!liveShareParticipants) return;
+    liveShareParticipants.textContent = '';
+
+    if (!liveCollaboration || !liveCollaboration.provider || !liveCollaboration.provider.awareness) {
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    const states = Array.from(liveCollaboration.provider.awareness.getStates().values());
+    states.forEach(function(state) {
+      if (!state || !state.user) return;
+      const item = document.createElement('span');
+      item.className = 'live-share-participant';
+      const swatch = document.createElement('span');
+      swatch.className = 'live-share-participant-color';
+      swatch.style.backgroundColor = state.user.color || '#5b8cff';
+      const name = document.createElement('span');
+      name.textContent = state.user.name || 'Guest';
+      item.appendChild(swatch);
+      item.appendChild(name);
+      fragment.appendChild(item);
+    });
+
+    liveShareParticipants.appendChild(fragment);
+    const participantCount = states.length || 1;
+    const status = liveCollaboration.signalingConnected ? 'Signaling connected' : 'Connecting';
+    setLiveShareStatus('Room active - ' + participantCount + ' participant' + (participantCount === 1 ? '' : 's') + ' - ' + status, liveCollaboration.signalingConnected ? 'active' : 'connecting');
+  }
+
+  function updateLiveShareControls() {
+    const isActive = Boolean(liveCollaboration);
+    if (liveShareStartBtn) {
+      liveShareStartBtn.disabled = isActive;
+      liveShareStartBtn.textContent = isActive ? 'Session active' : 'Start session';
+    }
+    if (liveShareEndBtn) {
+      liveShareEndBtn.disabled = !isActive;
+    }
+    if (liveShareCopyBtn) {
+      liveShareCopyBtn.disabled = !isActive || !liveShareUrlInput || !liveShareUrlInput.value;
+    }
+    if (!isActive) {
+      setLiveShareStatus('No live room active', 'idle');
+      if (liveShareParticipants) liveShareParticipants.textContent = '';
+      if (liveShareUrlInput) liveShareUrlInput.value = '';
+    } else {
+      renderLiveParticipants();
+    }
+  }
+
+  function syncLiveLocalEditorChange(oldValue, newValue) {
+    if (!liveCollaboration || !liveCollaboration.yText) return;
+    if (oldValue === newValue) return;
+
+    let start = 0;
+    while (
+      start < oldValue.length &&
+      start < newValue.length &&
+      oldValue[start] === newValue[start]
+    ) {
+      start += 1;
+    }
+
+    let oldEnd = oldValue.length;
+    let newEnd = newValue.length;
+    while (
+      oldEnd > start &&
+      newEnd > start &&
+      oldValue[oldEnd - 1] === newValue[newEnd - 1]
+    ) {
+      oldEnd -= 1;
+      newEnd -= 1;
+    }
+
+    const deleteLength = oldEnd - start;
+    const insertedText = newValue.slice(start, newEnd);
+
+    liveCollaboration.ydoc.transact(function() {
+      if (deleteLength > 0) {
+        liveCollaboration.yText.delete(start, deleteLength);
+      }
+      if (insertedText) {
+        liveCollaboration.yText.insert(start, insertedText);
+      }
+    }, LIVE_EDIT_ORIGIN);
+
+    liveCollaboration.lastMarkdown = newValue;
+  }
+
+  function applyLiveRemoteMarkdown(remoteMarkdown) {
+    if (!liveCollaboration || liveCollaboration.lastMarkdown === remoteMarkdown) return;
+
+    liveCollaboration.isApplyingRemoteChange = true;
+    const selectionStart = markdownEditor.selectionStart || 0;
+    const selectionEnd = markdownEditor.selectionEnd || selectionStart;
+    markdownEditor.value = remoteMarkdown;
+    liveCollaboration.lastMarkdown = remoteMarkdown;
+
+    const tab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (tab) {
+      tab.content = remoteMarkdown;
+      tab.scrollPos = markdownEditor.scrollTop;
+      tab.viewMode = currentViewMode || 'split';
+    }
+
+    lastPushedValue = remoteMarkdown;
+    renderMarkdown({ reason: 'live-remote', force: true });
+    updateDocumentStats();
+    updateFindHighlights();
+    scheduleLineNumberUpdate({ force: true });
+
+    const caret = Math.min(remoteMarkdown.length, selectionStart);
+    const end = Math.min(remoteMarkdown.length, selectionEnd);
+    requestAnimationFrame(function() {
+      try {
+        markdownEditor.setSelectionRange(caret, end);
+      } catch (_) {}
+    });
+
+    liveCollaboration.isApplyingRemoteChange = false;
+  }
+
+  function disconnectLiveCollaboration() {
+    if (!liveCollaboration) return;
+
+    try {
+      if (liveCollaboration.yText && liveCollaboration.observer) {
+        liveCollaboration.yText.unobserve(liveCollaboration.observer);
+      }
+      if (liveCollaboration.provider && liveCollaboration.provider.awareness) {
+        liveCollaboration.provider.awareness.setLocalState(null);
+      }
+      if (liveCollaboration.provider && typeof liveCollaboration.provider.destroy === 'function') {
+        liveCollaboration.provider.destroy();
+      }
+      if (liveCollaboration.ydoc && typeof liveCollaboration.ydoc.destroy === 'function') {
+        liveCollaboration.ydoc.destroy();
+      }
+    } catch (error) {
+      console.warn('Failed to fully close live session:', error);
+    }
+
+    liveCollaboration = null;
+    updateLiveShareControls();
+  }
+
+  async function startLiveSession(options) {
+    options = options || {};
+    const isHost = options.isHost !== false;
+    const roomId = options.roomId || ('room-' + getRandomBase64Url(9));
+    const secret = options.secret || ('secret-' + getRandomBase64Url(32));
+    const displayName = getLiveDisplayName();
+    const modules = await loadLiveCollaborationModules();
+    const ydoc = new modules.Y.Doc();
+    const yText = ydoc.getText('markdown');
+    const inviteUrl = buildLiveInviteUrl(roomId, secret);
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    const originalTabSnapshot = activeTab ? {
+      content: activeTab.content,
+      scrollPos: activeTab.scrollPos,
+      viewMode: activeTab.viewMode
+    } : null;
+
+    disconnectLiveCollaboration();
+
+    const provider = new modules.WebrtcProvider(roomId, ydoc, {
+      password: secret,
+      signaling: getLiveSignalingUrls(),
+      maxConns: 8,
+      filterBcConns: true,
+      peerOpts: {
+        config: {
+          iceServers: getLiveIceServers()
+        }
+      }
+    });
+
+    liveCollaboration = {
+      roomId,
+      secret,
+      inviteUrl,
+      ydoc,
+      provider,
+      yText,
+      tabId: activeTabId,
+      originalTabSnapshot,
+      isApplyingRemoteChange: false,
+      lastMarkdown: markdownEditor.value,
+      signalingConnected: false,
+      observer: null
+    };
+
+    liveCollaboration.observer = function(event) {
+      if (event.transaction.origin === LIVE_EDIT_ORIGIN) return;
+      applyLiveRemoteMarkdown(yText.toString());
+    };
+    yText.observe(liveCollaboration.observer);
+
+    if (isHost && yText.length === 0) {
+      yText.insert(0, markdownEditor.value || '');
+      liveCollaboration.lastMarkdown = markdownEditor.value || '';
+    }
+
+    provider.awareness.setLocalStateField('user', {
+      name: displayName,
+      color: '#' + getRandomBase64Url(3).slice(0, 6)
+    });
+    provider.awareness.on('change', renderLiveParticipants);
+    provider.on('status', function(event) {
+      liveCollaboration.signalingConnected = Boolean(event && event.connected);
+      renderLiveParticipants();
+    });
+
+    if (liveShareUrlInput) {
+      liveShareUrlInput.value = inviteUrl;
+    }
+    updateLiveShareControls();
+    renderLiveParticipants();
+    setViewMode('split');
+    announceToScreenReader('Live Share session started.');
+  }
+
+  function openLiveShareModal() {
+    if (!liveShareModal) return;
+    if (liveShareDisplayName && !liveShareDisplayName.value) {
+      liveShareDisplayName.value = localStorage.getItem(LIVE_SHARE_DEFAULT_DISPLAY_NAME_KEY) || generateGuestName();
+    }
+    updateLiveShareControls();
+    liveShareModal.style.display = '';
+    requestAnimationFrame(() => {
+      liveShareModal.classList.add('is-visible');
+      liveShareModal.setAttribute('aria-hidden', 'false');
+      if (liveShareDisplayName && !liveCollaboration) {
+        liveShareDisplayName.focus();
+        liveShareDisplayName.select();
+      }
+    });
+  }
+
+  function closeLiveShareModal() {
+    if (!liveShareModal) return;
+    liveShareModal.classList.remove('is-visible');
+    liveShareModal.setAttribute('aria-hidden', 'true');
+    liveShareModal.addEventListener('transitionend', function handler() {
+      liveShareModal.style.display = 'none';
+      liveShareModal.removeEventListener('transitionend', handler);
+    });
+  }
+
+  function copyLiveShareLink() {
+    const url = liveShareUrlInput ? liveShareUrlInput.value : '';
+    if (!url || !liveShareCopyBtn || liveShareCopyBtn.disabled) return;
+
+    function onCopied() {
+      const orig = liveShareCopyBtn.innerHTML;
+      liveShareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      setTimeout(() => { liveShareCopyBtn.innerHTML = orig; }, 2000);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(onCopied).catch(() => {});
+    } else {
+      try {
+        const tmp = document.createElement('textarea');
+        tmp.value = url;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        onCopied();
+      } catch (_) {}
+    }
+  }
+
+  async function loadFromLiveHash() {
+    const parsed = parseLiveHash();
+    if (!parsed) return;
+    try {
+      await startLiveSession({
+        roomId: parsed.roomId,
+        secret: parsed.secret,
+        isHost: false
+      });
+      openLiveShareModal();
+    } catch (error) {
+      console.error('Failed to join live session:', error);
+      alert('The live room could not be joined. Please check the invite link or connection.');
+    }
+  }
+
+  if (liveShareButton) {
+    liveShareButton.addEventListener('click', openLiveShareModal);
+  }
+  if (mobileLiveShareButton) {
+    mobileLiveShareButton.addEventListener('click', function() {
+      closeMobileMenu();
+      openLiveShareModal();
+    });
+  }
+  if (liveShareStartBtn) {
+    liveShareStartBtn.addEventListener('click', function() {
+      setLiveShareStatus('Starting live room...', 'connecting');
+      startLiveSession({ isHost: true }).catch(function(error) {
+        console.error('Failed to start live session:', error);
+        setLiveShareStatus('Unable to start live room', 'error');
+        alert('Failed to start Live Share. Please check your connection and try again.');
+      });
+    });
+  }
+  if (liveShareEndBtn) {
+    liveShareEndBtn.addEventListener('click', disconnectLiveCollaboration);
+  }
+  if (liveShareCopyBtn) {
+    liveShareCopyBtn.addEventListener('click', copyLiveShareLink);
+  }
+  if (liveShareModalCloseX) {
+    liveShareModalCloseX.addEventListener('click', closeLiveShareModal);
+  }
+  if (liveShareModal) {
+    liveShareModal.addEventListener('click', function(e) {
+      if (e.target === liveShareModal) closeLiveShareModal();
+    });
+  }
+
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && shareModal.classList.contains('is-visible')) {
       closeShareModal();
+    }
+    if (e.key === 'Escape' && liveShareModal && liveShareModal.classList.contains('is-visible')) {
+      closeLiveShareModal();
     }
     
     // Global Ctrl+F / Cmd+F interception
@@ -11804,6 +12281,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   loadFromShareHash();
+  loadFromLiveHash();
 
   // Full-window drag-and-drop: track nesting level for reliable enter/leave detection
   let dragDepth = 0;
@@ -13838,10 +14316,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
-      if (shareButtonText) shareButtonText.textContent = dict.share;
+      if (shareButtonText) shareButtonText.textContent = dict.shareSnapshot || 'Share Snapshot';
+    }
+    if (liveShareButton) {
+      const liveShareButtonText = liveShareButton.querySelector('.btn-text');
+      if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
     }
     const mShareBtn = document.getElementById('mobile-share-button');
-    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.share}`;
+    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
+    const mLiveShareBtn = document.getElementById('mobile-live-share-button');
+    if (mLiveShareBtn) mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');

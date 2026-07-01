@@ -3226,6 +3226,102 @@ a:focus {
   gap: 5px;
 }
 
+.live-share-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-color);
+  cursor: pointer;
+}
+
+.live-share-option input {
+  margin-top: 3px;
+  accent-color: var(--accent-color);
+}
+
+.live-share-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.live-share-option-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.live-share-option-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #57606a);
+}
+
+.live-share-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg);
+  color: var(--text-secondary, #57606a);
+  font-size: 12px;
+}
+
+.live-share-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary, #57606a);
+  flex-shrink: 0;
+}
+
+.live-share-status[data-state="active"] .live-share-status-dot {
+  background: #1a7f37;
+}
+
+.live-share-status[data-state="connecting"] .live-share-status-dot {
+  background: #bf8700;
+}
+
+.live-share-status[data-state="error"] .live-share-status-dot {
+  background: var(--color-danger-fg);
+}
+
+.live-share-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.live-share-participant {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-color);
+  background: var(--button-bg);
+  font-size: 12px;
+}
+
+.live-share-participant-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.live-share-link-row {
+  align-items: stretch;
+}
+
 /* ==========================================================================
    Multilingual & CJK Optimization styles added by Aegis SEO agency
    ========================================================================== */
