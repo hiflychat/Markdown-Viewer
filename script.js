@@ -2100,6 +2100,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let liveCollaboration = null;
   let liveCollaborationModulesPromise = null;
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
+  const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
@@ -11987,6 +11988,174 @@ document.addEventListener("DOMContentLoaded", async function () {
     return pako.inflate(bytes);
   }
 
+  function encodeLiveBytes(bytes) {
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function decodeLiveBytes(encoded) {
+    const base64 = String(encoded || '').replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64);
+    return Uint8Array.from(binary, c => c.charCodeAt(0));
+  }
+
+  async function createLiveRelayTopic(roomId, secret) {
+    const material = new TextEncoder().encode(roomId + ':' + secret);
+    const cryptoApi = window.crypto || window.msCrypto;
+    if (cryptoApi && cryptoApi.subtle && typeof cryptoApi.subtle.digest === 'function') {
+      const digest = await cryptoApi.subtle.digest('SHA-256', material);
+      return 'markdown-viewer-live-relay:' + encodeLiveBytes(new Uint8Array(digest)).slice(0, 32);
+    }
+
+    let hash = 0;
+    const text = roomId + ':' + secret;
+    for (let i = 0; i < text.length; i += 1) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return 'markdown-viewer-live-relay:' + roomId + ':' + Math.abs(hash).toString(36);
+  }
+
+  function createLiveUpdateRelay(options) {
+    const sockets = [];
+    const urls = dedupeLiveSignalingUrls(options.urls || []);
+    const pendingMessages = [];
+    let destroyed = false;
+    let syncRequested = false;
+
+    function sendSerialized(serialized) {
+      let sent = false;
+      sockets.forEach(function(socket) {
+        if (socket.readyState === WebSocket.OPEN) {
+          try {
+            socket.send(serialized);
+            sent = true;
+          } catch (_) {}
+        }
+      });
+      if (!sent && pendingMessages.length < 50) {
+        pendingMessages.push(serialized);
+      }
+    }
+
+    function flushPendingMessages() {
+      const messages = pendingMessages.splice(0, pendingMessages.length);
+      messages.forEach(sendSerialized);
+    }
+
+    function publish(kind, update) {
+      sendSerialized(JSON.stringify({
+        type: 'publish',
+        topic: options.topic,
+        data: {
+          type: kind,
+          sender: options.senderId,
+          update: encodeLiveBytes(update)
+        }
+      }));
+    }
+
+    function publishCurrentState() {
+      try {
+        publish('sync-state', options.Y.encodeStateAsUpdate(options.ydoc));
+      } catch (error) {
+        console.warn('Live Share relay state publish failed:', error);
+      }
+    }
+
+    function requestState() {
+      const payload = JSON.stringify({
+        type: 'publish',
+        topic: options.topic,
+        data: {
+          type: 'sync-request',
+          sender: options.senderId
+        }
+      });
+      sendSerialized(payload);
+    }
+
+    function handleMessage(event) {
+      if (destroyed) return;
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (_) {
+        return;
+      }
+      const data = message && message.data;
+      if (!data || data.sender === options.senderId) return;
+
+      if (data.type === 'sync-request') {
+        publishCurrentState();
+        return;
+      }
+
+      if ((data.type === 'y-update' || data.type === 'sync-state') && data.update) {
+        try {
+          options.Y.applyUpdate(options.ydoc, decodeLiveBytes(data.update), LIVE_RELAY_ORIGIN);
+        } catch (error) {
+          console.warn('Live Share relay update failed:', error);
+        }
+      }
+    }
+
+    function connect(url) {
+      let socket;
+      try {
+        socket = new WebSocket(url);
+      } catch (error) {
+        console.warn('Live Share relay could not open signaling URL:', url, error);
+        return;
+      }
+
+      sockets.push(socket);
+      socket.addEventListener('open', function() {
+        if (destroyed) return;
+        try {
+          socket.send(JSON.stringify({ type: 'subscribe', topics: [options.topic] }));
+          flushPendingMessages();
+          setTimeout(publishCurrentState, 100);
+          if (!syncRequested) {
+            syncRequested = true;
+            setTimeout(requestState, 250);
+          }
+        } catch (_) {}
+      });
+      socket.addEventListener('message', handleMessage);
+      socket.addEventListener('error', function() {});
+    }
+
+    const updateHandler = function(update, origin) {
+      if (destroyed || origin === LIVE_RELAY_ORIGIN) return;
+      publish('y-update', update);
+    };
+    options.ydoc.on('update', updateHandler);
+    urls.forEach(connect);
+
+    return {
+      publishCurrentState,
+      destroy() {
+        destroyed = true;
+        try {
+          options.ydoc.off('update', updateHandler);
+        } catch (_) {}
+        sockets.forEach(function(socket) {
+          try {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'unsubscribe', topics: [options.topic] }));
+            }
+            socket.close();
+          } catch (_) {}
+        });
+      }
+    };
+  }
+
   function getSafeLiveTitle(title) {
     const normalized = String(title || '').trim().replace(/\s+/g, ' ');
     return (normalized || 'Live Share').slice(0, 120);
@@ -12475,12 +12644,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   function renderLiveCursors() {
     clearLiveCursors();
     if (!liveCollaboration || !liveCursorsLayer || activeTabId !== liveCollaboration.tabId) return;
-    if (!liveCollaboration.provider || !liveCollaboration.provider.awareness) return;
 
-    const awareness = liveCollaboration.provider.awareness;
     const fragment = document.createDocumentFragment();
-    awareness.getStates().forEach(function(state, clientId) {
-      if (clientId === awareness.clientID || !state || !state.user || !state.cursor) return;
+    const cursorEntries = liveCollaboration.cursorsMap
+      ? Array.from(liveCollaboration.cursorsMap.entries())
+      : [];
+
+    cursorEntries.forEach(function(entry) {
+      if (entry[0] === liveCollaboration.localParticipantId) return;
+      const state = entry[1] || {};
+      if (!state.user || !state.cursor) return;
       const cursorIndex = getLiveCursorIndex(state.cursor);
       const position = getTextareaCaretPosition(cursorIndex);
       if (!position) return;
@@ -12516,6 +12689,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const awareness = liveCollaboration.provider.awareness;
     if (activeTabId !== liveCollaboration.tabId || !liveCollaboration.Y) {
       awareness.setLocalStateField('cursor', null);
+      if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId) {
+        liveCollaboration.cursorsMap.delete(liveCollaboration.localParticipantId);
+      }
       renderLiveCursors();
       return;
     }
@@ -12533,13 +12709,25 @@ document.addEventListener("DOMContentLoaded", async function () {
       ));
     } catch (_) {}
 
-    awareness.setLocalStateField('cursor', {
+    const cursor = {
       index,
       anchor,
       relative,
       relativeAnchor,
       updatedAt: Date.now()
-    });
+    };
+
+    awareness.setLocalStateField('cursor', cursor);
+    if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId && liveCollaboration.localParticipant) {
+      liveCollaboration.cursorsMap.set(liveCollaboration.localParticipantId, {
+        user: {
+          name: liveCollaboration.localParticipant.name,
+          color: liveCollaboration.localParticipant.color,
+          avatarLabel: liveCollaboration.localParticipant.avatarLabel
+        },
+        cursor
+      });
+    }
     renderLiveCursors();
   }
 
@@ -12558,8 +12746,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (liveCollaboration.participantsMap && liveCollaboration.localParticipantId) {
         liveCollaboration.participantsMap.delete(liveCollaboration.localParticipantId);
       }
+      if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId) {
+        liveCollaboration.cursorsMap.delete(liveCollaboration.localParticipantId);
+      }
       if (liveCollaboration.participantsMap && liveCollaboration.participantObserver) {
         liveCollaboration.participantsMap.unobserve(liveCollaboration.participantObserver);
+      }
+      if (liveCollaboration.cursorsMap && liveCollaboration.cursorObserver) {
+        liveCollaboration.cursorsMap.unobserve(liveCollaboration.cursorObserver);
       }
       if (liveCollaboration.yText && liveCollaboration.observer) {
         liveCollaboration.yText.unobserve(liveCollaboration.observer);
@@ -12577,6 +12771,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
       if (liveCollaboration.provider && liveCollaboration.provider.awareness) {
         liveCollaboration.provider.awareness.setLocalState(null);
+      }
+      if (liveCollaboration.relay && typeof liveCollaboration.relay.destroy === 'function') {
+        liveCollaboration.relay.destroy();
       }
       if (liveCollaboration.provider && typeof liveCollaboration.provider.destroy === 'function') {
         liveCollaboration.provider.destroy();
@@ -12648,6 +12845,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const yText = ydoc.getText('markdown');
     const participantsMap = ydoc.getMap('participants');
     const sessionMap = ydoc.getMap('session');
+    const cursorsMap = ydoc.getMap('cursors');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
     const hostTitle = getSafeLiveTitle(options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share');
     let inviteUrl = buildLiveInviteUrl(roomId, secret, null, hostTitle);
@@ -12671,6 +12869,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.warn('Live Share invite will rely on peer sync because the seed could not be encoded:', error);
       }
     }
+    const relayTopic = await createLiveRelayTopic(roomId, secret);
 
     disconnectLiveCollaboration();
 
@@ -12719,6 +12918,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       yText,
       participantsMap,
       sessionMap,
+      cursorsMap,
       tabId: activeTabId,
       originalTabSnapshot,
       returnTabId,
@@ -12729,8 +12929,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       observer: null,
       participantObserver: null,
       sessionObserver: null,
+      cursorObserver: null,
       awarenessChangeHandler: null,
       participantHeartbeatId: null,
+      relay: null,
+      relayTopic,
+      localParticipant: null,
       localParticipantId: 'participant-' + getRandomBase64Url(12)
     };
 
@@ -12739,6 +12943,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       applyLiveRemoteMarkdown(yText.toString());
     };
     yText.observe(liveCollaboration.observer);
+
+    liveCollaboration.relay = createLiveUpdateRelay({
+      urls: getLiveSignalingUrls(),
+      topic: relayTopic,
+      senderId: liveCollaboration.localParticipantId,
+      ydoc,
+      Y: modules.Y
+    });
 
     liveCollaboration.sessionObserver = function() {
       if (!liveCollaboration || liveCollaboration.ydoc !== ydoc || liveCollaboration.isHost) return;
@@ -12758,6 +12970,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
     sessionMap.observe(liveCollaboration.sessionObserver);
 
+    liveCollaboration.cursorObserver = renderLiveCursors;
+    cursorsMap.observe(liveCollaboration.cursorObserver);
+
     if (!isHost && yText.length > 0) {
       const seededMarkdown = yText.toString();
       applyLiveJoinSeedMarkdown(seededMarkdown);
@@ -12773,6 +12988,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       avatarLabel: getLiveAvatarLabel(displayName),
       lastSeen: Date.now()
     };
+    liveCollaboration.localParticipant = localParticipant;
 
     function publishLocalParticipant() {
       if (!liveCollaboration || liveCollaboration.ydoc !== ydoc) return;
