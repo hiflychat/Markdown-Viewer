@@ -11625,6 +11625,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   // ============================================
 
   const MAX_SHARE_URL_LENGTH = 32000;
+  const MAX_LEGACY_SHARE_URL_LENGTH = 4096;
+  const SERVER_SHARE_THRESHOLD_BYTES = 3000;
+  const SERVER_SHARE_ID_PATTERN = /^[a-z2-9]{6,20}$/;
 
   function encodeMarkdownForShare(text) {
     if (typeof pako === 'undefined') throw new Error('pako not loaded');
@@ -11643,6 +11646,44 @@ document.addEventListener("DOMContentLoaded", async function () {
     const binary = atob(base64);
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
     return new TextDecoder().decode(pako.inflate(bytes));
+  }
+
+  function getPublicAppBaseUrl() {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.includes('127.0.0.1') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    return isLocal
+      ? 'https://markdownviewer.pages.dev/'
+      : window.location.origin + window.location.pathname;
+  }
+
+  function getShareApiBaseUrl() {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.includes('127.0.0.1') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    return isLocal ? 'https://markdownviewer.pages.dev' : window.location.origin;
+  }
+
+  function getCurrentShareMode() {
+    return shareModeView && shareModeView.checked ? 'view' : 'edit';
+  }
+
+  function getActiveShareTitle() {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return activeTab && activeTab.title ? activeTab.title : 'Markdown document';
+  }
+
+  function getShareHashForMode(id, mode) {
+    return 'id=' + encodeURIComponent(id) + (mode === 'edit' ? '&edit=1' : '');
+  }
+
+  function shouldUseServerShare(markdownText, legacyUrl) {
+    const byteLength = new TextEncoder().encode(markdownText || '').length;
+    return byteLength >= SERVER_SHARE_THRESHOLD_BYTES || !legacyUrl || legacyUrl.length > MAX_LEGACY_SHARE_URL_LENGTH;
   }
 
   // ============================================
@@ -11668,30 +11709,50 @@ document.addEventListener("DOMContentLoaded", async function () {
       console.error('Share encoding failed:', e);
       return null;
     }
-    const isLocal = window.location.origin.includes('localhost') || 
-                    window.location.origin.startsWith('file://') || 
-                    typeof Neutralino !== 'undefined';
-                    
-    const baseUrl = isLocal 
-      ? 'https://markdownviewer.pages.dev/' 
-      : window.location.origin + window.location.pathname;
-
-    const base = baseUrl + '#share=' + encoded;
+    const base = getPublicAppBaseUrl() + '#share=' + encoded;
     return mode === 'edit' ? base + '&edit=1' : base;
   }
 
+  async function createStoredShareUrl(mode) {
+    const markdownText = markdownEditor.value || '';
+    const response = await fetch(getShareApiBaseUrl() + '/api/share', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: markdownText,
+        mode,
+        title: getActiveShareTitle()
+      })
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+      throw new Error((payload && payload.error) || ('HTTP ' + response.status));
+    }
+    if (!payload || !SERVER_SHARE_ID_PATTERN.test(payload.id || '')) {
+      throw new Error('Invalid share id returned');
+    }
+
+    return getPublicAppBaseUrl() + '#' + getShareHashForMode(payload.id, mode);
+  }
+
   function updateShareUrlField() {
-    const mode = shareModeView.checked ? 'view' : 'edit';
+    const mode = getCurrentShareMode();
     const url = buildShareUrl(mode);
     if (!url) {
       shareUrlInput.value = 'Error generating link.';
       shareCopyBtn.disabled = true;
       return;
     }
-    const tooLarge = url.length > MAX_SHARE_URL_LENGTH;
-    if (tooLarge) {
-      shareUrlInput.value = 'Document too large to share via URL.';
-      shareCopyBtn.disabled = true;
+    if (shouldUseServerShare(markdownEditor.value || '', url)) {
+      shareUrlInput.value = 'Short Cloudflare link will be created when copied.';
+      shareCopyBtn.disabled = false;
     } else {
       shareUrlInput.value = url;
       shareCopyBtn.disabled = false;
@@ -11748,9 +11809,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateShareUrlField();
   });
 
-  shareCopyBtn.addEventListener('click', function () {
-    const url = shareUrlInput.value;
-    if (!url || shareCopyBtn.disabled) return;
+  shareCopyBtn.addEventListener('click', async function () {
+    if (shareCopyBtn.disabled) return;
+    const mode = getCurrentShareMode();
+    const legacyUrl = buildShareUrl(mode);
 
     function onCopied() {
       const orig = shareCopyBtn.innerHTML;
@@ -11758,18 +11820,34 @@ document.addEventListener("DOMContentLoaded", async function () {
       setTimeout(() => { shareCopyBtn.innerHTML = orig; }, 2000);
     }
 
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(url).then(onCopied).catch(() => {});
-    } else {
-      try {
-        const tmp = document.createElement('textarea');
-        tmp.value = url;
-        document.body.appendChild(tmp);
-        tmp.select();
-        document.execCommand('copy');
-        document.body.removeChild(tmp);
-        onCopied();
-      } catch (_) {}
+    const originalHTML = shareCopyBtn.innerHTML;
+    shareCopyBtn.disabled = true;
+    try {
+      let url = legacyUrl;
+      if (shouldUseServerShare(markdownEditor.value || '', legacyUrl)) {
+        shareCopyBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        shareUrlInput.value = 'Saving snapshot to Cloudflare KV...';
+        url = await createStoredShareUrl(mode);
+      }
+      if (!url) {
+        throw new Error('Unable to create share link');
+      }
+      await copyTextToClipboard(url);
+      shareUrlInput.value = url;
+      const hashIndex = url.indexOf('#');
+      if (hashIndex !== -1) {
+        window.location.hash = url.slice(hashIndex + 1);
+      }
+      onCopied();
+    } catch (error) {
+      console.error('Share copy failed:', error);
+      alert('Failed to create share link: ' + error.message);
+      updateShareUrlField();
+    } finally {
+      shareCopyBtn.disabled = false;
+      if (shareCopyBtn.innerHTML.indexOf('hourglass') !== -1) {
+        shareCopyBtn.innerHTML = originalHTML;
+      }
     }
   });
 
@@ -13203,20 +13281,58 @@ document.addEventListener("DOMContentLoaded", async function () {
   shareButton.addEventListener('click', openShareModal);
   mobileShareButton.addEventListener('click', openShareModal);
 
+  async function loadStoredShareHash(hash) {
+    const rest = hash.slice('#id='.length);
+    const ampIdx = rest.indexOf('&');
+    const id = decodeURIComponent(ampIdx === -1 ? rest : rest.slice(0, ampIdx));
+    const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
+    const isEdit = params.split('&').includes('edit=1');
+
+    if (!SERVER_SHARE_ID_PATTERN.test(id)) return;
+
+    try {
+      const response = await fetch(getShareApiBaseUrl() + '/api/share/' + encodeURIComponent(id));
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_) {}
+
+      if (!response.ok) {
+        const message = response.status === 404
+          ? 'This share link has expired or does not exist.'
+          : ((payload && payload.error) || 'Failed to load shared content.');
+        alert(message);
+        return;
+      }
+
+      markdownEditor.value = payload && typeof payload.content === 'string' ? payload.content : '';
+      renderMarkdown({ reason: 'document-load', showSkeleton: true });
+      saveCurrentTabState();
+      setViewMode(isEdit || (payload && payload.mode === 'edit') ? 'split' : 'preview');
+    } catch (e) {
+      console.error('Failed to load stored shared content:', e);
+      alert('Network error while loading shared content.');
+    }
+  }
+
   function loadFromShareHash() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#id=')) {
+      loadStoredShareHash(hash);
+      return;
+    }
+    if (!hash.startsWith('#share=')) return;
+
     // PERF-002: Lazy-load pako when loading shared URL content
     if (typeof pako === 'undefined') {
-      const hash = window.location.hash;
-      if (!hash.startsWith('#share=')) return;
       loadScript(CDN.pako).then(function() {
         loadFromShareHash();
       }).catch(function(e) {
         console.error('Failed to load pako for shared URL:', e);
+        alert('Failed to load sharing library. Please check your connection and reload.');
       });
       return;
     }
-    const hash = window.location.hash;
-    if (!hash.startsWith('#share=')) return;
 
     // Parse encoded content and optional &edit=1 flag.
     // Hash format: #share=<encoded>  or  #share=<encoded>&edit=1
