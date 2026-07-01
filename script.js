@@ -2130,11 +2130,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getTabsForStorage(tabsArr) {
     const sourceTabs = tabsArr || tabs;
-    if (!liveCollaboration || !liveCollaboration.originalTabSnapshot) {
+    if (!liveCollaboration) {
       return sourceTabs;
     }
 
-    return sourceTabs.map(function(tab) {
+    let storageTabs = sourceTabs;
+    if (liveCollaboration.removeTabOnLeave) {
+      storageTabs = storageTabs.filter(function(tab) {
+        return tab.id !== liveCollaboration.tabId;
+      });
+    }
+
+    if (!liveCollaboration.originalTabSnapshot) {
+      return storageTabs;
+    }
+
+    return storageTabs.map(function(tab) {
       if (tab.id !== liveCollaboration.tabId) return tab;
       return Object.assign({}, tab, liveCollaboration.originalTabSnapshot);
     });
@@ -2602,6 +2613,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderMarkdown();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
+      updateLiveCursorPosition();
+      renderLiveCursors();
     });
     renderTabBar(tabs, activeTabId);
   }
@@ -2620,6 +2633,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function closeTab(tabId) {
+    if (liveCollaboration && liveCollaboration.tabId === tabId) {
+      if (liveCollaboration.isHost) {
+        endLiveSessionForEveryone();
+      } else {
+        leaveLiveSession({ restoreOriginal: true });
+      }
+      return;
+    }
+
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
     
@@ -2672,6 +2694,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       const newName = input.value.trim();
       if (newName) {
         tab.title = newName;
+        if (liveCollaboration && liveCollaboration.isHost && liveCollaboration.tabId === tab.id && liveCollaboration.sessionMap) {
+          liveCollaboration.sessionMap.set('title', getSafeLiveTitle(newName));
+        }
         saveTabsToStorage(tabs);
         renderTabBar(tabs, activeTabId);
       }
@@ -9377,6 +9402,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
       syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
     }
+    updateLiveCursorPosition();
     debouncedRender();
     clearTimeout(saveTabStateTimeout);
     saveTabStateTimeout = setTimeout(saveCurrentTabState, 500);
@@ -11756,7 +11782,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   // Live Share (Yjs + y-webrtc, in-memory only)
   // ============================================
 
-  const LIVE_SHARE_FALLBACK_SIGNALING_URL = 'wss://y-webrtc-eu.fly.dev';
+  const LIVE_SHARE_FALLBACK_SIGNALING_URLS = [
+    'wss://signaling.yjs.dev',
+    'wss://y-webrtc-eu.fly.dev'
+  ];
   const LIVE_SHARE_AVATAR_LIMIT = 4;
   const LIVE_SHARE_PARTICIPANT_STALE_MS = 45000;
   const LIVE_SHARE_ADJECTIVES = [
@@ -11810,6 +11839,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
   const liveShareToolbarParticipants = document.getElementById('live-share-toolbar-participants');
+  const liveCursorsLayer      = document.getElementById('live-cursors-layer');
   let liveGeneratedDisplayName = null;
 
   function getRandomBase64Url(byteLength) {
@@ -11903,7 +11933,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getLiveSignalingUrls() {
     if (Array.isArray(window.MARKDOWN_VIEWER_SIGNALING_URLS) && window.MARKDOWN_VIEWER_SIGNALING_URLS.length) {
-      return dedupeLiveSignalingUrls(window.MARKDOWN_VIEWER_SIGNALING_URLS.concat(LIVE_SHARE_FALLBACK_SIGNALING_URL));
+      return dedupeLiveSignalingUrls(window.MARKDOWN_VIEWER_SIGNALING_URLS.concat(LIVE_SHARE_FALLBACK_SIGNALING_URLS));
     }
 
     const urls = [];
@@ -11914,7 +11944,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       urls.push(wsProtocol + '//' + window.location.host + '/live-signal');
     }
 
-    urls.push(LIVE_SHARE_FALLBACK_SIGNALING_URL);
+    LIVE_SHARE_FALLBACK_SIGNALING_URLS.forEach(function(url) {
+      urls.push(url);
+    });
     return dedupeLiveSignalingUrls(urls);
   }
 
@@ -11955,7 +11987,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     return pako.inflate(bytes);
   }
 
-  function buildLiveInviteUrl(roomId, secret, seedUpdate) {
+  function getSafeLiveTitle(title) {
+    const normalized = String(title || '').trim().replace(/\s+/g, ' ');
+    return (normalized || 'Live Share').slice(0, 120);
+  }
+
+  function buildLiveInviteUrl(roomId, secret, seedUpdate, title) {
     const isLocal = window.location.origin.includes('localhost') ||
                     window.location.origin.startsWith('file://') ||
                     typeof Neutralino !== 'undefined';
@@ -11965,9 +12002,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       : window.location.origin + window.location.pathname;
 
     const base = baseUrl + '#live=' + encodeURIComponent(roomId + '.' + secret);
+    const params = [];
+    const safeTitle = getSafeLiveTitle(title);
+    if (safeTitle) {
+      params.push('title=' + encodeURIComponent(safeTitle));
+    }
     if (seedUpdate && seedUpdate.length > 0) {
       try {
-        const seededUrl = base + '&seed=' + encodeLiveSeedForShare(seedUpdate);
+        const seedParam = 'seed=' + encodeLiveSeedForShare(seedUpdate);
+        const seededUrl = base + '&' + params.concat(seedParam).join('&');
         if (seededUrl.length <= MAX_SHARE_URL_LENGTH) {
           return seededUrl;
         }
@@ -11977,7 +12020,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     }
 
-    return base;
+    return params.length ? base + '&' + params.join('&') : base;
   }
 
   function parseLiveHash() {
@@ -11995,6 +12038,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     return {
       roomId,
       secret,
+      title: params.get('title') || '',
       seed: params.get('seed') || ''
     };
   }
@@ -12201,23 +12245,33 @@ document.addEventListener("DOMContentLoaded", async function () {
     }, LIVE_EDIT_ORIGIN);
 
     liveCollaboration.lastMarkdown = newValue;
+    updateLiveTabContent(newValue);
+  }
+
+  function updateLiveTabContent(markdown) {
+    if (!liveCollaboration) return;
+    const tab = tabs.find(function(t) { return t.id === liveCollaboration.tabId; });
+    if (tab) {
+      tab.content = markdown;
+      tab.scrollPos = activeTabId === tab.id ? markdownEditor.scrollTop : tab.scrollPos;
+      tab.viewMode = currentViewMode || tab.viewMode || 'split';
+    }
   }
 
   function applyLiveRemoteMarkdown(remoteMarkdown) {
     if (!liveCollaboration || liveCollaboration.lastMarkdown === remoteMarkdown) return;
 
+    liveCollaboration.lastMarkdown = remoteMarkdown;
+    updateLiveTabContent(remoteMarkdown);
+    if (activeTabId !== liveCollaboration.tabId) {
+      renderTabBar(tabs, activeTabId);
+      return;
+    }
+
     liveCollaboration.isApplyingRemoteChange = true;
     const selectionStart = markdownEditor.selectionStart || 0;
     const selectionEnd = markdownEditor.selectionEnd || selectionStart;
     markdownEditor.value = remoteMarkdown;
-    liveCollaboration.lastMarkdown = remoteMarkdown;
-
-    const tab = tabs.find(function(t) { return t.id === activeTabId; });
-    if (tab) {
-      tab.content = remoteMarkdown;
-      tab.scrollPos = markdownEditor.scrollTop;
-      tab.viewMode = currentViewMode || 'split';
-    }
 
     lastPushedValue = remoteMarkdown;
     renderMarkdown({ reason: 'live-remote', force: true });
@@ -12234,6 +12288,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
 
     liveCollaboration.isApplyingRemoteChange = false;
+    renderLiveCursors();
   }
 
   function captureLiveTabSnapshot() {
@@ -12295,11 +12350,206 @@ document.addEventListener("DOMContentLoaded", async function () {
     scheduleLineNumberUpdate({ force: true });
   }
 
+  function removeLiveParticipantTab(tabId, returnTabId) {
+    const idx = tabs.findIndex(function(t) { return t.id === tabId; });
+    if (idx !== -1) {
+      tabs.splice(idx, 1);
+    }
+    if (tabHistories[tabId]) {
+      delete tabHistories[tabId];
+    }
+
+    if (tabs.length === 0) {
+      const welcome = createTab(sampleMarkdown, 'Welcome to Markdown');
+      tabs.push(welcome);
+    }
+
+    const returnTab = tabs.find(function(t) { return t.id === returnTabId; }) || tabs[Math.max(0, Math.min(idx, tabs.length - 1))] || tabs[0];
+    activeTabId = returnTab.id;
+    saveActiveTabId(activeTabId);
+    markdownEditor.value = returnTab.content || '';
+    lastPushedValue = markdownEditor.value;
+    pendingState = null;
+    lastInputType = null;
+    initTabHistory(activeTabId, markdownEditor.value);
+    updateUndoRedoButtons();
+    restoreViewMode(returnTab.viewMode || 'split');
+    renderMarkdown({ reason: 'live-tab-remove', force: true });
+    updateDocumentStats();
+    updateFindHighlights();
+    scheduleLineNumberUpdate({ force: true });
+    requestAnimationFrame(function() {
+      markdownEditor.scrollTop = returnTab.scrollPos || 0;
+    });
+    saveTabsToStorage(tabs);
+    renderTabBar(tabs, activeTabId);
+  }
+
+  function clearLiveCursors() {
+    if (liveCursorsLayer) {
+      liveCursorsLayer.textContent = '';
+    }
+  }
+
+  function getTextareaCaretPosition(index) {
+    const editorPane = markdownEditor.closest('.editor-pane');
+    if (!editorPane || typeof index !== 'number') return null;
+
+    const computed = window.getComputedStyle(markdownEditor);
+    const mirror = document.createElement('div');
+    const marker = document.createElement('span');
+    const text = markdownEditor.value || '';
+    const boundedIndex = Math.max(0, Math.min(index, text.length));
+    const mirrorStyles = [
+      'boxSizing',
+      'width',
+      'height',
+      'borderTopWidth',
+      'borderRightWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'paddingTop',
+      'paddingRight',
+      'paddingBottom',
+      'paddingLeft',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'fontStyle',
+      'letterSpacing',
+      'textTransform',
+      'wordSpacing',
+      'textIndent',
+      'lineHeight',
+      'whiteSpace',
+      'overflowWrap',
+      'wordBreak',
+      'tabSize'
+    ];
+
+    mirror.style.position = 'fixed';
+    mirror.style.left = '-9999px';
+    mirror.style.top = '0';
+    mirror.style.visibility = 'hidden';
+    mirror.style.whiteSpace = 'pre-wrap';
+    mirror.style.wordWrap = 'break-word';
+    mirror.style.overflow = 'hidden';
+    mirrorStyles.forEach(function(prop) {
+      mirror.style[prop] = computed[prop];
+    });
+
+    mirror.textContent = text.slice(0, boundedIndex);
+    marker.textContent = '\u200b';
+    mirror.appendChild(marker);
+    mirror.appendChild(document.createTextNode(text.slice(boundedIndex) || ' '));
+    document.body.appendChild(mirror);
+
+    const editorRect = markdownEditor.getBoundingClientRect();
+    const paneRect = editorPane.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const lineHeight = parseFloat(computed.lineHeight) || parseFloat(computed.fontSize) * 1.5 || 18;
+    const position = {
+      left: editorRect.left - paneRect.left + markerRect.left - mirror.getBoundingClientRect().left - markdownEditor.scrollLeft,
+      top: editorRect.top - paneRect.top + markerRect.top - mirror.getBoundingClientRect().top - markdownEditor.scrollTop,
+      height: lineHeight
+    };
+
+    document.body.removeChild(mirror);
+    return position;
+  }
+
+  function getLiveCursorIndex(cursor) {
+    if (!liveCollaboration || !cursor) return null;
+    if (Array.isArray(cursor.relative) && liveCollaboration.Y) {
+      try {
+        const relative = liveCollaboration.Y.decodeRelativePosition(Uint8Array.from(cursor.relative));
+        const absolute = liveCollaboration.Y.createAbsolutePositionFromRelativePosition(relative, liveCollaboration.ydoc);
+        if (absolute && absolute.type === liveCollaboration.yText) {
+          return absolute.index;
+        }
+      } catch (_) {}
+    }
+    return typeof cursor.index === 'number' ? cursor.index : null;
+  }
+
+  function renderLiveCursors() {
+    clearLiveCursors();
+    if (!liveCollaboration || !liveCursorsLayer || activeTabId !== liveCollaboration.tabId) return;
+    if (!liveCollaboration.provider || !liveCollaboration.provider.awareness) return;
+
+    const awareness = liveCollaboration.provider.awareness;
+    const fragment = document.createDocumentFragment();
+    awareness.getStates().forEach(function(state, clientId) {
+      if (clientId === awareness.clientID || !state || !state.user || !state.cursor) return;
+      const cursorIndex = getLiveCursorIndex(state.cursor);
+      const position = getTextareaCaretPosition(cursorIndex);
+      if (!position) return;
+
+      const name = state.user.name || 'Guest';
+      const color = state.user.color || getLiveParticipantColor(name);
+      const cursor = document.createElement('div');
+      cursor.className = 'live-collab-cursor';
+      cursor.style.setProperty('--live-cursor-color', color);
+      cursor.style.left = Math.round(position.left) + 'px';
+      cursor.style.top = Math.round(position.top) + 'px';
+      cursor.style.height = Math.max(18, Math.round(position.height)) + 'px';
+
+      const label = document.createElement('span');
+      label.className = 'live-collab-cursor-label';
+      const avatar = document.createElement('span');
+      avatar.className = 'live-collab-cursor-avatar';
+      avatar.textContent = state.user.avatarLabel || getLiveAvatarLabel(name);
+      const labelName = document.createElement('span');
+      labelName.className = 'live-collab-cursor-name';
+      labelName.textContent = name;
+      label.appendChild(avatar);
+      label.appendChild(labelName);
+      cursor.appendChild(label);
+      fragment.appendChild(cursor);
+    });
+
+    liveCursorsLayer.appendChild(fragment);
+  }
+
+  function updateLiveCursorPosition() {
+    if (!liveCollaboration || !liveCollaboration.provider || !liveCollaboration.provider.awareness) return;
+    const awareness = liveCollaboration.provider.awareness;
+    if (activeTabId !== liveCollaboration.tabId || !liveCollaboration.Y) {
+      awareness.setLocalStateField('cursor', null);
+      renderLiveCursors();
+      return;
+    }
+
+    const index = markdownEditor.selectionStart || 0;
+    const anchor = markdownEditor.selectionEnd || index;
+    let relative = null;
+    let relativeAnchor = null;
+    try {
+      relative = Array.from(liveCollaboration.Y.encodeRelativePosition(
+        liveCollaboration.Y.createRelativePositionFromTypeIndex(liveCollaboration.yText, index)
+      ));
+      relativeAnchor = Array.from(liveCollaboration.Y.encodeRelativePosition(
+        liveCollaboration.Y.createRelativePositionFromTypeIndex(liveCollaboration.yText, anchor)
+      ));
+    } catch (_) {}
+
+    awareness.setLocalStateField('cursor', {
+      index,
+      anchor,
+      relative,
+      relativeAnchor,
+      updatedAt: Date.now()
+    });
+    renderLiveCursors();
+  }
+
   function disconnectLiveCollaboration(options) {
     if (!liveCollaboration) return;
     options = options || {};
     const tabId = liveCollaboration.tabId;
     const originalTabSnapshot = liveCollaboration.originalTabSnapshot;
+    const removeTabOnLeave = liveCollaboration.removeTabOnLeave;
+    const returnTabId = liveCollaboration.returnTabId;
 
     try {
       if (liveCollaboration.participantHeartbeatId) {
@@ -12317,6 +12567,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (liveCollaboration.sessionMap && liveCollaboration.sessionObserver) {
         liveCollaboration.sessionMap.unobserve(liveCollaboration.sessionObserver);
       }
+      if (
+        liveCollaboration.provider &&
+        liveCollaboration.provider.awareness &&
+        liveCollaboration.awarenessChangeHandler &&
+        typeof liveCollaboration.provider.awareness.off === 'function'
+      ) {
+        liveCollaboration.provider.awareness.off('change', liveCollaboration.awarenessChangeHandler);
+      }
       if (liveCollaboration.provider && liveCollaboration.provider.awareness) {
         liveCollaboration.provider.awareness.setLocalState(null);
       }
@@ -12331,8 +12589,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     liveCollaboration = null;
+    clearLiveCursors();
     if (options.restoreOriginal) {
-      restoreLiveOriginalTabState(tabId, originalTabSnapshot);
+      if (removeTabOnLeave) {
+        removeLiveParticipantTab(tabId, returnTabId);
+      } else {
+        restoreLiveOriginalTabState(tabId, originalTabSnapshot);
+      }
     }
     updateLiveShareControls();
   }
@@ -12385,7 +12648,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const yText = ydoc.getText('markdown');
     const participantsMap = ydoc.getMap('participants');
     const sessionMap = ydoc.getMap('session');
-    let inviteUrl = buildLiveInviteUrl(roomId, secret);
+    const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
+    const hostTitle = getSafeLiveTitle(options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share');
+    let inviteUrl = buildLiveInviteUrl(roomId, secret, null, hostTitle);
     if (!isHost && options.initialUpdate) {
       try {
         modules.Y.applyUpdate(ydoc, options.initialUpdate);
@@ -12393,25 +12658,44 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.warn('Live Share invite seed could not be applied:', error);
       }
     }
+    const sessionTitle = getSafeLiveTitle(sessionMap.get('title') || options.title || 'Live Share');
     if (isHost && yText.length === 0) {
       yText.insert(0, markdownEditor.value || '');
     }
     if (isHost) {
+      sessionMap.set('title', hostTitle);
       try {
         await ensureLiveShareCompressionReady();
-        inviteUrl = buildLiveInviteUrl(roomId, secret, modules.Y.encodeStateAsUpdate(ydoc));
+        inviteUrl = buildLiveInviteUrl(roomId, secret, modules.Y.encodeStateAsUpdate(ydoc), hostTitle);
       } catch (error) {
         console.warn('Live Share invite will rely on peer sync because the seed could not be encoded:', error);
       }
     }
-    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
-    const originalTabSnapshot = options.originalTabSnapshot || (activeTab ? {
-      content: typeof markdownEditor.value === 'string' ? markdownEditor.value : activeTab.content,
-      scrollPos: typeof markdownEditor.scrollTop === 'number' ? markdownEditor.scrollTop : activeTab.scrollPos,
-      viewMode: currentViewMode || activeTab.viewMode
-    } : captureLiveTabSnapshot());
 
     disconnectLiveCollaboration();
+
+    let returnTabId = null;
+    let removeTabOnLeave = false;
+    let originalTabSnapshot = null;
+
+    if (!isHost && options.openInNewTab) {
+      if (tabs.length >= 20) {
+        throw new Error('Maximum tab limit reached');
+      }
+      returnTabId = options.returnTabId || activeTabId;
+      const liveTabTitle = getSafeLiveTitle(sessionTitle);
+      const liveTab = createTab(yText.toString(), liveTabTitle, 'split');
+      tabs.push(liveTab);
+      switchTab(liveTab.id);
+      removeTabOnLeave = true;
+    } else {
+      const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+      originalTabSnapshot = options.originalTabSnapshot || (activeTab ? {
+        content: typeof markdownEditor.value === 'string' ? markdownEditor.value : activeTab.content,
+        scrollPos: typeof markdownEditor.scrollTop === 'number' ? markdownEditor.scrollTop : activeTab.scrollPos,
+        viewMode: currentViewMode || activeTab.viewMode
+      } : captureLiveTabSnapshot());
+    }
 
     const provider = new modules.WebrtcProvider(roomId, ydoc, {
       password: secret,
@@ -12430,18 +12714,22 @@ document.addEventListener("DOMContentLoaded", async function () {
       secret,
       inviteUrl,
       ydoc,
+      Y: modules.Y,
       provider,
       yText,
       participantsMap,
       sessionMap,
       tabId: activeTabId,
       originalTabSnapshot,
+      returnTabId,
+      removeTabOnLeave,
       isHost,
       isApplyingRemoteChange: false,
       lastMarkdown: markdownEditor.value,
       observer: null,
       participantObserver: null,
       sessionObserver: null,
+      awarenessChangeHandler: null,
       participantHeartbeatId: null,
       localParticipantId: 'participant-' + getRandomBase64Url(12)
     };
@@ -12454,6 +12742,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     liveCollaboration.sessionObserver = function() {
       if (!liveCollaboration || liveCollaboration.ydoc !== ydoc || liveCollaboration.isHost) return;
+      const updatedTitle = sessionMap.get('title');
+      if (updatedTitle) {
+        const tab = tabs.find(function(t) { return t.id === liveCollaboration.tabId; });
+        if (tab && tab.title !== updatedTitle) {
+          tab.title = getSafeLiveTitle(updatedTitle);
+          renderTabBar(tabs, activeTabId);
+        }
+      }
       if (sessionMap.get('endedAt')) {
         setLiveShareStatus('Live room ended by the host', 'idle');
         leaveLiveSession({ restoreOriginal: true, silent: true });
@@ -12495,12 +12791,18 @@ document.addEventListener("DOMContentLoaded", async function () {
       color: localColor,
       avatarLabel: getLiveAvatarLabel(displayName)
     });
-    provider.awareness.on('change', renderLiveParticipants);
+    liveCollaboration.awarenessChangeHandler = function() {
+      renderLiveParticipants();
+      renderLiveCursors();
+    };
+    provider.awareness.on('change', liveCollaboration.awarenessChangeHandler);
     provider.on('peers', function() {
       renderLiveParticipants();
+      renderLiveCursors();
     });
     provider.on('status', function() {
       renderLiveParticipants();
+      renderLiveCursors();
     });
 
     if (liveShareUrlInput) {
@@ -12508,6 +12810,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     updateLiveShareControls();
     renderLiveParticipants();
+    updateLiveCursorPosition();
     setViewMode('split');
     announceToScreenReader('Live Share session started.');
   }
@@ -12581,10 +12884,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       await startLiveSession({
         roomId: parsed.roomId,
         secret: parsed.secret,
+        title: parsed.title,
         isHost: false,
         forceGeneratedName: true,
         originalTabSnapshot,
-        initialUpdate
+        initialUpdate,
+        openInNewTab: true,
+        returnTabId: activeTabId
       });
     } catch (error) {
       console.error('Failed to join live session:', error);
@@ -12632,6 +12938,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (e.target === liveShareModal) closeLiveShareModal();
     });
   }
+  ['keyup', 'mouseup', 'click', 'select', 'focus'].forEach(function(eventName) {
+    markdownEditor.addEventListener(eventName, updateLiveCursorPosition);
+  });
+  markdownEditor.addEventListener('scroll', renderLiveCursors);
+  window.addEventListener('resize', renderLiveCursors);
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && shareModal.classList.contains('is-visible')) {
