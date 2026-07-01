@@ -98,30 +98,37 @@ function handleSocket(socket) {
   socket.addEventListener("error", close);
 }
 
-export async function onRequest({ request, env }) {
-  const upgradeHeader = request.headers.get("Upgrade") || "";
+export class LiveSignalRoom {
+  async fetch(request) {
+    const upgradeHeader = request.headers.get("Upgrade") || "";
 
-  if (upgradeHeader.toLowerCase() !== "websocket") {
-    return new Response("Markdown Viewer live signaling endpoint", {
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/plain; charset=utf-8"
-      }
+    if (upgradeHeader.toLowerCase() !== "websocket") {
+      return new Response("Markdown Viewer live signaling Durable Object", {
+        headers: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/plain; charset=utf-8"
+        }
+      });
+    }
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    handleSocket(server);
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client
     });
   }
+}
 
-  if (env && env.LIVE_SIGNAL_ROOMS) {
+export default {
+  fetch(request, env) {
+    if (!env || !env.LIVE_SIGNAL_ROOMS) {
+      return new Response("Missing LIVE_SIGNAL_ROOMS binding", { status: 500 });
+    }
+
     const id = env.LIVE_SIGNAL_ROOMS.idFromName("markdown-viewer-live-signal-v1");
     return env.LIVE_SIGNAL_ROOMS.get(id).fetch(request);
   }
-
-  const pair = new WebSocketPair();
-  const [client, server] = Object.values(pair);
-
-  handleSocket(server);
-
-  return new Response(null, {
-    status: 101,
-    webSocket: client
-  });
-}
+};

@@ -3294,16 +3294,17 @@ a:focus {
 .live-share-participants {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  min-height: 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
 }
 
 .live-share-participant {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   max-width: 100%;
-  padding: 4px 8px;
+  padding: 4px 9px 4px 5px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
   color: var(--text-color);
@@ -3311,11 +3312,67 @@ a:focus {
   font-size: 12px;
 }
 
-.live-share-participant-color {
-  width: 8px;
-  height: 8px;
+.live-share-avatar-icon {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.live-share-participant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-share-participant-overflow {
+  justify-content: center;
+  min-width: 36px;
+  padding: 5px 10px;
+  font-weight: 700;
+}
+
+.live-share-toolbar-participants {
+  display: inline-flex;
+  align-items: center;
+  margin-left: -6px;
+  margin-right: 4px;
+  min-width: 0;
+}
+
+.live-share-avatar {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--header-bg);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -7px;
+  box-shadow: 0 0 0 1px var(--border-color);
+}
+
+.live-share-avatar:first-child {
+  margin-left: 0;
+}
+
+.live-share-avatar .live-share-avatar-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.live-share-avatar-overflow {
+  background: var(--button-bg);
+  color: var(--text-color);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .live-share-link-row {

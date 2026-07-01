@@ -1,0 +1,11 @@
+name = "markdown-viewer-live-signal"
+main = "workers/live-signal-worker.js"
+compatibility_date = "2026-07-01"
+
+[[durable_objects.bindings]]
+name = "LIVE_SIGNAL_ROOMS"
+class_name = "LiveSignalRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveSignalRoom"]

@@ -1,0 +1,8 @@
+name = "markdown-viewer"
+pages_build_output_dir = "."
+compatibility_date = "2026-07-01"
+
+[[durable_objects.bindings]]
+name = "LIVE_SIGNAL_ROOMS"
+class_name = "LiveSignalRoom"
+script_name = "markdown-viewer-live-signal"
