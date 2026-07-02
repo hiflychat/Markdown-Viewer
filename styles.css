@@ -3396,6 +3396,7 @@ a:focus {
   flex: 0 0 32px;
   gap: 0;
   padding: 0;
+  border: 0;
   border-radius: 50%;
   font-weight: 700;
   cursor: pointer;
@@ -3435,11 +3436,11 @@ a:focus {
   width: 28px;
   min-width: 28px;
   height: 28px;
-  border: 2px solid var(--header-bg);
+  border: 0;
   border-radius: 50%;
   background: var(--button-bg);
   color: var(--text-color);
-  box-shadow: 0 0 0 1px var(--border-color);
+  box-shadow: none;
   font-size: 11px;
   font-weight: 700;
   padding: 0;
@@ -3457,7 +3458,6 @@ button.live-share-participant-overflow {
 
 .live-share-avatar-overflow:hover,
 .live-share-participant-overflow:hover {
-  border-color: var(--accent-color);
   color: var(--accent-color);
   background: var(--button-hover);
 }
