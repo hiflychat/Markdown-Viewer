@@ -12019,17 +12019,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     return loadScript(CDN.pako);
   }
 
-  function encodeLiveSeedForShare(updateBytes) {
-    if (typeof pako === 'undefined') throw new Error('pako not loaded');
-    const compressed = pako.deflate(updateBytes);
-    const chunkSize = 0x8000;
-    let binary = '';
-    for (let i = 0; i < compressed.length; i += chunkSize) {
-      binary += String.fromCharCode.apply(null, compressed.subarray(i, i + chunkSize));
-    }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
   function decodeLiveSeedFromShare(encoded) {
     if (typeof pako === 'undefined') throw new Error('pako not loaded');
     const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
@@ -12192,7 +12181,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     return (normalized || 'Live Share').slice(0, 120);
   }
 
-  function buildLiveInviteUrl(roomId, secret, seedUpdate, title) {
+  function buildLiveInviteUrl(roomId, secret, title) {
     const isLocal = window.location.origin.includes('localhost') ||
                     window.location.origin.startsWith('file://') ||
                     typeof Neutralino !== 'undefined';
@@ -12206,18 +12195,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     const safeTitle = getSafeLiveTitle(title);
     if (safeTitle) {
       params.push('title=' + encodeURIComponent(safeTitle));
-    }
-    if (seedUpdate && seedUpdate.length > 0) {
-      try {
-        const seedParam = 'seed=' + encodeLiveSeedForShare(seedUpdate);
-        const seededUrl = base + '&' + params.concat(seedParam).join('&');
-        if (seededUrl.length <= MAX_SHARE_URL_LENGTH) {
-          return seededUrl;
-        }
-        console.warn('Live Share invite seed skipped because the URL would be too long.');
-      } catch (error) {
-        console.warn('Live Share invite seed could not be encoded:', error);
-      }
     }
 
     return params.length ? base + '&' + params.join('&') : base;
@@ -12874,7 +12851,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const sessionMap = ydoc.getMap('session');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
     const hostTitle = getSafeLiveTitle(options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share');
-    let inviteUrl = buildLiveInviteUrl(roomId, secret, null, hostTitle);
+    const inviteUrl = buildLiveInviteUrl(roomId, secret, hostTitle);
     if (!isHost && options.initialUpdate) {
       try {
         modules.Y.applyUpdate(ydoc, options.initialUpdate);
@@ -12888,12 +12865,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (isHost) {
       sessionMap.set('title', hostTitle);
-      try {
-        await ensureLiveShareCompressionReady();
-        inviteUrl = buildLiveInviteUrl(roomId, secret, modules.Y.encodeStateAsUpdate(ydoc), hostTitle);
-      } catch (error) {
-        console.warn('Live Share invite will rely on peer sync because the seed could not be encoded:', error);
-      }
     }
 
     disconnectLiveCollaboration();

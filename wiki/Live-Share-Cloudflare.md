@@ -13,6 +13,9 @@ BroadcastChannel, or peer discovery. The normal Markdown editor remains local-fi
    cursor presence, participant leave events, and host session-end events.
 5. Participants opening the invite link create a separate live tab, join the same
    room, request the current Yjs state, and render remote participants/cursors.
+6. New invite links do not embed the Markdown document body. The URL contains
+   only the room id, room secret, and tab title so link length does not grow with
+   document size.
 
 ## Cloudflare Requirements
 
