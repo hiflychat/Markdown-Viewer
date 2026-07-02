@@ -12499,7 +12499,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (overflowCount > 0) {
       const overflow = document.createElement(options && options.onOverflowClick ? 'button' : 'span');
-      overflow.className = showNames ? 'live-share-participant live-share-participant-overflow' : 'live-share-avatar live-share-avatar-overflow';
+      overflow.className = showNames ? 'live-share-participant live-share-participant-overflow' : 'tool-button live-share-avatar-overflow';
       if (overflow.tagName === 'BUTTON') {
         overflow.type = 'button';
       }
@@ -12549,11 +12549,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     setLiveShareButtonActive(isActive);
     if (liveShareStartBtn) {
       liveShareStartBtn.disabled = isActive;
-      liveShareStartBtn.textContent = isActive ? 'Session active' : 'Start session';
+      liveShareStartBtn.hidden = isActive;
+      liveShareStartBtn.textContent = 'Start session';
     }
     if (liveShareEndBtn) {
       liveShareEndBtn.disabled = !isActive;
-      liveShareEndBtn.textContent = isHost ? 'End live session' : 'Leave session';
+      liveShareEndBtn.hidden = !isActive;
+      liveShareEndBtn.textContent = isHost ? 'End session' : 'Leave session';
     }
     if (liveShareCopyBtn) {
       liveShareCopyBtn.disabled = !isActive || !liveShareUrlInput || !liveShareUrlInput.value;

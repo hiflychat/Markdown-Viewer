@@ -469,6 +469,9 @@ body {
 .tool-button.is-active:hover,
 .tool-button.is-live-active,
 .tool-button.is-live-active:hover,
+.tool-button.sync-active,
+.tool-button.sync-active:hover,
+.mobile-menu-item.sync-active,
 .mobile-menu-item.is-live-active {
   border-color: var(--accent-color);
   color: var(--accent-color);
@@ -482,11 +485,6 @@ body {
 .toolbar .tool-button {
   height: 28px;
   min-width: 28px;
-}
-
-.toolbar .tool-button.sync-active {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
 }
 
 .file-input {
@@ -3401,7 +3399,8 @@ a:focus {
 .live-share-toolbar-participants {
   display: inline-flex;
   align-items: center;
-  margin-left: -6px;
+  gap: 0;
+  margin-left: -4px;
   margin-right: 4px;
   min-width: 0;
 }
@@ -3428,12 +3427,11 @@ a:focus {
 }
 
 .live-share-avatar-overflow {
-  background: var(--button-bg);
-  color: var(--text-color);
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
   font-size: 11px;
   font-weight: 700;
-  border: 2px solid var(--header-bg);
-  cursor: pointer;
   padding: 0;
   line-height: 1;
   overflow: hidden;
@@ -3447,7 +3445,6 @@ button.live-share-participant-overflow {
   line-height: 1;
 }
 
-.live-share-avatar-overflow:hover,
 .live-share-participant-overflow:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
