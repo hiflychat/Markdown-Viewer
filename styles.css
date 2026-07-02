@@ -3349,7 +3349,7 @@ a:focus {
 
 .live-share-participants {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   min-height: 34px;
@@ -3383,9 +3383,15 @@ a:focus {
 }
 
 .live-share-participant-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.live-share-participants .live-share-participant:not(.live-share-participant-overflow) {
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 .live-share-participant-overflow {
