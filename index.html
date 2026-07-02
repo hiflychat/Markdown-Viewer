@@ -760,18 +760,11 @@
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Start a temporary peer-to-peer room for the active Markdown tab.</p>
+              <p class="share-modal-description">Start a temporary Cloudflare live room for the active Markdown tab.</p>
               <div class="reset-modal-field">
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
               </div>
-              <label class="live-share-option" for="live-share-direct-only">
-                <input type="checkbox" id="live-share-direct-only" checked />
-                <span class="live-share-option-copy">
-                  <span class="live-share-option-title">Direct P2P only</span>
-                  <span class="live-share-option-desc">Uses STUN only. Strict networks may fail to connect.</span>
-                </span>
-              </label>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
@@ -783,7 +776,7 @@
                   <i class="bi bi-clipboard"></i>
                 </button>
               </div>
-              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> No document is stored by Markdown Viewer. Everyone with the live link can edit.</p>
+              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Everyone with the live link can edit while the room is active.</p>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled>End live session</button>

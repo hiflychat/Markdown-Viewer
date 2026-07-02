@@ -105,8 +105,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     d3: 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
     markmapLib: 'https://cdn.jsdelivr.net/npm/markmap-lib@0.18.12/dist/browser/index.iife.js',
     markmapView: 'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js',
-    yjs: 'https://esm.sh/yjs@13.6.10/es2022/yjs.mjs',
-    ywebrtc: 'https://esm.sh/y-webrtc@10.3.0?bundle&deps=yjs@13.6.10'
+    yjs: 'https://esm.sh/yjs@13.6.10/es2022/yjs.mjs'
   };
 
   // Resolve local paths for desktop (Neutralinojs) offline support
@@ -11858,13 +11857,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   // ============================================
-  // Live Share (Yjs + y-webrtc, in-memory only)
+  // Live Share (Yjs CRDT + Cloudflare room WebSocket)
   // ============================================
 
-  const LIVE_SHARE_FALLBACK_SIGNALING_URLS = [
-    'wss://signaling.yjs.dev',
-    'wss://y-webrtc-eu.fly.dev'
-  ];
   const LIVE_SHARE_AVATAR_LIMIT = 4;
   const LIVE_SHARE_PARTICIPANT_STALE_MS = 45000;
   const LIVE_SHARE_ADJECTIVES = [
@@ -11913,7 +11908,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareCopyBtn      = document.getElementById('live-share-copy-btn');
   const liveShareUrlInput     = document.getElementById('live-share-url-input');
   const liveShareDisplayName  = document.getElementById('live-share-display-name');
-  const liveShareDirectOnly   = document.getElementById('live-share-direct-only');
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
@@ -11999,47 +11993,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     return palette[Math.abs(hash) % palette.length];
   }
 
-  function dedupeLiveSignalingUrls(urls) {
-    const seen = new Set();
-    return (urls || [])
-      .map(function(url) { return String(url || '').trim(); })
-      .filter(function(url) {
-        if (!url || seen.has(url)) return false;
-        seen.add(url);
-        return true;
-      });
-  }
+  function getLiveRoomSocketUrl(roomId, secret) {
+    const encodedRoom = encodeURIComponent(roomId);
+    const query = '?secret=' + encodeURIComponent(secret);
+    const configuredBase = String(window.MARKDOWN_VIEWER_LIVE_ROOM_URL || '').trim();
 
-  function getLiveSignalingUrls() {
-    if (Array.isArray(window.MARKDOWN_VIEWER_SIGNALING_URLS) && window.MARKDOWN_VIEWER_SIGNALING_URLS.length) {
-      return dedupeLiveSignalingUrls(window.MARKDOWN_VIEWER_SIGNALING_URLS.concat(LIVE_SHARE_FALLBACK_SIGNALING_URLS));
+    if (configuredBase) {
+      const base = configuredBase.replace(/\/+$/, '');
+      const wsBase = base
+        .replace(/^https:/i, 'wss:')
+        .replace(/^http:/i, 'ws:');
+      return wsBase + '/' + encodedRoom + query;
     }
 
-    const urls = [];
     if (typeof Neutralino !== 'undefined' || window.location.protocol === 'file:') {
-      urls.push('wss://markdownviewer.pages.dev/live-signal');
-    } else {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      urls.push(wsProtocol + '//' + window.location.host + '/live-signal');
+      return 'wss://markdownviewer.pages.dev/live-room/' + encodedRoom + query;
     }
 
-    LIVE_SHARE_FALLBACK_SIGNALING_URLS.forEach(function(url) {
-      urls.push(url);
-    });
-    return dedupeLiveSignalingUrls(urls);
-  }
-
-  function getLiveIceServers() {
-    const stunServers = [{ urls: 'stun:stun.l.google.com:19302' }];
-    if (liveShareDirectOnly && liveShareDirectOnly.checked) {
-      return stunServers;
-    }
-
-    if (Array.isArray(window.MARKDOWN_VIEWER_RELAY_ICE_SERVERS)) {
-      return stunServers.concat(window.MARKDOWN_VIEWER_RELAY_ICE_SERVERS);
-    }
-
-    return stunServers;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return wsProtocol + '//' + window.location.host + '/live-room/' + encodedRoom + query;
   }
 
   function ensureLiveShareCompressionReady() {
@@ -12081,80 +12053,59 @@ document.addEventListener("DOMContentLoaded", async function () {
     return Uint8Array.from(binary, c => c.charCodeAt(0));
   }
 
-  async function createLiveRelayTopic(roomId, secret) {
-    const material = new TextEncoder().encode(roomId + ':' + secret);
-    const cryptoApi = window.crypto || window.msCrypto;
-    if (cryptoApi && cryptoApi.subtle && typeof cryptoApi.subtle.digest === 'function') {
-      const digest = await cryptoApi.subtle.digest('SHA-256', material);
-      return 'markdown-viewer-live-relay:' + encodeLiveBytes(new Uint8Array(digest)).slice(0, 32);
-    }
-
-    let hash = 0;
-    const text = roomId + ':' + secret;
-    for (let i = 0; i < text.length; i += 1) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
-      hash |= 0;
-    }
-    return 'markdown-viewer-live-relay:' + roomId + ':' + Math.abs(hash).toString(36);
-  }
-
-  function createLiveUpdateRelay(options) {
-    const sockets = [];
-    const urls = dedupeLiveSignalingUrls(options.urls || []);
+  function createLiveRoomConnection(options) {
     const pendingMessages = [];
+    const socketUrl = getLiveRoomSocketUrl(options.roomId, options.secret);
+    let socket = null;
     let destroyed = false;
-    let syncRequested = false;
+    let opened = false;
 
-    function sendSerialized(serialized) {
-      let sent = false;
-      sockets.forEach(function(socket) {
-        if (socket.readyState === WebSocket.OPEN) {
-          try {
-            socket.send(serialized);
-            sent = true;
-          } catch (_) {}
-        }
-      });
-      if (!sent && pendingMessages.length < 50) {
-        pendingMessages.push(serialized);
+    function send(message) {
+      if (destroyed) return;
+      const payload = JSON.stringify(Object.assign({
+        sender: options.participantId,
+        roomId: options.roomId
+      }, message));
+
+      if (opened && socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(payload);
+        } catch (_) {}
+        return;
+      }
+
+      if (pendingMessages.length < 100) {
+        pendingMessages.push(payload);
       }
     }
 
     function flushPendingMessages() {
-      const messages = pendingMessages.splice(0, pendingMessages.length);
-      messages.forEach(sendSerialized);
-    }
-
-    function publish(kind, update) {
-      sendSerialized(JSON.stringify({
-        type: 'publish',
-        topic: options.topic,
-        data: {
-          type: kind,
-          sender: options.senderId,
-          update: encodeLiveBytes(update)
+      while (pendingMessages.length && opened && socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(pendingMessages.shift());
+        } catch (_) {
+          break;
         }
-      }));
+      }
     }
 
     function publishCurrentState() {
       try {
-        publish('sync-state', options.Y.encodeStateAsUpdate(options.ydoc));
+        send({
+          type: 'sync-state',
+          update: encodeLiveBytes(options.Y.encodeStateAsUpdate(options.ydoc))
+        });
       } catch (error) {
-        console.warn('Live Share relay state publish failed:', error);
+        console.warn('Live Share state publish failed:', error);
       }
     }
 
-    function requestState() {
-      const payload = JSON.stringify({
-        type: 'publish',
-        topic: options.topic,
-        data: {
-          type: 'sync-request',
-          sender: options.senderId
-        }
+    function publishPresence(cursor) {
+      send({
+        type: 'presence',
+        participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() }),
+        cursor: cursor || null
       });
-      sendSerialized(payload);
     }
 
     function handleMessage(event) {
@@ -12165,71 +12116,73 @@ document.addEventListener("DOMContentLoaded", async function () {
       } catch (_) {
         return;
       }
-      const data = message && message.data;
-      if (!data || data.sender === options.senderId) return;
-
-      if (data.type === 'sync-request') {
-        publishCurrentState();
-        return;
-      }
-
-      if ((data.type === 'y-update' || data.type === 'sync-state') && data.update) {
-        try {
-          options.Y.applyUpdate(options.ydoc, decodeLiveBytes(data.update), LIVE_RELAY_ORIGIN);
-        } catch (error) {
-          console.warn('Live Share relay update failed:', error);
-        }
-      }
-    }
-
-    function connect(url) {
-      let socket;
-      try {
-        socket = new WebSocket(url);
-      } catch (error) {
-        console.warn('Live Share relay could not open signaling URL:', url, error);
-        return;
-      }
-
-      sockets.push(socket);
-      socket.addEventListener('open', function() {
-        if (destroyed) return;
-        try {
-          socket.send(JSON.stringify({ type: 'subscribe', topics: [options.topic] }));
-          flushPendingMessages();
-          setTimeout(publishCurrentState, 100);
-          if (!syncRequested) {
-            syncRequested = true;
-            setTimeout(requestState, 250);
-          }
-        } catch (_) {}
+      if (!message || message.sender === options.participantId) return;
+      options.onMessage(message, {
+        publishCurrentState,
+        publishPresence
       });
-      socket.addEventListener('message', handleMessage);
-      socket.addEventListener('error', function() {});
     }
 
     const updateHandler = function(update, origin) {
       if (destroyed || origin === LIVE_RELAY_ORIGIN) return;
-      publish('y-update', update);
+      send({
+        type: 'y-update',
+        update: encodeLiveBytes(update)
+      });
     };
     options.ydoc.on('update', updateHandler);
-    urls.forEach(connect);
+
+    try {
+      socket = new WebSocket(socketUrl);
+    } catch (error) {
+      options.onStatus('Unable to open live room socket', 'error');
+      throw error;
+    }
+
+    socket.addEventListener('open', function() {
+      if (destroyed) return;
+      opened = true;
+      options.onStatus('Connected to live room', 'connecting');
+      send({
+        type: 'hello',
+        participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() })
+      });
+      send({ type: 'sync-request' });
+      flushPendingMessages();
+      setTimeout(publishCurrentState, 100);
+      setTimeout(function() { publishPresence(options.getCursor()); }, 150);
+    });
+
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('close', function() {
+      if (destroyed) return;
+      opened = false;
+      options.onStatus('Live room disconnected', 'error');
+    });
+    socket.addEventListener('error', function() {
+      if (destroyed) return;
+      options.onStatus('Live room connection error', 'error');
+    });
 
     return {
+      send,
       publishCurrentState,
+      publishPresence,
       destroy() {
         destroyed = true;
         try {
           options.ydoc.off('update', updateHandler);
         } catch (_) {}
-        sockets.forEach(function(socket) {
-          try {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: 'unsubscribe', topics: [options.topic] }));
-            }
-            socket.close();
-          } catch (_) {}
-        });
+        try {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'leave',
+              sender: options.participantId,
+              roomId: options.roomId
+            }));
+          }
+          if (socket) socket.close();
+        } catch (_) {}
       }
     };
   }
@@ -12292,14 +12245,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function loadLiveCollaborationModules() {
     if (!liveCollaborationModulesPromise) {
-      liveCollaborationModulesPromise = Promise.all([
-        import(CDN.yjs),
-        import(CDN.ywebrtc)
-      ]).then(function(modules) {
-        return {
-          Y: modules[0],
-          WebrtcProvider: modules[1].WebrtcProvider
-        };
+      liveCollaborationModulesPromise = import(CDN.yjs).then(function(Y) {
+        return { Y };
       });
     }
     return liveCollaborationModulesPromise;
@@ -12319,9 +12266,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       return [];
     }
 
-    if (liveCollaboration.participantsMap) {
+    if (liveCollaboration.participants) {
       const now = Date.now();
-      return Array.from(liveCollaboration.participantsMap.entries())
+      return Array.from(liveCollaboration.participants.entries())
         .map(function(entry) {
           const participant = entry[1] || {};
           const name = participant.name || 'Guest';
@@ -12342,31 +12289,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           return a.name.localeCompare(b.name);
         });
     }
-
-    if (!liveCollaboration.provider || !liveCollaboration.provider.awareness) {
-      return [];
-    }
-
-    const awareness = liveCollaboration.provider.awareness;
-    const participants = [];
-    awareness.getStates().forEach(function(state, clientId) {
-      if (!state || !state.user) return;
-      const name = state.user.name || 'Guest';
-      participants.push({
-        clientId,
-        name,
-        color: state.user.color || getLiveParticipantColor(name),
-        label: state.user.avatarLabel || getLiveAvatarLabel(name),
-        isLocal: clientId === awareness.clientID
-      });
-    });
-
-    participants.sort(function(a, b) {
-      if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    return participants;
+    return [];
   }
 
   function renderLiveParticipantAvatars(container, participants, options) {
@@ -12724,8 +12647,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!liveCollaboration || !liveCursorsLayer || activeTabId !== liveCollaboration.tabId) return;
 
     const fragment = document.createDocumentFragment();
-    const cursorEntries = liveCollaboration.cursorsMap
-      ? Array.from(liveCollaboration.cursorsMap.entries())
+    const cursorEntries = liveCollaboration.remoteCursors
+      ? Array.from(liveCollaboration.remoteCursors.entries())
       : [];
 
     cursorEntries.forEach(function(entry) {
@@ -12763,12 +12686,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function updateLiveCursorPosition() {
-    if (!liveCollaboration || !liveCollaboration.provider || !liveCollaboration.provider.awareness) return;
-    const awareness = liveCollaboration.provider.awareness;
+    if (!liveCollaboration) return;
     if (activeTabId !== liveCollaboration.tabId || !liveCollaboration.Y) {
-      awareness.setLocalStateField('cursor', null);
-      if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId) {
-        liveCollaboration.cursorsMap.delete(liveCollaboration.localParticipantId);
+      liveCollaboration.localCursor = null;
+      if (liveCollaboration.connection) {
+        liveCollaboration.connection.publishPresence(null);
       }
       renderLiveCursors();
       return;
@@ -12795,18 +12717,69 @@ document.addEventListener("DOMContentLoaded", async function () {
       updatedAt: Date.now()
     };
 
-    awareness.setLocalStateField('cursor', cursor);
-    if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId && liveCollaboration.localParticipant) {
-      liveCollaboration.cursorsMap.set(liveCollaboration.localParticipantId, {
-        user: {
-          name: liveCollaboration.localParticipant.name,
-          color: liveCollaboration.localParticipant.color,
-          avatarLabel: liveCollaboration.localParticipant.avatarLabel
-        },
-        cursor
-      });
+    liveCollaboration.localCursor = cursor;
+    if (liveCollaboration.connection) {
+      liveCollaboration.connection.publishPresence(cursor);
     }
     renderLiveCursors();
+  }
+
+  function handleLiveRoomMessage(message, transport) {
+    if (!liveCollaboration || !message || message.roomId !== liveCollaboration.roomId) return;
+    const sender = message.sender;
+    if (!sender || sender === liveCollaboration.localParticipantId) return;
+
+    if (message.type === 'sync-request') {
+      transport.publishCurrentState();
+      transport.publishPresence(liveCollaboration.localCursor);
+      return;
+    }
+
+    if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
+      try {
+        liveCollaboration.Y.applyUpdate(liveCollaboration.ydoc, decodeLiveBytes(message.update), LIVE_RELAY_ORIGIN);
+      } catch (error) {
+        console.warn('Live Share update failed:', error);
+      }
+      return;
+    }
+
+    if (message.type === 'hello' || message.type === 'presence') {
+      const participant = message.participant || {};
+      const name = participant.name || 'Guest';
+      const record = {
+        name,
+        color: participant.color || getLiveParticipantColor(name),
+        avatarLabel: participant.avatarLabel || getLiveAvatarLabel(name),
+        lastSeen: Date.now()
+      };
+      liveCollaboration.participants.set(sender, record);
+      if (message.cursor) {
+        liveCollaboration.remoteCursors.set(sender, {
+          user: record,
+          cursor: message.cursor
+        });
+      } else {
+        liveCollaboration.remoteCursors.delete(sender);
+      }
+      renderLiveParticipants();
+      renderLiveCursors();
+      return;
+    }
+
+    if (message.type === 'leave') {
+      liveCollaboration.participants.delete(sender);
+      liveCollaboration.remoteCursors.delete(sender);
+      renderLiveParticipants();
+      renderLiveCursors();
+      return;
+    }
+
+    if (message.type === 'session-end' && !liveCollaboration.isHost) {
+      setLiveShareStatus('Live room ended by the host', 'idle');
+      leaveLiveSession({ restoreOriginal: true, silent: true });
+      announceToScreenReader('Live Share session ended by the host.');
+    }
   }
 
   function disconnectLiveCollaboration(options) {
@@ -12821,40 +12794,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (liveCollaboration.participantHeartbeatId) {
         clearInterval(liveCollaboration.participantHeartbeatId);
       }
-      if (liveCollaboration.participantsMap && liveCollaboration.localParticipantId) {
-        liveCollaboration.participantsMap.delete(liveCollaboration.localParticipantId);
-      }
-      if (liveCollaboration.cursorsMap && liveCollaboration.localParticipantId) {
-        liveCollaboration.cursorsMap.delete(liveCollaboration.localParticipantId);
-      }
-      if (liveCollaboration.participantsMap && liveCollaboration.participantObserver) {
-        liveCollaboration.participantsMap.unobserve(liveCollaboration.participantObserver);
-      }
-      if (liveCollaboration.cursorsMap && liveCollaboration.cursorObserver) {
-        liveCollaboration.cursorsMap.unobserve(liveCollaboration.cursorObserver);
-      }
       if (liveCollaboration.yText && liveCollaboration.observer) {
         liveCollaboration.yText.unobserve(liveCollaboration.observer);
       }
       if (liveCollaboration.sessionMap && liveCollaboration.sessionObserver) {
         liveCollaboration.sessionMap.unobserve(liveCollaboration.sessionObserver);
       }
-      if (
-        liveCollaboration.provider &&
-        liveCollaboration.provider.awareness &&
-        liveCollaboration.awarenessChangeHandler &&
-        typeof liveCollaboration.provider.awareness.off === 'function'
-      ) {
-        liveCollaboration.provider.awareness.off('change', liveCollaboration.awarenessChangeHandler);
-      }
-      if (liveCollaboration.provider && liveCollaboration.provider.awareness) {
-        liveCollaboration.provider.awareness.setLocalState(null);
-      }
-      if (liveCollaboration.relay && typeof liveCollaboration.relay.destroy === 'function') {
-        liveCollaboration.relay.destroy();
-      }
-      if (liveCollaboration.provider && typeof liveCollaboration.provider.destroy === 'function') {
-        liveCollaboration.provider.destroy();
+      if (liveCollaboration.connection && typeof liveCollaboration.connection.destroy === 'function') {
+        liveCollaboration.connection.destroy();
       }
       if (liveCollaboration.ydoc && typeof liveCollaboration.ydoc.destroy === 'function') {
         liveCollaboration.ydoc.destroy();
@@ -12898,6 +12845,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         endingSession.sessionMap.set('endedAt', Date.now());
         endingSession.sessionMap.set('endedBy', endingSession.localParticipantId);
       }, LIVE_EDIT_ORIGIN);
+      if (endingSession.connection) {
+        endingSession.connection.send({ type: 'session-end' });
+      }
     } catch (error) {
       console.warn('Failed to broadcast live session end:', error);
     }
@@ -12921,9 +12871,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modules = await loadLiveCollaborationModules();
     const ydoc = new modules.Y.Doc();
     const yText = ydoc.getText('markdown');
-    const participantsMap = ydoc.getMap('participants');
     const sessionMap = ydoc.getMap('session');
-    const cursorsMap = ydoc.getMap('cursors');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
     const hostTitle = getSafeLiveTitle(options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share');
     let inviteUrl = buildLiveInviteUrl(roomId, secret, null, hostTitle);
@@ -12947,7 +12895,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.warn('Live Share invite will rely on peer sync because the seed could not be encoded:', error);
       }
     }
-    const relayTopic = await createLiveRelayTopic(roomId, secret);
 
     disconnectLiveCollaboration();
 
@@ -12974,17 +12921,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       } : captureLiveTabSnapshot());
     }
 
-    const provider = new modules.WebrtcProvider(roomId, ydoc, {
-      password: secret,
-      signaling: getLiveSignalingUrls(),
-      maxConns: 8,
-      filterBcConns: true,
-      peerOpts: {
-        config: {
-          iceServers: getLiveIceServers()
-        }
-      }
-    });
+    const localParticipantId = 'participant-' + getRandomBase64Url(12);
+    const localColor = getLiveParticipantColor(displayName + '-' + getRandomBase64Url(2));
+    const localParticipant = {
+      name: displayName,
+      color: localColor,
+      avatarLabel: getLiveAvatarLabel(displayName),
+      lastSeen: Date.now()
+    };
+    const participants = new Map();
+    participants.set(localParticipantId, localParticipant);
 
     liveCollaboration = {
       roomId,
@@ -12992,11 +12938,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       inviteUrl,
       ydoc,
       Y: modules.Y,
-      provider,
       yText,
-      participantsMap,
       sessionMap,
-      cursorsMap,
       tabId: activeTabId,
       originalTabSnapshot,
       returnTabId,
@@ -13005,15 +12948,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       isApplyingRemoteChange: false,
       lastMarkdown: markdownEditor.value,
       observer: null,
-      participantObserver: null,
       sessionObserver: null,
-      cursorObserver: null,
-      awarenessChangeHandler: null,
       participantHeartbeatId: null,
-      relay: null,
-      relayTopic,
-      localParticipant: null,
-      localParticipantId: 'participant-' + getRandomBase64Url(12)
+      connection: null,
+      participants,
+      remoteCursors: new Map(),
+      localCursor: null,
+      localParticipant,
+      localParticipantId
     };
 
     liveCollaboration.observer = function(event) {
@@ -13021,14 +12963,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       applyLiveRemoteMarkdown(yText.toString());
     };
     yText.observe(liveCollaboration.observer);
-
-    liveCollaboration.relay = createLiveUpdateRelay({
-      urls: getLiveSignalingUrls(),
-      topic: relayTopic,
-      senderId: liveCollaboration.localParticipantId,
-      ydoc,
-      Y: modules.Y
-    });
 
     liveCollaboration.sessionObserver = function() {
       if (!liveCollaboration || liveCollaboration.ydoc !== ydoc || liveCollaboration.isHost) return;
@@ -13048,9 +12982,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
     sessionMap.observe(liveCollaboration.sessionObserver);
 
-    liveCollaboration.cursorObserver = renderLiveCursors;
-    cursorsMap.observe(liveCollaboration.cursorObserver);
-
     if (!isHost && yText.length > 0) {
       const seededMarkdown = yText.toString();
       applyLiveJoinSeedMarkdown(seededMarkdown);
@@ -13059,45 +12990,33 @@ document.addEventListener("DOMContentLoaded", async function () {
       liveCollaboration.lastMarkdown = markdownEditor.value || '';
     }
 
-    const localColor = getLiveParticipantColor(displayName + '-' + getRandomBase64Url(2));
-    const localParticipant = {
-      name: displayName,
-      color: localColor,
-      avatarLabel: getLiveAvatarLabel(displayName),
-      lastSeen: Date.now()
-    };
-    liveCollaboration.localParticipant = localParticipant;
-
     function publishLocalParticipant() {
       if (!liveCollaboration || liveCollaboration.ydoc !== ydoc) return;
-      participantsMap.set(liveCollaboration.localParticipantId, Object.assign({}, localParticipant, {
+      const updatedParticipant = Object.assign({}, liveCollaboration.localParticipant, {
         lastSeen: Date.now()
-      }));
+      });
+      liveCollaboration.localParticipant = updatedParticipant;
+      liveCollaboration.participants.set(liveCollaboration.localParticipantId, updatedParticipant);
+      if (liveCollaboration.connection) {
+        liveCollaboration.connection.publishPresence(liveCollaboration.localCursor);
+      }
+      renderLiveParticipants();
     }
 
-    liveCollaboration.participantObserver = renderLiveParticipants;
-    participantsMap.observe(liveCollaboration.participantObserver);
+    liveCollaboration.connection = createLiveRoomConnection({
+      roomId,
+      secret,
+      ydoc,
+      Y: modules.Y,
+      participantId: liveCollaboration.localParticipantId,
+      getParticipant: function() { return liveCollaboration.localParticipant; },
+      getCursor: function() { return liveCollaboration.localCursor; },
+      onStatus: setLiveShareStatus,
+      onMessage: handleLiveRoomMessage
+    });
+
     publishLocalParticipant();
     liveCollaboration.participantHeartbeatId = setInterval(publishLocalParticipant, 15000);
-
-    provider.awareness.setLocalStateField('user', {
-      name: displayName,
-      color: localColor,
-      avatarLabel: getLiveAvatarLabel(displayName)
-    });
-    liveCollaboration.awarenessChangeHandler = function() {
-      renderLiveParticipants();
-      renderLiveCursors();
-    };
-    provider.awareness.on('change', liveCollaboration.awarenessChangeHandler);
-    provider.on('peers', function() {
-      renderLiveParticipants();
-      renderLiveCursors();
-    });
-    provider.on('status', function() {
-      renderLiveParticipants();
-      renderLiveCursors();
-    });
 
     if (liveShareUrlInput) {
       liveShareUrlInput.value = inviteUrl;
