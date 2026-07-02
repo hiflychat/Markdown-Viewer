@@ -1,6 +1,0 @@
-compatibility_date = "2026-07-01"
-pages_build_output_dir = "."
-
-# Cloudflare Pages must provide a KV binding named SHARE_KV in the project
-# environment settings. Namespace ids are environment-specific and should not be
-# hard-coded in this repository config.
