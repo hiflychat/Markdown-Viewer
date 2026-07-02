@@ -3427,12 +3427,17 @@ a:focus {
 }
 
 .live-share-avatar-overflow {
-  width: 28px;
-  min-width: 28px;
+  width: auto;
+  min-width: 32px;
   height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--button-bg);
+  color: var(--text-color);
+  box-shadow: none;
   font-size: 11px;
   font-weight: 700;
-  padding: 0;
+  padding: 0 8px;
   line-height: 1;
   overflow: hidden;
   white-space: nowrap;
@@ -3445,9 +3450,11 @@ button.live-share-participant-overflow {
   line-height: 1;
 }
 
+.live-share-avatar-overflow:hover,
 .live-share-participant-overflow:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
+  background: var(--button-hover);
 }
 
 .live-share-participant-popover {

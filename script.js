@@ -4913,7 +4913,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function toggleSyncScrolling() {
     syncScrollingEnabled = !syncScrollingEnabled;
     if (syncScrollingEnabled) {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link-45deg"></i> <span class="btn-text">Sync Off</span>';
+      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync Off</span>';
       toggleSyncButton.classList.add("sync-disabled");
       toggleSyncButton.classList.remove("sync-enabled");
       toggleSyncButton.classList.add("sync-active");
@@ -9277,7 +9277,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   mobileToggleSync.addEventListener("click", () => {
     toggleSyncScrolling();
     if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link-45deg me-2"></i> Sync Off';
+      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync Off';
       mobileToggleSync.classList.add("sync-disabled");
       mobileToggleSync.classList.remove("sync-enabled");
       mobileToggleSync.classList.add("sync-active");
@@ -12499,7 +12499,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (overflowCount > 0) {
       const overflow = document.createElement(options && options.onOverflowClick ? 'button' : 'span');
-      overflow.className = showNames ? 'live-share-participant live-share-participant-overflow' : 'tool-button live-share-avatar-overflow';
+      overflow.className = showNames ? 'live-share-participant live-share-participant-overflow' : 'live-share-avatar live-share-avatar-overflow';
       if (overflow.tagName === 'BUTTON') {
         overflow.type = 'button';
       }
