@@ -104,7 +104,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     orbitControls: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
     d3: 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
     markmapLib: 'https://cdn.jsdelivr.net/npm/markmap-lib@0.18.12/dist/browser/index.iife.js',
-    markmapView: 'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js'
+    markmapView: 'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js',
+    yjs: 'https://esm.sh/yjs@13.6.10/es2022/yjs.mjs'
   };
 
   // Resolve local paths for desktop (Neutralinojs) offline support
@@ -287,6 +288,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
   const shareButton         = document.getElementById("share-button");
   const mobileShareButton   = document.getElementById("mobile-share-button");
+  const liveShareButton     = document.getElementById("live-share-button");
+  const mobileLiveShareButton = document.getElementById("mobile-live-share-button");
   const githubImportModal = document.getElementById("github-import-modal");
   const githubImportTitle = document.getElementById("github-import-title");
   const githubImportUrlInput = document.getElementById("github-import-url");
@@ -2093,6 +2096,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   let draggedTabId = null;
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
+  let liveCollaboration = null;
+  let liveCollaborationModulesPromise = null;
+  const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
+  const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
@@ -2121,10 +2128,33 @@ document.addEventListener("DOMContentLoaded", async function () {
     }, 500);
   }
 
+  function getTabsForStorage(tabsArr) {
+    const sourceTabs = tabsArr || tabs;
+    if (!liveCollaboration) {
+      return sourceTabs;
+    }
+
+    let storageTabs = sourceTabs;
+    if (liveCollaboration.removeTabOnLeave) {
+      storageTabs = storageTabs.filter(function(tab) {
+        return tab.id !== liveCollaboration.tabId;
+      });
+    }
+
+    if (!liveCollaboration.originalTabSnapshot) {
+      return storageTabs;
+    }
+
+    return storageTabs.map(function(tab) {
+      if (tab.id !== liveCollaboration.tabId) return tab;
+      return Object.assign({}, tab, liveCollaboration.originalTabSnapshot);
+    });
+  }
+
   function _flushTabsToStorage(tabsArr) {
     clearTimeout(saveTabStateTimeout);
     try {
-      saveStorageItem(STORAGE_KEY, JSON.stringify(tabsArr || tabs));
+      saveStorageItem(STORAGE_KEY, JSON.stringify(getTabsForStorage(tabsArr)));
     } catch (e) {
       console.warn('Failed to save tabs to localStorage:', e);
     }
@@ -2545,6 +2575,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
     tab.viewMode = currentViewMode || 'split';
+    if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
+      return;
+    }
     saveTabsToStorage(tabs);
   }
 
@@ -2580,6 +2613,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderMarkdown();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
+      updateLiveCursorPosition();
+      renderLiveCursors();
     });
     renderTabBar(tabs, activeTabId);
   }
@@ -2598,6 +2633,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function closeTab(tabId) {
+    if (liveCollaboration && liveCollaboration.tabId === tabId) {
+      if (liveCollaboration.isHost) {
+        endLiveSessionForEveryone();
+      } else {
+        leaveLiveSession({ restoreOriginal: true });
+      }
+      return;
+    }
+
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
     
@@ -2650,6 +2694,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       const newName = input.value.trim();
       if (newName) {
         tab.title = newName;
+        if (liveCollaboration && liveCollaboration.tabId === tab.id && liveCollaboration.sessionMap) {
+          syncLiveSessionTitle(newName);
+        }
         saveTabsToStorage(tabs);
         renderTabBar(tabs, activeTabId);
       }
@@ -4866,7 +4913,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function toggleSyncScrolling() {
     syncScrollingEnabled = !syncScrollingEnabled;
     if (syncScrollingEnabled) {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link-45deg"></i> <span class="btn-text">Sync Off</span>';
+      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync Off</span>';
       toggleSyncButton.classList.add("sync-disabled");
       toggleSyncButton.classList.remove("sync-enabled");
       toggleSyncButton.classList.add("sync-active");
@@ -9230,7 +9277,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   mobileToggleSync.addEventListener("click", () => {
     toggleSyncScrolling();
     if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link-45deg me-2"></i> Sync Off';
+      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync Off';
       mobileToggleSync.classList.add("sync-disabled");
       mobileToggleSync.classList.remove("sync-enabled");
       mobileToggleSync.classList.add("sync-active");
@@ -9352,6 +9399,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   markdownEditor.addEventListener("input", function(e) {
     handleKeystrokeHistory(e);
+    if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
+      syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
+    }
+    updateLiveCursorPosition();
     debouncedRender();
     clearTimeout(saveTabStateTimeout);
     saveTabStateTimeout = setTimeout(saveCurrentTabState, 500);
@@ -11573,6 +11624,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   // ============================================
 
   const MAX_SHARE_URL_LENGTH = 32000;
+  const MAX_LEGACY_SHARE_URL_LENGTH = 4096;
+  const SERVER_SHARE_THRESHOLD_BYTES = 3000;
+  const SERVER_SHARE_ID_PATTERN = /^[a-z2-9]{6,20}$/;
 
   function encodeMarkdownForShare(text) {
     if (typeof pako === 'undefined') throw new Error('pako not loaded');
@@ -11591,6 +11645,44 @@ document.addEventListener("DOMContentLoaded", async function () {
     const binary = atob(base64);
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
     return new TextDecoder().decode(pako.inflate(bytes));
+  }
+
+  function getPublicAppBaseUrl() {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.includes('127.0.0.1') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    return isLocal
+      ? 'https://markdownviewer.pages.dev/'
+      : window.location.origin + window.location.pathname;
+  }
+
+  function getShareApiBaseUrl() {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.includes('127.0.0.1') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    return isLocal ? 'https://markdownviewer.pages.dev' : window.location.origin;
+  }
+
+  function getCurrentShareMode() {
+    return shareModeView && shareModeView.checked ? 'view' : 'edit';
+  }
+
+  function getActiveShareTitle() {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return activeTab && activeTab.title ? activeTab.title : 'Markdown document';
+  }
+
+  function getShareHashForMode(id, mode) {
+    return 'id=' + encodeURIComponent(id) + (mode === 'edit' ? '&edit=1' : '');
+  }
+
+  function shouldUseServerShare(markdownText, legacyUrl) {
+    const byteLength = new TextEncoder().encode(markdownText || '').length;
+    return byteLength >= SERVER_SHARE_THRESHOLD_BYTES || !legacyUrl || legacyUrl.length > MAX_LEGACY_SHARE_URL_LENGTH;
   }
 
   // ============================================
@@ -11616,30 +11708,50 @@ document.addEventListener("DOMContentLoaded", async function () {
       console.error('Share encoding failed:', e);
       return null;
     }
-    const isLocal = window.location.origin.includes('localhost') || 
-                    window.location.origin.startsWith('file://') || 
-                    typeof Neutralino !== 'undefined';
-                    
-    const baseUrl = isLocal 
-      ? 'https://markdownviewer.pages.dev/' 
-      : window.location.origin + window.location.pathname;
-
-    const base = baseUrl + '#share=' + encoded;
+    const base = getPublicAppBaseUrl() + '#share=' + encoded;
     return mode === 'edit' ? base + '&edit=1' : base;
   }
 
+  async function createStoredShareUrl(mode) {
+    const markdownText = markdownEditor.value || '';
+    const response = await fetch(getShareApiBaseUrl() + '/api/share', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: markdownText,
+        mode,
+        title: getActiveShareTitle()
+      })
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+      throw new Error((payload && payload.error) || ('HTTP ' + response.status));
+    }
+    if (!payload || !SERVER_SHARE_ID_PATTERN.test(payload.id || '')) {
+      throw new Error('Invalid share id returned');
+    }
+
+    return getPublicAppBaseUrl() + '#' + getShareHashForMode(payload.id, mode);
+  }
+
   function updateShareUrlField() {
-    const mode = shareModeView.checked ? 'view' : 'edit';
+    const mode = getCurrentShareMode();
     const url = buildShareUrl(mode);
     if (!url) {
       shareUrlInput.value = 'Error generating link.';
       shareCopyBtn.disabled = true;
       return;
     }
-    const tooLarge = url.length > MAX_SHARE_URL_LENGTH;
-    if (tooLarge) {
-      shareUrlInput.value = 'Document too large to share via URL.';
-      shareCopyBtn.disabled = true;
+    if (shouldUseServerShare(markdownEditor.value || '', url)) {
+      shareUrlInput.value = 'Short Cloudflare link will be created when copied.';
+      shareCopyBtn.disabled = false;
     } else {
       shareUrlInput.value = url;
       shareCopyBtn.disabled = false;
@@ -11696,14 +11808,1489 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateShareUrlField();
   });
 
-  shareCopyBtn.addEventListener('click', function () {
-    const url = shareUrlInput.value;
-    if (!url || shareCopyBtn.disabled) return;
+  shareCopyBtn.addEventListener('click', async function () {
+    if (shareCopyBtn.disabled) return;
+    const mode = getCurrentShareMode();
+    const legacyUrl = buildShareUrl(mode);
 
     function onCopied() {
       const orig = shareCopyBtn.innerHTML;
       shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
       setTimeout(() => { shareCopyBtn.innerHTML = orig; }, 2000);
+    }
+
+    const originalHTML = shareCopyBtn.innerHTML;
+    shareCopyBtn.disabled = true;
+    try {
+      let url = legacyUrl;
+      if (shouldUseServerShare(markdownEditor.value || '', legacyUrl)) {
+        shareCopyBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        shareUrlInput.value = 'Saving snapshot to Cloudflare KV...';
+        url = await createStoredShareUrl(mode);
+      }
+      if (!url) {
+        throw new Error('Unable to create share link');
+      }
+      await copyTextToClipboard(url);
+      shareUrlInput.value = url;
+      const hashIndex = url.indexOf('#');
+      if (hashIndex !== -1) {
+        window.location.hash = url.slice(hashIndex + 1);
+      }
+      onCopied();
+    } catch (error) {
+      console.error('Share copy failed:', error);
+      alert('Failed to create share link: ' + error.message);
+      updateShareUrlField();
+    } finally {
+      shareCopyBtn.disabled = false;
+      if (shareCopyBtn.innerHTML.indexOf('hourglass') !== -1) {
+        shareCopyBtn.innerHTML = originalHTML;
+      }
+    }
+  });
+
+  shareModalCloseX.addEventListener('click', closeShareModal);
+  shareModalClose.addEventListener('click', closeShareModal);
+  shareModal.addEventListener('click', function (e) {
+    if (e.target === shareModal) closeShareModal();
+  });
+
+  // ============================================
+  // Live Share (Yjs CRDT + Cloudflare room WebSocket)
+  // ============================================
+
+  const LIVE_SHARE_AVATAR_LIMIT = 4;
+  const LIVE_SHARE_PARTICIPANT_STALE_MS = 45000;
+  const LIVE_SHARE_JOIN_TIMEOUT_MS = 8000;
+  const LIVE_SHARE_ADJECTIVES = [
+    'Acidic',
+    'Awesome',
+    'Bitter',
+    'Burnt',
+    'Buttery',
+    'Creamy',
+    'Fantastic',
+    'Fresh',
+    'Fried',
+    'Good',
+    'Juicy',
+    'Moist',
+    'Raw',
+    'Roasted',
+    'Salty',
+    'Seasoned',
+    'Sharp',
+    'Sour',
+    'Sugary',
+    'Sweet',
+    'Stale'
+  ];
+  const LIVE_SHARE_NOUNS = [
+    'Bamboo',
+    'Cabbage',
+    'Cactus',
+    'Fern',
+    'Garlic',
+    'Lemon',
+    'Lily',
+    'Melon',
+    'Onion',
+    'Palm',
+    'Plum',
+    'Tofu',
+    'Tomato',
+    'Watermelon'
+  ];
+  const liveShareModal        = document.getElementById('live-share-modal');
+  const liveShareModalCloseX  = document.getElementById('live-share-modal-close-icon');
+  const liveShareStartBtn     = document.getElementById('live-share-start-btn');
+  const liveShareEndBtn       = document.getElementById('live-share-end-btn');
+  const liveShareCopyBtn      = document.getElementById('live-share-copy-btn');
+  const liveShareUrlInput     = document.getElementById('live-share-url-input');
+  const liveShareDisplayName  = document.getElementById('live-share-display-name');
+  const liveShareStatus       = document.getElementById('live-share-status');
+  const liveShareStatusText   = document.getElementById('live-share-status-text');
+  const liveShareParticipants = document.getElementById('live-share-participants');
+  const liveShareToolbarParticipants = document.getElementById('live-share-toolbar-participants');
+  const liveShareExpiredModal = document.getElementById('live-share-expired-modal');
+  const liveShareExpiredMessage = document.getElementById('live-share-expired-message');
+  const liveShareExpiredClose = document.getElementById('live-share-expired-close');
+  const liveShareExpiredCloseX = document.getElementById('live-share-expired-close-icon');
+  const liveCursorsLayer      = document.getElementById('live-cursors-layer');
+  let liveGeneratedDisplayName = null;
+  let liveShareParticipantsPopover = null;
+
+  function getRandomBase64Url(byteLength) {
+    const bytes = new Uint8Array(byteLength);
+    crypto.getRandomValues(bytes);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function generateGuestName() {
+    const picks = new Uint32Array(2);
+    crypto.getRandomValues(picks);
+    const adjective = LIVE_SHARE_ADJECTIVES[picks[0] % LIVE_SHARE_ADJECTIVES.length];
+    const noun = LIVE_SHARE_NOUNS[picks[1] % LIVE_SHARE_NOUNS.length];
+    return adjective + ' ' + noun;
+  }
+
+  function getOrCreateGeneratedLiveName(forceNew) {
+    if (forceNew || !liveGeneratedDisplayName) {
+      liveGeneratedDisplayName = generateGuestName();
+    }
+    return liveGeneratedDisplayName;
+  }
+
+  function getLiveDisplayName(options) {
+    options = options || {};
+    if (options.forceGeneratedName) {
+      const forcedName = getOrCreateGeneratedLiveName(true);
+      if (liveShareDisplayName) {
+        liveShareDisplayName.value = forcedName;
+      }
+      return forcedName;
+    }
+
+    const inputName = liveShareDisplayName ? liveShareDisplayName.value.trim() : '';
+    if (inputName) {
+      return inputName;
+    }
+
+    const generated = getOrCreateGeneratedLiveName();
+    if (liveShareDisplayName) {
+      liveShareDisplayName.value = generated;
+    }
+    return generated;
+  }
+
+  function getLiveAvatarLabel(name) {
+    const parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (parts[0] || 'G').slice(0, 2).toUpperCase();
+  }
+
+  function getLiveParticipantColor(name) {
+    const palette = [
+      '#0969da',
+      '#1a7f37',
+      '#9a6700',
+      '#bc4c00',
+      '#8250df',
+      '#bf3989',
+      '#0a7285',
+      '#cf222e'
+    ];
+    let hash = 0;
+    const text = String(name || '');
+    for (let i = 0; i < text.length; i += 1) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return palette[Math.abs(hash) % palette.length];
+  }
+
+  function getLiveRoomSocketUrl(roomId, secret) {
+    const encodedRoom = encodeURIComponent(roomId);
+    const query = '?secret=' + encodeURIComponent(secret);
+    const configuredBase = String(window.MARKDOWN_VIEWER_LIVE_ROOM_URL || '').trim();
+
+    if (configuredBase) {
+      const base = configuredBase.replace(/\/+$/, '');
+      const wsBase = base
+        .replace(/^https:/i, 'wss:')
+        .replace(/^http:/i, 'ws:');
+      return wsBase + '/' + encodedRoom + query;
+    }
+
+    if (typeof Neutralino !== 'undefined' || window.location.protocol === 'file:') {
+      return 'wss://markdownviewer.pages.dev/live-room/' + encodedRoom + query;
+    }
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return wsProtocol + '//' + window.location.host + '/live-room/' + encodedRoom + query;
+  }
+
+  function ensureLiveShareCompressionReady() {
+    if (typeof pako !== 'undefined') return Promise.resolve();
+    return loadScript(CDN.pako);
+  }
+
+  function decodeLiveSeedFromShare(encoded) {
+    if (typeof pako === 'undefined') throw new Error('pako not loaded');
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    return pako.inflate(bytes);
+  }
+
+  function encodeLiveBytes(bytes) {
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function decodeLiveBytes(encoded) {
+    const base64 = String(encoded || '').replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64);
+    return Uint8Array.from(binary, c => c.charCodeAt(0));
+  }
+
+  function createLiveRoomConnection(options) {
+    const pendingMessages = [];
+    const socketUrl = getLiveRoomSocketUrl(options.roomId, options.secret);
+    let socket = null;
+    let destroyed = false;
+    let opened = false;
+
+    function send(message) {
+      if (destroyed) return;
+      const payload = JSON.stringify(Object.assign({
+        sender: options.participantId,
+        roomId: options.roomId
+      }, message));
+
+      if (opened && socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(payload);
+        } catch (_) {}
+        return;
+      }
+
+      if (pendingMessages.length < 100) {
+        pendingMessages.push(payload);
+      }
+    }
+
+    function flushPendingMessages() {
+      while (pendingMessages.length && opened && socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(pendingMessages.shift());
+        } catch (_) {
+          break;
+        }
+      }
+    }
+
+    function publishCurrentState() {
+      if (typeof options.canPublishState === 'function' && !options.canPublishState()) {
+        return;
+      }
+      try {
+        send({
+          type: 'sync-state',
+          update: encodeLiveBytes(options.Y.encodeStateAsUpdate(options.ydoc))
+        });
+      } catch (error) {
+        console.warn('Live Share state publish failed:', error);
+      }
+    }
+
+    function publishPresence(cursor) {
+      send({
+        type: 'presence',
+        participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() }),
+        cursor: cursor || null
+      });
+    }
+
+    function handleMessage(event) {
+      if (destroyed) return;
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (_) {
+        return;
+      }
+      if (!message || message.sender === options.participantId) return;
+      options.onMessage(message, {
+        publishCurrentState,
+        publishPresence
+      });
+    }
+
+    const updateHandler = function(update, origin) {
+      if (destroyed || origin === LIVE_RELAY_ORIGIN) return;
+      send({
+        type: 'y-update',
+        update: encodeLiveBytes(update)
+      });
+    };
+    options.ydoc.on('update', updateHandler);
+
+    try {
+      socket = new WebSocket(socketUrl);
+    } catch (error) {
+      options.onStatus('Unable to open live room socket', 'error');
+      throw error;
+    }
+
+    socket.addEventListener('open', function() {
+      if (destroyed) return;
+      opened = true;
+      options.onStatus('Connected to live room', 'connecting');
+      send({
+        type: 'hello',
+        participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() })
+      });
+      send({ type: 'sync-request' });
+      flushPendingMessages();
+      setTimeout(publishCurrentState, 100);
+      setTimeout(function() { publishPresence(options.getCursor()); }, 150);
+    });
+
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('close', function() {
+      if (destroyed) return;
+      opened = false;
+      options.onStatus('Live room disconnected', 'error');
+    });
+    socket.addEventListener('error', function() {
+      if (destroyed) return;
+      options.onStatus('Live room connection error', 'error');
+    });
+
+    return {
+      send,
+      publishCurrentState,
+      publishPresence,
+      destroy() {
+        destroyed = true;
+        try {
+          options.ydoc.off('update', updateHandler);
+        } catch (_) {}
+        try {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'leave',
+              sender: options.participantId,
+              roomId: options.roomId
+            }));
+          }
+          if (socket) socket.close();
+        } catch (_) {}
+      }
+    };
+  }
+
+  function getSafeLiveTitle(title) {
+    const normalized = String(title || '').trim().replace(/\s+/g, ' ');
+    return (normalized || 'Live Share').slice(0, 120);
+  }
+
+  function buildLiveInviteUrl(roomId, secret, title) {
+    const isLocal = window.location.origin.includes('localhost') ||
+                    window.location.origin.startsWith('file://') ||
+                    typeof Neutralino !== 'undefined';
+
+    const baseUrl = isLocal
+      ? 'https://markdownviewer.pages.dev/'
+      : window.location.origin + window.location.pathname;
+
+    const base = baseUrl + '#live=' + encodeURIComponent(roomId + '.' + secret);
+    const params = [];
+    const safeTitle = getSafeLiveTitle(title);
+    if (safeTitle) {
+      params.push('title=' + encodeURIComponent(safeTitle));
+    }
+
+    return params.length ? base + '&' + params.join('&') : base;
+  }
+
+  function parseLiveHash() {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#live=')) return null;
+    const rest = hash.slice('#live='.length);
+    const paramsIndex = rest.indexOf('&');
+    const roomSecretPart = decodeURIComponent(paramsIndex === -1 ? rest : rest.slice(0, paramsIndex));
+    const params = new URLSearchParams(paramsIndex === -1 ? '' : rest.slice(paramsIndex + 1));
+    const separatorIndex = roomSecretPart.indexOf('.');
+    if (separatorIndex === -1) return null;
+    const roomId = roomSecretPart.slice(0, separatorIndex);
+    const secret = roomSecretPart.slice(separatorIndex + 1);
+    if (!roomId || !secret) return null;
+    return {
+      roomId,
+      secret,
+      title: params.get('title') || '',
+      seed: params.get('seed') || ''
+    };
+  }
+
+  function loadLiveCollaborationModules() {
+    if (!liveCollaborationModulesPromise) {
+      liveCollaborationModulesPromise = import(CDN.yjs).then(function(Y) {
+        return { Y };
+      });
+    }
+    return liveCollaborationModulesPromise;
+  }
+
+  function setLiveShareStatus(message, state) {
+    if (liveShareStatusText) {
+      liveShareStatusText.textContent = message;
+    }
+    if (liveShareStatus) {
+      liveShareStatus.dataset.state = state || 'idle';
+    }
+  }
+
+  function setLiveShareButtonActive(isActive) {
+    if (liveShareButton) {
+      liveShareButton.classList.toggle('is-live-active', Boolean(isActive));
+      liveShareButton.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
+    if (mobileLiveShareButton) {
+      mobileLiveShareButton.classList.toggle('is-live-active', Boolean(isActive));
+      mobileLiveShareButton.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
+  }
+
+  function applyLiveSessionTitle(title) {
+    if (!liveCollaboration) return;
+    const safeTitle = getSafeLiveTitle(title);
+    liveCollaboration.roomTitle = safeTitle;
+    if (liveShareUrlInput) {
+      liveShareUrlInput.value = buildLiveInviteUrl(liveCollaboration.roomId, liveCollaboration.secret, safeTitle);
+    }
+    if (liveCollaboration.tabId) {
+      const tab = tabs.find(function(t) { return t.id === liveCollaboration.tabId; });
+      if (tab && tab.title !== safeTitle) {
+        tab.title = safeTitle;
+        renderTabBar(tabs, activeTabId);
+        saveTabsToStorage(tabs);
+      }
+    }
+  }
+
+  function syncLiveSessionTitle(title) {
+    if (!liveCollaboration || !liveCollaboration.sessionMap) return;
+    const safeTitle = getSafeLiveTitle(title);
+    applyLiveSessionTitle(safeTitle);
+    if (liveCollaboration.sessionMap.get('title') !== safeTitle) {
+      liveCollaboration.sessionMap.set('title', safeTitle);
+    }
+  }
+
+  function updateLiveDisplayName(name) {
+    if (!liveCollaboration || !liveCollaboration.localParticipantId) return;
+    const safeName = String(name || '').trim() || getOrCreateGeneratedLiveName();
+    const color = liveCollaboration.localParticipant && liveCollaboration.localParticipant.color
+      ? liveCollaboration.localParticipant.color
+      : getLiveParticipantColor(safeName + '-' + getRandomBase64Url(2));
+    const updatedParticipant = {
+      name: safeName,
+      color,
+      avatarLabel: getLiveAvatarLabel(safeName),
+      lastSeen: Date.now()
+    };
+    liveCollaboration.localParticipant = updatedParticipant;
+    liveCollaboration.participants.set(liveCollaboration.localParticipantId, updatedParticipant);
+    if (liveCollaboration.connection) {
+      liveCollaboration.connection.publishPresence(liveCollaboration.localCursor);
+    }
+    renderLiveParticipants();
+    renderLiveCursors();
+  }
+
+  function closeLiveShareExpiredModal() {
+    if (!liveShareExpiredModal) return;
+    liveShareExpiredModal.classList.remove('is-visible');
+    liveShareExpiredModal.setAttribute('aria-hidden', 'true');
+    liveShareExpiredModal.addEventListener('transitionend', function handler() {
+      liveShareExpiredModal.style.display = 'none';
+      liveShareExpiredModal.removeEventListener('transitionend', handler);
+    });
+  }
+
+  function showLiveShareExpiredModal(message) {
+    closeLiveShareModal();
+    if (liveShareExpiredMessage) {
+      liveShareExpiredMessage.textContent = message || 'This Live Share room has ended or is no longer active.';
+    }
+    if (!liveShareExpiredModal) {
+      alert(message || 'This Live Share room has ended or is no longer active.');
+      return;
+    }
+    liveShareExpiredModal.style.display = '';
+    requestAnimationFrame(function() {
+      liveShareExpiredModal.classList.add('is-visible');
+      liveShareExpiredModal.setAttribute('aria-hidden', 'false');
+      if (liveShareExpiredClose) {
+        liveShareExpiredClose.focus();
+      }
+    });
+  }
+
+  function closeLiveParticipantsPopover() {
+    if (liveShareParticipantsPopover && liveShareParticipantsPopover.parentNode) {
+      liveShareParticipantsPopover.parentNode.removeChild(liveShareParticipantsPopover);
+    }
+    liveShareParticipantsPopover = null;
+  }
+
+  function showLiveParticipantsPopover(anchor, participants) {
+    closeLiveParticipantsPopover();
+    const list = Array.isArray(participants) ? participants : getLiveParticipants();
+    if (!anchor || !list.length) return;
+
+    const popover = document.createElement('div');
+    popover.className = 'live-share-participant-popover';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'Live Share participants');
+
+    const title = document.createElement('div');
+    title.className = 'live-share-participant-popover-title';
+    title.textContent = 'Participants';
+    popover.appendChild(title);
+
+    list.forEach(function(participant) {
+      const item = document.createElement('div');
+      item.className = 'live-share-participant-popover-item';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'live-share-avatar-icon';
+      avatar.style.backgroundColor = participant.color;
+      avatar.textContent = participant.label;
+      item.appendChild(avatar);
+
+      const name = document.createElement('span');
+      name.className = 'live-share-participant-popover-name';
+      name.textContent = participant.name + (participant.isLocal ? ' (you)' : '');
+      item.appendChild(name);
+
+      popover.appendChild(item);
+    });
+
+    document.body.appendChild(popover);
+    const rect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - popoverRect.width - 8, rect.left));
+    const top = Math.min(window.innerHeight - popoverRect.height - 8, rect.bottom + 8);
+    popover.style.left = left + 'px';
+    popover.style.top = Math.max(8, top) + 'px';
+    liveShareParticipantsPopover = popover;
+
+    setTimeout(function() {
+      document.addEventListener('click', handleLiveParticipantsPopoverOutsideClick, { once: true });
+    }, 0);
+  }
+
+  function handleLiveParticipantsPopoverOutsideClick(event) {
+    if (
+      liveShareParticipantsPopover &&
+      event.target &&
+      (liveShareParticipantsPopover.contains(event.target) || event.target.classList.contains('live-share-avatar-overflow') || event.target.classList.contains('live-share-participant-overflow'))
+    ) {
+      document.addEventListener('click', handleLiveParticipantsPopoverOutsideClick, { once: true });
+      return;
+    }
+    closeLiveParticipantsPopover();
+  }
+
+  function ensureLiveParticipantTab(markdown) {
+    if (!liveCollaboration || liveCollaboration.tabId) return Boolean(liveCollaboration && liveCollaboration.tabId);
+    if (!liveCollaboration.pendingJoinTab) return false;
+    if (tabs.length >= 20) {
+      showLiveShareExpiredModal('The Live Share room could not be opened because the tab limit has been reached.');
+      leaveLiveSession({ restoreOriginal: false, silent: true });
+      return false;
+    }
+
+    const liveTab = createTab(typeof markdown === 'string' ? markdown : '', getSafeLiveTitle(liveCollaboration.roomTitle), 'split');
+    tabs.push(liveTab);
+    switchTab(liveTab.id);
+    liveCollaboration.tabId = liveTab.id;
+    liveCollaboration.pendingJoinTab = false;
+    liveCollaboration.removeTabOnLeave = true;
+    if (liveCollaboration.joinTimeoutId) {
+      clearTimeout(liveCollaboration.joinTimeoutId);
+      liveCollaboration.joinTimeoutId = null;
+    }
+    applyLiveSessionTitle(liveCollaboration.roomTitle);
+    return true;
+  }
+
+  function markLiveJoinSynced(markdown) {
+    if (!liveCollaboration) return;
+    liveCollaboration.hasReceivedRemoteState = true;
+    if (liveCollaboration.joinTimeoutId) {
+      clearTimeout(liveCollaboration.joinTimeoutId);
+      liveCollaboration.joinTimeoutId = null;
+    }
+    ensureLiveParticipantTab(markdown);
+  }
+
+  function getLiveParticipants() {
+    if (!liveCollaboration) {
+      return [];
+    }
+
+    if (liveCollaboration.participants) {
+      const now = Date.now();
+      return Array.from(liveCollaboration.participants.entries())
+        .map(function(entry) {
+          const participant = entry[1] || {};
+          const name = participant.name || 'Guest';
+          return {
+            clientId: entry[0],
+            name,
+            color: participant.color || getLiveParticipantColor(name),
+            label: participant.avatarLabel || getLiveAvatarLabel(name),
+            isLocal: entry[0] === liveCollaboration.localParticipantId,
+            lastSeen: participant.lastSeen || 0
+          };
+        })
+        .filter(function(participant) {
+          return participant.isLocal || now - participant.lastSeen < LIVE_SHARE_PARTICIPANT_STALE_MS;
+        })
+        .sort(function(a, b) {
+          if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+    }
+    return [];
+  }
+
+  function renderLiveParticipantAvatars(container, participants, options) {
+    if (!container) return;
+    const limit = options && options.limit ? options.limit : LIVE_SHARE_AVATAR_LIMIT;
+    const showNames = Boolean(options && options.showNames);
+    const visibleParticipants = participants.slice(0, limit);
+    const overflowCount = Math.max(0, participants.length - visibleParticipants.length);
+    const fragment = document.createDocumentFragment();
+
+    container.textContent = '';
+    container.hidden = participants.length === 0;
+
+    visibleParticipants.forEach(function(participant) {
+      const item = document.createElement('span');
+      item.className = showNames ? 'live-share-participant' : 'live-share-avatar';
+      item.title = participant.name + (participant.isLocal ? ' (you)' : '');
+      item.setAttribute('aria-label', item.title);
+
+      const avatar = document.createElement('span');
+      avatar.className = 'live-share-avatar-icon';
+      avatar.style.backgroundColor = participant.color;
+      avatar.textContent = participant.label;
+      item.appendChild(avatar);
+
+      if (showNames) {
+        const name = document.createElement('span');
+        name.className = 'live-share-participant-name';
+        name.textContent = participant.name;
+        item.appendChild(name);
+      }
+
+      fragment.appendChild(item);
+    });
+
+    if (overflowCount > 0) {
+      const overflow = document.createElement(options && options.onOverflowClick ? 'button' : 'span');
+      overflow.className = showNames ? 'live-share-participant live-share-participant-overflow' : 'live-share-avatar live-share-avatar-overflow';
+      if (overflow.tagName === 'BUTTON') {
+        overflow.type = 'button';
+      }
+      overflow.textContent = '+' + overflowCount;
+      overflow.title = overflowCount + ' more participant' + (overflowCount === 1 ? '' : 's');
+      overflow.setAttribute('aria-label', overflow.title);
+      if (options && typeof options.onOverflowClick === 'function') {
+        overflow.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          options.onOverflowClick(event, participants);
+        });
+      }
+      fragment.appendChild(overflow);
+    }
+
+    container.appendChild(fragment);
+  }
+
+  function renderLiveParticipants() {
+    const participants = getLiveParticipants();
+    const participantCount = participants.length || 1;
+    const connectedToOthers = participantCount > 1;
+    const state = connectedToOthers ? 'active' : 'connecting';
+    const status = connectedToOthers
+      ? 'Connected to ' + participantCount + ' participants'
+      : 'Room active - waiting for collaborators';
+
+    renderLiveParticipantAvatars(liveShareParticipants, participants, {
+      showNames: true,
+      onOverflowClick: function(event, allParticipants) {
+        showLiveParticipantsPopover(event.currentTarget, allParticipants);
+      }
+    });
+    renderLiveParticipantAvatars(liveShareToolbarParticipants, participants, {
+      showNames: false,
+      onOverflowClick: function(event, allParticipants) {
+        showLiveParticipantsPopover(event.currentTarget, allParticipants);
+      }
+    });
+    setLiveShareStatus(status, state);
+  }
+
+  function updateLiveShareControls() {
+    const isActive = Boolean(liveCollaboration);
+    const isHost = isActive && liveCollaboration.isHost;
+    setLiveShareButtonActive(isActive);
+    if (liveShareStartBtn) {
+      liveShareStartBtn.disabled = isActive;
+      liveShareStartBtn.hidden = isActive;
+      liveShareStartBtn.textContent = 'Start session';
+    }
+    if (liveShareEndBtn) {
+      liveShareEndBtn.disabled = !isActive;
+      liveShareEndBtn.hidden = !isActive;
+      liveShareEndBtn.textContent = isHost ? 'End session' : 'Leave session';
+    }
+    if (liveShareCopyBtn) {
+      liveShareCopyBtn.disabled = !isActive || !liveShareUrlInput || !liveShareUrlInput.value;
+    }
+    if (!isActive) {
+      setLiveShareStatus('No live room active', 'idle');
+      if (liveShareParticipants) liveShareParticipants.textContent = '';
+      if (liveShareToolbarParticipants) {
+        liveShareToolbarParticipants.textContent = '';
+        liveShareToolbarParticipants.hidden = true;
+      }
+      if (liveShareUrlInput) liveShareUrlInput.value = '';
+    } else {
+      renderLiveParticipants();
+    }
+  }
+
+  function syncLiveLocalEditorChange(oldValue, newValue) {
+    if (!liveCollaboration || !liveCollaboration.yText) return;
+    if (oldValue === newValue) return;
+
+    let start = 0;
+    while (
+      start < oldValue.length &&
+      start < newValue.length &&
+      oldValue[start] === newValue[start]
+    ) {
+      start += 1;
+    }
+
+    let oldEnd = oldValue.length;
+    let newEnd = newValue.length;
+    while (
+      oldEnd > start &&
+      newEnd > start &&
+      oldValue[oldEnd - 1] === newValue[newEnd - 1]
+    ) {
+      oldEnd -= 1;
+      newEnd -= 1;
+    }
+
+    const deleteLength = oldEnd - start;
+    const insertedText = newValue.slice(start, newEnd);
+
+    liveCollaboration.ydoc.transact(function() {
+      if (deleteLength > 0) {
+        liveCollaboration.yText.delete(start, deleteLength);
+      }
+      if (insertedText) {
+        liveCollaboration.yText.insert(start, insertedText);
+      }
+    }, LIVE_EDIT_ORIGIN);
+
+    liveCollaboration.lastMarkdown = newValue;
+    updateLiveTabContent(newValue);
+  }
+
+  function updateLiveTabContent(markdown) {
+    if (!liveCollaboration) return;
+    const tab = tabs.find(function(t) { return t.id === liveCollaboration.tabId; });
+    if (tab) {
+      tab.content = markdown;
+      tab.scrollPos = activeTabId === tab.id ? markdownEditor.scrollTop : tab.scrollPos;
+      tab.viewMode = currentViewMode || tab.viewMode || 'split';
+    }
+  }
+
+  function applyLiveRemoteMarkdown(remoteMarkdown) {
+    if (!liveCollaboration) return;
+    const wasPendingTab = liveCollaboration.pendingJoinTab && !liveCollaboration.tabId;
+    if (wasPendingTab) {
+      ensureLiveParticipantTab(remoteMarkdown);
+    }
+    if (!wasPendingTab && liveCollaboration.lastMarkdown === remoteMarkdown) return;
+    if (!liveCollaboration.tabId) return;
+
+    liveCollaboration.lastMarkdown = remoteMarkdown;
+    updateLiveTabContent(remoteMarkdown);
+    if (activeTabId !== liveCollaboration.tabId) {
+      renderTabBar(tabs, activeTabId);
+      return;
+    }
+
+    liveCollaboration.isApplyingRemoteChange = true;
+    const selectionStart = markdownEditor.selectionStart || 0;
+    const selectionEnd = markdownEditor.selectionEnd || selectionStart;
+    markdownEditor.value = remoteMarkdown;
+
+    lastPushedValue = remoteMarkdown;
+    renderMarkdown({ reason: 'live-remote', force: true });
+    updateDocumentStats();
+    updateFindHighlights();
+    scheduleLineNumberUpdate({ force: true });
+
+    const caret = Math.min(remoteMarkdown.length, selectionStart);
+    const end = Math.min(remoteMarkdown.length, selectionEnd);
+    requestAnimationFrame(function() {
+      try {
+        markdownEditor.setSelectionRange(caret, end);
+      } catch (_) {}
+    });
+
+    liveCollaboration.isApplyingRemoteChange = false;
+    renderLiveCursors();
+  }
+
+  function captureLiveTabSnapshot() {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return {
+      content: markdownEditor.value || '',
+      scrollPos: markdownEditor.scrollTop || 0,
+      viewMode: currentViewMode || (activeTab && activeTab.viewMode) || 'split'
+    };
+  }
+
+  function restoreLiveOriginalTabState(tabId, snapshot) {
+    const restored = snapshot || { content: '', scrollPos: 0, viewMode: 'split' };
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (tab) {
+      tab.content = restored.content || '';
+      tab.scrollPos = restored.scrollPos || 0;
+      tab.viewMode = restored.viewMode || 'split';
+    }
+
+    if (tabId === activeTabId) {
+      markdownEditor.value = restored.content || '';
+      lastPushedValue = markdownEditor.value;
+      pendingState = null;
+      lastInputType = null;
+      restoreViewMode(restored.viewMode || 'split');
+      renderMarkdown({ reason: 'live-restore', force: true });
+      updateDocumentStats();
+      updateFindHighlights();
+      scheduleLineNumberUpdate({ force: true });
+      requestAnimationFrame(function() {
+        markdownEditor.scrollTop = restored.scrollPos || 0;
+      });
+    }
+
+    saveTabsToStorage(tabs);
+    renderTabBar(tabs, activeTabId);
+  }
+
+  function applyLiveJoinSeedMarkdown(markdown) {
+    if (typeof markdown !== 'string') return;
+
+    markdownEditor.value = markdown;
+    lastPushedValue = markdown;
+    pendingState = null;
+    lastInputType = null;
+
+    const tab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (tab) {
+      tab.content = markdown;
+      tab.viewMode = 'split';
+      tab.scrollPos = 0;
+    }
+
+    restoreViewMode('split');
+    renderMarkdown({ reason: 'live-seed', force: true });
+    updateDocumentStats();
+    updateFindHighlights();
+    scheduleLineNumberUpdate({ force: true });
+  }
+
+  function removeLiveParticipantTab(tabId, returnTabId) {
+    const idx = tabs.findIndex(function(t) { return t.id === tabId; });
+    if (idx !== -1) {
+      tabs.splice(idx, 1);
+    }
+    if (tabHistories[tabId]) {
+      delete tabHistories[tabId];
+    }
+
+    if (tabs.length === 0) {
+      const welcome = createTab(sampleMarkdown, 'Welcome to Markdown');
+      tabs.push(welcome);
+    }
+
+    const returnTab = tabs.find(function(t) { return t.id === returnTabId; }) || tabs[Math.max(0, Math.min(idx, tabs.length - 1))] || tabs[0];
+    activeTabId = returnTab.id;
+    saveActiveTabId(activeTabId);
+    markdownEditor.value = returnTab.content || '';
+    lastPushedValue = markdownEditor.value;
+    pendingState = null;
+    lastInputType = null;
+    initTabHistory(activeTabId, markdownEditor.value);
+    updateUndoRedoButtons();
+    restoreViewMode(returnTab.viewMode || 'split');
+    renderMarkdown({ reason: 'live-tab-remove', force: true });
+    updateDocumentStats();
+    updateFindHighlights();
+    scheduleLineNumberUpdate({ force: true });
+    requestAnimationFrame(function() {
+      markdownEditor.scrollTop = returnTab.scrollPos || 0;
+    });
+    saveTabsToStorage(tabs);
+    renderTabBar(tabs, activeTabId);
+  }
+
+  function clearLiveCursors() {
+    if (liveCursorsLayer) {
+      liveCursorsLayer.textContent = '';
+    }
+  }
+
+  function getTextareaCaretPosition(index) {
+    const editorPane = markdownEditor.closest('.editor-pane');
+    if (!editorPane || typeof index !== 'number') return null;
+
+    const computed = window.getComputedStyle(markdownEditor);
+    const mirror = document.createElement('div');
+    const marker = document.createElement('span');
+    const text = markdownEditor.value || '';
+    const boundedIndex = Math.max(0, Math.min(index, text.length));
+    const mirrorStyles = [
+      'boxSizing',
+      'width',
+      'height',
+      'borderTopWidth',
+      'borderRightWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'paddingTop',
+      'paddingRight',
+      'paddingBottom',
+      'paddingLeft',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'fontStyle',
+      'letterSpacing',
+      'textTransform',
+      'wordSpacing',
+      'textIndent',
+      'lineHeight',
+      'whiteSpace',
+      'overflowWrap',
+      'wordBreak',
+      'tabSize'
+    ];
+
+    mirror.style.position = 'fixed';
+    mirror.style.left = '-9999px';
+    mirror.style.top = '0';
+    mirror.style.visibility = 'hidden';
+    mirror.style.whiteSpace = 'pre-wrap';
+    mirror.style.wordWrap = 'break-word';
+    mirror.style.overflow = 'hidden';
+    mirrorStyles.forEach(function(prop) {
+      mirror.style[prop] = computed[prop];
+    });
+
+    mirror.textContent = text.slice(0, boundedIndex);
+    marker.textContent = '\u200b';
+    mirror.appendChild(marker);
+    mirror.appendChild(document.createTextNode(text.slice(boundedIndex) || ' '));
+    document.body.appendChild(mirror);
+
+    const editorRect = markdownEditor.getBoundingClientRect();
+    const paneRect = editorPane.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const lineHeight = parseFloat(computed.lineHeight) || parseFloat(computed.fontSize) * 1.5 || 18;
+    const position = {
+      left: editorRect.left - paneRect.left + markerRect.left - mirror.getBoundingClientRect().left - markdownEditor.scrollLeft,
+      top: editorRect.top - paneRect.top + markerRect.top - mirror.getBoundingClientRect().top - markdownEditor.scrollTop,
+      height: lineHeight
+    };
+
+    document.body.removeChild(mirror);
+    return position;
+  }
+
+  function getLiveCursorIndex(cursor) {
+    if (!liveCollaboration || !cursor) return null;
+    if (Array.isArray(cursor.relative) && liveCollaboration.Y) {
+      try {
+        const relative = liveCollaboration.Y.decodeRelativePosition(Uint8Array.from(cursor.relative));
+        const absolute = liveCollaboration.Y.createAbsolutePositionFromRelativePosition(relative, liveCollaboration.ydoc);
+        if (absolute && absolute.type === liveCollaboration.yText) {
+          return absolute.index;
+        }
+      } catch (_) {}
+    }
+    return typeof cursor.index === 'number' ? cursor.index : null;
+  }
+
+  function renderLiveCursors() {
+    clearLiveCursors();
+    if (!liveCollaboration || !liveCursorsLayer || activeTabId !== liveCollaboration.tabId) return;
+
+    const fragment = document.createDocumentFragment();
+    const cursorEntries = liveCollaboration.remoteCursors
+      ? Array.from(liveCollaboration.remoteCursors.entries())
+      : [];
+
+    cursorEntries.forEach(function(entry) {
+      if (entry[0] === liveCollaboration.localParticipantId) return;
+      const state = entry[1] || {};
+      if (!state.user || !state.cursor) return;
+      const cursorIndex = getLiveCursorIndex(state.cursor);
+      const position = getTextareaCaretPosition(cursorIndex);
+      if (!position) return;
+
+      const name = state.user.name || 'Guest';
+      const color = state.user.color || getLiveParticipantColor(name);
+      const cursor = document.createElement('div');
+      cursor.className = 'live-collab-cursor';
+      cursor.style.setProperty('--live-cursor-color', color);
+      cursor.style.left = Math.round(position.left) + 'px';
+      cursor.style.top = Math.round(position.top) + 'px';
+      cursor.style.height = Math.max(18, Math.round(position.height)) + 'px';
+
+      const label = document.createElement('span');
+      label.className = 'live-collab-cursor-label';
+      const avatar = document.createElement('span');
+      avatar.className = 'live-collab-cursor-avatar';
+      avatar.textContent = state.user.avatarLabel || getLiveAvatarLabel(name);
+      const labelName = document.createElement('span');
+      labelName.className = 'live-collab-cursor-name';
+      labelName.textContent = name;
+      label.appendChild(avatar);
+      label.appendChild(labelName);
+      cursor.appendChild(label);
+      fragment.appendChild(cursor);
+    });
+
+    liveCursorsLayer.appendChild(fragment);
+  }
+
+  function updateLiveCursorPosition() {
+    if (!liveCollaboration) return;
+    if (activeTabId !== liveCollaboration.tabId || !liveCollaboration.Y) {
+      liveCollaboration.localCursor = null;
+      if (liveCollaboration.connection) {
+        liveCollaboration.connection.publishPresence(null);
+      }
+      renderLiveCursors();
+      return;
+    }
+
+    const index = markdownEditor.selectionStart || 0;
+    const anchor = markdownEditor.selectionEnd || index;
+    let relative = null;
+    let relativeAnchor = null;
+    try {
+      relative = Array.from(liveCollaboration.Y.encodeRelativePosition(
+        liveCollaboration.Y.createRelativePositionFromTypeIndex(liveCollaboration.yText, index)
+      ));
+      relativeAnchor = Array.from(liveCollaboration.Y.encodeRelativePosition(
+        liveCollaboration.Y.createRelativePositionFromTypeIndex(liveCollaboration.yText, anchor)
+      ));
+    } catch (_) {}
+
+    const cursor = {
+      index,
+      anchor,
+      relative,
+      relativeAnchor,
+      updatedAt: Date.now()
+    };
+
+    liveCollaboration.localCursor = cursor;
+    if (liveCollaboration.connection) {
+      liveCollaboration.connection.publishPresence(cursor);
+    }
+    renderLiveCursors();
+  }
+
+  function handleLiveRoomMessage(message, transport) {
+    if (!liveCollaboration || !message || message.roomId !== liveCollaboration.roomId) return;
+    const sender = message.sender;
+    if (!sender || sender === liveCollaboration.localParticipantId) return;
+
+    if (message.type === 'sync-request') {
+      transport.publishCurrentState();
+      transport.publishPresence(liveCollaboration.localCursor);
+      return;
+    }
+
+    if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
+      try {
+        liveCollaboration.Y.applyUpdate(liveCollaboration.ydoc, decodeLiveBytes(message.update), LIVE_RELAY_ORIGIN);
+        markLiveJoinSynced(liveCollaboration.yText ? liveCollaboration.yText.toString() : '');
+      } catch (error) {
+        console.warn('Live Share update failed:', error);
+      }
+      return;
+    }
+
+    if (message.type === 'hello' || message.type === 'presence') {
+      const participant = message.participant || {};
+      const name = participant.name || 'Guest';
+      const record = {
+        name,
+        color: participant.color || getLiveParticipantColor(name),
+        avatarLabel: participant.avatarLabel || getLiveAvatarLabel(name),
+        lastSeen: Date.now()
+      };
+      liveCollaboration.participants.set(sender, record);
+      if (message.cursor) {
+        liveCollaboration.remoteCursors.set(sender, {
+          user: record,
+          cursor: message.cursor
+        });
+      } else {
+        liveCollaboration.remoteCursors.delete(sender);
+      }
+      renderLiveParticipants();
+      renderLiveCursors();
+      return;
+    }
+
+    if (message.type === 'leave') {
+      liveCollaboration.participants.delete(sender);
+      liveCollaboration.remoteCursors.delete(sender);
+      renderLiveParticipants();
+      renderLiveCursors();
+      return;
+    }
+
+    if (message.type === 'session-end' && !liveCollaboration.isHost) {
+      setLiveShareStatus('Live room ended by the host', 'idle');
+      leaveLiveSession({ restoreOriginal: true, silent: true });
+      announceToScreenReader('Live Share session ended by the host.');
+    }
+  }
+
+  function disconnectLiveCollaboration(options) {
+    if (!liveCollaboration) return;
+    options = options || {};
+    const tabId = liveCollaboration.tabId;
+    const originalTabSnapshot = liveCollaboration.originalTabSnapshot;
+    const removeTabOnLeave = liveCollaboration.removeTabOnLeave;
+    const returnTabId = liveCollaboration.returnTabId;
+
+    try {
+      if (liveCollaboration.participantHeartbeatId) {
+        clearInterval(liveCollaboration.participantHeartbeatId);
+      }
+      if (liveCollaboration.joinTimeoutId) {
+        clearTimeout(liveCollaboration.joinTimeoutId);
+      }
+      if (liveCollaboration.yText && liveCollaboration.observer) {
+        liveCollaboration.yText.unobserve(liveCollaboration.observer);
+      }
+      if (liveCollaboration.sessionMap && liveCollaboration.sessionObserver) {
+        liveCollaboration.sessionMap.unobserve(liveCollaboration.sessionObserver);
+      }
+      if (liveCollaboration.connection && typeof liveCollaboration.connection.destroy === 'function') {
+        liveCollaboration.connection.destroy();
+      }
+      if (liveCollaboration.ydoc && typeof liveCollaboration.ydoc.destroy === 'function') {
+        liveCollaboration.ydoc.destroy();
+      }
+    } catch (error) {
+      console.warn('Failed to fully close live session:', error);
+    }
+
+    liveCollaboration = null;
+    clearLiveCursors();
+    closeLiveParticipantsPopover();
+    if (options.restoreOriginal) {
+      if (removeTabOnLeave) {
+        if (tabId) {
+          removeLiveParticipantTab(tabId, returnTabId);
+        }
+      } else {
+        restoreLiveOriginalTabState(tabId, originalTabSnapshot);
+      }
+    }
+    updateLiveShareControls();
+  }
+
+  function leaveLiveSession(options) {
+    options = options || {};
+    const shouldRestore = options.restoreOriginal !== false;
+    disconnectLiveCollaboration({ restoreOriginal: shouldRestore });
+    if (!options.silent) {
+      announceToScreenReader('Left Live Share session.');
+    }
+  }
+
+  function endLiveSessionForEveryone() {
+    if (!liveCollaboration) return;
+    if (!liveCollaboration.isHost) {
+      leaveLiveSession({ restoreOriginal: true });
+      return;
+    }
+
+    const endingSession = liveCollaboration;
+    setLiveShareStatus('Ending live room...', 'connecting');
+    try {
+      endingSession.ydoc.transact(function() {
+        endingSession.sessionMap.set('endedAt', Date.now());
+        endingSession.sessionMap.set('endedBy', endingSession.localParticipantId);
+      }, LIVE_EDIT_ORIGIN);
+      if (endingSession.connection) {
+        endingSession.connection.send({ type: 'session-end' });
+      }
+    } catch (error) {
+      console.warn('Failed to broadcast live session end:', error);
+    }
+
+    setTimeout(function() {
+      if (liveCollaboration === endingSession) {
+        disconnectLiveCollaboration({ restoreOriginal: false });
+        announceToScreenReader('Live Share session ended.');
+      }
+    }, 750);
+  }
+
+  async function startLiveSession(options) {
+    options = options || {};
+    const isHost = options.isHost !== false;
+    const roomId = options.roomId || ('room-' + getRandomBase64Url(9));
+    const secret = options.secret || ('secret-' + getRandomBase64Url(32));
+    const displayName = getLiveDisplayName({
+      forceGeneratedName: options.forceGeneratedName === true
+    });
+    const modules = await loadLiveCollaborationModules();
+    const ydoc = new modules.Y.Doc();
+    const yText = ydoc.getText('markdown');
+    const sessionMap = ydoc.getMap('session');
+    const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
+    const requestedTitle = options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share';
+    const hostTitle = getSafeLiveTitle(requestedTitle);
+    const inviteUrl = buildLiveInviteUrl(roomId, secret, hostTitle);
+    if (!isHost && options.initialUpdate) {
+      try {
+        modules.Y.applyUpdate(ydoc, options.initialUpdate);
+      } catch (error) {
+        console.warn('Live Share invite seed could not be applied:', error);
+      }
+    }
+    const sessionTitle = getSafeLiveTitle(sessionMap.get('title') || options.title || 'Live Share');
+    if (isHost && yText.length === 0) {
+      yText.insert(0, markdownEditor.value || '');
+    }
+    if (isHost) {
+      sessionMap.set('title', hostTitle);
+    }
+
+    disconnectLiveCollaboration();
+
+    let returnTabId = null;
+    let removeTabOnLeave = false;
+    let originalTabSnapshot = null;
+    let liveTabId = activeTabId;
+    const shouldDeferParticipantTab = !isHost && options.openInNewTab && yText.length === 0;
+
+    if (!isHost && options.openInNewTab && !shouldDeferParticipantTab) {
+      if (tabs.length >= 20) {
+        throw new Error('Maximum tab limit reached');
+      }
+      returnTabId = options.returnTabId || activeTabId;
+      const liveTabTitle = getSafeLiveTitle(sessionTitle);
+      const liveTab = createTab(yText.toString(), liveTabTitle, 'split');
+      tabs.push(liveTab);
+      switchTab(liveTab.id);
+      liveTabId = liveTab.id;
+      removeTabOnLeave = true;
+    } else if (shouldDeferParticipantTab) {
+      returnTabId = options.returnTabId || activeTabId;
+      liveTabId = null;
+      removeTabOnLeave = true;
+    } else {
+      const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+      originalTabSnapshot = options.originalTabSnapshot || (activeTab ? {
+        content: typeof markdownEditor.value === 'string' ? markdownEditor.value : activeTab.content,
+        scrollPos: typeof markdownEditor.scrollTop === 'number' ? markdownEditor.scrollTop : activeTab.scrollPos,
+        viewMode: currentViewMode || activeTab.viewMode
+      } : captureLiveTabSnapshot());
+    }
+
+    const localParticipantId = 'participant-' + getRandomBase64Url(12);
+    const localColor = getLiveParticipantColor(displayName + '-' + getRandomBase64Url(2));
+    const localParticipant = {
+      name: displayName,
+      color: localColor,
+      avatarLabel: getLiveAvatarLabel(displayName),
+      lastSeen: Date.now()
+    };
+    const participants = new Map();
+    participants.set(localParticipantId, localParticipant);
+
+    liveCollaboration = {
+      roomId,
+      secret,
+      inviteUrl,
+      ydoc,
+      Y: modules.Y,
+      yText,
+      sessionMap,
+      tabId: liveTabId,
+      originalTabSnapshot,
+      returnTabId,
+      removeTabOnLeave,
+      isHost,
+      pendingJoinTab: shouldDeferParticipantTab,
+      hasReceivedRemoteState: false,
+      joinTimeoutId: null,
+      roomTitle: sessionTitle,
+      isApplyingRemoteChange: false,
+      lastMarkdown: shouldDeferParticipantTab ? '' : markdownEditor.value,
+      observer: null,
+      sessionObserver: null,
+      participantHeartbeatId: null,
+      connection: null,
+      participants,
+      remoteCursors: new Map(),
+      localCursor: null,
+      localParticipant,
+      localParticipantId
+    };
+
+    if (shouldDeferParticipantTab) {
+      liveCollaboration.joinTimeoutId = setTimeout(function() {
+        if (!liveCollaboration || liveCollaboration.ydoc !== ydoc || liveCollaboration.hasReceivedRemoteState) return;
+        showLiveShareExpiredModal('This Live Share room has ended, expired, or no active host is available.');
+        leaveLiveSession({ restoreOriginal: false, silent: true });
+      }, LIVE_SHARE_JOIN_TIMEOUT_MS);
+    }
+
+    liveCollaboration.observer = function(event) {
+      if (event.transaction.origin === LIVE_EDIT_ORIGIN) return;
+      applyLiveRemoteMarkdown(yText.toString());
+    };
+    yText.observe(liveCollaboration.observer);
+
+    liveCollaboration.sessionObserver = function() {
+      if (!liveCollaboration || liveCollaboration.ydoc !== ydoc) return;
+      const updatedTitle = sessionMap.get('title');
+      if (updatedTitle) {
+        applyLiveSessionTitle(updatedTitle);
+      }
+      if (sessionMap.get('endedAt') && !liveCollaboration.isHost) {
+        setLiveShareStatus('Live room ended by the host', 'idle');
+        leaveLiveSession({ restoreOriginal: true, silent: true });
+        announceToScreenReader('Live Share session ended by the host.');
+      }
+    };
+    sessionMap.observe(liveCollaboration.sessionObserver);
+
+    if (!isHost && yText.length > 0) {
+      const seededMarkdown = yText.toString();
+      applyLiveJoinSeedMarkdown(seededMarkdown);
+      liveCollaboration.lastMarkdown = seededMarkdown;
+    } else if (isHost) {
+      liveCollaboration.lastMarkdown = markdownEditor.value || '';
+    }
+
+    function publishLocalParticipant() {
+      if (!liveCollaboration || liveCollaboration.ydoc !== ydoc) return;
+      const updatedParticipant = Object.assign({}, liveCollaboration.localParticipant, {
+        lastSeen: Date.now()
+      });
+      liveCollaboration.localParticipant = updatedParticipant;
+      liveCollaboration.participants.set(liveCollaboration.localParticipantId, updatedParticipant);
+      if (liveCollaboration.connection) {
+        liveCollaboration.connection.publishPresence(liveCollaboration.localCursor);
+      }
+      renderLiveParticipants();
+    }
+
+    liveCollaboration.connection = createLiveRoomConnection({
+      roomId,
+      secret,
+      ydoc,
+      Y: modules.Y,
+      participantId: liveCollaboration.localParticipantId,
+      getParticipant: function() { return liveCollaboration.localParticipant; },
+      getCursor: function() { return liveCollaboration.localCursor; },
+      canPublishState: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.ydoc === ydoc &&
+          (liveCollaboration.isHost || liveCollaboration.hasReceivedRemoteState || !liveCollaboration.pendingJoinTab)
+        );
+      },
+      onStatus: setLiveShareStatus,
+      onMessage: handleLiveRoomMessage
+    });
+
+    publishLocalParticipant();
+    liveCollaboration.participantHeartbeatId = setInterval(publishLocalParticipant, 15000);
+
+    if (liveShareUrlInput) {
+      liveShareUrlInput.value = inviteUrl;
+    }
+    updateLiveShareControls();
+    renderLiveParticipants();
+    updateLiveCursorPosition();
+    if (liveCollaboration.tabId) {
+      setViewMode('split');
+    }
+    announceToScreenReader('Live Share session started.');
+  }
+
+  function openLiveShareModal() {
+    if (!liveShareModal) return;
+    if (liveShareDisplayName && !liveShareDisplayName.value) {
+      liveShareDisplayName.value = getOrCreateGeneratedLiveName();
+    }
+    updateLiveShareControls();
+    liveShareModal.style.display = '';
+    requestAnimationFrame(() => {
+      liveShareModal.classList.add('is-visible');
+      liveShareModal.setAttribute('aria-hidden', 'false');
+      if (liveShareDisplayName && !liveCollaboration) {
+        liveShareDisplayName.focus();
+        liveShareDisplayName.select();
+      }
+    });
+  }
+
+  function closeLiveShareModal() {
+    if (!liveShareModal) return;
+    closeLiveParticipantsPopover();
+    liveShareModal.classList.remove('is-visible');
+    liveShareModal.setAttribute('aria-hidden', 'true');
+    liveShareModal.addEventListener('transitionend', function handler() {
+      liveShareModal.style.display = 'none';
+      liveShareModal.removeEventListener('transitionend', handler);
+    });
+  }
+
+  function copyLiveShareLink() {
+    const url = liveShareUrlInput ? liveShareUrlInput.value : '';
+    if (!url || !liveShareCopyBtn || liveShareCopyBtn.disabled) return;
+
+    function onCopied() {
+      const orig = liveShareCopyBtn.innerHTML;
+      liveShareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      setTimeout(() => { liveShareCopyBtn.innerHTML = orig; }, 2000);
     }
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -11719,16 +13306,111 @@ document.addEventListener("DOMContentLoaded", async function () {
         onCopied();
       } catch (_) {}
     }
-  });
+  }
 
-  shareModalCloseX.addEventListener('click', closeShareModal);
-  shareModalClose.addEventListener('click', closeShareModal);
-  shareModal.addEventListener('click', function (e) {
-    if (e.target === shareModal) closeShareModal();
+  async function loadFromLiveHash() {
+    const parsed = parseLiveHash();
+    if (!parsed) return;
+    try {
+      const originalTabSnapshot = captureLiveTabSnapshot();
+      let initialUpdate = null;
+      if (parsed.seed) {
+        try {
+          await ensureLiveShareCompressionReady();
+          initialUpdate = decodeLiveSeedFromShare(parsed.seed);
+        } catch (seedError) {
+          console.warn('Live Share invite seed could not be loaded; joining via peer sync only:', seedError);
+        }
+      }
+      await startLiveSession({
+        roomId: parsed.roomId,
+        secret: parsed.secret,
+        title: parsed.title,
+        isHost: false,
+        forceGeneratedName: true,
+        originalTabSnapshot,
+        initialUpdate,
+        openInNewTab: true,
+        returnTabId: activeTabId
+      });
+    } catch (error) {
+      console.error('Failed to join live session:', error);
+      alert('The live room could not be joined. Please check the invite link or connection.');
+    }
+  }
+
+  if (liveShareButton) {
+    liveShareButton.addEventListener('click', openLiveShareModal);
+  }
+  if (mobileLiveShareButton) {
+    mobileLiveShareButton.addEventListener('click', function() {
+      closeMobileMenu();
+      openLiveShareModal();
+    });
+  }
+  if (liveShareStartBtn) {
+    liveShareStartBtn.addEventListener('click', function() {
+      setLiveShareStatus('Starting live room...', 'connecting');
+      startLiveSession({ isHost: true }).catch(function(error) {
+        console.error('Failed to start live session:', error);
+        setLiveShareStatus('Unable to start live room', 'error');
+        alert('Failed to start Live Share. Please check your connection and try again.');
+      });
+    });
+  }
+  if (liveShareEndBtn) {
+    liveShareEndBtn.addEventListener('click', function() {
+      if (!liveCollaboration) return;
+      if (liveCollaboration.isHost) {
+        endLiveSessionForEveryone();
+      } else {
+        leaveLiveSession({ restoreOriginal: true });
+      }
+    });
+  }
+  if (liveShareCopyBtn) {
+    liveShareCopyBtn.addEventListener('click', copyLiveShareLink);
+  }
+  if (liveShareDisplayName) {
+    liveShareDisplayName.addEventListener('input', function() {
+      if (!liveCollaboration) return;
+      updateLiveDisplayName(liveShareDisplayName.value);
+    });
+  }
+  if (liveShareModalCloseX) {
+    liveShareModalCloseX.addEventListener('click', closeLiveShareModal);
+  }
+  if (liveShareModal) {
+    liveShareModal.addEventListener('click', function(e) {
+      if (e.target === liveShareModal) closeLiveShareModal();
+    });
+  }
+  if (liveShareExpiredClose) {
+    liveShareExpiredClose.addEventListener('click', closeLiveShareExpiredModal);
+  }
+  if (liveShareExpiredCloseX) {
+    liveShareExpiredCloseX.addEventListener('click', closeLiveShareExpiredModal);
+  }
+  if (liveShareExpiredModal) {
+    liveShareExpiredModal.addEventListener('click', function(e) {
+      if (e.target === liveShareExpiredModal) closeLiveShareExpiredModal();
+    });
+  }
+  ['keyup', 'mouseup', 'click', 'select', 'focus'].forEach(function(eventName) {
+    markdownEditor.addEventListener(eventName, updateLiveCursorPosition);
   });
+  markdownEditor.addEventListener('scroll', renderLiveCursors);
+  window.addEventListener('resize', renderLiveCursors);
+
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && shareModal.classList.contains('is-visible')) {
       closeShareModal();
+    }
+    if (e.key === 'Escape' && liveShareModal && liveShareModal.classList.contains('is-visible')) {
+      closeLiveShareModal();
+    }
+    if (e.key === 'Escape' && liveShareExpiredModal && liveShareExpiredModal.classList.contains('is-visible')) {
+      closeLiveShareExpiredModal();
     }
     
     // Global Ctrl+F / Cmd+F interception
@@ -11766,20 +13448,58 @@ document.addEventListener("DOMContentLoaded", async function () {
   shareButton.addEventListener('click', openShareModal);
   mobileShareButton.addEventListener('click', openShareModal);
 
+  async function loadStoredShareHash(hash) {
+    const rest = hash.slice('#id='.length);
+    const ampIdx = rest.indexOf('&');
+    const id = decodeURIComponent(ampIdx === -1 ? rest : rest.slice(0, ampIdx));
+    const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
+    const isEdit = params.split('&').includes('edit=1');
+
+    if (!SERVER_SHARE_ID_PATTERN.test(id)) return;
+
+    try {
+      const response = await fetch(getShareApiBaseUrl() + '/api/share/' + encodeURIComponent(id));
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_) {}
+
+      if (!response.ok) {
+        const message = response.status === 404
+          ? 'This share link has expired or does not exist.'
+          : ((payload && payload.error) || 'Failed to load shared content.');
+        alert(message);
+        return;
+      }
+
+      markdownEditor.value = payload && typeof payload.content === 'string' ? payload.content : '';
+      renderMarkdown({ reason: 'document-load', showSkeleton: true });
+      saveCurrentTabState();
+      setViewMode(isEdit || (payload && payload.mode === 'edit') ? 'split' : 'preview');
+    } catch (e) {
+      console.error('Failed to load stored shared content:', e);
+      alert('Network error while loading shared content.');
+    }
+  }
+
   function loadFromShareHash() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#id=')) {
+      loadStoredShareHash(hash);
+      return;
+    }
+    if (!hash.startsWith('#share=')) return;
+
     // PERF-002: Lazy-load pako when loading shared URL content
     if (typeof pako === 'undefined') {
-      const hash = window.location.hash;
-      if (!hash.startsWith('#share=')) return;
       loadScript(CDN.pako).then(function() {
         loadFromShareHash();
       }).catch(function(e) {
         console.error('Failed to load pako for shared URL:', e);
+        alert('Failed to load sharing library. Please check your connection and reload.');
       });
       return;
     }
-    const hash = window.location.hash;
-    if (!hash.startsWith('#share=')) return;
 
     // Parse encoded content and optional &edit=1 flag.
     // Hash format: #share=<encoded>  or  #share=<encoded>&edit=1
@@ -11804,6 +13524,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   loadFromShareHash();
+  loadFromLiveHash();
 
   // Full-window drag-and-drop: track nesting level for reliable enter/leave detection
   let dragDepth = 0;
@@ -13838,10 +15559,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
-      if (shareButtonText) shareButtonText.textContent = dict.share;
+      if (shareButtonText) shareButtonText.textContent = dict.shareSnapshot || 'Share Snapshot';
+    }
+    if (liveShareButton) {
+      const liveShareButtonText = liveShareButton.querySelector('.btn-text');
+      if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
     }
     const mShareBtn = document.getElementById('mobile-share-button');
-    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.share}`;
+    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
+    const mLiveShareBtn = document.getElementById('mobile-live-share-button');
+    if (mLiveShareBtn) mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
