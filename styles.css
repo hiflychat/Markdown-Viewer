@@ -466,19 +466,13 @@ body {
 }
 
 .tool-button.is-active,
-.tool-button.is-active:hover {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-  background-color: rgba(3, 102, 214, 0.08);
-}
-
+.tool-button.is-active:hover,
 .tool-button.is-live-active,
 .tool-button.is-live-active:hover,
 .mobile-menu-item.is-live-active {
   border-color: var(--accent-color);
   color: var(--accent-color);
-  background-color: rgba(9, 105, 218, 0.1);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.16), 0 0 12px rgba(9, 105, 218, 0.22);
+  background-color: rgba(3, 102, 214, 0.08);
 }
 
 .btn-text {
@@ -3441,17 +3435,64 @@ a:focus {
   border: 2px solid var(--header-bg);
   cursor: pointer;
   padding: 0;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 button.live-share-avatar-overflow,
 button.live-share-participant-overflow {
   font: inherit;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .live-share-avatar-overflow:hover,
 .live-share-participant-overflow:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
+}
+
+.live-share-participant-popover {
+  position: fixed;
+  z-index: 3500;
+  min-width: 190px;
+  max-width: min(280px, calc(100vw - 16px));
+  max-height: min(320px, calc(100vh - 16px));
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.live-share-participant-popover-title {
+  padding: 3px 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.live-share-participant-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.live-share-participant-popover-item:hover {
+  background: var(--button-hover);
+}
+
+.live-share-participant-popover-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .live-share-link-row {

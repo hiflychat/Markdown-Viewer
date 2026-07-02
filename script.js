@@ -11909,7 +11909,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareCopyBtn      = document.getElementById('live-share-copy-btn');
   const liveShareUrlInput     = document.getElementById('live-share-url-input');
   const liveShareDisplayName  = document.getElementById('live-share-display-name');
-  const liveShareTitleInput   = document.getElementById('live-share-title-input');
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
@@ -11920,6 +11919,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareExpiredCloseX = document.getElementById('live-share-expired-close-icon');
   const liveCursorsLayer      = document.getElementById('live-cursors-layer');
   let liveGeneratedDisplayName = null;
+  let liveShareParticipantsPopover = null;
 
   function getRandomBase64Url(byteLength) {
     const bytes = new Uint8Array(byteLength);
@@ -12258,17 +12258,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
-  function setLiveShareTitleInput(title) {
-    if (liveShareTitleInput && document.activeElement !== liveShareTitleInput) {
-      liveShareTitleInput.value = getSafeLiveTitle(title);
-    }
-  }
-
   function applyLiveSessionTitle(title) {
     if (!liveCollaboration) return;
     const safeTitle = getSafeLiveTitle(title);
     liveCollaboration.roomTitle = safeTitle;
-    setLiveShareTitleInput(safeTitle);
     if (liveShareUrlInput) {
       liveShareUrlInput.value = buildLiveInviteUrl(liveCollaboration.roomId, liveCollaboration.secret, safeTitle);
     }
@@ -12289,6 +12282,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (liveCollaboration.sessionMap.get('title') !== safeTitle) {
       liveCollaboration.sessionMap.set('title', safeTitle);
     }
+  }
+
+  function updateLiveDisplayName(name) {
+    if (!liveCollaboration || !liveCollaboration.localParticipantId) return;
+    const safeName = String(name || '').trim() || getOrCreateGeneratedLiveName();
+    const color = liveCollaboration.localParticipant && liveCollaboration.localParticipant.color
+      ? liveCollaboration.localParticipant.color
+      : getLiveParticipantColor(safeName + '-' + getRandomBase64Url(2));
+    const updatedParticipant = {
+      name: safeName,
+      color,
+      avatarLabel: getLiveAvatarLabel(safeName),
+      lastSeen: Date.now()
+    };
+    liveCollaboration.localParticipant = updatedParticipant;
+    liveCollaboration.participants.set(liveCollaboration.localParticipantId, updatedParticipant);
+    if (liveCollaboration.connection) {
+      liveCollaboration.connection.publishPresence(liveCollaboration.localCursor);
+    }
+    renderLiveParticipants();
+    renderLiveCursors();
   }
 
   function closeLiveShareExpiredModal() {
@@ -12318,6 +12332,72 @@ document.addEventListener("DOMContentLoaded", async function () {
         liveShareExpiredClose.focus();
       }
     });
+  }
+
+  function closeLiveParticipantsPopover() {
+    if (liveShareParticipantsPopover && liveShareParticipantsPopover.parentNode) {
+      liveShareParticipantsPopover.parentNode.removeChild(liveShareParticipantsPopover);
+    }
+    liveShareParticipantsPopover = null;
+  }
+
+  function showLiveParticipantsPopover(anchor, participants) {
+    closeLiveParticipantsPopover();
+    const list = Array.isArray(participants) ? participants : getLiveParticipants();
+    if (!anchor || !list.length) return;
+
+    const popover = document.createElement('div');
+    popover.className = 'live-share-participant-popover';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'Live Share participants');
+
+    const title = document.createElement('div');
+    title.className = 'live-share-participant-popover-title';
+    title.textContent = 'Participants';
+    popover.appendChild(title);
+
+    list.forEach(function(participant) {
+      const item = document.createElement('div');
+      item.className = 'live-share-participant-popover-item';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'live-share-avatar-icon';
+      avatar.style.backgroundColor = participant.color;
+      avatar.textContent = participant.label;
+      item.appendChild(avatar);
+
+      const name = document.createElement('span');
+      name.className = 'live-share-participant-popover-name';
+      name.textContent = participant.name + (participant.isLocal ? ' (you)' : '');
+      item.appendChild(name);
+
+      popover.appendChild(item);
+    });
+
+    document.body.appendChild(popover);
+    const rect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - popoverRect.width - 8, rect.left));
+    const top = Math.min(window.innerHeight - popoverRect.height - 8, rect.bottom + 8);
+    popover.style.left = left + 'px';
+    popover.style.top = Math.max(8, top) + 'px';
+    liveShareParticipantsPopover = popover;
+
+    setTimeout(function() {
+      document.addEventListener('click', handleLiveParticipantsPopoverOutsideClick, { once: true });
+    }, 0);
+  }
+
+  function handleLiveParticipantsPopoverOutsideClick(event) {
+    if (
+      liveShareParticipantsPopover &&
+      event.target &&
+      (liveShareParticipantsPopover.contains(event.target) || event.target.classList.contains('live-share-avatar-overflow') || event.target.classList.contains('live-share-participant-overflow'))
+    ) {
+      document.addEventListener('click', handleLiveParticipantsPopoverOutsideClick, { once: true });
+      return;
+    }
+    closeLiveParticipantsPopover();
   }
 
   function ensureLiveParticipantTab(markdown) {
@@ -12427,7 +12507,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       overflow.title = overflowCount + ' more participant' + (overflowCount === 1 ? '' : 's');
       overflow.setAttribute('aria-label', overflow.title);
       if (options && typeof options.onOverflowClick === 'function') {
-        overflow.addEventListener('click', options.onOverflowClick);
+        overflow.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          options.onOverflowClick(event, participants);
+        });
       }
       fragment.appendChild(overflow);
     }
@@ -12446,11 +12530,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     renderLiveParticipantAvatars(liveShareParticipants, participants, {
       showNames: true,
-      limit: Math.max(participants.length, LIVE_SHARE_AVATAR_LIMIT)
+      onOverflowClick: function(event, allParticipants) {
+        showLiveParticipantsPopover(event.currentTarget, allParticipants);
+      }
     });
     renderLiveParticipantAvatars(liveShareToolbarParticipants, participants, {
       showNames: false,
-      onOverflowClick: openLiveShareModal
+      onOverflowClick: function(event, allParticipants) {
+        showLiveParticipantsPopover(event.currentTarget, allParticipants);
+      }
     });
     setLiveShareStatus(status, state);
   }
@@ -12478,12 +12566,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         liveShareToolbarParticipants.hidden = true;
       }
       if (liveShareUrlInput) liveShareUrlInput.value = '';
-      if (liveShareTitleInput) {
-        const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
-        liveShareTitleInput.value = activeTab ? getSafeLiveTitle(activeTab.title) : 'Live Share';
-      }
     } else {
-      setLiveShareTitleInput(liveCollaboration.roomTitle || 'Live Share');
       renderLiveParticipants();
     }
   }
@@ -12932,6 +13015,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     liveCollaboration = null;
     clearLiveCursors();
+    closeLiveParticipantsPopover();
     if (options.restoreOriginal) {
       if (removeTabOnLeave) {
         if (tabId) {
@@ -12995,7 +13079,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const yText = ydoc.getText('markdown');
     const sessionMap = ydoc.getMap('session');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
-    const requestedTitle = options.title || (isHost && liveShareTitleInput && liveShareTitleInput.value) || (hostActiveTab && hostActiveTab.title) || 'Live Share';
+    const requestedTitle = options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share';
     const hostTitle = getSafeLiveTitle(requestedTitle);
     const inviteUrl = buildLiveInviteUrl(roomId, secret, hostTitle);
     if (!isHost && options.initialUpdate) {
@@ -13188,6 +13272,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function closeLiveShareModal() {
     if (!liveShareModal) return;
+    closeLiveParticipantsPopover();
     liveShareModal.classList.remove('is-visible');
     liveShareModal.setAttribute('aria-hidden', 'true');
     liveShareModal.addEventListener('transitionend', function handler() {
@@ -13284,10 +13369,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (liveShareCopyBtn) {
     liveShareCopyBtn.addEventListener('click', copyLiveShareLink);
   }
-  if (liveShareTitleInput) {
-    liveShareTitleInput.addEventListener('input', function() {
+  if (liveShareDisplayName) {
+    liveShareDisplayName.addEventListener('input', function() {
       if (!liveCollaboration) return;
-      syncLiveSessionTitle(liveShareTitleInput.value);
+      updateLiveDisplayName(liveShareDisplayName.value);
     });
   }
   if (liveShareModalCloseX) {
