@@ -765,6 +765,10 @@
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
               </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="live-share-title-input">Room name</label>
+                <input type="text" id="live-share-title-input" class="rename-modal-input" maxlength="120" autocomplete="off" placeholder="My Share File" />
+              </div>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
@@ -781,6 +785,23 @@
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled>End live session</button>
               <button class="reset-modal-btn" id="live-share-start-btn">Start session</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="live-share-expired-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-expired-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <p id="live-share-expired-title" class="reset-modal-message">Live Share room expired</p>
+              <button type="button" class="modal-close-btn" id="live-share-expired-close-icon" aria-label="Close expired live share dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="live-share-expired-message" class="share-modal-description">This Live Share room has ended or is no longer active.</p>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="live-share-expired-close">Close</button>
             </div>
           </div>
         </div>

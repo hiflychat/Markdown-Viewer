@@ -472,6 +472,15 @@ body {
   background-color: rgba(3, 102, 214, 0.08);
 }
 
+.tool-button.is-live-active,
+.tool-button.is-live-active:hover,
+.mobile-menu-item.is-live-active {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background-color: rgba(9, 105, 218, 0.1);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.16), 0 0 12px rgba(9, 105, 218, 0.22);
+}
+
 .btn-text {
   display: none;
 }
@@ -3392,6 +3401,7 @@ a:focus {
   min-width: 36px;
   padding: 5px 10px;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .live-share-toolbar-participants {
@@ -3428,6 +3438,20 @@ a:focus {
   color: var(--text-color);
   font-size: 11px;
   font-weight: 700;
+  border: 2px solid var(--header-bg);
+  cursor: pointer;
+  padding: 0;
+}
+
+button.live-share-avatar-overflow,
+button.live-share-participant-overflow {
+  font: inherit;
+}
+
+.live-share-avatar-overflow:hover,
+.live-share-participant-overflow:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .live-share-link-row {
