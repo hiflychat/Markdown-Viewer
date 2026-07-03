@@ -3362,15 +3362,16 @@ a:focus {
 .live-share-active-badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   width: fit-content;
-  padding: 4px 9px;
-  border: 1px solid rgba(26, 127, 55, 0.28);
+  padding: 5px 13px;
+  border: 0;
   border-radius: 999px;
-  background: var(--editor-bg);
-  color: #1a7f37;
+  background: rgba(26, 127, 55, 0.1);
+  color: #16833a;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -3382,8 +3383,8 @@ a:focus {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #1a7f37;
-  box-shadow: 0 0 0 4px rgba(26, 127, 55, 0.12);
+  background: #00a344;
+  box-shadow: 0 0 0 5px rgba(0, 163, 68, 0.13);
 }
 
 .live-share-access-control {
@@ -3444,32 +3445,60 @@ a:focus {
 .live-share-access-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 11px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--editor-bg);
-  color: var(--text-secondary);
-  font-size: 12px;
+  gap: 14px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid #ead6b3;
+  border-radius: 10px;
+  background: #fffbf4;
+  color: #526174;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .live-share-access-status[hidden] {
   display: none;
 }
 
+.live-share-access-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff1d9;
+  color: #bf8700;
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.live-share-access-title {
+  color: #3f4d63;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .live-share-access-status strong {
-  color: var(--text-color);
+  color: #34425a;
+  font-weight: 800;
+}
+
+.live-share-access-status #live-share-access-note {
+  margin-left: auto;
+  color: #526174;
+  text-align: right;
 }
 
 .live-share-access-status[data-mode="edit"] {
-  border-color: rgba(191, 135, 0, 0.32);
-  background: rgba(191, 135, 0, 0.08);
+  border-color: #ead6b3;
+  background: #fffbf4;
 }
 
 .live-share-access-status[data-mode="view"] {
-  border-color: rgba(191, 135, 0, 0.32);
-  background: rgba(191, 135, 0, 0.08);
+  border-color: #ead6b3;
+  background: #fffbf4;
 }
 
 .live-share-readonly-editor {
@@ -3713,15 +3742,19 @@ button.live-share-participant-overflow {
 }
 
 @media (max-width: 560px) {
-  .live-share-access-options,
-  .live-share-access-status {
+  .live-share-access-options {
     grid-template-columns: 1fr;
   }
 
   .live-share-access-status {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .live-share-access-status #live-share-access-note {
+    flex-basis: 100%;
+    margin-left: 44px;
+    text-align: left;
   }
 
   .live-share-invite-header {
