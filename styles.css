@@ -3347,6 +3347,56 @@ a:focus {
   background: var(--color-danger-fg);
 }
 
+.live-share-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.modal-header .live-share-title-row .reset-modal-message {
+  flex: 0 0 auto;
+}
+
+.live-share-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid rgba(26, 127, 55, 0.28);
+  border-radius: 999px;
+  background: var(--editor-bg);
+  color: #1a7f37;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.live-share-active-badge[hidden] {
+  display: none;
+}
+
+.live-share-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1a7f37;
+  box-shadow: 0 0 0 4px rgba(26, 127, 55, 0.12);
+}
+
+.live-share-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.live-share-participant-panel {
+  display: grid;
+  gap: 7px;
+}
+
 .live-share-participants {
   display: flex;
   flex-wrap: nowrap;
@@ -3467,6 +3517,55 @@ button.live-share-participant-overflow {
   background: var(--button-hover);
 }
 
+.live-share-invite {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg);
+}
+
+.live-share-invite[data-state="active"],
+.live-share-invite[data-state="joined"] {
+  border-color: rgba(3, 102, 214, 0.45);
+  background: rgba(3, 102, 214, 0.05);
+}
+
+.live-share-invite-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-share-invite-state {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live-share-invite[data-state="active"] .live-share-invite-state,
+.live-share-invite[data-state="joined"] .live-share-invite-state {
+  color: var(--accent-color);
+}
+
+.live-share-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 74px;
+}
+
+.live-share-invite-help {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .live-share-participant-popover {
   position: fixed;
   z-index: 3500;
@@ -3511,6 +3610,14 @@ button.live-share-participant-overflow {
 
 .live-share-link-row {
   align-items: stretch;
+}
+
+@media (max-width: 560px) {
+  .live-share-invite-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
 }
 
 /* ==========================================================================

@@ -754,7 +754,13 @@
         <div id="live-share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--wide modal-box">
             <div class="modal-header">
-              <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
+              <div class="live-share-title-row">
+                <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
+                <span class="live-share-active-badge" id="live-share-active-badge" hidden>
+                  <span class="live-share-active-dot" aria-hidden="true"></span>
+                  <span>Session Active</span>
+                </span>
+              </div>
               <button type="button" class="modal-close-btn" id="live-share-modal-close-icon" aria-label="Close live share dialog">
                 <i class="bi bi-x-lg"></i>
               </button>
@@ -769,12 +775,23 @@
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
               </div>
-              <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
-              <div class="share-url-row live-share-link-row">
-                <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
-                <button class="reset-modal-btn share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
-                  <i class="bi bi-clipboard"></i>
-                </button>
+              <div class="live-share-participant-panel">
+                <div class="live-share-section-title">Participants</div>
+                <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
+              </div>
+              <div class="live-share-invite" id="live-share-invite-section">
+                <div class="live-share-invite-header">
+                  <span class="live-share-section-title">Invite link</span>
+                  <span class="live-share-invite-state" id="live-share-invite-state">Created after session starts</span>
+                </div>
+                <div class="share-url-row live-share-link-row">
+                  <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
+                    <i class="bi bi-clipboard"></i>
+                    <span>Copy</span>
+                  </button>
+                </div>
+                <p class="live-share-invite-help" id="live-share-invite-help">Click Start session to create a temporary room and generate an invite link.</p>
               </div>
               <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Everyone with the live link can edit while the room is active.</p>
             </div>

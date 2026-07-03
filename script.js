@@ -11912,6 +11912,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
+  const liveShareActiveBadge  = document.getElementById('live-share-active-badge');
+  const liveShareInviteSection = document.getElementById('live-share-invite-section');
+  const liveShareInviteState  = document.getElementById('live-share-invite-state');
+  const liveShareInviteHelp   = document.getElementById('live-share-invite-help');
   const liveShareToolbarParticipants = document.getElementById('live-share-toolbar-participants');
   const liveShareExpiredModal = document.getElementById('live-share-expired-modal');
   const liveShareExpiredMessage = document.getElementById('live-share-expired-message');
@@ -12519,6 +12523,30 @@ document.addEventListener("DOMContentLoaded", async function () {
     container.appendChild(fragment);
   }
 
+  function updateLiveShareGuidance(isActive, participantCount) {
+    const hasCollaborators = isActive && participantCount > 1;
+    const state = !isActive ? 'idle' : (hasCollaborators ? 'joined' : 'active');
+
+    if (liveShareActiveBadge) {
+      liveShareActiveBadge.hidden = !isActive;
+      liveShareActiveBadge.dataset.state = state;
+    }
+    if (liveShareInviteSection) {
+      liveShareInviteSection.dataset.state = state;
+    }
+    if (liveShareInviteState) {
+      liveShareInviteState.textContent = isActive ? 'Ready to copy' : 'Created after session starts';
+    }
+    if (liveShareInviteHelp) {
+      liveShareInviteHelp.textContent = isActive
+        ? 'Copy this link and send it to collaborators. New participants appear above when they join.'
+        : 'Click Start session to create a temporary room and generate an invite link.';
+    }
+    if (liveShareCopyBtn) {
+      liveShareCopyBtn.title = isActive ? 'Copy invite link' : 'Start a session first';
+    }
+  }
+
   function renderLiveParticipants() {
     const participants = getLiveParticipants();
     const participantCount = participants.length || 1;
@@ -12540,6 +12568,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         showLiveParticipantsPopover(event.currentTarget, allParticipants);
       }
     });
+    updateLiveShareGuidance(true, participantCount);
     setLiveShareStatus(status, state);
   }
 
@@ -12556,6 +12585,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       liveShareEndBtn.disabled = !isActive;
       liveShareEndBtn.hidden = !isActive;
       liveShareEndBtn.textContent = isHost ? 'End session' : 'Leave session';
+      liveShareEndBtn.classList.toggle('reset-modal-confirm', isHost);
+      liveShareEndBtn.classList.toggle('reset-modal-cancel', !isHost);
     }
     if (liveShareCopyBtn) {
       liveShareCopyBtn.disabled = !isActive || !liveShareUrlInput || !liveShareUrlInput.value;
@@ -12568,6 +12599,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         liveShareToolbarParticipants.hidden = true;
       }
       if (liveShareUrlInput) liveShareUrlInput.value = '';
+      updateLiveShareGuidance(false, 0);
     } else {
       renderLiveParticipants();
     }
