@@ -11741,11 +11741,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareModalCloseX  = document.getElementById('share-modal-close-icon');
   const shareModalClose   = document.getElementById('share-modal-close');
   const shareUrlInput     = document.getElementById('share-url-input');
+  const shareGenerateBtn  = document.getElementById('share-generate-btn');
   const shareCopyBtn      = document.getElementById('share-copy-btn');
+  const shareInviteState  = document.getElementById('share-invite-state');
   const shareModeView     = document.getElementById('share-mode-view');
   const shareModeEdit     = document.getElementById('share-mode-edit');
   const shareCardView     = document.getElementById('share-card-view');
   const shareCardEdit     = document.getElementById('share-card-edit');
+  let generatedShareSnapshotUrl = '';
 
   function buildShareUrl(mode) {
     const markdownText = markdownEditor.value;
@@ -11789,21 +11792,39 @@ document.addEventListener("DOMContentLoaded", async function () {
     return getPublicAppBaseUrl() + '#' + getShareHashForMode(payload.id, mode);
   }
 
-  function updateShareUrlField() {
+  function setShareInviteState(text) {
+    if (shareInviteState) {
+      shareInviteState.textContent = text;
+    }
+  }
+
+  function resetShareSnapshotLink() {
+    generatedShareSnapshotUrl = '';
+    shareUrlInput.value = '';
+    shareUrlInput.placeholder = 'Click Share to create a snapshot link';
+    shareCopyBtn.disabled = true;
+    if (shareGenerateBtn) {
+      shareGenerateBtn.disabled = false;
+      shareGenerateBtn.innerHTML = '<i class="bi bi-share"></i><span>Share</span>';
+    }
+    if (shareCopyBtn) {
+      shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
+    }
+    setShareInviteState('Created after clicking Share');
+  }
+
+  async function createShareSnapshotLink() {
     const mode = getCurrentShareMode();
     const url = buildShareUrl(mode);
     if (!url) {
       shareUrlInput.value = 'Error generating link.';
       shareCopyBtn.disabled = true;
-      return;
+      throw new Error('Unable to create share link');
     }
     if (shouldUseServerShare(markdownEditor.value || '', url)) {
-      shareUrlInput.value = 'Short Cloudflare link will be created when copied.';
-      shareCopyBtn.disabled = false;
-    } else {
-      shareUrlInput.value = url;
-      shareCopyBtn.disabled = false;
+      return await createStoredShareUrl(mode);
     }
+    return url;
   }
 
   function openShareModal() {
@@ -11820,7 +11841,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Reset to view-only by default each time
     shareModeView.checked = true;
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
     shareModal.style.display = '';
     requestAnimationFrame(() => {
       shareModal.classList.add('is-visible');
@@ -11849,52 +11870,60 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   shareModeView.addEventListener('change', function () {
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
   });
   shareModeEdit.addEventListener('change', function () {
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
   });
 
+  if (shareGenerateBtn) {
+    shareGenerateBtn.addEventListener('click', async function () {
+      if (shareGenerateBtn.disabled) return;
+      const originalHTML = shareGenerateBtn.innerHTML;
+      shareGenerateBtn.disabled = true;
+      shareCopyBtn.disabled = true;
+      shareGenerateBtn.innerHTML = '<i class="bi bi-hourglass-split"></i><span>Sharing...</span>';
+      shareUrlInput.value = 'Creating snapshot link...';
+      setShareInviteState('Creating link');
+      try {
+        const url = await createShareSnapshotLink();
+        generatedShareSnapshotUrl = url;
+        shareUrlInput.value = url;
+        shareCopyBtn.disabled = false;
+        setShareInviteState('Ready to copy');
+      } catch (error) {
+        console.error('Share link generation failed:', error);
+        generatedShareSnapshotUrl = '';
+        shareUrlInput.value = 'Failed to create share link.';
+        shareCopyBtn.disabled = true;
+        setShareInviteState('Link failed');
+        alert('Failed to create share link: ' + error.message);
+      } finally {
+        shareGenerateBtn.disabled = false;
+        shareGenerateBtn.innerHTML = originalHTML;
+      }
+    });
+  }
+
   shareCopyBtn.addEventListener('click', async function () {
-    if (shareCopyBtn.disabled) return;
-    const mode = getCurrentShareMode();
-    const legacyUrl = buildShareUrl(mode);
-
-    function onCopied() {
-      const orig = shareCopyBtn.innerHTML;
-      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-      setTimeout(() => { shareCopyBtn.innerHTML = orig; }, 2000);
-    }
-
+    if (shareCopyBtn.disabled || !generatedShareSnapshotUrl) return;
     const originalHTML = shareCopyBtn.innerHTML;
     shareCopyBtn.disabled = true;
     try {
-      let url = legacyUrl;
-      if (shouldUseServerShare(markdownEditor.value || '', legacyUrl)) {
-        shareCopyBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
-        shareUrlInput.value = 'Saving snapshot to Cloudflare KV...';
-        url = await createStoredShareUrl(mode);
-      }
-      if (!url) {
-        throw new Error('Unable to create share link');
-      }
-      await copyTextToClipboard(url);
-      shareUrlInput.value = url;
-      const hashIndex = url.indexOf('#');
+      await copyTextToClipboard(generatedShareSnapshotUrl);
+      shareUrlInput.value = generatedShareSnapshotUrl;
+      const hashIndex = generatedShareSnapshotUrl.indexOf('#');
       if (hashIndex !== -1) {
-        window.location.hash = url.slice(hashIndex + 1);
+        window.location.hash = generatedShareSnapshotUrl.slice(hashIndex + 1);
       }
-      onCopied();
+      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i><span>Copied</span>';
+      setTimeout(() => { shareCopyBtn.innerHTML = originalHTML; }, 2000);
     } catch (error) {
       console.error('Share copy failed:', error);
-      alert('Failed to create share link: ' + error.message);
-      updateShareUrlField();
+      alert('Failed to copy share link: ' + error.message);
     } finally {
       shareCopyBtn.disabled = false;
-      if (shareCopyBtn.innerHTML.indexOf('hourglass') !== -1) {
-        shareCopyBtn.innerHTML = originalHTML;
-      }
     }
   });
 

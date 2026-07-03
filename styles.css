@@ -3320,6 +3320,7 @@ a:focus {
   padding: 6px 10px;
 }
 
+.share-generate-btn:disabled,
 .share-copy-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
