@@ -3462,6 +3462,11 @@ a:focus {
   color: var(--text-color);
 }
 
+.live-share-access-status[data-mode="edit"] {
+  border-color: rgba(26, 127, 55, 0.32);
+  background: rgba(26, 127, 55, 0.08);
+}
+
 .live-share-access-status[data-mode="view"] {
   border-color: rgba(191, 135, 0, 0.32);
   background: rgba(191, 135, 0, 0.08);
