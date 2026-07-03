@@ -3370,7 +3370,6 @@ a:focus {
   background: rgba(26, 127, 55, 0.1);
   color: #16833a;
   font-size: 12px;
-  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -3445,15 +3444,15 @@ a:focus {
 .live-share-access-status {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
-  min-height: 58px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 6px 12px;
   border: 1px solid #ead6b3;
   border-radius: 10px;
   background: #fffbf4;
   color: #526174;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -3465,12 +3464,12 @@ a:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #fff1d9;
   color: #bf8700;
-  font-size: 18px;
+  font-size: 16px;
   flex: 0 0 auto;
 }
 
