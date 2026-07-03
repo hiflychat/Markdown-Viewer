@@ -11740,6 +11740,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareModal        = document.getElementById('share-modal');
   const shareModalCloseX  = document.getElementById('share-modal-close-icon');
   const shareModalClose   = document.getElementById('share-modal-close');
+  const shareInviteSection = document.getElementById('share-invite-section');
   const shareUrlInput     = document.getElementById('share-url-input');
   const shareGenerateBtn  = document.getElementById('share-generate-btn');
   const shareCopyBtn      = document.getElementById('share-copy-btn');
@@ -11801,16 +11802,20 @@ document.addEventListener("DOMContentLoaded", async function () {
   function resetShareSnapshotLink() {
     generatedShareSnapshotUrl = '';
     shareUrlInput.value = '';
-    shareUrlInput.placeholder = 'Click Share to create a snapshot link';
+    shareUrlInput.placeholder = 'Share link appears here';
     shareCopyBtn.disabled = true;
+    if (shareInviteSection) {
+      shareInviteSection.hidden = true;
+      delete shareInviteSection.dataset.state;
+    }
     if (shareGenerateBtn) {
       shareGenerateBtn.disabled = false;
-      shareGenerateBtn.innerHTML = '<i class="bi bi-share"></i><span>Share</span>';
+      shareGenerateBtn.textContent = 'Share';
     }
     if (shareCopyBtn) {
       shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
     }
-    setShareInviteState('Created after clicking Share');
+    setShareInviteState('Ready to copy');
   }
 
   async function createShareSnapshotLink() {
@@ -11883,7 +11888,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       const originalHTML = shareGenerateBtn.innerHTML;
       shareGenerateBtn.disabled = true;
       shareCopyBtn.disabled = true;
-      shareGenerateBtn.innerHTML = '<i class="bi bi-hourglass-split"></i><span>Sharing...</span>';
+      shareGenerateBtn.textContent = 'Sharing...';
+      if (shareInviteSection) {
+        shareInviteSection.hidden = false;
+        shareInviteSection.dataset.state = 'active';
+      }
       shareUrlInput.value = 'Creating snapshot link...';
       setShareInviteState('Creating link');
       try {
@@ -11891,6 +11900,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         generatedShareSnapshotUrl = url;
         shareUrlInput.value = url;
         shareCopyBtn.disabled = false;
+        if (shareInviteSection) {
+          shareInviteSection.dataset.state = 'active';
+        }
         setShareInviteState('Ready to copy');
       } catch (error) {
         console.error('Share link generation failed:', error);

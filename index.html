@@ -737,17 +737,13 @@
                   <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
                 </label>
               </div>
-              <div class="live-share-invite share-snapshot-invite">
+              <div class="live-share-invite share-snapshot-invite" id="share-invite-section" hidden>
                 <div class="live-share-invite-header">
-                  <span class="live-share-section-title">Snapshot link</span>
-                  <span class="live-share-invite-state" id="share-invite-state">Created after clicking Share</span>
+                  <span class="live-share-section-title">Copy link</span>
+                  <span class="live-share-invite-state" id="share-invite-state">Ready to copy</span>
                 </div>
                 <div class="share-url-row live-share-link-row">
-                  <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Click Share to create a snapshot link" aria-label="Share URL" />
-                  <button class="reset-modal-btn share-generate-btn live-share-copy-btn" id="share-generate-btn" title="Create share link">
-                    <i class="bi bi-share"></i>
-                    <span>Share</span>
-                  </button>
+                  <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Share link appears here" aria-label="Share URL" />
                   <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-copy-btn" title="Copy link">
                     <i class="bi bi-clipboard"></i>
                     <span>Copy</span>
@@ -756,7 +752,8 @@
               </div>
             </div>
             <div class="reset-modal-actions">
-              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Close</button>
+              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Cancel</button>
+              <button class="reset-modal-btn share-generate-btn" id="share-generate-btn" title="Create share link">Share</button>
             </div>
           </div>
         </div>
