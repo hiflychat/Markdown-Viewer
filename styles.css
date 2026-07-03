@@ -3848,14 +3848,35 @@ button.live-share-participant-overflow {
   }
 
   .live-share-access-status {
-    flex-wrap: wrap;
-    gap: 8px 10px;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    min-height: 0;
+    padding: 8px 10px;
+  }
+
+  .live-share-access-icon {
+    grid-row: 1 / span 2;
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+  }
+
+  .live-share-access-title {
+    min-width: 0;
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.25;
   }
 
   .live-share-access-status #live-share-access-note {
-    flex-basis: 100%;
-    margin-left: 44px;
+    min-width: 0;
+    margin-left: 0;
     text-align: left;
+    font-size: 11px;
+    line-height: 1.25;
   }
 
   .live-share-invite-header {
