@@ -310,6 +310,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     return true;
   }
 
+  function isLiveShareDocumentActive() {
+    return Boolean(liveCollaboration && activeTabId === liveCollaboration.tabId);
+  }
+
+  function blockLiveDocumentShareSnapshot() {
+    if (!isLiveShareDocumentActive()) return false;
+    alert('Live Share documents cannot be shared as snapshots.');
+    announceToScreenReader('Live Share documents cannot be shared as snapshots.');
+    return true;
+  }
+
   function blockTemporarySnapshotLiveShare() {
     if (!isShareSnapshotActive()) return false;
     alert('Shared snapshot tabs are temporary and cannot start Live Share.');
@@ -11976,6 +11987,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function openShareModal() {
     if (blockTemporarySnapshotShare()) return;
+    if (blockLiveDocumentShareSnapshot()) return;
     // PERF-002: Lazy-load pako on first share
     if (typeof pako === 'undefined') {
       loadScript(CDN.pako).then(function() {
@@ -12325,6 +12337,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateLiveEditorAccess() {
     const snapshotViewOnly = isShareSnapshotViewOnlyActive();
     const snapshotActive = isShareSnapshotActive();
+    const liveShareDocumentActive = isLiveShareDocumentActive();
     const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
     if (markdownEditor) {
       markdownEditor.readOnly = viewOnly;
@@ -12389,7 +12402,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     [shareButton, mobileShareButton].forEach(function(button) {
       if (!button) return;
-      if (snapshotActive) {
+      if (snapshotActive || liveShareDocumentActive) {
         if (button.dataset.shareSnapshotReshareDisabled !== 'true') {
           button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
         }
