@@ -12397,7 +12397,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         button.disabled = true;
         button.classList.add('disabled');
         button.setAttribute('aria-disabled', 'true');
-        button.title = 'Shared snapshot tabs cannot be shared again';
+        button.title = 'Share Snapshot';
       } else if (button.dataset.shareSnapshotReshareDisabled === 'true') {
         const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
         delete button.dataset.shareSnapshotReshareDisabled;
@@ -12423,7 +12423,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         button.disabled = true;
         button.classList.add('disabled');
         button.setAttribute('aria-disabled', 'true');
-        button.title = 'Shared snapshot tabs cannot start Live Share';
+        button.title = 'Live Share';
       } else if (button.dataset.shareSnapshotLiveDisabled === 'true') {
         const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
         delete button.dataset.shareSnapshotLiveDisabled;
