@@ -3441,7 +3441,8 @@ a:focus {
 
 .live-share-participants .live-share-participant:not(.live-share-participant-overflow) {
   min-width: 0;
-  flex: 1 1 0;
+  flex: 0 1 auto;
+  max-width: min(220px, 100%);
 }
 
 .live-share-participant-overflow {
