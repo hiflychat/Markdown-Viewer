@@ -310,6 +310,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     return true;
   }
 
+  function blockTemporarySnapshotLiveShare() {
+    if (!isShareSnapshotActive()) return false;
+    alert('Shared snapshot tabs are temporary and cannot start Live Share.');
+    announceToScreenReader('Shared snapshot tabs cannot start Live Share.');
+    return true;
+  }
+
   function getEditorReadOnlyMessage() {
     if (isShareSnapshotViewOnlyActive()) {
       return 'This shared snapshot is view only.';
@@ -12406,6 +12413,32 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     });
 
+    [liveShareButton, mobileLiveShareButton].forEach(function(button) {
+      if (!button) return;
+      if (snapshotActive) {
+        if (button.dataset.shareSnapshotLiveDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotLiveDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Shared snapshot tabs cannot start Live Share';
+      } else if (button.dataset.shareSnapshotLiveDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotLiveDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
+      }
+    });
+
     if (markdownFormatToolbar) {
       markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
       markdownFormatToolbar.querySelectorAll('[data-md-action]').forEach(function(button) {
@@ -13760,6 +13793,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function openLiveShareModal() {
     if (!liveShareModal) return;
+    if (blockTemporarySnapshotLiveShare()) return;
     if (liveShareDisplayName && !liveShareDisplayName.value) {
       liveShareDisplayName.value = getOrCreateGeneratedLiveName();
     }
