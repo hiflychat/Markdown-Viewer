@@ -3247,6 +3247,58 @@ a:focus {
   opacity: 1;
 }
 
+#share-modal .share-mode-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#share-modal .share-mode-card {
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--button-bg);
+}
+
+#share-modal .share-mode-card:hover,
+#share-modal .share-mode-card.is-selected {
+  border-color: var(--accent-color);
+  background: rgba(3, 102, 214, 0.08);
+}
+
+#share-modal .share-mode-card input[type="radio"] {
+  display: block;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--accent-color);
+}
+
+#share-modal .share-card-icon,
+#share-modal .share-card-check {
+  display: none;
+}
+
+#share-modal .share-card-body {
+  display: grid;
+  gap: 2px;
+}
+
+#share-modal .share-card-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#share-modal .share-card-desc {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+#share-modal .share-snapshot-invite {
+  margin-top: 2px;
+}
+
 .share-url-row {
   display: flex;
   gap: 8px;
@@ -3741,6 +3793,7 @@ button.live-share-participant-overflow {
 }
 
 @media (max-width: 560px) {
+  #share-modal .share-mode-cards,
   .live-share-access-options {
     grid-template-columns: 1fr;
   }

@@ -15844,7 +15844,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modalAboutTitle = document.getElementById('about-modal-title');
     if (modalAboutTitle) modalAboutTitle.textContent = dict.aboutTitle;
     const modalShareTitle = document.getElementById('share-modal-title');
-    if (modalShareTitle) modalShareTitle.textContent = dict.shareTitle;
+    if (modalShareTitle) modalShareTitle.textContent = dict.shareSnapshot || 'Share Snapshot';
     const modalRenameTitle = document.getElementById('rename-modal-title');
     if (modalRenameTitle) modalRenameTitle.textContent = dict.renameTitle;
     const modalLinkTitle = document.getElementById('link-modal-title');
