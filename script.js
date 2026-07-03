@@ -12004,10 +12004,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       await copyTextToClipboard(generatedShareSnapshotUrl);
       shareUrlInput.value = generatedShareSnapshotUrl;
-      const hashIndex = generatedShareSnapshotUrl.indexOf('#');
-      if (hashIndex !== -1) {
-        window.location.hash = generatedShareSnapshotUrl.slice(hashIndex + 1);
-      }
       shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i><span>Copied</span>';
       setTimeout(() => { shareCopyBtn.innerHTML = originalHTML; }, 2000);
     } catch (error) {
