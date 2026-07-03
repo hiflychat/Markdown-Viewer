@@ -11740,6 +11740,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareModal        = document.getElementById('share-modal');
   const shareModalCloseX  = document.getElementById('share-modal-close-icon');
   const shareModalClose   = document.getElementById('share-modal-close');
+  const shareErrorModal   = document.getElementById('share-error-modal');
+  const shareErrorMessage = document.getElementById('share-error-message');
+  const shareErrorClose   = document.getElementById('share-error-close');
+  const shareErrorCloseX  = document.getElementById('share-error-close-icon');
   const shareInviteSection = document.getElementById('share-invite-section');
   const shareUrlInput     = document.getElementById('share-url-input');
   const shareGenerateBtn  = document.getElementById('share-generate-btn');
@@ -11796,6 +11800,20 @@ document.addEventListener("DOMContentLoaded", async function () {
   function setShareInviteState(text) {
     if (shareInviteState) {
       shareInviteState.textContent = text;
+    }
+  }
+
+  function showShareErrorModal(message) {
+    if (shareErrorMessage) {
+      shareErrorMessage.textContent = message || 'The share link could not be generated.';
+    }
+    if (shareErrorModal) {
+      openAppModal(shareErrorModal, {
+        focusTarget: shareErrorClose,
+        onClose: function() {
+          closeAppModal(shareErrorModal);
+        }
+      });
     }
   }
 
@@ -11909,8 +11927,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         generatedShareSnapshotUrl = '';
         shareUrlInput.value = 'Failed to create share link.';
         shareCopyBtn.disabled = true;
+        if (shareInviteSection) {
+          shareInviteSection.dataset.state = 'error';
+        }
         setShareInviteState('Link failed');
-        alert('Failed to create share link: ' + error.message);
+        showShareErrorModal('Failed to create share link: ' + error.message);
       } finally {
         shareGenerateBtn.disabled = false;
         shareGenerateBtn.innerHTML = originalHTML;
@@ -11944,6 +11965,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   shareModal.addEventListener('click', function (e) {
     if (e.target === shareModal) closeShareModal();
   });
+  if (shareErrorClose) {
+    shareErrorClose.addEventListener('click', function() {
+      closeAppModal(shareErrorModal);
+    });
+  }
+  if (shareErrorCloseX) {
+    shareErrorCloseX.addEventListener('click', function() {
+      closeAppModal(shareErrorModal);
+    });
+  }
 
   // ============================================
   // Live Share (Yjs CRDT + Cloudflare room WebSocket)

@@ -3713,6 +3713,11 @@ button.live-share-participant-overflow {
   background: rgba(3, 102, 214, 0.05);
 }
 
+.live-share-invite[data-state="error"] {
+  border-color: rgba(207, 34, 46, 0.55);
+  background: rgba(207, 34, 46, 0.06);
+}
+
 .live-share-invite-header {
   display: flex;
   align-items: center;
@@ -3730,6 +3735,14 @@ button.live-share-participant-overflow {
 .live-share-invite[data-state="active"] .live-share-invite-state,
 .live-share-invite[data-state="joined"] .live-share-invite-state {
   color: var(--accent-color);
+}
+
+.live-share-invite[data-state="error"] .live-share-invite-state {
+  color: var(--color-danger-fg);
+}
+
+.share-snapshot-invite[data-state="error"] .share-url-input {
+  border-color: rgba(207, 34, 46, 0.45);
 }
 
 .live-share-copy-btn {
