@@ -140,27 +140,35 @@ body {
 /* Custom scrollbar */
 .editor-pane::-webkit-scrollbar,
 .preview-pane::-webkit-scrollbar,
-#markdown-editor::-webkit-scrollbar {
+#markdown-editor::-webkit-scrollbar,
+#live-share-modal .modal-body::-webkit-scrollbar,
+.live-share-participant-popover::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .editor-pane::-webkit-scrollbar-track,
 .preview-pane::-webkit-scrollbar-track,
-#markdown-editor::-webkit-scrollbar-track {
+#markdown-editor::-webkit-scrollbar-track,
+#live-share-modal .modal-body::-webkit-scrollbar-track,
+.live-share-participant-popover::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }
 
 .editor-pane::-webkit-scrollbar-thumb,
 .preview-pane::-webkit-scrollbar-thumb,
-#markdown-editor::-webkit-scrollbar-thumb {
+#markdown-editor::-webkit-scrollbar-thumb,
+#live-share-modal .modal-body::-webkit-scrollbar-thumb,
+.live-share-participant-popover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .editor-pane::-webkit-scrollbar-thumb:hover,
 .preview-pane::-webkit-scrollbar-thumb:hover,
-#markdown-editor::-webkit-scrollbar-thumb:hover {
+#markdown-editor::-webkit-scrollbar-thumb:hover,
+#live-share-modal .modal-body::-webkit-scrollbar-thumb:hover,
+.live-share-participant-popover::-webkit-scrollbar-thumb:hover {
   background: var(--button-active);
 }
 
