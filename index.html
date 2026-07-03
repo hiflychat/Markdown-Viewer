@@ -761,6 +761,20 @@
             </div>
             <div class="modal-body">
               <p class="share-modal-description">Start a temporary Cloudflare live room for the active Markdown tab.</p>
+              <div class="live-share-flow" id="live-share-flow" aria-label="Live Share steps">
+                <div class="live-share-flow-step is-current" data-live-step="start">
+                  <span class="live-share-flow-number">1</span>
+                  <span>Start session</span>
+                </div>
+                <div class="live-share-flow-step" data-live-step="copy">
+                  <span class="live-share-flow-number">2</span>
+                  <span>Copy invite link</span>
+                </div>
+                <div class="live-share-flow-step" data-live-step="join">
+                  <span class="live-share-flow-number">3</span>
+                  <span>Watch participants</span>
+                </div>
+              </div>
               <div class="reset-modal-field">
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
@@ -769,12 +783,23 @@
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
               </div>
-              <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
-              <div class="share-url-row live-share-link-row">
-                <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
-                <button class="reset-modal-btn share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
-                  <i class="bi bi-clipboard"></i>
-                </button>
+              <div class="live-share-participant-panel">
+                <div class="live-share-section-title">Participants</div>
+                <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
+              </div>
+              <div class="live-share-invite" id="live-share-invite-section">
+                <div class="live-share-invite-header">
+                  <span class="live-share-section-title">Invite link</span>
+                  <span class="live-share-invite-state" id="live-share-invite-state">Created after session starts</span>
+                </div>
+                <div class="share-url-row live-share-link-row">
+                  <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
+                    <i class="bi bi-clipboard"></i>
+                    <span>Copy</span>
+                  </button>
+                </div>
+                <p class="live-share-invite-help" id="live-share-invite-help">Click Start session to create a temporary room and generate an invite link.</p>
               </div>
               <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Everyone with the live link can edit while the room is active.</p>
             </div>

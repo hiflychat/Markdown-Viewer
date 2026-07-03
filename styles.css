@@ -3347,6 +3347,75 @@ a:focus {
   background: var(--color-danger-fg);
 }
 
+.live-share-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.live-share-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--button-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.live-share-flow-step span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-share-flow-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--editor-bg);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.live-share-flow-step.is-current {
+  border-color: var(--accent-color);
+  background: rgba(3, 102, 214, 0.08);
+  color: var(--accent-color);
+}
+
+.live-share-flow-step.is-current .live-share-flow-number,
+.live-share-flow-step.is-complete .live-share-flow-number {
+  background: var(--accent-color);
+  color: #ffffff;
+}
+
+.live-share-flow-step.is-complete {
+  color: var(--text-color);
+}
+
+.live-share-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.live-share-participant-panel {
+  display: grid;
+  gap: 7px;
+}
+
 .live-share-participants {
   display: flex;
   flex-wrap: nowrap;
@@ -3467,6 +3536,55 @@ button.live-share-participant-overflow {
   background: var(--button-hover);
 }
 
+.live-share-invite {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--editor-bg);
+}
+
+.live-share-invite[data-state="active"],
+.live-share-invite[data-state="joined"] {
+  border-color: rgba(3, 102, 214, 0.45);
+  background: rgba(3, 102, 214, 0.05);
+}
+
+.live-share-invite-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-share-invite-state {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live-share-invite[data-state="active"] .live-share-invite-state,
+.live-share-invite[data-state="joined"] .live-share-invite-state {
+  color: var(--accent-color);
+}
+
+.live-share-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 74px;
+}
+
+.live-share-invite-help {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .live-share-participant-popover {
   position: fixed;
   z-index: 3500;
@@ -3511,6 +3629,18 @@ button.live-share-participant-overflow {
 
 .live-share-link-row {
   align-items: stretch;
+}
+
+@media (max-width: 560px) {
+  .live-share-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .live-share-invite-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
 }
 
 /* ==========================================================================
