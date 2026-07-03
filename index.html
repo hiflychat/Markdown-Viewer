@@ -771,6 +771,29 @@
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
               </div>
+              <div class="live-share-access-control" id="live-share-access-control">
+                <div class="live-share-section-title">Access</div>
+                <div class="live-share-access-options" role="radiogroup" aria-label="Live Share access mode">
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="edit" checked />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">Can edit</span>
+                      <span class="live-share-access-option-desc">Collaborators can type and sync changes.</span>
+                    </span>
+                  </label>
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="view" />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">View only</span>
+                      <span class="live-share-access-option-desc">Collaborators can read updates without editing.</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="live-share-access-status" id="live-share-access-status" hidden>
+                <span>Access: <strong id="live-share-access-label">Can edit</strong></span>
+                <span id="live-share-access-note">Collaborators can edit this document.</span>
+              </div>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
@@ -793,7 +816,7 @@
                 </div>
                 <p class="live-share-invite-help" id="live-share-invite-help">Click Start session to create a temporary room and generate an invite link.</p>
               </div>
-              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Everyone with the live link can edit while the room is active.</p>
+              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Share the invite link with people you want to collaborate with.</p>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled>End live session</button>

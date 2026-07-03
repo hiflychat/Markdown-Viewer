@@ -2097,9 +2097,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
   let liveCollaboration = null;
+  let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
+
+  function refreshLiveEditorUi() {
+    if (!liveShareUiReady) return;
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
+  }
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
@@ -2610,6 +2617,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateUndoRedoButtons();
     
     restoreViewMode(tab.viewMode);
+    refreshLiveEditorUi();
     renderMarkdown();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
@@ -2659,6 +2667,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       saveActiveTabId(activeTabId);
       markdownEditor.value = '';
       restoreViewMode('split');
+      refreshLiveEditorUi();
       renderMarkdown();
     } else if (activeTabId === tabId) {
       const newIdx = Math.max(0, idx - 1);
@@ -2667,6 +2676,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const newActiveTab = tabs[newIdx];
       markdownEditor.value = newActiveTab.content;
       restoreViewMode(newActiveTab.viewMode);
+      refreshLiveEditorUi();
       renderMarkdown();
       requestAnimationFrame(function() {
         markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
@@ -2770,6 +2780,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       saveTabsToStorage(tabs);
       markdownEditor.value = sampleMarkdown;
       restoreViewMode('split');
+      refreshLiveEditorUi();
       renderMarkdown();
       renderTabBar(tabs, activeTabId);
     }
@@ -2822,6 +2833,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     initTabHistory(activeTabId, activeTab.content);
     updateUndoRedoButtons();
     restoreViewMode(activeTab.viewMode);
+    refreshLiveEditorUi();
     renderMarkdown();
     const editorPane = document.querySelector('.editor-pane');
     if (editorPane) {
@@ -5015,6 +5027,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function replaceEditorRange(start, end, replacement, selectStart, selectEnd) {
+    if (!canMutateEditor()) return;
     pushProgrammaticHistoryState();
     markdownEditor.focus();
     markdownEditor.setRangeText(replacement, start, end, 'end');
@@ -5173,6 +5186,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function handleListEnter(e) {
+    if (!canMutateEditor()) return false;
     if (e.key !== 'Enter' || e.shiftKey || markdownEditor.selectionStart !== markdownEditor.selectionEnd) {
       return false;
     }
@@ -5368,6 +5382,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const undoBtn = document.querySelector('[data-md-action="undo"]');
     const redoBtn = document.querySelector('[data-md-action="redo"]');
     if (!undoBtn || !redoBtn) return;
+    if (!canMutateEditor()) {
+      undoBtn.disabled = true;
+      redoBtn.disabled = true;
+      undoBtn.classList.add('disabled');
+      redoBtn.classList.add('disabled');
+      undoBtn.setAttribute('aria-disabled', 'true');
+      redoBtn.setAttribute('aria-disabled', 'true');
+      return;
+    }
     
     const tabId = activeTabId;
     const hist = getOrCreateTabHistory(tabId);
@@ -5383,6 +5406,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function executeUndo() {
+    if (!canMutateEditor()) return;
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       typingTimeout = null;
@@ -5436,6 +5460,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function executeRedo() {
+    if (!canMutateEditor()) return;
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       typingTimeout = null;
@@ -9058,6 +9083,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function runMarkdownTool(action, button) {
+    if (!canMutateEditor() && isLiveMutatingAction(action)) {
+      announceToScreenReader('This Live Share session is view only.');
+      return;
+    }
     if (action === 'undo') {
       executeUndo();
       return;
@@ -9398,6 +9427,18 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   markdownEditor.addEventListener("input", function(e) {
+    if (!canMutateEditor() && liveCollaboration && !liveCollaboration.isApplyingRemoteChange) {
+      const restoredMarkdown = liveCollaboration.lastMarkdown || '';
+      if (markdownEditor.value !== restoredMarkdown) {
+        markdownEditor.value = restoredMarkdown;
+        lastPushedValue = restoredMarkdown;
+        renderMarkdown({ reason: 'live-readonly-restore', force: true });
+        updateDocumentStats();
+        scheduleLineNumberUpdate({ force: true });
+      }
+      announceToScreenReader('This Live Share session is view only.');
+      return;
+    }
     handleKeystrokeHistory(e);
     if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
       syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
@@ -9421,6 +9462,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   markdownEditor.addEventListener('mousedown', updateLastCursor);
   markdownEditor.addEventListener('mouseup', updateLastCursor);
   markdownEditor.addEventListener('focus', updateLastCursor);
+  markdownEditor.addEventListener('beforeinput', function(e) {
+    if (!canMutateEditor()) {
+      e.preventDefault();
+      announceToScreenReader('This Live Share session is view only.');
+    }
+  });
 
   initMarkdownFormatToolbar();
   initFindReplaceModal();
@@ -9428,6 +9475,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   
   // Editor key handlers for list continuation and indentation
   markdownEditor.addEventListener("keydown", function(e) {
+    if (!canMutateEditor()) return;
     if (handleListEnter(e)) {
       return;
     }
@@ -11863,6 +11911,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const LIVE_SHARE_AVATAR_LIMIT = 4;
   const LIVE_SHARE_PARTICIPANT_STALE_MS = 45000;
   const LIVE_SHARE_JOIN_TIMEOUT_MS = 8000;
+  const LIVE_SHARE_ACCESS_EDIT = 'edit';
+  const LIVE_SHARE_ACCESS_VIEW = 'view';
+  const LIVE_SHARE_NON_MUTATING_ACTIONS = ['fullscreen', 'find', 'help', 'info'];
   const LIVE_SHARE_ADJECTIVES = [
     'Acidic',
     'Awesome',
@@ -11913,6 +11964,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
   const liveShareActiveBadge  = document.getElementById('live-share-active-badge');
+  const liveShareAccessControl = document.getElementById('live-share-access-control');
+  const liveShareAccessRadios = document.querySelectorAll('input[name="live-share-access-mode"]');
+  const liveShareAccessStatus = document.getElementById('live-share-access-status');
+  const liveShareAccessLabel  = document.getElementById('live-share-access-label');
+  const liveShareAccessNote   = document.getElementById('live-share-access-note');
   const liveShareInviteSection = document.getElementById('live-share-invite-section');
   const liveShareInviteState  = document.getElementById('live-share-invite-state');
   const liveShareInviteHelp   = document.getElementById('live-share-invite-help');
@@ -11924,6 +11980,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveCursorsLayer      = document.getElementById('live-cursors-layer');
   let liveGeneratedDisplayName = null;
   let liveShareParticipantsPopover = null;
+  liveShareUiReady = true;
 
   function getRandomBase64Url(byteLength) {
     const bytes = new Uint8Array(byteLength);
@@ -12001,6 +12058,107 @@ document.addEventListener("DOMContentLoaded", async function () {
       hash |= 0;
     }
     return palette[Math.abs(hash) % palette.length];
+  }
+
+  function normalizeLiveAccessMode(mode) {
+    return mode === LIVE_SHARE_ACCESS_VIEW ? LIVE_SHARE_ACCESS_VIEW : LIVE_SHARE_ACCESS_EDIT;
+  }
+
+  function getSelectedLiveAccessMode() {
+    let selected = LIVE_SHARE_ACCESS_EDIT;
+    liveShareAccessRadios.forEach(function(radio) {
+      if (radio.checked) {
+        selected = radio.value;
+      }
+    });
+    return normalizeLiveAccessMode(selected);
+  }
+
+  function setSelectedLiveAccessMode(mode) {
+    const normalized = normalizeLiveAccessMode(mode);
+    liveShareAccessRadios.forEach(function(radio) {
+      radio.checked = radio.value === normalized;
+    });
+  }
+
+  function getCurrentLiveAccessMode() {
+    if (!liveCollaboration) return getSelectedLiveAccessMode();
+    return normalizeLiveAccessMode(liveCollaboration.accessMode || (liveCollaboration.sessionMap && liveCollaboration.sessionMap.get('accessMode')));
+  }
+
+  function isLiveViewOnlyParticipant() {
+    return Boolean(
+      liveCollaboration &&
+      !liveCollaboration.isHost &&
+      activeTabId === liveCollaboration.tabId &&
+      getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW
+    );
+  }
+
+  function canMutateEditor() {
+    return !isLiveViewOnlyParticipant();
+  }
+
+  function isLiveMutatingAction(action) {
+    return LIVE_SHARE_NON_MUTATING_ACTIONS.indexOf(action) === -1;
+  }
+
+  function updateLiveAccessDisplay() {
+    const mode = getCurrentLiveAccessMode();
+    const isActive = Boolean(liveCollaboration);
+    const label = mode === LIVE_SHARE_ACCESS_VIEW ? 'View only' : 'Can edit';
+    const isViewOnlyParticipant = isLiveViewOnlyParticipant();
+
+    if (liveShareAccessControl) {
+      liveShareAccessControl.hidden = isActive;
+    }
+    if (liveShareAccessStatus) {
+      liveShareAccessStatus.hidden = !isActive;
+      liveShareAccessStatus.dataset.mode = mode;
+    }
+    if (liveShareAccessLabel) {
+      liveShareAccessLabel.textContent = label;
+    }
+    if (liveShareAccessNote) {
+      liveShareAccessNote.textContent = isViewOnlyParticipant
+        ? 'This shared document is read-only for you.'
+        : (mode === LIVE_SHARE_ACCESS_VIEW
+          ? 'Collaborators can view updates but cannot edit.'
+          : 'Collaborators can edit this document.');
+    }
+    setSelectedLiveAccessMode(mode);
+  }
+
+  function updateLiveEditorAccess() {
+    const viewOnly = isLiveViewOnlyParticipant();
+    if (markdownEditor) {
+      markdownEditor.readOnly = viewOnly;
+      markdownEditor.setAttribute('aria-readonly', viewOnly ? 'true' : 'false');
+      markdownEditor.classList.toggle('live-share-readonly-editor', viewOnly);
+      markdownEditor.title = viewOnly ? 'Live Share is view only. You can read updates but cannot edit this document.' : '';
+    }
+
+    if (markdownFormatToolbar) {
+      markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
+      markdownFormatToolbar.querySelectorAll('[data-md-action]').forEach(function(button) {
+        const action = button.getAttribute('data-md-action');
+        const shouldDisable = viewOnly && isLiveMutatingAction(action);
+        if (shouldDisable) {
+          button.dataset.liveViewOnlyDisabled = 'true';
+          button.disabled = true;
+          button.classList.add('disabled');
+          button.setAttribute('aria-disabled', 'true');
+        } else if (button.dataset.liveViewOnlyDisabled === 'true') {
+          delete button.dataset.liveViewOnlyDisabled;
+          button.disabled = false;
+          button.classList.remove('disabled');
+          button.setAttribute('aria-disabled', 'false');
+        }
+      });
+      if (!viewOnly) {
+        updateUndoRedoButtons();
+      }
+    }
   }
 
   function getLiveRoomSocketUrl(roomId, secret) {
@@ -12127,6 +12285,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const updateHandler = function(update, origin) {
       if (destroyed || origin === LIVE_RELAY_ORIGIN) return;
+      if (typeof options.canSendUpdate === 'function' && !options.canSendUpdate()) return;
       send({
         type: 'y-update',
         update: encodeLiveBytes(update)
@@ -12424,6 +12583,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       liveCollaboration.joinTimeoutId = null;
     }
     applyLiveSessionTitle(liveCollaboration.roomTitle);
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     return true;
   }
 
@@ -12575,6 +12736,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateLiveShareControls() {
     const isActive = Boolean(liveCollaboration);
     const isHost = isActive && liveCollaboration.isHost;
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     setLiveShareButtonActive(isActive);
     if (liveShareStartBtn) {
       liveShareStartBtn.disabled = isActive;
@@ -12607,6 +12770,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function syncLiveLocalEditorChange(oldValue, newValue) {
     if (!liveCollaboration || !liveCollaboration.yText) return;
+    if (!canMutateEditor()) return;
     if (oldValue === newValue) return;
 
     let start = 0;
@@ -12678,6 +12842,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     lastPushedValue = remoteMarkdown;
     renderMarkdown({ reason: 'live-remote', force: true });
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12719,6 +12884,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       lastInputType = null;
       restoreViewMode(restored.viewMode || 'split');
       renderMarkdown({ reason: 'live-restore', force: true });
+      updateLiveAccessDisplay();
+      updateLiveEditorAccess();
       updateDocumentStats();
       updateFindHighlights();
       scheduleLineNumberUpdate({ force: true });
@@ -12748,6 +12915,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     restoreViewMode('split');
     renderMarkdown({ reason: 'live-seed', force: true });
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12778,6 +12947,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateUndoRedoButtons();
     restoreViewMode(returnTab.viewMode || 'split');
     renderMarkdown({ reason: 'live-tab-remove', force: true });
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12969,6 +13140,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
+      const hostParticipantId = liveCollaboration.sessionMap ? liveCollaboration.sessionMap.get('hostId') : null;
+      if (getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW && hostParticipantId && sender !== hostParticipantId) {
+        return;
+      }
       try {
         liveCollaboration.Y.applyUpdate(liveCollaboration.ydoc, decodeLiveBytes(message.update), LIVE_RELAY_ORIGIN);
         markLiveJoinSynced(liveCollaboration.yText ? liveCollaboration.yText.toString() : '');
@@ -13124,11 +13299,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     }
     const sessionTitle = getSafeLiveTitle(sessionMap.get('title') || options.title || 'Live Share');
+    const requestedAccessMode = normalizeLiveAccessMode(
+      isHost
+        ? (options.accessMode || getSelectedLiveAccessMode())
+        : (sessionMap.get('accessMode') || options.accessMode || LIVE_SHARE_ACCESS_VIEW)
+    );
     if (isHost && yText.length === 0) {
       yText.insert(0, markdownEditor.value || '');
     }
     if (isHost) {
       sessionMap.set('title', hostTitle);
+      sessionMap.set('accessMode', requestedAccessMode);
     }
 
     disconnectLiveCollaboration();
@@ -13174,6 +13355,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const participants = new Map();
     participants.set(localParticipantId, localParticipant);
 
+    if (isHost) {
+      sessionMap.set('hostId', localParticipantId);
+    }
+
     liveCollaboration = {
       roomId,
       secret,
@@ -13191,6 +13376,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       hasReceivedRemoteState: false,
       joinTimeoutId: null,
       roomTitle: sessionTitle,
+      accessMode: requestedAccessMode,
       isApplyingRemoteChange: false,
       lastMarkdown: shouldDeferParticipantTab ? '' : markdownEditor.value,
       observer: null,
@@ -13223,6 +13409,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       const updatedTitle = sessionMap.get('title');
       if (updatedTitle) {
         applyLiveSessionTitle(updatedTitle);
+      }
+      const updatedAccessMode = normalizeLiveAccessMode(sessionMap.get('accessMode'));
+      if (liveCollaboration.accessMode !== updatedAccessMode) {
+        liveCollaboration.accessMode = updatedAccessMode;
+        updateLiveShareControls();
+        updateLiveEditorAccess();
+        if (updatedAccessMode === LIVE_SHARE_ACCESS_VIEW && !liveCollaboration.isHost) {
+          announceToScreenReader('Live Share is view only.');
+        }
       }
       if (sessionMap.get('endedAt') && !liveCollaboration.isHost) {
         setLiveShareStatus('Live room ended by the host', 'idle');
@@ -13265,7 +13460,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         return Boolean(
           liveCollaboration &&
           liveCollaboration.ydoc === ydoc &&
+          (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT) &&
           (liveCollaboration.isHost || liveCollaboration.hasReceivedRemoteState || !liveCollaboration.pendingJoinTab)
+        );
+      },
+      canSendUpdate: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.ydoc === ydoc &&
+          (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT)
         );
       },
       onStatus: setLiveShareStatus,
@@ -13383,7 +13586,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (liveShareStartBtn) {
     liveShareStartBtn.addEventListener('click', function() {
       setLiveShareStatus('Starting live room...', 'connecting');
-      startLiveSession({ isHost: true }).catch(function(error) {
+      startLiveSession({ isHost: true, accessMode: getSelectedLiveAccessMode() }).catch(function(error) {
         console.error('Failed to start live session:', error);
         setLiveShareStatus('Unable to start live room', 'error');
         alert('Failed to start Live Share. Please check your connection and try again.');
@@ -13409,6 +13612,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       updateLiveDisplayName(liveShareDisplayName.value);
     });
   }
+  liveShareAccessRadios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (!liveCollaboration) {
+        updateLiveAccessDisplay();
+      }
+    });
+  });
   if (liveShareModalCloseX) {
     liveShareModalCloseX.addEventListener('click', closeLiveShareModal);
   }
@@ -13614,6 +13824,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   document.addEventListener("keydown", function (e) {
     if (document.activeElement === markdownEditor) {
       const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (!canMutateEditor() && isCmdOrCtrl && ['z', 'y'].indexOf(e.key.toLowerCase()) !== -1) {
+        e.preventDefault();
+        announceToScreenReader('This Live Share session is view only.');
+        return;
+      }
       if (isCmdOrCtrl && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         executeUndo();
