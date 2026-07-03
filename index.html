@@ -765,6 +765,17 @@
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
               </div>
+              <div class="live-share-active-panel" id="live-share-active-panel" hidden>
+                <div class="live-share-active-badge">
+                  <span class="live-share-active-dot" aria-hidden="true"></span>
+                  <span>Session Active</span>
+                </div>
+                <div class="live-share-active-steps" aria-label="Live Share active session guidance">
+                  <span><i class="bi bi-clipboard-check"></i> Copy the invite link</span>
+                  <span><i class="bi bi-send"></i> Share it with collaborators</span>
+                  <span><i class="bi bi-people"></i> Participants will appear here when they join</span>
+                </div>
+              </div>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>

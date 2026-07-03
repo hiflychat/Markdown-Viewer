@@ -3347,6 +3347,61 @@ a:focus {
   background: var(--color-danger-fg);
 }
 
+.live-share-active-panel {
+  display: grid;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid rgba(26, 127, 55, 0.25);
+  border-radius: 8px;
+  background: rgba(26, 127, 55, 0.08);
+}
+
+.live-share-active-panel[hidden] {
+  display: none;
+}
+
+.live-share-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid rgba(26, 127, 55, 0.28);
+  border-radius: 999px;
+  background: var(--editor-bg);
+  color: #1a7f37;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.live-share-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1a7f37;
+  box-shadow: 0 0 0 4px rgba(26, 127, 55, 0.12);
+}
+
+.live-share-active-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.live-share-active-steps span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.live-share-active-steps i {
+  color: #1a7f37;
+  flex-shrink: 0;
+}
+
 .live-share-section-title {
   font-size: 12px;
   font-weight: 700;
@@ -3574,6 +3629,10 @@ button.live-share-participant-overflow {
 }
 
 @media (max-width: 560px) {
+  .live-share-active-steps {
+    grid-template-columns: 1fr;
+  }
+
   .live-share-invite-header {
     align-items: flex-start;
     flex-direction: column;
