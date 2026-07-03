@@ -198,6 +198,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // View Mode State - Story 1.1
   let currentViewMode = 'split'; // 'editor', 'split', or 'preview'
+  const shareSnapshotViewOnlyTabIds = new Set();
   const APP_VERSION = '3.8.1';
   let activeModal = null;
   let lastFocusedElement = null;
@@ -269,6 +270,30 @@ document.addEventListener("DOMContentLoaded", async function () {
   let isResizing = false;
   let editorWidthPercent = 50; // Default 50%
   const MIN_PANE_PERCENT = 20; // Minimum 20% width
+
+  function isShareSnapshotViewOnlyActive() {
+    return Boolean(activeTabId && shareSnapshotViewOnlyTabIds.has(activeTabId));
+  }
+
+  function getEditorReadOnlyMessage() {
+    if (isShareSnapshotViewOnlyActive()) {
+      return 'This shared snapshot is view only.';
+    }
+    if (isLiveViewOnlyParticipant()) {
+      return 'This Live Share session is view only.';
+    }
+    return 'This document is read only.';
+  }
+
+  function applyShareSnapshotAccessMode(mode) {
+    if (!activeTabId) return;
+    if (mode === 'view') {
+      shareSnapshotViewOnlyTabIds.add(activeTabId);
+    } else {
+      shareSnapshotViewOnlyTabIds.delete(activeTabId);
+    }
+    updateLiveEditorAccess();
+  }
 
   const mobileMenuToggle    = document.getElementById("mobile-menu-toggle");
   const mobileMenuPanel     = document.getElementById("mobile-menu-panel");
@@ -4940,6 +4965,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // View Mode Functions - Story 1.1 & 1.2
   function setViewMode(mode) {
+    if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
+      mode = 'preview';
+      announceToScreenReader(getEditorReadOnlyMessage());
+    }
     if (mode === currentViewMode) return;
 
     const previousMode = currentViewMode;
@@ -9084,7 +9113,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function runMarkdownTool(action, button) {
     if (!canMutateEditor() && isLiveMutatingAction(action)) {
-      announceToScreenReader('This Live Share session is view only.');
+      announceToScreenReader(getEditorReadOnlyMessage());
       return;
     }
     if (action === 'undo') {
@@ -9427,16 +9456,19 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   markdownEditor.addEventListener("input", function(e) {
-    if (!canMutateEditor() && liveCollaboration && !liveCollaboration.isApplyingRemoteChange) {
-      const restoredMarkdown = liveCollaboration.lastMarkdown || '';
+    if (!canMutateEditor() && (!liveCollaboration || !liveCollaboration.isApplyingRemoteChange)) {
+      const activeTab = tabs.find(function(tab) { return tab.id === activeTabId; });
+      const restoredMarkdown = liveCollaboration
+        ? (liveCollaboration.lastMarkdown || '')
+        : (activeTab && typeof activeTab.content === 'string' ? activeTab.content : markdownEditor.value || '');
       if (markdownEditor.value !== restoredMarkdown) {
         markdownEditor.value = restoredMarkdown;
         lastPushedValue = restoredMarkdown;
-        renderMarkdown({ reason: 'live-readonly-restore', force: true });
+        renderMarkdown({ reason: 'readonly-restore', force: true });
         updateDocumentStats();
         scheduleLineNumberUpdate({ force: true });
       }
-      announceToScreenReader('This Live Share session is view only.');
+      announceToScreenReader(getEditorReadOnlyMessage());
       return;
     }
     handleKeystrokeHistory(e);
@@ -9465,7 +9497,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   markdownEditor.addEventListener('beforeinput', function(e) {
     if (!canMutateEditor()) {
       e.preventDefault();
-      announceToScreenReader('This Live Share session is view only.');
+      announceToScreenReader(getEditorReadOnlyMessage());
     }
   });
 
@@ -12168,7 +12200,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function canMutateEditor() {
-    return !isLiveViewOnlyParticipant();
+    return !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
   }
 
   function isLiveMutatingAction(action) {
@@ -12202,13 +12234,42 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function updateLiveEditorAccess() {
-    const viewOnly = isLiveViewOnlyParticipant();
+    const snapshotViewOnly = isShareSnapshotViewOnlyActive();
+    const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
     if (markdownEditor) {
       markdownEditor.readOnly = viewOnly;
       markdownEditor.setAttribute('aria-readonly', viewOnly ? 'true' : 'false');
       markdownEditor.classList.toggle('live-share-readonly-editor', viewOnly);
-      markdownEditor.title = viewOnly ? 'Live Share is view only. You can read updates but cannot edit this document.' : '';
+      markdownEditor.title = viewOnly ? getEditorReadOnlyMessage() : '';
     }
+
+    viewModeButtons.forEach(function(button) {
+      const mode = button.getAttribute('data-view-mode');
+      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      if (shouldDisable) {
+        button.dataset.shareSnapshotDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+      } else if (button.dataset.shareSnapshotDisabled === 'true') {
+        delete button.dataset.shareSnapshotDisabled;
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+      }
+    });
+
+    mobileViewModeButtons.forEach(function(button) {
+      const mode = button.getAttribute('data-mode');
+      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      if (shouldDisable) {
+        button.dataset.shareSnapshotDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+      } else if (button.dataset.shareSnapshotDisabled === 'true') {
+        delete button.dataset.shareSnapshotDisabled;
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+      }
+    });
 
     if (markdownFormatToolbar) {
       markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
@@ -13766,8 +13827,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     const rest = hash.slice('#id='.length);
     const ampIdx = rest.indexOf('&');
     const id = decodeURIComponent(ampIdx === -1 ? rest : rest.slice(0, ampIdx));
-    const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
-    const isEdit = params.split('&').includes('edit=1');
 
     if (!SERVER_SHARE_ID_PATTERN.test(id)) return;
 
@@ -13786,10 +13845,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
 
+      const shareMode = payload && payload.mode === 'edit' ? 'edit' : 'view';
       markdownEditor.value = payload && typeof payload.content === 'string' ? payload.content : '';
+      applyShareSnapshotAccessMode(shareMode);
       renderMarkdown({ reason: 'document-load', showSkeleton: true });
+      setViewMode(shareMode === 'edit' ? 'split' : 'preview');
       saveCurrentTabState();
-      setViewMode(isEdit || (payload && payload.mode === 'edit') ? 'split' : 'preview');
     } catch (e) {
       console.error('Failed to load stored shared content:', e);
       alert('Network error while loading shared content.');
@@ -13826,11 +13887,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!encoded) return;
     try {
       const decoded = decodeMarkdownFromShare(encoded);
+      const shareMode = isEdit ? 'edit' : 'view';
       markdownEditor.value = decoded;
+      applyShareSnapshotAccessMode(shareMode);
       renderMarkdown({ reason: 'document-load', showSkeleton: true });
-      saveCurrentTabState();
       // Apply the correct view mode: edit=1 → split, default → preview only
-      setViewMode(isEdit ? 'split' : 'preview');
+      setViewMode(shareMode === 'edit' ? 'split' : 'preview');
+      saveCurrentTabState();
     } catch (e) {
       console.error("Failed to load shared content:", e);
       alert("The shared URL could not be decoded. It may be corrupted or incomplete.");
@@ -13898,7 +13961,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const isCmdOrCtrl = e.ctrlKey || e.metaKey;
       if (!canMutateEditor() && isCmdOrCtrl && ['z', 'y'].indexOf(e.key.toLowerCase()) !== -1) {
         e.preventDefault();
-        announceToScreenReader('This Live Share session is view only.');
+        announceToScreenReader(getEditorReadOnlyMessage());
         return;
       }
       if (isCmdOrCtrl && !e.shiftKey && e.key.toLowerCase() === 'z') {
