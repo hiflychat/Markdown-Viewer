@@ -286,6 +286,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }));
   }
 
+  function isShareSnapshotActive() {
+    return Boolean(activeTabId && isShareSnapshotTabId(activeTabId));
+  }
+
   function stripTemporaryTabs(tabsArr) {
     return (tabsArr || []).filter(function(tab) {
       return !isShareSnapshotTab(tab);
@@ -296,6 +300,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!isShareSnapshotViewOnlyActive()) return false;
     alert('This shared snapshot is view only. The Markdown source cannot be downloaded or copied.');
     announceToScreenReader('This shared snapshot is view only.');
+    return true;
+  }
+
+  function blockTemporarySnapshotShare() {
+    if (!isShareSnapshotActive()) return false;
+    alert('Shared snapshot tabs are temporary and cannot be shared again.');
+    announceToScreenReader('Shared snapshot tabs cannot be shared again.');
     return true;
   }
 
@@ -11957,6 +11968,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function openShareModal() {
+    if (blockTemporarySnapshotShare()) return;
     // PERF-002: Lazy-load pako on first share
     if (typeof pako === 'undefined') {
       loadScript(CDN.pako).then(function() {
@@ -12305,6 +12317,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function updateLiveEditorAccess() {
     const snapshotViewOnly = isShareSnapshotViewOnlyActive();
+    const snapshotActive = isShareSnapshotActive();
     const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
     if (markdownEditor) {
       markdownEditor.readOnly = viewOnly;
@@ -12355,6 +12368,32 @@ document.addEventListener("DOMContentLoaded", async function () {
       } else if (button.dataset.shareSnapshotSourceDisabled === 'true') {
         const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
         delete button.dataset.shareSnapshotSourceDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
+      }
+    });
+
+    [shareButton, mobileShareButton].forEach(function(button) {
+      if (!button) return;
+      if (snapshotActive) {
+        if (button.dataset.shareSnapshotReshareDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotReshareDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Shared snapshot tabs cannot be shared again';
+      } else if (button.dataset.shareSnapshotReshareDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotReshareDisabled;
         delete button.dataset.shareSnapshotOriginalTitle;
         button.disabled = false;
         button.classList.remove('disabled');
