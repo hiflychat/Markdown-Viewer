@@ -199,6 +199,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   // View Mode State - Story 1.1
   let currentViewMode = 'split'; // 'editor', 'split', or 'preview'
   const shareSnapshotViewOnlyTabIds = new Set();
+  const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
   const APP_VERSION = '3.8.1';
   let activeModal = null;
   let lastFocusedElement = null;
@@ -275,6 +276,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     return Boolean(activeTabId && shareSnapshotViewOnlyTabIds.has(activeTabId));
   }
 
+  function isShareSnapshotTab(tab) {
+    return Boolean(tab && tab.kind === SHARE_SNAPSHOT_TAB_KIND);
+  }
+
+  function isShareSnapshotTabId(tabId) {
+    return Boolean(tabs.find(function(tab) {
+      return tab.id === tabId && isShareSnapshotTab(tab);
+    }));
+  }
+
+  function stripTemporaryTabs(tabsArr) {
+    return (tabsArr || []).filter(function(tab) {
+      return !isShareSnapshotTab(tab);
+    });
+  }
+
+  function blockShareSnapshotSourceAccess() {
+    if (!isShareSnapshotViewOnlyActive()) return false;
+    alert('This shared snapshot is view only. The Markdown source cannot be downloaded or copied.');
+    announceToScreenReader('This shared snapshot is view only.');
+    return true;
+  }
+
   function getEditorReadOnlyMessage() {
     if (isShareSnapshotViewOnlyActive()) {
       return 'This shared snapshot is view only.';
@@ -287,6 +311,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function applyShareSnapshotAccessMode(mode) {
     if (!activeTabId) return;
+    const tab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (tab && isShareSnapshotTab(tab)) {
+      tab.shareSnapshotMode = mode === 'edit' ? 'edit' : 'view';
+    }
     if (mode === 'view') {
       shareSnapshotViewOnlyTabIds.add(activeTabId);
     } else {
@@ -2145,7 +2173,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function loadTabsFromStorage() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
     } catch (e) {
       return [];
     }
@@ -2161,7 +2189,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getTabsForStorage(tabsArr) {
-    const sourceTabs = tabsArr || tabs;
+    const sourceTabs = stripTemporaryTabs(tabsArr || tabs);
     if (!liveCollaboration) {
       return sourceTabs;
     }
@@ -2203,6 +2231,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function saveActiveTabId(id) {
+    if (isShareSnapshotTabId(id)) return;
     saveStorageItem(ACTIVE_TAB_KEY, id);
   }
 
@@ -2269,6 +2298,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function runTabMenuAction(tabId, action, isMobileMenu) {
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (isShareSnapshotTab(tab) && action === 'duplicate') {
+      alert('Shared snapshot tabs are temporary and cannot be duplicated.');
+      return;
+    }
     if (action === 'rename') {
       if (isMobileMenu) closeMobileMenu();
       renameTab(tabId);
@@ -2302,10 +2336,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     dropdown.className = 'tab-menu-dropdown';
     dropdown.setAttribute('data-tab-menu-dropdown', 'true');
     dropdown.setAttribute('role', 'menu');
+    const duplicateAction = isShareSnapshotTab(tab)
+      ? ''
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>';
+    const closeLabel = isShareSnapshotTab(tab) ? 'Close' : 'Delete';
     dropdown.innerHTML =
       '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil"></i> Rename</button>' +
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>' +
-      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> Delete</button>';
+      duplicateAction +
+      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> ' + closeLabel + '</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -2677,6 +2715,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
+    shareSnapshotViewOnlyTabIds.delete(tabId);
     
     // Clean up history of the closed tab
     if (tabHistories[tabId]) {
@@ -2768,6 +2807,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   function duplicateTab(tabId) {
     const tab = tabs.find(function(t) { return t.id === tabId; });
     if (!tab) return;
+    if (isShareSnapshotTab(tab)) {
+      alert('Shared snapshot tabs are temporary and cannot be duplicated.');
+      return;
+    }
     if (tabs.length >= 20) {
       alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
       return;
@@ -9720,6 +9763,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   exportMd.addEventListener("click", function () {
+    if (blockShareSnapshotSourceAccess()) return;
     if (typeof Neutralino !== 'undefined') {
       nativeSaveMarkdown();
       return;
@@ -11652,6 +11696,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   copyMarkdownButton.addEventListener("click", function () {
+    if (blockShareSnapshotSourceAccess()) return;
     try {
       const markdownText = markdownEditor.value;
       copyToClipboard(markdownText);
@@ -11769,6 +11814,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       return false;
     }
     const snapshotTab = createTab(typeof content === 'string' ? content : '', getSafeShareSnapshotTitle(title), viewMode);
+    snapshotTab.kind = SHARE_SNAPSHOT_TAB_KIND;
+    snapshotTab.temporary = true;
+    snapshotTab.shareSnapshotMode = shareMode;
     tabs.push(snapshotTab);
     switchTab(snapshotTab.id);
     applyShareSnapshotAccessMode(shareMode);
@@ -12290,6 +12338,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         delete button.dataset.shareSnapshotDisabled;
         button.disabled = false;
         button.setAttribute('aria-disabled', 'false');
+      }
+    });
+
+    [exportMd, mobileExportMd, copyMarkdownButton, mobileCopyMarkdown].forEach(function(button) {
+      if (!button) return;
+      if (snapshotViewOnly) {
+        if (button.dataset.shareSnapshotSourceDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotSourceDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Markdown source is unavailable for view-only snapshots';
+      } else if (button.dataset.shareSnapshotSourceDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotSourceDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
       }
     });
 
