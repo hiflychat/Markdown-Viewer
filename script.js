@@ -11756,8 +11756,34 @@ document.addEventListener("DOMContentLoaded", async function () {
     return activeTab && activeTab.title ? activeTab.title : 'Markdown document';
   }
 
+  function getSafeShareSnapshotTitle(title) {
+    const cleanTitle = String(title || '').trim().replace(/\s+/g, ' ');
+    return cleanTitle || 'Shared Snapshot';
+  }
+
+  function openShareSnapshotTab(content, title, mode) {
+    const shareMode = mode === 'edit' ? 'edit' : 'view';
+    const viewMode = shareMode === 'edit' ? 'split' : 'preview';
+    if (tabs.length >= 20) {
+      alert('The shared snapshot could not be opened because the tab limit has been reached.');
+      return false;
+    }
+    const snapshotTab = createTab(typeof content === 'string' ? content : '', getSafeShareSnapshotTitle(title), viewMode);
+    tabs.push(snapshotTab);
+    switchTab(snapshotTab.id);
+    applyShareSnapshotAccessMode(shareMode);
+    setViewMode(viewMode);
+    saveCurrentTabState();
+    renderTabBar(tabs, activeTabId);
+    return true;
+  }
+
   function getShareHashForMode(id, mode) {
     return 'id=' + encodeURIComponent(id) + (mode === 'edit' ? '&edit=1' : '');
+  }
+
+  function getShareSnapshotTitleParam(title) {
+    return '&title=' + encodeURIComponent(getSafeShareSnapshotTitle(title));
   }
 
   function shouldUseServerShare(markdownText, legacyUrl) {
@@ -11796,7 +11822,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       console.error('Share encoding failed:', e);
       return null;
     }
-    const base = getPublicAppBaseUrl() + '#share=' + encoded;
+    const base = getPublicAppBaseUrl() + '#share=' + encoded + getShareSnapshotTitleParam(getActiveShareTitle());
     return mode === 'edit' ? base + '&edit=1' : base;
   }
 
@@ -13846,11 +13872,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
 
       const shareMode = payload && payload.mode === 'edit' ? 'edit' : 'view';
-      markdownEditor.value = payload && typeof payload.content === 'string' ? payload.content : '';
-      applyShareSnapshotAccessMode(shareMode);
-      renderMarkdown({ reason: 'document-load', showSkeleton: true });
-      setViewMode(shareMode === 'edit' ? 'split' : 'preview');
-      saveCurrentTabState();
+      openShareSnapshotTab(
+        payload && typeof payload.content === 'string' ? payload.content : '',
+        payload && payload.title,
+        shareMode
+      );
     } catch (e) {
       console.error('Failed to load stored shared content:', e);
       alert('Network error while loading shared content.');
@@ -13882,18 +13908,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const ampIdx = rest.indexOf('&');
     const encoded = ampIdx === -1 ? rest : rest.slice(0, ampIdx);
     const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
-    const isEdit = params.split('&').includes('edit=1');
+    const shareParams = new URLSearchParams(params);
+    const isEdit = shareParams.get('edit') === '1';
+    const sharedTitle = shareParams.get('title') || 'Shared Snapshot';
 
     if (!encoded) return;
     try {
       const decoded = decodeMarkdownFromShare(encoded);
       const shareMode = isEdit ? 'edit' : 'view';
-      markdownEditor.value = decoded;
-      applyShareSnapshotAccessMode(shareMode);
-      renderMarkdown({ reason: 'document-load', showSkeleton: true });
-      // Apply the correct view mode: edit=1 → split, default → preview only
-      setViewMode(shareMode === 'edit' ? 'split' : 'preview');
-      saveCurrentTabState();
+      openShareSnapshotTab(decoded, sharedTitle, shareMode);
     } catch (e) {
       console.error("Failed to load shared content:", e);
       alert("The shared URL could not be decoded. It may be corrupted or incomplete.");
