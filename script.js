@@ -198,6 +198,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // View Mode State - Story 1.1
   let currentViewMode = 'split'; // 'editor', 'split', or 'preview'
+  const shareSnapshotViewOnlyTabIds = new Set();
+  const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
   const APP_VERSION = '3.8.1';
   let activeModal = null;
   let lastFocusedElement = null;
@@ -269,6 +271,86 @@ document.addEventListener("DOMContentLoaded", async function () {
   let isResizing = false;
   let editorWidthPercent = 50; // Default 50%
   const MIN_PANE_PERCENT = 20; // Minimum 20% width
+
+  function isShareSnapshotViewOnlyActive() {
+    return Boolean(activeTabId && shareSnapshotViewOnlyTabIds.has(activeTabId));
+  }
+
+  function isShareSnapshotTab(tab) {
+    return Boolean(tab && tab.kind === SHARE_SNAPSHOT_TAB_KIND);
+  }
+
+  function isShareSnapshotTabId(tabId) {
+    return Boolean(tabs.find(function(tab) {
+      return tab.id === tabId && isShareSnapshotTab(tab);
+    }));
+  }
+
+  function isShareSnapshotActive() {
+    return Boolean(activeTabId && isShareSnapshotTabId(activeTabId));
+  }
+
+  function stripTemporaryTabs(tabsArr) {
+    return (tabsArr || []).filter(function(tab) {
+      return !isShareSnapshotTab(tab);
+    });
+  }
+
+  function blockShareSnapshotSourceAccess() {
+    if (!isShareSnapshotViewOnlyActive()) return false;
+    alert('This shared snapshot is view only. The Markdown source cannot be downloaded or copied.');
+    announceToScreenReader('This shared snapshot is view only.');
+    return true;
+  }
+
+  function blockTemporarySnapshotShare() {
+    if (!isShareSnapshotActive()) return false;
+    alert('Shared snapshot tabs are temporary and cannot be shared again.');
+    announceToScreenReader('Shared snapshot tabs cannot be shared again.');
+    return true;
+  }
+
+  function isLiveShareDocumentActive() {
+    return Boolean(liveCollaboration && activeTabId === liveCollaboration.tabId);
+  }
+
+  function blockLiveDocumentShareSnapshot() {
+    if (!isLiveShareDocumentActive()) return false;
+    alert('Live Share documents cannot be shared as snapshots.');
+    announceToScreenReader('Live Share documents cannot be shared as snapshots.');
+    return true;
+  }
+
+  function blockTemporarySnapshotLiveShare() {
+    if (!isShareSnapshotActive()) return false;
+    alert('Shared snapshot tabs are temporary and cannot start Live Share.');
+    announceToScreenReader('Shared snapshot tabs cannot start Live Share.');
+    return true;
+  }
+
+  function getEditorReadOnlyMessage() {
+    if (isShareSnapshotViewOnlyActive()) {
+      return 'This shared snapshot is view only.';
+    }
+    if (isLiveViewOnlyParticipant()) {
+      return 'This Live Share session is view only.';
+    }
+    return 'This document is read only.';
+  }
+
+  function applyShareSnapshotAccessMode(mode) {
+    if (!activeTabId) return;
+    const tab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (tab && isShareSnapshotTab(tab)) {
+      tab.shareSnapshotMode = mode === 'edit' ? 'edit' : 'view';
+    }
+    if (mode === 'view') {
+      shareSnapshotViewOnlyTabIds.add(activeTabId);
+    } else {
+      shareSnapshotViewOnlyTabIds.delete(activeTabId);
+    }
+    updateLiveEditorAccess();
+  }
 
   const mobileMenuToggle    = document.getElementById("mobile-menu-toggle");
   const mobileMenuPanel     = document.getElementById("mobile-menu-panel");
@@ -2097,9 +2179,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
   let liveCollaboration = null;
+  let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
+
+  function refreshLiveEditorUi() {
+    if (!liveShareUiReady) return;
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
+  }
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
@@ -2113,7 +2202,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function loadTabsFromStorage() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
     } catch (e) {
       return [];
     }
@@ -2129,7 +2218,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getTabsForStorage(tabsArr) {
-    const sourceTabs = tabsArr || tabs;
+    const sourceTabs = stripTemporaryTabs(tabsArr || tabs);
     if (!liveCollaboration) {
       return sourceTabs;
     }
@@ -2171,6 +2260,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function saveActiveTabId(id) {
+    if (isShareSnapshotTabId(id)) return;
     saveStorageItem(ACTIVE_TAB_KEY, id);
   }
 
@@ -2237,6 +2327,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function runTabMenuAction(tabId, action, isMobileMenu) {
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (isShareSnapshotTab(tab) && action === 'duplicate') {
+      alert('Shared snapshot tabs are temporary and cannot be duplicated.');
+      return;
+    }
     if (action === 'rename') {
       if (isMobileMenu) closeMobileMenu();
       renameTab(tabId);
@@ -2270,10 +2365,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     dropdown.className = 'tab-menu-dropdown';
     dropdown.setAttribute('data-tab-menu-dropdown', 'true');
     dropdown.setAttribute('role', 'menu');
+    const duplicateAction = isShareSnapshotTab(tab)
+      ? ''
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>';
+    const closeLabel = isShareSnapshotTab(tab) ? 'Close' : 'Delete';
     dropdown.innerHTML =
       '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil"></i> Rename</button>' +
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>' +
-      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> Delete</button>';
+      duplicateAction +
+      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> ' + closeLabel + '</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -2610,6 +2709,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateUndoRedoButtons();
     
     restoreViewMode(tab.viewMode);
+    refreshLiveEditorUi();
     renderMarkdown();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
@@ -2644,6 +2744,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
+    shareSnapshotViewOnlyTabIds.delete(tabId);
     
     // Clean up history of the closed tab
     if (tabHistories[tabId]) {
@@ -2659,6 +2760,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       saveActiveTabId(activeTabId);
       markdownEditor.value = '';
       restoreViewMode('split');
+      refreshLiveEditorUi();
       renderMarkdown();
     } else if (activeTabId === tabId) {
       const newIdx = Math.max(0, idx - 1);
@@ -2667,6 +2769,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const newActiveTab = tabs[newIdx];
       markdownEditor.value = newActiveTab.content;
       restoreViewMode(newActiveTab.viewMode);
+      refreshLiveEditorUi();
       renderMarkdown();
       requestAnimationFrame(function() {
         markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
@@ -2733,6 +2836,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   function duplicateTab(tabId) {
     const tab = tabs.find(function(t) { return t.id === tabId; });
     if (!tab) return;
+    if (isShareSnapshotTab(tab)) {
+      alert('Shared snapshot tabs are temporary and cannot be duplicated.');
+      return;
+    }
     if (tabs.length >= 20) {
       alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
       return;
@@ -2770,6 +2877,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       saveTabsToStorage(tabs);
       markdownEditor.value = sampleMarkdown;
       restoreViewMode('split');
+      refreshLiveEditorUi();
       renderMarkdown();
       renderTabBar(tabs, activeTabId);
     }
@@ -2822,6 +2930,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     initTabHistory(activeTabId, activeTab.content);
     updateUndoRedoButtons();
     restoreViewMode(activeTab.viewMode);
+    refreshLiveEditorUi();
     renderMarkdown();
     const editorPane = document.querySelector('.editor-pane');
     if (editorPane) {
@@ -4928,6 +5037,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // View Mode Functions - Story 1.1 & 1.2
   function setViewMode(mode) {
+    if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
+      mode = 'preview';
+      announceToScreenReader(getEditorReadOnlyMessage());
+    }
     if (mode === currentViewMode) return;
 
     const previousMode = currentViewMode;
@@ -5015,6 +5128,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function replaceEditorRange(start, end, replacement, selectStart, selectEnd) {
+    if (!canMutateEditor()) return;
     pushProgrammaticHistoryState();
     markdownEditor.focus();
     markdownEditor.setRangeText(replacement, start, end, 'end');
@@ -5173,6 +5287,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function handleListEnter(e) {
+    if (!canMutateEditor()) return false;
     if (e.key !== 'Enter' || e.shiftKey || markdownEditor.selectionStart !== markdownEditor.selectionEnd) {
       return false;
     }
@@ -5368,6 +5483,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const undoBtn = document.querySelector('[data-md-action="undo"]');
     const redoBtn = document.querySelector('[data-md-action="redo"]');
     if (!undoBtn || !redoBtn) return;
+    if (!canMutateEditor()) {
+      undoBtn.disabled = true;
+      redoBtn.disabled = true;
+      undoBtn.classList.add('disabled');
+      redoBtn.classList.add('disabled');
+      undoBtn.setAttribute('aria-disabled', 'true');
+      redoBtn.setAttribute('aria-disabled', 'true');
+      return;
+    }
     
     const tabId = activeTabId;
     const hist = getOrCreateTabHistory(tabId);
@@ -5383,6 +5507,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function executeUndo() {
+    if (!canMutateEditor()) return;
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       typingTimeout = null;
@@ -5436,6 +5561,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function executeRedo() {
+    if (!canMutateEditor()) return;
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       typingTimeout = null;
@@ -9058,6 +9184,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function runMarkdownTool(action, button) {
+    if (!canMutateEditor() && isLiveMutatingAction(action)) {
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return;
+    }
     if (action === 'undo') {
       executeUndo();
       return;
@@ -9398,6 +9528,21 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   markdownEditor.addEventListener("input", function(e) {
+    if (!canMutateEditor() && (!liveCollaboration || !liveCollaboration.isApplyingRemoteChange)) {
+      const activeTab = tabs.find(function(tab) { return tab.id === activeTabId; });
+      const restoredMarkdown = liveCollaboration
+        ? (liveCollaboration.lastMarkdown || '')
+        : (activeTab && typeof activeTab.content === 'string' ? activeTab.content : markdownEditor.value || '');
+      if (markdownEditor.value !== restoredMarkdown) {
+        markdownEditor.value = restoredMarkdown;
+        lastPushedValue = restoredMarkdown;
+        renderMarkdown({ reason: 'readonly-restore', force: true });
+        updateDocumentStats();
+        scheduleLineNumberUpdate({ force: true });
+      }
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return;
+    }
     handleKeystrokeHistory(e);
     if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
       syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
@@ -9421,6 +9566,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   markdownEditor.addEventListener('mousedown', updateLastCursor);
   markdownEditor.addEventListener('mouseup', updateLastCursor);
   markdownEditor.addEventListener('focus', updateLastCursor);
+  markdownEditor.addEventListener('beforeinput', function(e) {
+    if (!canMutateEditor()) {
+      e.preventDefault();
+      announceToScreenReader(getEditorReadOnlyMessage());
+    }
+  });
 
   initMarkdownFormatToolbar();
   initFindReplaceModal();
@@ -9428,6 +9579,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   
   // Editor key handlers for list continuation and indentation
   markdownEditor.addEventListener("keydown", function(e) {
+    if (!canMutateEditor()) return;
     if (handleListEnter(e)) {
       return;
     }
@@ -9640,6 +9792,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   exportMd.addEventListener("click", function () {
+    if (blockShareSnapshotSourceAccess()) return;
     if (typeof Neutralino !== 'undefined') {
       nativeSaveMarkdown();
       return;
@@ -11572,6 +11725,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   copyMarkdownButton.addEventListener("click", function () {
+    if (blockShareSnapshotSourceAccess()) return;
     try {
       const markdownText = markdownEditor.value;
       copyToClipboard(markdownText);
@@ -11676,8 +11830,37 @@ document.addEventListener("DOMContentLoaded", async function () {
     return activeTab && activeTab.title ? activeTab.title : 'Markdown document';
   }
 
+  function getSafeShareSnapshotTitle(title) {
+    const cleanTitle = String(title || '').trim().replace(/\s+/g, ' ');
+    return cleanTitle || 'Shared Snapshot';
+  }
+
+  function openShareSnapshotTab(content, title, mode) {
+    const shareMode = mode === 'edit' ? 'edit' : 'view';
+    const viewMode = shareMode === 'edit' ? 'split' : 'preview';
+    if (tabs.length >= 20) {
+      alert('The shared snapshot could not be opened because the tab limit has been reached.');
+      return false;
+    }
+    const snapshotTab = createTab(typeof content === 'string' ? content : '', getSafeShareSnapshotTitle(title), viewMode);
+    snapshotTab.kind = SHARE_SNAPSHOT_TAB_KIND;
+    snapshotTab.temporary = true;
+    snapshotTab.shareSnapshotMode = shareMode;
+    tabs.push(snapshotTab);
+    switchTab(snapshotTab.id);
+    applyShareSnapshotAccessMode(shareMode);
+    setViewMode(viewMode);
+    saveCurrentTabState();
+    renderTabBar(tabs, activeTabId);
+    return true;
+  }
+
   function getShareHashForMode(id, mode) {
     return 'id=' + encodeURIComponent(id) + (mode === 'edit' ? '&edit=1' : '');
+  }
+
+  function getShareSnapshotTitleParam(title) {
+    return '&title=' + encodeURIComponent(getSafeShareSnapshotTitle(title));
   }
 
   function shouldUseServerShare(markdownText, legacyUrl) {
@@ -11692,12 +11875,20 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareModal        = document.getElementById('share-modal');
   const shareModalCloseX  = document.getElementById('share-modal-close-icon');
   const shareModalClose   = document.getElementById('share-modal-close');
+  const shareErrorModal   = document.getElementById('share-error-modal');
+  const shareErrorMessage = document.getElementById('share-error-message');
+  const shareErrorClose   = document.getElementById('share-error-close');
+  const shareErrorCloseX  = document.getElementById('share-error-close-icon');
+  const shareInviteSection = document.getElementById('share-invite-section');
   const shareUrlInput     = document.getElementById('share-url-input');
+  const shareGenerateBtn  = document.getElementById('share-generate-btn');
   const shareCopyBtn      = document.getElementById('share-copy-btn');
+  const shareInviteState  = document.getElementById('share-invite-state');
   const shareModeView     = document.getElementById('share-mode-view');
   const shareModeEdit     = document.getElementById('share-mode-edit');
   const shareCardView     = document.getElementById('share-card-view');
   const shareCardEdit     = document.getElementById('share-card-edit');
+  let generatedShareSnapshotUrl = '';
 
   function buildShareUrl(mode) {
     const markdownText = markdownEditor.value;
@@ -11708,7 +11899,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       console.error('Share encoding failed:', e);
       return null;
     }
-    const base = getPublicAppBaseUrl() + '#share=' + encoded;
+    const base = getPublicAppBaseUrl() + '#share=' + encoded + getShareSnapshotTitleParam(getActiveShareTitle());
     return mode === 'edit' ? base + '&edit=1' : base;
   }
 
@@ -11741,24 +11932,62 @@ document.addEventListener("DOMContentLoaded", async function () {
     return getPublicAppBaseUrl() + '#' + getShareHashForMode(payload.id, mode);
   }
 
-  function updateShareUrlField() {
+  function setShareInviteState(text) {
+    if (shareInviteState) {
+      shareInviteState.textContent = text;
+    }
+  }
+
+  function showShareErrorModal(message) {
+    if (shareErrorMessage) {
+      shareErrorMessage.textContent = message || 'The share link could not be generated.';
+    }
+    if (shareErrorModal) {
+      openAppModal(shareErrorModal, {
+        focusTarget: shareErrorClose,
+        onClose: function() {
+          closeAppModal(shareErrorModal);
+        }
+      });
+    }
+  }
+
+  function resetShareSnapshotLink() {
+    generatedShareSnapshotUrl = '';
+    shareUrlInput.value = '';
+    shareUrlInput.placeholder = 'Share link appears here';
+    shareCopyBtn.disabled = true;
+    if (shareInviteSection) {
+      shareInviteSection.hidden = true;
+      delete shareInviteSection.dataset.state;
+    }
+    if (shareGenerateBtn) {
+      shareGenerateBtn.disabled = false;
+      shareGenerateBtn.textContent = 'Share';
+    }
+    if (shareCopyBtn) {
+      shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
+    }
+    setShareInviteState('Ready to copy');
+  }
+
+  async function createShareSnapshotLink() {
     const mode = getCurrentShareMode();
     const url = buildShareUrl(mode);
     if (!url) {
       shareUrlInput.value = 'Error generating link.';
       shareCopyBtn.disabled = true;
-      return;
+      throw new Error('Unable to create share link');
     }
     if (shouldUseServerShare(markdownEditor.value || '', url)) {
-      shareUrlInput.value = 'Short Cloudflare link will be created when copied.';
-      shareCopyBtn.disabled = false;
-    } else {
-      shareUrlInput.value = url;
-      shareCopyBtn.disabled = false;
+      return await createStoredShareUrl(mode);
     }
+    return url;
   }
 
   function openShareModal() {
+    if (blockTemporarySnapshotShare()) return;
+    if (blockLiveDocumentShareSnapshot()) return;
     // PERF-002: Lazy-load pako on first share
     if (typeof pako === 'undefined') {
       loadScript(CDN.pako).then(function() {
@@ -11772,7 +12001,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Reset to view-only by default each time
     shareModeView.checked = true;
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
     shareModal.style.display = '';
     requestAnimationFrame(() => {
       shareModal.classList.add('is-visible');
@@ -11801,52 +12030,66 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   shareModeView.addEventListener('change', function () {
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
   });
   shareModeEdit.addEventListener('change', function () {
     syncShareCardStyles();
-    updateShareUrlField();
+    resetShareSnapshotLink();
   });
 
+  if (shareGenerateBtn) {
+    shareGenerateBtn.addEventListener('click', async function () {
+      if (shareGenerateBtn.disabled) return;
+      const originalHTML = shareGenerateBtn.innerHTML;
+      shareGenerateBtn.disabled = true;
+      shareCopyBtn.disabled = true;
+      shareGenerateBtn.textContent = 'Sharing...';
+      if (shareInviteSection) {
+        shareInviteSection.hidden = false;
+        shareInviteSection.dataset.state = 'active';
+      }
+      shareUrlInput.value = 'Creating snapshot link...';
+      setShareInviteState('Creating link');
+      try {
+        const url = await createShareSnapshotLink();
+        generatedShareSnapshotUrl = url;
+        shareUrlInput.value = url;
+        shareCopyBtn.disabled = false;
+        if (shareInviteSection) {
+          shareInviteSection.dataset.state = 'active';
+        }
+        setShareInviteState('Ready to copy');
+      } catch (error) {
+        console.error('Share link generation failed:', error);
+        generatedShareSnapshotUrl = '';
+        shareUrlInput.value = 'Failed to create share link.';
+        shareCopyBtn.disabled = true;
+        if (shareInviteSection) {
+          shareInviteSection.dataset.state = 'error';
+        }
+        setShareInviteState('Link failed');
+        showShareErrorModal('Failed to create share link: ' + error.message);
+      } finally {
+        shareGenerateBtn.disabled = false;
+        shareGenerateBtn.innerHTML = originalHTML;
+      }
+    });
+  }
+
   shareCopyBtn.addEventListener('click', async function () {
-    if (shareCopyBtn.disabled) return;
-    const mode = getCurrentShareMode();
-    const legacyUrl = buildShareUrl(mode);
-
-    function onCopied() {
-      const orig = shareCopyBtn.innerHTML;
-      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-      setTimeout(() => { shareCopyBtn.innerHTML = orig; }, 2000);
-    }
-
+    if (shareCopyBtn.disabled || !generatedShareSnapshotUrl) return;
     const originalHTML = shareCopyBtn.innerHTML;
     shareCopyBtn.disabled = true;
     try {
-      let url = legacyUrl;
-      if (shouldUseServerShare(markdownEditor.value || '', legacyUrl)) {
-        shareCopyBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
-        shareUrlInput.value = 'Saving snapshot to Cloudflare KV...';
-        url = await createStoredShareUrl(mode);
-      }
-      if (!url) {
-        throw new Error('Unable to create share link');
-      }
-      await copyTextToClipboard(url);
-      shareUrlInput.value = url;
-      const hashIndex = url.indexOf('#');
-      if (hashIndex !== -1) {
-        window.location.hash = url.slice(hashIndex + 1);
-      }
-      onCopied();
+      await copyTextToClipboard(generatedShareSnapshotUrl);
+      shareUrlInput.value = generatedShareSnapshotUrl;
+      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i><span>Copied</span>';
+      setTimeout(() => { shareCopyBtn.innerHTML = originalHTML; }, 2000);
     } catch (error) {
       console.error('Share copy failed:', error);
-      alert('Failed to create share link: ' + error.message);
-      updateShareUrlField();
+      alert('Failed to copy share link: ' + error.message);
     } finally {
       shareCopyBtn.disabled = false;
-      if (shareCopyBtn.innerHTML.indexOf('hourglass') !== -1) {
-        shareCopyBtn.innerHTML = originalHTML;
-      }
     }
   });
 
@@ -11855,6 +12098,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   shareModal.addEventListener('click', function (e) {
     if (e.target === shareModal) closeShareModal();
   });
+  if (shareErrorClose) {
+    shareErrorClose.addEventListener('click', function() {
+      closeAppModal(shareErrorModal);
+    });
+  }
+  if (shareErrorCloseX) {
+    shareErrorCloseX.addEventListener('click', function() {
+      closeAppModal(shareErrorModal);
+    });
+  }
 
   // ============================================
   // Live Share (Yjs CRDT + Cloudflare room WebSocket)
@@ -11863,6 +12116,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const LIVE_SHARE_AVATAR_LIMIT = 4;
   const LIVE_SHARE_PARTICIPANT_STALE_MS = 45000;
   const LIVE_SHARE_JOIN_TIMEOUT_MS = 8000;
+  const LIVE_SHARE_ACCESS_EDIT = 'edit';
+  const LIVE_SHARE_ACCESS_VIEW = 'view';
+  const LIVE_SHARE_NON_MUTATING_ACTIONS = ['fullscreen', 'find', 'help', 'info'];
   const LIVE_SHARE_ADJECTIVES = [
     'Acidic',
     'Awesome',
@@ -11913,6 +12169,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
   const liveShareActiveBadge  = document.getElementById('live-share-active-badge');
+  const liveShareAccessControl = document.getElementById('live-share-access-control');
+  const liveShareAccessRadios = document.querySelectorAll('input[name="live-share-access-mode"]');
+  const liveShareAccessStatus = document.getElementById('live-share-access-status');
+  const liveShareAccessLabel  = document.getElementById('live-share-access-label');
+  const liveShareAccessNote   = document.getElementById('live-share-access-note');
   const liveShareInviteSection = document.getElementById('live-share-invite-section');
   const liveShareInviteState  = document.getElementById('live-share-invite-state');
   const liveShareInviteHelp   = document.getElementById('live-share-invite-help');
@@ -11924,6 +12185,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveCursorsLayer      = document.getElementById('live-cursors-layer');
   let liveGeneratedDisplayName = null;
   let liveShareParticipantsPopover = null;
+  liveShareUiReady = true;
 
   function getRandomBase64Url(byteLength) {
     const bytes = new Uint8Array(byteLength);
@@ -12001,6 +12263,216 @@ document.addEventListener("DOMContentLoaded", async function () {
       hash |= 0;
     }
     return palette[Math.abs(hash) % palette.length];
+  }
+
+  function normalizeLiveAccessMode(mode) {
+    return mode === LIVE_SHARE_ACCESS_VIEW ? LIVE_SHARE_ACCESS_VIEW : LIVE_SHARE_ACCESS_EDIT;
+  }
+
+  function getSelectedLiveAccessMode() {
+    let selected = LIVE_SHARE_ACCESS_EDIT;
+    liveShareAccessRadios.forEach(function(radio) {
+      if (radio.checked) {
+        selected = radio.value;
+      }
+    });
+    return normalizeLiveAccessMode(selected);
+  }
+
+  function setSelectedLiveAccessMode(mode) {
+    const normalized = normalizeLiveAccessMode(mode);
+    liveShareAccessRadios.forEach(function(radio) {
+      radio.checked = radio.value === normalized;
+    });
+  }
+
+  function getCurrentLiveAccessMode() {
+    if (!liveCollaboration) return getSelectedLiveAccessMode();
+    return normalizeLiveAccessMode(liveCollaboration.accessMode || (liveCollaboration.sessionMap && liveCollaboration.sessionMap.get('accessMode')));
+  }
+
+  function isLiveViewOnlyParticipant() {
+    return Boolean(
+      liveCollaboration &&
+      !liveCollaboration.isHost &&
+      activeTabId === liveCollaboration.tabId &&
+      getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW
+    );
+  }
+
+  function canMutateEditor() {
+    return !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
+  }
+
+  function isLiveMutatingAction(action) {
+    return LIVE_SHARE_NON_MUTATING_ACTIONS.indexOf(action) === -1;
+  }
+
+  function updateLiveAccessDisplay() {
+    const mode = getCurrentLiveAccessMode();
+    const isActive = Boolean(liveCollaboration);
+    const label = mode === LIVE_SHARE_ACCESS_VIEW ? 'View only' : 'Can edit';
+    const isViewOnlyParticipant = isLiveViewOnlyParticipant();
+
+    if (liveShareAccessControl) {
+      liveShareAccessControl.hidden = isActive;
+    }
+    if (liveShareAccessStatus) {
+      liveShareAccessStatus.hidden = !isActive;
+      liveShareAccessStatus.dataset.mode = mode;
+    }
+    if (liveShareAccessLabel) {
+      liveShareAccessLabel.textContent = label;
+    }
+    if (liveShareAccessNote) {
+      liveShareAccessNote.textContent = isViewOnlyParticipant
+        ? 'This shared document is read-only for you.'
+        : (mode === LIVE_SHARE_ACCESS_VIEW
+          ? 'Collaborators can view updates but cannot edit.'
+          : 'Collaborators can edit this document.');
+    }
+    setSelectedLiveAccessMode(mode);
+  }
+
+  function updateLiveEditorAccess() {
+    const snapshotViewOnly = isShareSnapshotViewOnlyActive();
+    const snapshotActive = isShareSnapshotActive();
+    const liveShareDocumentActive = isLiveShareDocumentActive();
+    const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
+    if (markdownEditor) {
+      markdownEditor.readOnly = viewOnly;
+      markdownEditor.setAttribute('aria-readonly', viewOnly ? 'true' : 'false');
+      markdownEditor.classList.toggle('live-share-readonly-editor', viewOnly);
+      markdownEditor.title = viewOnly ? getEditorReadOnlyMessage() : '';
+    }
+
+    viewModeButtons.forEach(function(button) {
+      const mode = button.getAttribute('data-view-mode');
+      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      if (shouldDisable) {
+        button.dataset.shareSnapshotDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+      } else if (button.dataset.shareSnapshotDisabled === 'true') {
+        delete button.dataset.shareSnapshotDisabled;
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+      }
+    });
+
+    mobileViewModeButtons.forEach(function(button) {
+      const mode = button.getAttribute('data-mode');
+      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      if (shouldDisable) {
+        button.dataset.shareSnapshotDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+      } else if (button.dataset.shareSnapshotDisabled === 'true') {
+        delete button.dataset.shareSnapshotDisabled;
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+      }
+    });
+
+    [exportMd, mobileExportMd, copyMarkdownButton, mobileCopyMarkdown].forEach(function(button) {
+      if (!button) return;
+      if (snapshotViewOnly) {
+        if (button.dataset.shareSnapshotSourceDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotSourceDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Markdown source is unavailable for view-only snapshots';
+      } else if (button.dataset.shareSnapshotSourceDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotSourceDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
+      }
+    });
+
+    [shareButton, mobileShareButton].forEach(function(button) {
+      if (!button) return;
+      if (snapshotActive || liveShareDocumentActive) {
+        if (button.dataset.shareSnapshotReshareDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotReshareDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Share Snapshot';
+      } else if (button.dataset.shareSnapshotReshareDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotReshareDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
+      }
+    });
+
+    [liveShareButton, mobileLiveShareButton].forEach(function(button) {
+      if (!button) return;
+      if (snapshotActive) {
+        if (button.dataset.shareSnapshotLiveDisabled !== 'true') {
+          button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
+        }
+        button.dataset.shareSnapshotLiveDisabled = 'true';
+        button.disabled = true;
+        button.classList.add('disabled');
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Live Share';
+      } else if (button.dataset.shareSnapshotLiveDisabled === 'true') {
+        const originalTitle = button.dataset.shareSnapshotOriginalTitle || '';
+        delete button.dataset.shareSnapshotLiveDisabled;
+        delete button.dataset.shareSnapshotOriginalTitle;
+        button.disabled = false;
+        button.classList.remove('disabled');
+        button.setAttribute('aria-disabled', 'false');
+        if (originalTitle) {
+          button.setAttribute('title', originalTitle);
+        } else {
+          button.removeAttribute('title');
+        }
+      }
+    });
+
+    if (markdownFormatToolbar) {
+      markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
+      markdownFormatToolbar.querySelectorAll('[data-md-action]').forEach(function(button) {
+        const action = button.getAttribute('data-md-action');
+        const shouldDisable = viewOnly && isLiveMutatingAction(action);
+        if (shouldDisable) {
+          button.dataset.liveViewOnlyDisabled = 'true';
+          button.disabled = true;
+          button.classList.add('disabled');
+          button.setAttribute('aria-disabled', 'true');
+        } else if (button.dataset.liveViewOnlyDisabled === 'true') {
+          delete button.dataset.liveViewOnlyDisabled;
+          button.disabled = false;
+          button.classList.remove('disabled');
+          button.setAttribute('aria-disabled', 'false');
+        }
+      });
+      if (!viewOnly) {
+        updateUndoRedoButtons();
+      }
+    }
   }
 
   function getLiveRoomSocketUrl(roomId, secret) {
@@ -12127,6 +12599,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const updateHandler = function(update, origin) {
       if (destroyed || origin === LIVE_RELAY_ORIGIN) return;
+      if (typeof options.canSendUpdate === 'function' && !options.canSendUpdate()) return;
       send({
         type: 'y-update',
         update: encodeLiveBytes(update)
@@ -12424,6 +12897,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       liveCollaboration.joinTimeoutId = null;
     }
     applyLiveSessionTitle(liveCollaboration.roomTitle);
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     return true;
   }
 
@@ -12575,6 +13050,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateLiveShareControls() {
     const isActive = Boolean(liveCollaboration);
     const isHost = isActive && liveCollaboration.isHost;
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     setLiveShareButtonActive(isActive);
     if (liveShareStartBtn) {
       liveShareStartBtn.disabled = isActive;
@@ -12607,6 +13084,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function syncLiveLocalEditorChange(oldValue, newValue) {
     if (!liveCollaboration || !liveCollaboration.yText) return;
+    if (!canMutateEditor()) return;
     if (oldValue === newValue) return;
 
     let start = 0;
@@ -12678,6 +13156,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     lastPushedValue = remoteMarkdown;
     renderMarkdown({ reason: 'live-remote', force: true });
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12719,6 +13198,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       lastInputType = null;
       restoreViewMode(restored.viewMode || 'split');
       renderMarkdown({ reason: 'live-restore', force: true });
+      updateLiveAccessDisplay();
+      updateLiveEditorAccess();
       updateDocumentStats();
       updateFindHighlights();
       scheduleLineNumberUpdate({ force: true });
@@ -12748,6 +13229,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     restoreViewMode('split');
     renderMarkdown({ reason: 'live-seed', force: true });
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12778,6 +13261,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateUndoRedoButtons();
     restoreViewMode(returnTab.viewMode || 'split');
     renderMarkdown({ reason: 'live-tab-remove', force: true });
+    updateLiveAccessDisplay();
+    updateLiveEditorAccess();
     updateDocumentStats();
     updateFindHighlights();
     scheduleLineNumberUpdate({ force: true });
@@ -12969,6 +13454,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
+      const hostParticipantId = liveCollaboration.sessionMap ? liveCollaboration.sessionMap.get('hostId') : null;
+      if (getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW && hostParticipantId && sender !== hostParticipantId) {
+        return;
+      }
       try {
         liveCollaboration.Y.applyUpdate(liveCollaboration.ydoc, decodeLiveBytes(message.update), LIVE_RELAY_ORIGIN);
         markLiveJoinSynced(liveCollaboration.yText ? liveCollaboration.yText.toString() : '');
@@ -13124,11 +13613,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     }
     const sessionTitle = getSafeLiveTitle(sessionMap.get('title') || options.title || 'Live Share');
+    const requestedAccessMode = normalizeLiveAccessMode(
+      isHost
+        ? (options.accessMode || getSelectedLiveAccessMode())
+        : (sessionMap.get('accessMode') || options.accessMode || LIVE_SHARE_ACCESS_VIEW)
+    );
     if (isHost && yText.length === 0) {
       yText.insert(0, markdownEditor.value || '');
     }
     if (isHost) {
       sessionMap.set('title', hostTitle);
+      sessionMap.set('accessMode', requestedAccessMode);
     }
 
     disconnectLiveCollaboration();
@@ -13174,6 +13669,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const participants = new Map();
     participants.set(localParticipantId, localParticipant);
 
+    if (isHost) {
+      sessionMap.set('hostId', localParticipantId);
+    }
+
     liveCollaboration = {
       roomId,
       secret,
@@ -13191,6 +13690,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       hasReceivedRemoteState: false,
       joinTimeoutId: null,
       roomTitle: sessionTitle,
+      accessMode: requestedAccessMode,
       isApplyingRemoteChange: false,
       lastMarkdown: shouldDeferParticipantTab ? '' : markdownEditor.value,
       observer: null,
@@ -13223,6 +13723,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       const updatedTitle = sessionMap.get('title');
       if (updatedTitle) {
         applyLiveSessionTitle(updatedTitle);
+      }
+      const updatedAccessMode = normalizeLiveAccessMode(sessionMap.get('accessMode'));
+      if (liveCollaboration.accessMode !== updatedAccessMode) {
+        liveCollaboration.accessMode = updatedAccessMode;
+        updateLiveShareControls();
+        updateLiveEditorAccess();
+        if (updatedAccessMode === LIVE_SHARE_ACCESS_VIEW && !liveCollaboration.isHost) {
+          announceToScreenReader('Live Share is view only.');
+        }
       }
       if (sessionMap.get('endedAt') && !liveCollaboration.isHost) {
         setLiveShareStatus('Live room ended by the host', 'idle');
@@ -13265,7 +13774,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         return Boolean(
           liveCollaboration &&
           liveCollaboration.ydoc === ydoc &&
+          (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT) &&
           (liveCollaboration.isHost || liveCollaboration.hasReceivedRemoteState || !liveCollaboration.pendingJoinTab)
+        );
+      },
+      canSendUpdate: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.ydoc === ydoc &&
+          (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT)
         );
       },
       onStatus: setLiveShareStatus,
@@ -13289,6 +13806,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function openLiveShareModal() {
     if (!liveShareModal) return;
+    if (blockTemporarySnapshotLiveShare()) return;
     if (liveShareDisplayName && !liveShareDisplayName.value) {
       liveShareDisplayName.value = getOrCreateGeneratedLiveName();
     }
@@ -13383,7 +13901,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (liveShareStartBtn) {
     liveShareStartBtn.addEventListener('click', function() {
       setLiveShareStatus('Starting live room...', 'connecting');
-      startLiveSession({ isHost: true }).catch(function(error) {
+      startLiveSession({ isHost: true, accessMode: getSelectedLiveAccessMode() }).catch(function(error) {
         console.error('Failed to start live session:', error);
         setLiveShareStatus('Unable to start live room', 'error');
         alert('Failed to start Live Share. Please check your connection and try again.');
@@ -13409,6 +13927,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       updateLiveDisplayName(liveShareDisplayName.value);
     });
   }
+  liveShareAccessRadios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (!liveCollaboration) {
+        updateLiveAccessDisplay();
+      }
+    });
+  });
   if (liveShareModalCloseX) {
     liveShareModalCloseX.addEventListener('click', closeLiveShareModal);
   }
@@ -13484,8 +14009,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     const rest = hash.slice('#id='.length);
     const ampIdx = rest.indexOf('&');
     const id = decodeURIComponent(ampIdx === -1 ? rest : rest.slice(0, ampIdx));
-    const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
-    const isEdit = params.split('&').includes('edit=1');
 
     if (!SERVER_SHARE_ID_PATTERN.test(id)) return;
 
@@ -13504,10 +14027,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
 
-      markdownEditor.value = payload && typeof payload.content === 'string' ? payload.content : '';
-      renderMarkdown({ reason: 'document-load', showSkeleton: true });
-      saveCurrentTabState();
-      setViewMode(isEdit || (payload && payload.mode === 'edit') ? 'split' : 'preview');
+      const shareMode = payload && payload.mode === 'edit' ? 'edit' : 'view';
+      openShareSnapshotTab(
+        payload && typeof payload.content === 'string' ? payload.content : '',
+        payload && payload.title,
+        shareMode
+      );
     } catch (e) {
       console.error('Failed to load stored shared content:', e);
       alert('Network error while loading shared content.');
@@ -13539,16 +14064,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const ampIdx = rest.indexOf('&');
     const encoded = ampIdx === -1 ? rest : rest.slice(0, ampIdx);
     const params = ampIdx === -1 ? '' : rest.slice(ampIdx + 1);
-    const isEdit = params.split('&').includes('edit=1');
+    const shareParams = new URLSearchParams(params);
+    const isEdit = shareParams.get('edit') === '1';
+    const sharedTitle = shareParams.get('title') || 'Shared Snapshot';
 
     if (!encoded) return;
     try {
       const decoded = decodeMarkdownFromShare(encoded);
-      markdownEditor.value = decoded;
-      renderMarkdown({ reason: 'document-load', showSkeleton: true });
-      saveCurrentTabState();
-      // Apply the correct view mode: edit=1 → split, default → preview only
-      setViewMode(isEdit ? 'split' : 'preview');
+      const shareMode = isEdit ? 'edit' : 'view';
+      openShareSnapshotTab(decoded, sharedTitle, shareMode);
     } catch (e) {
       console.error("Failed to load shared content:", e);
       alert("The shared URL could not be decoded. It may be corrupted or incomplete.");
@@ -13614,6 +14138,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   document.addEventListener("keydown", function (e) {
     if (document.activeElement === markdownEditor) {
       const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (!canMutateEditor() && isCmdOrCtrl && ['z', 'y'].indexOf(e.key.toLowerCase()) !== -1) {
+        e.preventDefault();
+        announceToScreenReader(getEditorReadOnlyMessage());
+        return;
+      }
       if (isCmdOrCtrl && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         executeUndo();
@@ -15629,7 +16158,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modalAboutTitle = document.getElementById('about-modal-title');
     if (modalAboutTitle) modalAboutTitle.textContent = dict.aboutTitle;
     const modalShareTitle = document.getElementById('share-modal-title');
-    if (modalShareTitle) modalShareTitle.textContent = dict.shareTitle;
+    if (modalShareTitle) modalShareTitle.textContent = dict.shareSnapshot || 'Share Snapshot';
     const modalRenameTitle = document.getElementById('rename-modal-title');
     if (modalRenameTitle) modalRenameTitle.textContent = dict.renameTitle;
     const modalLinkTitle = document.getElementById('link-modal-title');

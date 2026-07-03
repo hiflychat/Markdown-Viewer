@@ -180,11 +180,11 @@
                         <i class="bi bi-clipboard"></i> <span class="btn-text">Copy</span>
                     </button>
                     
-                    <button id="share-button" class="tool-button" title="Share a snapshot URL">
+                    <button id="share-button" class="tool-button" title="Share Snapshot">
                         <i class="bi bi-share"></i> <span class="btn-text">Share Snapshot</span>
                     </button>
 
-                    <button id="live-share-button" class="tool-button" title="Start temporary live collaboration">
+                    <button id="live-share-button" class="tool-button" title="Live Share">
                         <i class="bi bi-broadcast"></i> <span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
@@ -307,11 +307,11 @@
                                 <i class="bi bi-clipboard me-2"></i> Copy
                             </button>
                             
-                            <button id="mobile-share-button" class="mobile-menu-item" title="Share a snapshot URL">
+                            <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
                                 <i class="bi bi-share me-2"></i> Share Snapshot
                             </button>
 
-                            <button id="mobile-live-share-button" class="mobile-menu-item" title="Start temporary live collaboration">
+                            <button id="mobile-live-share-button" class="mobile-menu-item" title="Live Share">
                                 <i class="bi bi-broadcast me-2"></i> Live Share
                             </button>
                             
@@ -709,13 +709,14 @@
         <div id="share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--wide modal-box">
             <div class="modal-header">
-              <p id="share-modal-title" class="reset-modal-message">Share Document</p>
+              <p id="share-modal-title" class="reset-modal-message">Share Snapshot</p>
               <button type="button" class="modal-close-btn" id="share-modal-close-icon" aria-label="Close share dialog">
                 <i class="bi bi-x-lg"></i>
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Choose how recipients can open this snapshot.</p>
+              <p class="share-modal-description">Small documents stay encoded in the URL. Large documents use temporary Cloudflare KV for 90 days. Shared tabs are not saved locally on the recipient's device.</p>
+              <div class="live-share-section-title">Access</div>
               <div class="share-mode-cards">
                 <label class="share-mode-card" id="share-card-view" for="share-mode-view">
                   <input type="radio" id="share-mode-view" name="share-mode" value="view" checked />
@@ -730,22 +731,46 @@
                   <input type="radio" id="share-mode-edit" name="share-mode" value="edit" />
                   <span class="share-card-icon"><i class="bi bi-pencil-square"></i></span>
                   <span class="share-card-body">
-                    <span class="share-card-title">Edit</span>
+                    <span class="share-card-title">Can edit</span>
                     <span class="share-card-desc">Opens in split editor + preview mode.</span>
                   </span>
                   <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
                 </label>
               </div>
-              <div class="share-url-row">
-                <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Generating link…" aria-label="Share URL" />
-                <button class="reset-modal-btn share-copy-btn" id="share-copy-btn" title="Copy link">
-                  <i class="bi bi-clipboard"></i>
-                </button>
+              <div class="live-share-invite share-snapshot-invite" id="share-invite-section" hidden>
+                <div class="live-share-invite-header">
+                  <span class="live-share-section-title">Copy link</span>
+                  <span class="live-share-invite-state" id="share-invite-state">Ready to copy</span>
+                </div>
+                <div class="share-url-row live-share-link-row">
+                  <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Share link appears here" aria-label="Share URL" />
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-copy-btn" title="Copy link">
+                    <i class="bi bi-clipboard"></i>
+                    <span>Copy</span>
+                  </button>
+                </div>
               </div>
-              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Small snapshots stay encoded in the URL. Larger snapshots use a short Cloudflare KV link that expires after 90 days.</p>
             </div>
             <div class="reset-modal-actions">
-              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Close</button>
+              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Cancel</button>
+              <button class="reset-modal-btn share-generate-btn" id="share-generate-btn" title="Create share link">Share</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="share-error-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-error-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <p id="share-error-title" class="reset-modal-message">Share link failed</p>
+              <button type="button" class="modal-close-btn" id="share-error-close-icon" aria-label="Close share error dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="share-error-message" class="share-modal-description">The share link could not be generated.</p>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="share-error-close">Close</button>
             </div>
           </div>
         </div>
@@ -766,10 +791,36 @@
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Start a temporary Cloudflare live room for the active Markdown tab.</p>
+              <p class="share-modal-description">Temporary in-memory room. No document data is stored.</p>
               <div class="reset-modal-field">
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
+              </div>
+              <div class="live-share-access-control" id="live-share-access-control">
+                <div class="live-share-section-title">Access</div>
+                <div class="live-share-access-options" role="radiogroup" aria-label="Live Share access mode">
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="edit" checked />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">Can edit</span>
+                      <span class="live-share-access-option-desc">Collaborators can type and sync changes.</span>
+                    </span>
+                  </label>
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="view" />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">View only</span>
+                      <span class="live-share-access-option-desc">Collaborators can read updates without editing.</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="live-share-access-status" id="live-share-access-status" hidden>
+                <span class="live-share-access-icon" aria-hidden="true">
+                  <i class="bi bi-key"></i>
+                </span>
+                <span class="live-share-access-title">Access: <strong id="live-share-access-label">Can edit</strong></span>
+                <span id="live-share-access-note">Collaborators can edit this document.</span>
               </div>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>
@@ -791,9 +842,7 @@
                     <span>Copy</span>
                   </button>
                 </div>
-                <p class="live-share-invite-help" id="live-share-invite-help">Click Start session to create a temporary room and generate an invite link.</p>
               </div>
-              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> Live rooms are relayed in memory. Everyone with the live link can edit while the room is active.</p>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled>End live session</button>
