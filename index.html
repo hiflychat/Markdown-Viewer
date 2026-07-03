@@ -754,7 +754,13 @@
         <div id="live-share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--wide modal-box">
             <div class="modal-header">
-              <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
+              <div class="live-share-title-row">
+                <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
+                <span class="live-share-active-badge" id="live-share-active-badge" hidden>
+                  <span class="live-share-active-dot" aria-hidden="true"></span>
+                  <span>Session Active</span>
+                </span>
+              </div>
               <button type="button" class="modal-close-btn" id="live-share-modal-close-icon" aria-label="Close live share dialog">
                 <i class="bi bi-x-lg"></i>
               </button>
@@ -764,17 +770,6 @@
               <div class="reset-modal-field">
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
-              </div>
-              <div class="live-share-active-panel" id="live-share-active-panel" hidden>
-                <div class="live-share-active-badge">
-                  <span class="live-share-active-dot" aria-hidden="true"></span>
-                  <span>Session Active</span>
-                </div>
-                <div class="live-share-active-steps" aria-label="Live Share active session guidance">
-                  <span><i class="bi bi-clipboard-check"></i> Copy the invite link</span>
-                  <span><i class="bi bi-send"></i> Share it with collaborators</span>
-                  <span><i class="bi bi-people"></i> Participants will appear here when they join</span>
-                </div>
               </div>
               <div class="live-share-status" id="live-share-status" aria-live="polite">
                 <span class="live-share-status-dot" aria-hidden="true"></span>

@@ -11912,7 +11912,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
-  const liveShareActivePanel  = document.getElementById('live-share-active-panel');
+  const liveShareActiveBadge  = document.getElementById('live-share-active-badge');
   const liveShareInviteSection = document.getElementById('live-share-invite-section');
   const liveShareInviteState  = document.getElementById('live-share-invite-state');
   const liveShareInviteHelp   = document.getElementById('live-share-invite-help');
@@ -12527,9 +12527,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const hasCollaborators = isActive && participantCount > 1;
     const state = !isActive ? 'idle' : (hasCollaborators ? 'joined' : 'active');
 
-    if (liveShareActivePanel) {
-      liveShareActivePanel.hidden = !isActive;
-      liveShareActivePanel.dataset.state = state;
+    if (liveShareActiveBadge) {
+      liveShareActiveBadge.hidden = !isActive;
+      liveShareActiveBadge.dataset.state = state;
     }
     if (liveShareInviteSection) {
       liveShareInviteSection.dataset.state = state;
