@@ -1104,7 +1104,9 @@ a:focus {
   top: 0;
   right: -300px;
   width: 280px;
-  height: 100vh;
+  height: auto;
+  max-height: 100vh;
+  max-height: 100dvh;
   background-color: var(--bg-color);
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
   transition: right 0.3s ease;
@@ -1178,7 +1180,7 @@ a:focus {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex-grow: 1;
+  flex-grow: 0;
 }
 
 /* each menu item */
