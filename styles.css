@@ -3566,6 +3566,28 @@ a:focus {
   background: #fffbf4;
 }
 
+[data-theme="dark"] .live-share-access-status,
+[data-theme="dark"] .live-share-access-status[data-mode="edit"],
+[data-theme="dark"] .live-share-access-status[data-mode="view"] {
+  border-color: rgba(187, 128, 9, 0.45);
+  background: rgba(187, 128, 9, 0.10);
+  color: #c9d1d9;
+}
+
+[data-theme="dark"] .live-share-access-icon {
+  background: rgba(187, 128, 9, 0.18);
+  color: #d29922;
+}
+
+[data-theme="dark"] .live-share-access-title,
+[data-theme="dark"] .live-share-access-status strong {
+  color: #e6edf3;
+}
+
+[data-theme="dark"] .live-share-access-status #live-share-access-note {
+  color: #8b949e;
+}
+
 .live-share-readonly-editor {
   cursor: default;
   background:
