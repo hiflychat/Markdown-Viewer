@@ -11912,7 +11912,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
   const liveShareParticipants = document.getElementById('live-share-participants');
-  const liveShareFlow         = document.getElementById('live-share-flow');
   const liveShareInviteSection = document.getElementById('live-share-invite-section');
   const liveShareInviteState  = document.getElementById('live-share-invite-state');
   const liveShareInviteHelp   = document.getElementById('live-share-invite-help');
@@ -12526,24 +12525,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateLiveShareGuidance(isActive, participantCount) {
     const hasCollaborators = isActive && participantCount > 1;
     const state = !isActive ? 'idle' : (hasCollaborators ? 'joined' : 'active');
-
-    if (liveShareFlow) {
-      liveShareFlow.dataset.state = state;
-      liveShareFlow.querySelectorAll('.live-share-flow-step').forEach(function(step) {
-        const stepName = step.dataset.liveStep;
-        step.classList.remove('is-current', 'is-complete');
-        if (!isActive && stepName === 'start') {
-          step.classList.add('is-current');
-        } else if (isActive && !hasCollaborators && stepName === 'copy') {
-          step.classList.add('is-current');
-        } else if (hasCollaborators && stepName === 'join') {
-          step.classList.add('is-current');
-        }
-        if ((isActive && stepName === 'start') || (hasCollaborators && stepName === 'copy')) {
-          step.classList.add('is-complete');
-        }
-      });
-    }
 
     if (liveShareInviteSection) {
       liveShareInviteSection.dataset.state = state;
