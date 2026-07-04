@@ -5,14 +5,14 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## v3.9.0
 
-- **Description:** Delivered Live Share and Share Snapshot reliability fixes, polished the first-time sharing flow, and restored the Windows desktop app startup path for bundled builds.
-  - **Shared Rendering:** Ensured Share Snapshot and Live Share participant views run the advanced Markdown post-rendering pipeline so LaTeX, Mermaid, diagrams, and enhanced renderers complete in shared documents.
-  - **Live Share Flow:** Hid inactive participant and invite-link sections until a session starts, matching the Share Snapshot flow and reducing empty first-run modal space.
-  - **Map Rendering:** Scoped TopoJSON detection to fenced code blocks so headings containing "TopoJSON" no longer break map rendering.
-  - **Sharing UX:** Added access-mode handling and snapshot link generation refinements, improved mobile menu/shared-state polish, and prevented invalid resharing of temporary shared tabs.
+- **Description:** Introduced clearer sharing flows for Live Share and Share Snapshot, with fixes for shared Markdown rendering and desktop startup.
+  - **Live Share:** Live Share creates a temporary in-memory room for real-time collaboration. The document is synced only while the room is active, and the room is not saved as a permanent document store. Participants join through the invite link and can either edit or view only, depending on the access mode selected by the host.
+  - **Share Snapshot:** Share Snapshot creates a shareable read-only or editable snapshot link. Small documents stay encoded directly inside the URL hash. Larger documents are saved behind a generated `#share=` ID and kept temporarily for 90 days, so the recipient can open the shared document without it being stored on their own device.
+  - **Shared Rendering:** Fixed shared Snapshot and Live Share participant views so LaTeX, Mermaid, TopoJSON, and other advanced Markdown renderers complete after the shared document loads.
+  - **Sharing UX:** The Live Share modal now shows only the display name, access mode, and start button before a room starts. Participant and invite-link sections appear only after the live room is active.
   - **Desktop Startup:** Fixed the Neutralino desktop build preparation so bundled resources load the generated application script instead of stalling on startup skeletons.
 - **Date:** 2026-07-05
-- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/commit/4ead9eecc56a0fba68ce7328da9548e2b3ad7652
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.0
 
 ---
 
