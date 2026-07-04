@@ -1,6 +1,14 @@
 document.addEventListener("DOMContentLoaded", async function () {
+  function isNeutralinoRuntimeAvailable() {
+    return Boolean(
+      typeof Neutralino !== 'undefined' &&
+      typeof NL_PORT !== 'undefined' &&
+      (typeof NL_TOKEN !== 'undefined' || sessionStorage.getItem('NL_TOKEN'))
+    );
+  }
+
   async function syncStorageFromNeutralino() {
-    if (typeof Neutralino === 'undefined') return;
+    if (!isNeutralinoRuntimeAvailable()) return;
     const keys = [
       'markdownViewerGlobalState',
       'markdownViewerTabs',
@@ -23,14 +31,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function saveStorageItem(key, value) {
     localStorage.setItem(key, value);
-    if (typeof Neutralino !== 'undefined') {
+    if (isNeutralinoRuntimeAvailable()) {
       Neutralino.storage.setData(key, value).catch(err => {
         console.warn('Failed to save to Neutralino storage:', err);
       });
     }
   }
 
-  if (typeof Neutralino !== 'undefined') {
+  if (isNeutralinoRuntimeAvailable()) {
     try {
       await syncStorageFromNeutralino();
     } catch (e) {

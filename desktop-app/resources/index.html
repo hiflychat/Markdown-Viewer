@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME='; worker-src 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME='; worker-src 'self'; connect-src 'self' ws: wss: https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; upgrade-insecure-requests">
     <!-- PERF-015: Preload critical-path resources for faster discovery -->
     <link rel="preload" href="/styles.css" as="style">
-    <link rel="preload" href="script.js" as="script">
+    <link rel="preload" href="/js/script.js" as="script">
 
     <!-- PWA Web Manifest -->
     
@@ -101,9 +101,14 @@
                         <i class="bi bi-clipboard"></i> <span class="btn-text">Copy</span>
                     </button>
                     
-                    <button id="share-button" class="tool-button" title="Share via URL">
-                        <i class="bi bi-share"></i> <span class="btn-text">Share</span>
+                    <button id="share-button" class="tool-button" title="Share Snapshot">
+                        <i class="bi bi-share"></i> <span class="btn-text">Share Snapshot</span>
                     </button>
+
+                    <button id="live-share-button" class="tool-button" title="Live Share">
+                        <i class="bi bi-broadcast"></i> <span class="btn-text">Live Share</span>
+                    </button>
+                    <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
                     
                     <div class="dropdown me-1">
                         <button class="tool-button dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
@@ -223,8 +228,13 @@
                                 <i class="bi bi-clipboard me-2"></i> Copy
                             </button>
                             
-                            <button id="mobile-share-button" class="mobile-menu-item" title="Share via URL">
-                                <i class="bi bi-share me-2"></i> Share
+                            <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
+                                <i class="bi bi-share me-2"></i> Share Snapshot
+                            </button>
+
+                            <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
+                                <span class="mobile-menu-item-label"><i class="bi bi-broadcast me-2"></i><span id="mobile-live-share-label">Live Share</span></span>
+                                <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
                             </button>
                             
                             <div class="mobile-menu-item dropdown w-100 p-0 border-0">
@@ -354,6 +364,46 @@
             </div>
           </div>
         </div>
+
+        <!-- PDF Export Options Modal -->
+        <div id="pdf-export-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pdf-export-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <p id="pdf-export-title" class="reset-modal-message">Export PDF Options</p>
+              <button type="button" class="modal-close-btn" id="pdf-export-close" aria-label="Close PDF export dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p class="share-modal-description">Choose how the PDF should be generated.</p>
+              <div class="share-mode-cards">
+                <label class="share-mode-card is-selected" id="pdf-export-card-vector" for="pdf-export-mode-vector">
+                  <input type="radio" id="pdf-export-mode-vector" name="pdf-export-mode" value="vector" checked />
+                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf"></i></span>
+                  <span class="share-card-body">
+                    <span class="share-card-title">Browser Print (Recommended)</span>
+                    <span class="share-card-desc">Faster, suggested for large documents. Note: images, diagrams, etc. might break.</span>
+                  </span>
+                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                </label>
+                <label class="share-mode-card" id="pdf-export-card-raster" for="pdf-export-mode-raster">
+                  <input type="radio" id="pdf-export-mode-raster" name="pdf-export-mode" value="raster" />
+                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></span>
+                  <span class="share-card-body">
+                    <span class="share-card-title">Legacy Raster PDF</span>
+                    <span class="share-card-desc">Intelligently plans page breaks to keep images, tables, equations, and diagrams together. Blocks move to the next page when there is not enough space. Recommended for short documents.</span>
+                  </span>
+                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                </label>
+              </div>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="pdf-export-cancel">Cancel</button>
+              <button class="reset-modal-btn reset-modal-confirm" id="pdf-export-confirm">Export</button>
+            </div>
+          </div>
+        </div>
+
 
         <!-- Find & Replace Floating Panel -->
         <div id="find-replace-modal" class="find-replace-panel" role="region" aria-label="Find and Replace" style="display:none;">
@@ -581,13 +631,14 @@
         <div id="share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--wide modal-box">
             <div class="modal-header">
-              <p id="share-modal-title" class="reset-modal-message">Share Document</p>
+              <p id="share-modal-title" class="reset-modal-message">Share Snapshot</p>
               <button type="button" class="modal-close-btn" id="share-modal-close-icon" aria-label="Close share dialog">
                 <i class="bi bi-x-lg"></i>
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Choose how recipients can interact with this document.</p>
+              <p class="share-modal-description">Small documents stay encoded in the URL. Large documents use temporary Cloudflare KV for 90 days. Shared tabs are not saved locally on the recipient's device.</p>
+              <div class="live-share-section-title">Access</div>
               <div class="share-mode-cards">
                 <label class="share-mode-card" id="share-card-view" for="share-mode-view">
                   <input type="radio" id="share-mode-view" name="share-mode" value="view" checked />
@@ -602,22 +653,139 @@
                   <input type="radio" id="share-mode-edit" name="share-mode" value="edit" />
                   <span class="share-card-icon"><i class="bi bi-pencil-square"></i></span>
                   <span class="share-card-body">
-                    <span class="share-card-title">Edit</span>
+                    <span class="share-card-title">Can edit</span>
                     <span class="share-card-desc">Opens in split editor + preview mode.</span>
                   </span>
                   <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
                 </label>
               </div>
-              <div class="share-url-row">
-                <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Generating link…" aria-label="Share URL" />
-                <button class="reset-modal-btn share-copy-btn" id="share-copy-btn" title="Copy link">
-                  <i class="bi bi-clipboard"></i>
-                </button>
+              <div class="live-share-invite share-snapshot-invite" id="share-invite-section" hidden>
+                <div class="live-share-invite-header">
+                  <span class="live-share-section-title">Copy link</span>
+                  <span class="live-share-invite-state" id="share-invite-state">Ready to copy</span>
+                </div>
+                <div class="share-url-row live-share-link-row">
+                  <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Share link appears here" aria-label="Share URL" />
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-copy-btn" title="Copy link">
+                    <i class="bi bi-clipboard"></i>
+                    <span>Copy</span>
+                  </button>
+                </div>
               </div>
-              <p class="share-modal-notice"><i class="bi bi-info-circle"></i> The entire document is encoded in the URL. No data is sent to any server.</p>
             </div>
             <div class="reset-modal-actions">
-              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Close</button>
+              <button class="reset-modal-btn reset-modal-cancel" id="share-modal-close">Cancel</button>
+              <button class="reset-modal-btn share-generate-btn" id="share-generate-btn" title="Create share link">Share</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="share-error-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-error-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <p id="share-error-title" class="reset-modal-message">Share link failed</p>
+              <button type="button" class="modal-close-btn" id="share-error-close-icon" aria-label="Close share error dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="share-error-message" class="share-modal-description">The share link could not be generated.</p>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="share-error-close">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Share Modal -->
+        <div id="live-share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-modal-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <div class="live-share-title-row">
+                <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
+                <span class="live-share-active-badge" id="live-share-active-badge" hidden>
+                  <span class="live-share-active-dot" aria-hidden="true"></span>
+                  <span>Session Active</span>
+                </span>
+              </div>
+              <button type="button" class="modal-close-btn" id="live-share-modal-close-icon" aria-label="Close live share dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p class="share-modal-description">Temporary in-memory room. No document data is stored.</p>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="live-share-display-name">Display name</label>
+                <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
+              </div>
+              <div class="live-share-access-control" id="live-share-access-control">
+                <div class="live-share-section-title">Access</div>
+                <div class="live-share-access-options" role="radiogroup" aria-label="Live Share access mode">
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="edit" checked />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">Can edit</span>
+                      <span class="live-share-access-option-desc">Collaborators can type and sync changes.</span>
+                    </span>
+                  </label>
+                  <label class="live-share-access-option">
+                    <input type="radio" name="live-share-access-mode" value="view" />
+                    <span class="live-share-access-option-copy">
+                      <span class="live-share-access-option-title">View only</span>
+                      <span class="live-share-access-option-desc">Collaborators can read updates without editing.</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="live-share-access-status" id="live-share-access-status" hidden>
+                <span class="live-share-access-icon" aria-hidden="true">
+                  <i class="bi bi-key"></i>
+                </span>
+                <span class="live-share-access-title">Access: <strong id="live-share-access-label">Can edit</strong></span>
+                <span id="live-share-access-note">Collaborators can edit this document.</span>
+              </div>
+              <div class="live-share-status" id="live-share-status" aria-live="polite" hidden>
+                <span class="live-share-status-dot" aria-hidden="true"></span>
+                <span id="live-share-status-text">No live room active</span>
+              </div>
+              <div class="live-share-participant-panel" id="live-share-participant-panel" hidden>
+                <div class="live-share-section-title">Participants</div>
+                <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
+              </div>
+              <div class="live-share-invite" id="live-share-invite-section" hidden>
+                <div class="live-share-invite-header">
+                  <span class="live-share-section-title">Invite link</span>
+                  <span class="live-share-invite-state" id="live-share-invite-state">Created after session starts</span>
+                </div>
+                <div class="share-url-row live-share-link-row">
+                  <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
+                    <i class="bi bi-clipboard"></i>
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled hidden>End live session</button>
+              <button class="reset-modal-btn" id="live-share-start-btn">Start session</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="live-share-expired-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-expired-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide modal-box">
+            <div class="modal-header">
+              <p id="live-share-expired-title" class="reset-modal-message">Live Share room expired</p>
+              <button type="button" class="modal-close-btn" id="live-share-expired-close-icon" aria-label="Close expired live share dialog">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="live-share-expired-message" class="share-modal-description">This Live Share room has ended or is no longer active.</p>
+            </div>
+            <div class="reset-modal-actions">
+              <button class="reset-modal-btn reset-modal-cancel" id="live-share-expired-close">Close</button>
             </div>
           </div>
         </div>
@@ -857,6 +1025,7 @@
             <div class="editor-pane is-loading">
                 <div id="line-numbers" class="line-numbers" aria-hidden="true" inert></div>
                 <div id="editor-highlight-layer" class="editor-highlight-layer" aria-hidden="true" tabindex="-1" inert></div>
+                <div id="live-cursors-layer" class="live-cursors-layer" aria-hidden="true" inert></div>
                 <div class="editor-skeleton" id="editor-skeleton" aria-hidden="true">
                     <div class="skeleton-placeholder skeleton-title"></div>
                     <div class="skeleton-placeholder skeleton-line skeleton-w90"></div>
@@ -1143,7 +1312,9 @@ This is a fully client-side application. Your content never leaves your browser 
 </textarea>
 
     <script src="/libs/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous" defer></script>
-    <script src="script.js" defer></script>
+    <script src="/js/neutralino.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/js/script.js"></script>
     <!-- Screen reader dynamic accessibility announcer -->
     <div id="app-accessibility-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 </body>
