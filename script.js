@@ -3386,6 +3386,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     node.removeAttribute('data-processed');
   }
 
+  function getTopoJsonLibrary() {
+    return window.topojson && typeof window.topojson.feature === 'function'
+      ? window.topojson
+      : null;
+  }
+
   function withMutedMermaidConsole(callback) {
     const originalError = console.error;
     const originalWarn = console.warn;
@@ -3507,12 +3513,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       let geojsonData;
       if (isTopo) {
+        const topojsonLibrary = getTopoJsonLibrary();
+        if (!topojsonLibrary) {
+          throw new Error('TopoJSON renderer is unavailable. Check your connection and retry.');
+        }
         const topology = JSON.parse(decodedCode);
         if (topology && topology.objects) {
           const features = [];
           for (const key in topology.objects) {
             if (Object.prototype.hasOwnProperty.call(topology.objects, key)) {
-              const feature = topojson.feature(topology, topology.objects[key]);
+              const feature = topojsonLibrary.feature(topology, topology.objects[key]);
               if (feature.type === 'FeatureCollection') {
                 features.push(...feature.features);
               } else {
@@ -3531,6 +3541,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       
       if (!geojsonData) return;
       
+      if (node._leafletMap) {
+        node._leafletMap.remove();
+        node._leafletMap = null;
+      }
       node.innerHTML = '';
       const map = L.map(node);
       node._leafletMap = map;
@@ -4175,8 +4189,12 @@ document.addEventListener("DOMContentLoaded", async function () {
           promises.push(loadStyle(CDN.leaflet_css));
           promises.push(loadScript(CDN.leaflet_js));
         }
-        if (topojsonNodes.length > 0 && typeof topojson === 'undefined') {
-          promises.push(loadScript(CDN.topojson));
+        if (topojsonNodes.length > 0 && !getTopoJsonLibrary()) {
+          promises.push(loadScript(CDN.topojson).then(function() {
+            if (!getTopoJsonLibrary()) {
+              throw new Error('TopoJSON renderer failed to initialize.');
+            }
+          }));
         }
         
         if (promises.length > 0) {
