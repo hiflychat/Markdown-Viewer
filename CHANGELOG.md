@@ -3,6 +3,19 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## v3.9.0
+
+- **Description:** Delivered Live Share and Share Snapshot reliability fixes, polished the first-time sharing flow, and restored the Windows desktop app startup path for bundled builds.
+  - **Shared Rendering:** Ensured Share Snapshot and Live Share participant views run the advanced Markdown post-rendering pipeline so LaTeX, Mermaid, diagrams, and enhanced renderers complete in shared documents.
+  - **Live Share Flow:** Hid inactive participant and invite-link sections until a session starts, matching the Share Snapshot flow and reducing empty first-run modal space.
+  - **Map Rendering:** Scoped TopoJSON detection to fenced code blocks so headings containing "TopoJSON" no longer break map rendering.
+  - **Sharing UX:** Added access-mode handling and snapshot link generation refinements, improved mobile menu/shared-state polish, and prevented invalid resharing of temporary shared tabs.
+  - **Desktop Startup:** Fixed the Neutralino desktop build preparation so bundled resources load the generated application script instead of stalling on startup skeletons.
+- **Date:** 2026-07-05
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/commit/4ead9eecc56a0fba68ce7328da9548e2b3ad7652
+
+---
+
 ## v3.8.1
 
 - **Description:** Included various bug fixes and improvements around diagram rendering, Markmap optimizations, ABC notation fixes, and security hardenings.

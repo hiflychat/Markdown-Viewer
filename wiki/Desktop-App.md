@@ -1,6 +1,6 @@
 # Desktop Application Guide
 
-This page describes the architecture, development setup, build options, and platform installation procedures for the desktop version of **Markdown Viewer** (v3.8.1), powered by the **Neutralinojs** runtime framework.
+This page describes the architecture, development setup, build options, and platform installation procedures for the desktop version of **Markdown Viewer** (v3.9.0), powered by the **Neutralinojs** runtime framework.
 
 ---
 
