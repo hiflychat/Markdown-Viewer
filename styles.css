@@ -1223,6 +1223,38 @@ a:focus {
   background-color: var(--button-active);
 }
 
+.mobile-menu-item:disabled,
+.mobile-menu-item.disabled,
+.mobile-menu-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mobile-menu-item:disabled:hover,
+.mobile-menu-item.disabled:hover,
+.mobile-menu-item[aria-disabled="true"]:hover,
+.mobile-menu-item:disabled:active,
+.mobile-menu-item.disabled:active,
+.mobile-menu-item[aria-disabled="true"]:active {
+  background-color: var(--button-bg);
+}
+
+.mobile-live-share-item {
+  justify-content: space-between;
+}
+
+.mobile-menu-item-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.mobile-live-share-participants {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 0;
+}
+
 /* close button override */
 #close-mobile-menu.tool-button {
   padding: 0.25rem 0.5rem;
@@ -3946,6 +3978,10 @@ html[lang="ko"] .markdown-body h1, html[lang="ko"] .markdown-body h2, html[lang=
   opacity: 1;
   transform: translateY(0) scale(1);
   visibility: visible;
+}
+
+.mobile-menu-items .dropdown-menu:not(.show) {
+  display: none;
 }
 
 /* ========================================

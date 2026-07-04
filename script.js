@@ -314,10 +314,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     return Boolean(liveCollaboration && activeTabId === liveCollaboration.tabId);
   }
 
+  function isLiveShareHostDocumentActive() {
+    return Boolean(isLiveShareDocumentActive() && liveCollaboration.isHost);
+  }
+
   function blockLiveDocumentShareSnapshot() {
-    if (!isLiveShareDocumentActive()) return false;
-    alert('Live Share documents cannot be shared as snapshots.');
-    announceToScreenReader('Live Share documents cannot be shared as snapshots.');
+    if (!isLiveShareDocumentActive() || isLiveShareHostDocumentActive()) return false;
+    alert('Only the Live Share host can share snapshots from a live document.');
+    announceToScreenReader('Only the Live Share host can share snapshots from a live document.');
     return true;
   }
 
@@ -372,6 +376,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileShareButton   = document.getElementById("mobile-share-button");
   const liveShareButton     = document.getElementById("live-share-button");
   const mobileLiveShareButton = document.getElementById("mobile-live-share-button");
+  const mobileLiveShareParticipants = document.getElementById("mobile-live-share-participants");
   const githubImportModal = document.getElementById("github-import-modal");
   const githubImportTitle = document.getElementById("github-import-title");
   const githubImportUrlInput = document.getElementById("github-import-url");
@@ -12338,6 +12343,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const snapshotViewOnly = isShareSnapshotViewOnlyActive();
     const snapshotActive = isShareSnapshotActive();
     const liveShareDocumentActive = isLiveShareDocumentActive();
+    const liveShareGuestDocumentActive = liveShareDocumentActive && !isLiveShareHostDocumentActive();
     const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
     if (markdownEditor) {
       markdownEditor.readOnly = viewOnly;
@@ -12402,7 +12408,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     [shareButton, mobileShareButton].forEach(function(button) {
       if (!button) return;
-      if (snapshotActive || liveShareDocumentActive) {
+      if (snapshotActive || liveShareGuestDocumentActive) {
         if (button.dataset.shareSnapshotReshareDisabled !== 'true') {
           button.dataset.shareSnapshotOriginalTitle = button.getAttribute('title') || '';
         }
@@ -13043,6 +13049,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         showLiveParticipantsPopover(event.currentTarget, allParticipants);
       }
     });
+    renderLiveParticipantAvatars(mobileLiveShareParticipants, participants, {
+      showNames: false,
+      limit: 3
+    });
     updateLiveShareGuidance(true, participantCount);
     setLiveShareStatus(status, state);
   }
@@ -13074,6 +13084,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (liveShareToolbarParticipants) {
         liveShareToolbarParticipants.textContent = '';
         liveShareToolbarParticipants.hidden = true;
+      }
+      if (mobileLiveShareParticipants) {
+        mobileLiveShareParticipants.textContent = '';
+        mobileLiveShareParticipants.hidden = true;
       }
       if (liveShareUrlInput) liveShareUrlInput.value = '';
       updateLiveShareGuidance(false, 0);
@@ -16129,7 +16143,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const mShareBtn = document.getElementById('mobile-share-button');
     if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
     const mLiveShareBtn = document.getElementById('mobile-live-share-button');
-    if (mLiveShareBtn) mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
+    if (mLiveShareBtn) {
+      const mobileLiveShareLabel = document.getElementById('mobile-live-share-label');
+      if (mobileLiveShareLabel) {
+        mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
+      } else {
+        mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
+      }
+    }
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
