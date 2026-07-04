@@ -3430,6 +3430,10 @@ a:focus {
   font-size: 12px;
 }
 
+.live-share-status[hidden] {
+  display: none;
+}
+
 .live-share-status-dot {
   width: 8px;
   height: 8px;
@@ -3649,6 +3653,10 @@ a:focus {
   gap: 7px;
 }
 
+.live-share-participant-panel[hidden] {
+  display: none;
+}
+
 .live-share-participants {
   display: flex;
   flex-wrap: nowrap;
@@ -3777,6 +3785,10 @@ button.live-share-participant-overflow {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--editor-bg);
+}
+
+.live-share-invite[hidden] {
+  display: none;
 }
 
 .live-share-invite[data-state="active"],

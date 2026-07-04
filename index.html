@@ -823,15 +823,15 @@
                 <span class="live-share-access-title">Access: <strong id="live-share-access-label">Can edit</strong></span>
                 <span id="live-share-access-note">Collaborators can edit this document.</span>
               </div>
-              <div class="live-share-status" id="live-share-status" aria-live="polite">
+              <div class="live-share-status" id="live-share-status" aria-live="polite" hidden>
                 <span class="live-share-status-dot" aria-hidden="true"></span>
                 <span id="live-share-status-text">No live room active</span>
               </div>
-              <div class="live-share-participant-panel">
+              <div class="live-share-participant-panel" id="live-share-participant-panel" hidden>
                 <div class="live-share-section-title">Participants</div>
                 <div class="live-share-participants" id="live-share-participants" aria-label="Live collaborators"></div>
               </div>
-              <div class="live-share-invite" id="live-share-invite-section">
+              <div class="live-share-invite" id="live-share-invite-section" hidden>
                 <div class="live-share-invite-header">
                   <span class="live-share-section-title">Invite link</span>
                   <span class="live-share-invite-state" id="live-share-invite-state">Created after session starts</span>
@@ -846,7 +846,7 @@
               </div>
             </div>
             <div class="reset-modal-actions">
-              <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled>End live session</button>
+              <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled hidden>End live session</button>
               <button class="reset-modal-btn" id="live-share-start-btn">Start session</button>
             </div>
           </div>

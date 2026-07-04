@@ -12255,6 +12255,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const liveShareDisplayName  = document.getElementById('live-share-display-name');
   const liveShareStatus       = document.getElementById('live-share-status');
   const liveShareStatusText   = document.getElementById('live-share-status-text');
+  const liveShareParticipantPanel = document.getElementById('live-share-participant-panel');
   const liveShareParticipants = document.getElementById('live-share-participants');
   const liveShareActiveBadge  = document.getElementById('live-share-active-badge');
   const liveShareAccessControl = document.getElementById('live-share-access-control');
@@ -13096,6 +13097,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       liveShareActiveBadge.dataset.state = state;
     }
     if (liveShareInviteSection) {
+      liveShareInviteSection.hidden = !isActive;
       liveShareInviteSection.dataset.state = state;
     }
     if (liveShareInviteState) {
@@ -13160,6 +13162,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (liveShareCopyBtn) {
       liveShareCopyBtn.disabled = !isActive || !liveShareUrlInput || !liveShareUrlInput.value;
+    }
+    if (liveShareStatus) {
+      liveShareStatus.hidden = !isActive;
+    }
+    if (liveShareParticipantPanel) {
+      liveShareParticipantPanel.hidden = !isActive;
+    }
+    if (liveShareInviteSection) {
+      liveShareInviteSection.hidden = !isActive;
     }
     if (!isActive) {
       setLiveShareStatus('No live room active', 'idle');
