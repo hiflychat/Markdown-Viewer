@@ -5,54 +5,14 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## v3.9.0
 
-- **Description:** Captures the release work from `15a5b1852c6b0c90cbaa5967749082cce59386f1` through `368b1d7fcc98cbfb951238aab0f9b9ee76f82211`, focused on Live Share, Share Snapshot, mobile sharing polish, and shared advanced Markdown rendering.
-  - **Live Share First-Time Flow:**
-    - `15a5b18` `fix(live-share): remove first-time step strip`
-    - `69f936e` `feat(live-share): clarify active session state`
-    - `4497725` `style(live-share): move active badge to header`
-    - `102fb81` `Merge pull request #205 from ThisIs-Developer/codex/live-share-first-time-flow`
-    - `368b1d7` `fix(live-share): hide inactive session sections`
-  - **Live Share Access Modes & Status UI:**
-    - `4f6408f` `fix(live-share): prevent participant chips stretching`
-    - `e5ec9dc` `feat(live-share): add access modes`
-    - `4c70eb4` `style(live-share): shade edit access status`
-    - `b40f1ad` `style(live-share): match edit access badge shade`
-    - `42af941` `style(live-share): match active session status designs`
-    - `b6c5fbc` `copy(live-share): simplify temporary room note`
-    - `3c22717` `style(live-share): tighten access status`
-    - `7ae0515` `style(live-share): match modal scrollbar styling`
-    - `da26995` `style(live-share): tune access card for dark mode`
-    - `17496cf` `fix(live-share): improve access card on mobile`
-    - `05bfa6c` `Merge pull request #206 from ThisIs-Developer/codex/live-share-access-modes`
-  - **Share Snapshot Flow & Access Handling:**
-    - `67de00d` `style(share): align snapshot modal with live share`
-    - `ed4d218` `feat(share): add explicit snapshot link generation`
-    - `b92a4ec` `style(share): move snapshot action to footer`
-    - `f5a1638` `fix(share): show snapshot errors in modal`
-    - `925f355` `feat(share): enforce snapshot access mode`
-    - `ea45bb0` `feat(share): open snapshots in titled tabs`
-    - `999bb9d` `fix(share): keep copy action from changing URL`
-    - `feb9b75` `fix(share): keep snapshot documents temporary`
-    - `0847cb7` `docs(share): clarify snapshot link storage`
-    - `3b12104` `fix(share): prevent resharing snapshot tabs`
-    - `658cad3` `style(share): simplify snapshot description`
-    - `80908b4` `fix(share): prevent live share from snapshot tabs`
-    - `cea7875` `style(share): simplify toolbar hover labels`
-    - `ddfc7db` `fix(live-share): prevent snapshot sharing live documents`
-    - `5d0e3dd` `style(share): clarify snapshot document wording`
-    - `6f643fd` `style(share): clarify recipient storage copy`
-  - **Mobile Sharing Polish:**
-    - `d033873` `fix(mobile): remove menu footer gap`
-    - `9c3aebd` `fix(mobile): trim drawer bottom spacing`
-    - `55ef970` `fix(mobile): shrink menu panel to content`
-    - `fe7b393` `fix(mobile): polish menu shared states`
-    - `a2e7632` `Merge pull request #207 from ThisIs-Developer/codex/mobile-menu-live-share-polish`
-  - **Shared Advanced Markdown & Map Rendering Fixes:**
-    - `688ad3d` `fix(share): render advanced markdown in shared views`
-    - `9bbd658` `fix(topojson): avoid heading collision in map renderer`
-- **Included Range:** `15a5b1852c6b0c90cbaa5967749082cce59386f1` through `368b1d7fcc98cbfb951238aab0f9b9ee76f82211`
+- **Description:** Delivered Live Share and Share Snapshot reliability fixes, polished the first-time sharing flow, and restored the Windows desktop app startup path for bundled builds.
+  - **Shared Rendering:** Ensured Share Snapshot and Live Share participant views run the advanced Markdown post-rendering pipeline so LaTeX, Mermaid, diagrams, and enhanced renderers complete in shared documents.
+  - **Live Share Flow:** Hid inactive participant and invite-link sections until a session starts, matching the Share Snapshot flow and reducing empty first-run modal space.
+  - **Map Rendering:** Scoped TopoJSON detection to fenced code blocks so headings containing "TopoJSON" no longer break map rendering.
+  - **Sharing UX:** Added access-mode handling and snapshot link generation refinements, improved mobile menu/shared-state polish, and prevented invalid resharing of temporary shared tabs.
+  - **Desktop Startup:** Fixed the Neutralino desktop build preparation so bundled resources load the generated application script instead of stalling on startup skeletons.
 - **Date:** 2026-07-05
-- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.0
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/commit/4ead9eecc56a0fba68ce7328da9548e2b3ad7652
 
 ---
 
