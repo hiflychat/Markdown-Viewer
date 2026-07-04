@@ -169,6 +169,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   let markdownRenderTimeout = null;
   let pendingPreviewRenderCancel = null;
+  let advancedPostProcessRecoveryTimeout = null;
   let previewRenderGeneration = 0;
   let previewHasCommittedRender = false;
   let previewLastRenderedTabId = null;
@@ -2107,7 +2108,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (window.MathJax && typeof MathJax.typesetPromise === 'function') return;
     if (window.MathJax && MathJax.loader && MathJax.tex) return;
     window.MathJax = {
-      loader: { load: ['[tex]/boldsymbol'] },
       startup: {
         typeset: false
       },
@@ -2117,8 +2117,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
-        processEscapes: true,
-        packages: { '[+]': ['ams', 'boldsymbol'] }
+        processEscapes: true
       }
     };
   }
@@ -2138,8 +2137,21 @@ document.addEventListener("DOMContentLoaded", async function () {
             ? MathJax.startup.promise
             : Promise.resolve();
         })
+        .then(function() {
+          if (!window.MathJax || typeof MathJax.typesetPromise !== 'function') {
+            throw new Error('MathJax typesetPromise API is unavailable.');
+          }
+        })
         .catch(function(error) {
           mathJaxLoadPromise = null;
+          _loadedScripts.delete(CDN.mathjax);
+          if (window.MathJax && typeof MathJax.typesetPromise !== 'function') {
+            try {
+              delete window.MathJax;
+            } catch (_) {
+              window.MathJax = undefined;
+            }
+          }
           throw error;
         });
     }
@@ -2999,6 +3011,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       pendingPreviewRenderCancel();
       pendingPreviewRenderCancel = null;
     }
+    if (advancedPostProcessRecoveryTimeout) {
+      clearTimeout(advancedPostProcessRecoveryTimeout);
+      advancedPostProcessRecoveryTimeout = null;
+    }
   }
 
   function getPreviewRenderDelay(markdown) {
@@ -3223,8 +3239,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     return patchResult;
   }
 
-  function getPreviewPostProcessRoots(patchResult) {
-    if (!patchResult || patchResult.fullReplace) {
+  function getPreviewPostProcessRoots(patchResult, context) {
+    if ((context && context.forceAdvancedPostProcess) || !patchResult || patchResult.fullReplace) {
       return [markdownPreview];
     }
     if (!patchResult.updatedNodes || patchResult.updatedNodes.length === 0) {
@@ -3242,6 +3258,52 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
 
     return roots;
+  }
+
+  function shouldForceAdvancedPostProcess(reason) {
+    if (typeof reason === 'string' && /^(share|live)/.test(reason)) return true;
+    return isShareSnapshotActive() || isLiveShareDocumentActive();
+  }
+
+  function previewHasUnsettledAdvancedContent(rawVal) {
+    if (!markdownPreview) return false;
+    if (markdownPreview.querySelector('.mermaid-container.is-loading, .abc-container.is-loading, .geojson-container.is-loading, .topojson-container.is-loading, .stl-container.is-loading, .diagram-viewer.is-loading')) {
+      return true;
+    }
+    const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
+    return hasMath && markdownPreview.querySelector('mjx-container') === null && hasRawMathText(markdownPreview);
+  }
+
+  function scheduleAdvancedPostProcessRecovery(rawVal, context) {
+    if (!context || !context.forceAdvancedPostProcess || context.isAdvancedPostProcessRecovery) return;
+    if (advancedPostProcessRecoveryTimeout) {
+      clearTimeout(advancedPostProcessRecoveryTimeout);
+      advancedPostProcessRecoveryTimeout = null;
+    }
+
+    const delays = [300, 1200, 3000];
+    let attempt = 0;
+    const runRecovery = function() {
+      advancedPostProcessRecoveryTimeout = null;
+      if (
+        context.renderId !== previewRenderGeneration ||
+        markdownEditor.value !== rawVal ||
+        !previewHasUnsettledAdvancedContent(rawVal)
+      ) {
+        return;
+      }
+
+      postProcessPreview(rawVal, Object.assign({}, context, {
+        isAdvancedPostProcessRecovery: true
+      }), { fullReplace: true, updatedNodes: [markdownPreview] });
+
+      attempt += 1;
+      if (attempt < delays.length && previewHasUnsettledAdvancedContent(rawVal)) {
+        advancedPostProcessRecoveryTimeout = setTimeout(runRecovery, delays[attempt]);
+      }
+    };
+
+    advancedPostProcessRecoveryTimeout = setTimeout(runRecovery, delays[attempt]);
   }
 
   function queryPreviewRoots(roots, selector) {
@@ -3924,7 +3986,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function postProcessPreview(rawVal, context, patchResult) {
-    const roots = getPreviewPostProcessRoots(patchResult);
+    const roots = getPreviewPostProcessRoots(patchResult, context);
 
     // Clean up orphaned STL views that are no longer present in the document
     activeStlViews.forEach((view, id) => {
@@ -4225,19 +4287,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
     if (hasMath) {
       const mathTargets = getMathJaxTypesetTargets(roots);
-      if (mathTargets.length === 0) return;
-      ensureMathJaxReady().then(function() {
-        if (context.renderId !== previewRenderGeneration) return;
-        typesetMathJaxTargets(mathTargets, context);
-      }).catch(function(e) {
-        console.warn('Failed to load MathJax:', e);
-      });
+      if (mathTargets.length > 0) {
+        ensureMathJaxReady().then(function() {
+          if (context.renderId !== previewRenderGeneration) return;
+          typesetMathJaxTargets(mathTargets, context);
+        }).catch(function(e) {
+          console.warn('Failed to load MathJax:', e);
+        });
+      }
     }
 
     updateDocumentStats();
     updateFindHighlights();
     cleanupImageObjectUrls();
     scheduleLineNumberUpdate();
+    scheduleAdvancedPostProcessRecovery(rawVal, context);
   }
 
   function executeMainThreadRender(rawVal, context) {
@@ -4313,6 +4377,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (renderId !== previewRenderGeneration || markdownEditor.value !== rawVal) return;
       executeRender(rawVal, {
         force,
+        forceAdvancedPostProcess: options.forceAdvancedPostProcess === true || shouldForceAdvancedPostProcess(options.reason || 'direct'),
         renderId,
         previewDocumentId,
         reason: options.reason || 'direct',
