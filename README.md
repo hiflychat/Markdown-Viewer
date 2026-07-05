@@ -4,9 +4,9 @@
 
   <h1>Markdown Viewer</h1>
 
-  **A Markdown Editor That Lives in Your Browser, Desktop, and a Single URL.**
+  **A Premium Browser-Based Markdown Editor, Viewer, and Reader.**
 
-  *Fast GitHub-style Markdown editing with live preview, diagrams, LaTeX, syntax highlighting, PDF export, and multi-tab support across web, desktop, and Docker.*
+  *Open, read, edit, and preview `.md` files with split-screen live preview, sync scrolling, GitHub-Flavored Markdown, diagrams, LaTeX, syntax highlighting, PDF/HTML/PNG export, and multi-tab support across web, desktop, and Docker.*
 
   [![License](https://img.shields.io/github/license/ThisIs-Developer/Markdown-Viewer?style=flat-square&color=2ea043)](https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/LICENSE)
   [![Latest Release](https://img.shields.io/github/v/release/ThisIs-Developer/Markdown-Viewer?style=flat-square&color=3178C6)](https://github.com/ThisIs-Developer/Markdown-Viewer/releases)
@@ -43,6 +43,7 @@
   <br />
 
   - [About the Project](#about-the-project)
+  - [Current Behavior and Privacy](#current-behavior-and-privacy)
   - [Key Features](#key-features)
   - [System Architecture](#system-architecture)
     - [High-Level Architecture Diagram](#high-level-architecture-diagram)
@@ -63,19 +64,29 @@
 
 ## About the Project
 
-**Markdown Viewer** is an advanced, fully client-side editing suite and previewer optimized for a professional documentation workflow. Running completely inside the browser, it renders GitHub-Flavored Markdown (GFM), math formulas, and architectural diagrams in real time. 
+**Markdown Viewer** is a premium browser-based Markdown editor, viewer, reader, and previewer optimized for professional documentation workflows. It opens local `.md` and `.markdown` files, lets you write in plain Markdown, and renders GitHub-Flavored Markdown (GFM), math formulas, diagrams, code blocks, tables, and other rich Markdown content in a split-screen live preview with sync scrolling.
 
-Designed with privacy and performance at its core, the application performs all parsing in a background worker thread, employs incremental DOM patching to minimize browser repaints, and supports native offline capabilities via a Service Worker proxy. It is also packaged as a lightweight native desktop shell using the Neutralinojs framework.
+Designed with privacy and performance at its core, the application keeps ordinary editing, previewing, autosave, and most exports on your device, performs heavy parsing in a background worker thread, uses incremental DOM patching to minimize browser repaints, and supports offline-capable PWA behavior after the web build has cached its assets. It is also packaged as a lightweight native desktop shell using the Neutralinojs framework.
+
+---
+
+## Current Behavior and Privacy
+
+Markdown Viewer is not a cloud workspace. Normal typing, preview rendering, local file import, tab autosave, theme settings, and most exports happen on your device. No account is required. The app does not implement analytics, telemetry, ads, or tracking cookies.
+
+Some user-triggered features do use the network:
+
+- **GitHub import** fetches public Markdown files from GitHub.
+- **Remote diagram renderers** can receive diagram source for PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, and some diagram previews.
+- **Share Snapshot** creates point-in-time links. Small documents stay compressed in the URL hash. Larger documents are stored in Cloudflare KV for 90 days through `/api/share`.
+- **Live Share** creates temporary real-time rooms through a Cloudflare Durable Object. It relays Yjs updates, display names, presence, and cursors while the room is active; it is not permanent document storage.
+- **CDN libraries and external document assets** can be requested by the browser unless you use the prepared desktop bundle or self-host the needed assets.
+
+For the full feature, limitation, and data-handling reference, read the [wiki feature guide](wiki/Features.md).
 
 ---
 
 ## Key Features
-
-### 📐 LaTeX Math Notation
-Render inline and display mathematical formulas natively using the MathJax typesetting engine.
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/4a3c79e4-4a30-4fcf-8769-fb8867ba6f18" alt="LaTeX Math Notation" width="90%" />
-</p>
 
 ### 📊 Interactive Mermaid Diagrams
 Generate flowcharts, Gantt charts, and sequence diagrams with zoom, pan, and SVG export controls.
@@ -90,11 +101,35 @@ Render complex architectural diagrams and visualizations instantly with a clean,
 - **D2**: Script clean, modern diagrams-as-code layout structures.
 - **Graphviz**: Visualize network topologies, trees, and directed graphs via DOT script notation.
 - **Vega-Lite**: Describe declarative charts, data plots, and statistical visualizations.
-- **Wavedrom**: Draw digital timing diagrams and waveform representations.
 - **Markmap**: Generate interactive mindmaps from nested markdown lists.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/027e0bcb-d149-46bb-adf5-0ece02ffaaac" alt="Client-Side PlantUML Diagrams" width="90%" />
+</p>
+
+### 🌊 WaveDrom Timing Diagrams
+Draw digital timing diagrams and waveform representations for hardware notes, protocol docs, and signal-heavy technical writing.
+
+### 🎼 ABC Music Player & Sheet Music Viewer
+Render ABC notation into sheet music with synchronized audio playback, note highlighting, and PNG/SVG export options.
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/a57db33c-0502-47a8-8f91-7c06946c34a9" controls width="800"></video>
+  <img src="https://github.com/user-attachments/assets/4341040b-eddd-40fa-8d1f-ba6ec9ac1010" alt="ABC Music Notation & Audio Synthesis" width="90%" />
+</p>
+
+### 🤝 Live Share Temporary Rooms
+Start a temporary real-time room for collaborative editing or view-only review. Live Share relays updates through Cloudflare Durable Objects and does not create permanent document storage.
+
+### 🔗 Share Snapshot Links
+Create point-in-time links in view-only or editable mode. Small snapshots stay in the URL hash; larger snapshots use Cloudflare KV for 90 days.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/3ce03da2-2df0-4662-8ed0-67ddb4c48c84" alt="Share Snapshot modal" width="90%" />
+</p>
+
+### 📐 LaTeX Math Notation
+Render inline and display mathematical formulas natively using the MathJax typesetting engine.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4a3c79e4-4a30-4fcf-8769-fb8867ba6f18" alt="LaTeX Math Notation" width="90%" />
 </p>
 
 ### 🗺️ Interactive Map Renderers
@@ -103,7 +138,7 @@ Parse and visualize GeoJSON and TopoJSON map files directly inside your preview 
   <img src="https://github.com/user-attachments/assets/33df24e1-c1d8-4b8f-ac79-49813ab767c9" alt="Interactive Map Renderers" width="90%" />
 </p>
 
-### 📦 STL 3D Model Renderer ([View Release Demo v3.9.0](https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.0))
+### 📦 STL 3D Model Renderer
 Render and interact with STL (ASCII/Binary) files featuring perspective controls, flat shading, and reset controls.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/343b4d3d-5891-4aa9-bba5-1229e7a17fdd" alt="STL 3D Model Renderer" width="90%" />
@@ -111,17 +146,10 @@ Render and interact with STL (ASCII/Binary) files featuring perspective controls
   <img src="https://github.com/user-attachments/assets/aef963a2-bdc5-4348-976b-68e8d01bbc6f" alt="STL 3D Model Renderer" width="90%" />
 </p>
 
-### 🎼 ABC Music Player & Sheet Music Viewer ([Listen Now!](https://markdownviewer.pages.dev/#share=eJyFUlFv0zAQfs-v-LSXgRTapRvaFImHdIhN21oNVgFCQurFviQG164uDlWl_HicdJuAPfBytu-77_N3Z6_XaypV8jXPzpJVvmBtjWvxiRS3E9xc02TMzy051cSgD1BKP-kPeGU2vhOEhrEiCST_4PccWPAQhDn8BS3zoxfcI-yoBaGW4TrxG3LBKGzYei20IRiHsPMgFdooUO5H7la8NVWsW1CI5x2uhGsve9zxzrR4lZ2fv32TXWQXr1PsTGiw6dpYHdlPhIPJW-PqSZT9YKQNiNZcYA0KuPS_2AVckWh2g4colqUw4dGuIjGKQicMX2FJW2_ZuzxKHTpMh7T1O3gxtXEpuraTbTuaD414xxj7JdNyi26LJtp2zHoPYUvB-PguwcdGjVNs99CmdibsB7OrYQCW9qh4dKDReBlkSvFd3QR4F5ltoJonySK_7JOPeTY9e5fNTpK7uLtI5vmNbxyuyVosHtLY3OlpiqWX0HSbkmV4-uRb_tlYG0WwGId3L_4Hq4DZSXaOwsUOvojRnNzm7xM9QzXlaRydrjT6uOhjDXWsy8OpGpDHkh6q4AL1EPr_MUuqYuo4xh6suYI-Q98nagY1nU8LcKGKASrqAtWoiOqFYvm0T55N6GdrLxJl_IwVjz51XFQxV-i_J-v1-jdZqQvS&edit=1))
-Render ABC notation into beautiful sheet music with synchronized audio playback, note highlighting, and PNG/SVG export options—perfect for listening to music while writing.
+### 🖊️ Split-Screen Markdown Editor and Live Preview
+Type, paste, or open Markdown in the plain-text editor and watch it render in real time in the live preview pane.
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/a57db33c-0502-47a8-8f91-7c06946c34a9" controls width="800"></video>
-  <img src="https://github.com/user-attachments/assets/4341040b-eddd-40fa-8d1f-ba6ec9ac1010" alt="ABC Music Notation & Audio Synthesis" width="90%" />
-</p>
-
-### 🖊️ Decoupled Split-Screen Editing
-Type Markdown in the custom editor and watch it render in real-time in the live preview pane.
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/5f1298a9-16e7-4c7d-96c6-967a7f914f7d" alt="Decoupled Split-Screen Editing" width="90%" />
+  <img src="https://github.com/user-attachments/assets/5f1298a9-16e7-4c7d-96c6-967a7f914f7d" alt="Split-screen Markdown editor with live preview" width="90%" />
 </p>
 
 ### 📑 Multi-Document Tab Workspace
@@ -137,10 +165,10 @@ Perform scoped searches using regular expressions, syntax scopes, and side-by-si
   <img src="https://github.com/user-attachments/assets/7ba183b1-0e58-450a-afc7-0f805657ba44" alt="Find & Replace with Diff Preview" width="90%" />
 </p>
 
-### 🛠️ Formatting Toolbar & Quick Modals
-Quickly insert markdown elements, tables, emojis, and symbols using dedicated formatting toolbar modals.
+### 🛠️ Markdown Formatting Toolbar & Quick Modals
+Quickly insert Markdown elements, tables, emojis, and symbols using dedicated toolbar modals while the document remains editable plain text. This is not a true in-place WYSIWYG editor; it is plain Markdown editing with live preview.
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/1ecb877d-31fe-4b63-b67b-e3faa39ae776" alt="Formatting Toolbar & Quick Modals" width="90%" />
+  <img src="https://github.com/user-attachments/assets/1ecb877d-31fe-4b63-b67b-e3faa39ae776" alt="Markdown formatting toolbar and quick modals" width="90%" />
 </p>
 
 ### 🌐 Multi-Language Translation (i18n)
@@ -149,20 +177,14 @@ Access a fully localized user interface with support for English, Simplified Chi
   <img src="https://github.com/user-attachments/assets/a4240b72-8353-47ad-b6f0-21ffee34335d" alt="Multi-Language Translation (i18n)" width="90%" />
 </p>
 
-### 📤 Layout-Aware PDF, HTML & PNG Export
+### 📤 Markdown to PDF, HTML & PNG Export
 Export your documents to raw Markdown, centered inline HTML, high-quality PNG images, or paginated PDF with re-engineered page breaks.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/36a9710d-df23-4fc5-9193-c8d43ca96408" alt="Layout-Aware PDF, HTML & PNG Export" width="90%" />
 </p>
 
-### 🔗 Serverless Compressed URL Sharing ([Click to Try](https://markdownviewer.pages.dev/#share=eJx1kbtOIzEUhnue4pSm4CFISDbco2EiagOGmJhxZGcaqkx2V1DQ5QICxEUIIXEHgRQQqQZ6zysw2bCw4R32hCFQICpb9neO_8-nDzITkHDmBNdZeCxWIMWEkD19EB-Dp9Nis1Fu1k9atSUgE3whL_gsZzMQz3KHadb7VtBs7PzZb2DFUBpaq_utzeO_h1tAhmiefkKhVw5L5dA7Cr3d0DtDetiC1-rmy_VJu3YFZFgqRp2IbVeX__2uvlbX2r_q7fUKsjEL0lIV3DnXP9RAYopqLiJ4XPi7SCRQQuepfyEFJsWXUScCUlJQBJIWJBV1_APKsUNSMWf6HYhJZ166CpmBBAwwt6Cns0B-MLXQDZSi0ZdYGTA7wc_ACzxza-rmBojlas27nNkOinh8aa6DEuKDNgwWqMBrCeR9F4FxTjv9bAts_07l_AMGxHZV7iP0KFNZOtXJnR5BdaFzHAiuH0B8kT1s3C91mkzC0433fFTpzslWdIYXuHSo-GZQmX4we-YWw54Hq6aBPivocw4kk1OUO198glpQ-g8VBvRv&edit=1))
-Share view or edit mode documents database-free via zlib DEFLATE compressed URL hashes.
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/3ce03da2-2df0-4662-8ed0-67ddb4c48c84" alt="Serverless Compressed URL Sharing" width="90%" />
-</p>
-
-### 📥 Multi-Source File Import
-Drag and drop local files, or import directories recursively directly from public GitHub repositories.
+### 📥 Open Local .md Files and Import from GitHub
+Drag and drop local `.md` or `.markdown` files, use the file picker, or import Markdown files from public GitHub repositories.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/c0811f6b-584f-4a88-88cb-6e4604ae8789" alt="Multi-Source File Import" width="90%" />
   <img src="https://github.com/user-attachments/assets/f1039c97-e826-4dc5-83b2-ba57bfe57611" alt="File Import selection" width="90%" />
@@ -313,11 +335,12 @@ graph TD
 
 ## Getting Started & Installation
 
-### 💻 Option 1: Quick Local Run (No Installation/No Server)
-Because Markdown Viewer runs completely client-side utilizing standard HTML, CSS, and JavaScript, you can run it instantly directly from your filesystem:
+### 💻 Option 1: Quick Local Run (No Installation)
+Because Markdown Viewer uses Web Workers, Service Workers, and browser storage APIs, run it through a local HTTP server instead of opening `index.html` with `file://`:
 1. Clone or download the repository to your local machine.
-2. Open the repository folder in your system **File Manager**.
-3. Simply double-click **`index.html`** to open the editor directly in your default web browser.
+2. Open a terminal in the repository folder.
+3. Run `python -m http.server 8080` or `npx serve . -p 8080`.
+4. Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
 ---
 
@@ -360,10 +383,8 @@ You can compile and run a native standalone desktop app (Windows, macOS, or Linu
    # Synchronize resources with the main web app
    node prepare.js
 
-   # Build/compile the application for Windows and other systems
+   # Build/compile the release application
    npm run build
-   # Or build a standalone portable executable
-   npm run build:portable
    ```
 
 *Note: You can also download prebuilt standalone binaries directly from the [Releases](https://github.com/ThisIs-Developer/Markdown-Viewer/releases) page without compiling it yourself.*
@@ -430,26 +451,31 @@ Markdown-Viewer/
 
 | Library Name | Version | Role in App | Loading Method |
 | :--- | :--- | :--- | :--- |
-| **[Marked.js](https://marked.js.org/)** | 9.1.6 | Parses markdown content to HTML elements. | Defer (Upfront) |
-| **[Highlight.js](https://highlightjs.org/)** | 11.9.0 | Adds syntax highlighting to code sections. | Defer (Upfront) |
-| **[DOMPurify](https://github.com/cure53/DOMPurify)** | 3.0.9 | Sanitizes HTML outputs against XSS. | Defer (Upfront) |
-| **[FileSaver.js](https://github.com/eligrey/FileSaver.js/)** | 2.0.5 | Manages file saving on the client side. | Defer (Upfront) |
-| **[js-yaml](https://github.com/nodeca/js-yaml)** | 4.1.0 | Parses YAML frontmatter headers. | Defer (Upfront) |
-| **[Bootstrap](https://getbootstrap.com)** | 5.3.2 | Provides component structures and modal panels. | Upfront Script |
-| **[Bootstrap Icons](https://icons.getbootstrap.com/)** | 1.11.3 | Provides responsive vector symbols across formatting tools and headers. | Preloaded (Upfront) |
-| **[GitHub Markdown CSS](https://github.com/sindresorhus/github-markdown-css)** | 5.3.0 | Matches GitHub's exact light and dark typography rendering styles. | Upfront / Exports |
-| **[Mermaid.js](https://mermaid.js.org/)** | 11.15.0 | Renders interactive flowcharts and diagrams. | Lazy-loaded on diagram find |
-| **[MathJax](https://www.mathjax.org/)** | 3.2.2 | Renders mathematical LaTeX expressions. | Lazy-loaded on math find |
-| **[jsPDF](https://github.com/parallax/jsPDF)** | 2.5.1 | Generates paginated PDF documents client-side. | Lazy-loaded on PDF request |
-| **[html2canvas](https://html2canvas.hertzen.com/)** | 1.4.1 | Captures HTML layouts as canvas objects. | Lazy-loaded on PDF request |
-| **[pako.js](https://github.com/nodeca/pako)** | 2.1.0 | Handles DEFLATE compression for share links, PlantUML, and D2 diagrams. | Lazy-loaded on share, PlantUML, or D2 request |
-| **[JoyPixels](https://www.joypixels.com/)** | 9.0.1 | Renders standard emoji sets. | Lazy-loaded on emoji select |
-| **[Leaflet](https://leafletjs.com/)** | 1.9.4 | Powers interactive GeoJSON and TopoJSON map overlays. | Lazy-loaded on map detection |
-| **[TopoJSON](https://github.com/topojson/topojson)** | 3.0.2 | Parses TopoJSON structures into standard GeoJSON coordinates. | Lazy-loaded on topojson detection |
-| **[Three.js](https://threejs.org/)** | r128 | Renders STL 3D models with canvas viewports. | Lazy-loaded on STL file detection |
-| **[ABC Music Notation (abcjs)](https://www.abcjs.net/)** | 6.5.2 | Renders sheet music notation from raw text definitions. | Lazy-loaded on abc music detection |
-| **[PlantUML](https://plantuml.com/)** | - | External server rendering SVG diagrams from compressed markup. | Lazy-loaded on PlantUML detection |
-| **[Kroki / D2](https://kroki.io/)** | - | External server rendering D2 diagrams into theme-matched SVG. | Lazy-loaded on D2 detection |
+| **[Bootstrap](https://getbootstrap.com)** | 5.3.2 | Provides responsive layout, dropdowns, modals, and UI components. | Initial page load |
+| **[Bootstrap Icons](https://icons.getbootstrap.com/)** | 1.11.3 | Provides toolbar, header, modal, and action icons. | Initial page load |
+| **[GitHub Markdown CSS](https://github.com/sindresorhus/github-markdown-css)** | 5.3.0 | Provides GitHub-style preview typography for the rendered document. | Initial page load / exports |
+| **[Marked.js](https://marked.js.org/)** | 9.1.6 | Parses Markdown into HTML in the main thread and preview worker. | Initial page load / worker |
+| **[Highlight.js](https://highlightjs.org/)** | 11.9.0 | Adds syntax highlighting to fenced code blocks. | Initial page load / worker |
+| **[DOMPurify](https://github.com/cure53/DOMPurify)** | 3.0.9 | Sanitizes rendered HTML before it enters the preview. | Initial page load |
+| **[FileSaver.js](https://github.com/eligrey/FileSaver.js/)** | 2.0.5 | Handles browser downloads for exported files. | Initial page load |
+| **[js-yaml](https://github.com/nodeca/js-yaml)** | 4.1.0 | Parses YAML frontmatter for display and export handling. | Initial page load |
+| **[MathJax](https://www.mathjax.org/)** | 3.2.2 | Renders inline and display LaTeX math. | Lazy-loaded on math detection |
+| **[Mermaid.js](https://mermaid.js.org/)** | 11.15.0 | Renders Mermaid diagrams with zoom, copy, PNG, and SVG actions. | Lazy-loaded on Mermaid detection |
+| **[jsPDF](https://github.com/parallax/jsPDF)** | 2.5.1 | Builds the legacy raster PDF export. | Lazy-loaded on legacy PDF request |
+| **[html2canvas](https://html2canvas.hertzen.com/)** | 1.4.1 | Captures rendered HTML for legacy PDF and PNG export. | Lazy-loaded on PDF/PNG request |
+| **[pako.js](https://github.com/nodeca/pako)** | 2.1.0 | Handles DEFLATE compression for share links and diagram encoding. | Lazy-loaded on share or diagram request |
+| **[JoyPixels / emoji-toolkit](https://www.joypixels.com/)** | 9.0.1 | Converts emoji shortcodes and powers emoji UI rendering. | Lazy-loaded on emoji use |
+| **[ABCJS](https://www.abcjs.net/)** | 6.5.2 | Renders ABC music notation and playback. | Lazy-loaded on ABC notation detection |
+| **[Leaflet](https://leafletjs.com/)** | 1.9.4 | Renders interactive GeoJSON and TopoJSON maps. | Lazy-loaded on map detection |
+| **[TopoJSON](https://github.com/topojson/topojson)** | 3.0.2 | Converts TopoJSON data for map rendering. | Lazy-loaded on TopoJSON detection |
+| **[Three.js](https://threejs.org/)** | r128 | Renders STL 3D models. | Lazy-loaded on STL detection |
+| **STLLoader / OrbitControls** | Three r128 examples | Loads STL files and provides model orbit controls. | Lazy-loaded on STL detection |
+| **[D3](https://d3js.org/)** | 7 | Supports Markmap rendering. | Lazy-loaded on Markmap detection |
+| **[Markmap](https://markmap.js.org/)** | 0.18.12 | Renders Markmap mind maps from Markdown lists. | Lazy-loaded on Markmap detection |
+| **[Yjs](https://docs.yjs.dev/)** | 13.6.10 via esm.sh | Powers Live Share document synchronization. | Lazy-loaded on Live Share |
+| **[PlantUML](https://plantuml.com/)** | Remote service | Renders PlantUML diagrams when local desktop commands are unavailable. | Network request on PlantUML render |
+| **[Kroki](https://kroki.io/)** | Remote service | Renders D2, Graphviz, Vega-Lite, WaveDrom, and fallback diagram SVGs. | Network request on supported diagram render |
+| **[mermaid.ink](https://mermaid.ink/)** | Remote service | Provides preview/fallback Mermaid image rendering in selected flows. | Network request on selected diagram previews |
 
 ---
 
@@ -483,7 +509,9 @@ Thanks to everyone who has contributed to Markdown Viewer.
 
 ## 📈 Development Journey
 
-Markdown Viewer has grown from a lightweight Markdown parser into a full-featured, professional application with advanced rendering, workflow, and export capabilities. Compare the <a href="https://markdownviewer.pages.dev/" target="_blank" rel="noopener noreferrer">current version</a> with the <a href="https://a1b91221.markdownviewer.pages.dev/" target="_blank" rel="noopener noreferrer">original version</a> to see the progress in UI design, performance optimization, and feature depth.
+Markdown Viewer started as a small personal project on a PC: a simple Markdown viewer built with curiosity, mistakes, fixes, and a lot of care. The <a href="https://a1b91221.markdownviewer.pages.dev/" target="_blank" rel="noopener noreferrer">original version</a> is still online, and it remains the heart of the project.
+
+The current <a href="https://markdownviewer.pages.dev/" target="_blank" rel="noopener noreferrer">Markdown Viewer</a> grew through community feedback, issues, PRs, screenshots, GIFs, suggestions, and real documentation workflows. The technical progress matters, but the journey is also emotional: people helped shape the app into what it is today.
 
 ---
 

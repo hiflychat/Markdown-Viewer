@@ -31,6 +31,10 @@
 
 </div>
 
+> Current documentation note: this localized README is a summary. The complete and current v3.9.0 feature, limitation, storage, sharing, and privacy documentation for the premium browser-based Markdown editor/viewer is maintained in [the English wiki](../wiki/Home.md), especially [Features](../wiki/Features.md), [Usage Guide](../wiki/Usage-Guide.md), and [FAQ](../wiki/FAQ.md).
+>
+> Important current behavior: Markdown Viewer can open local `.md` and `.markdown` files, use split live preview with sync scrolling, and export to Markdown, HTML, PDF, and PNG. Normal editing and autosave stay on your device. GitHub import contacts GitHub. Remote diagram renderers may receive diagram source. Small Share Snapshot links keep content in the URL hash; larger snapshots use Cloudflare KV for 90 days. Live Share uses a temporary Cloudflare Durable Object room and is not permanent document storage.
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/20358a0c-e6c9-4e24-ad26-8a5b2f48d538" alt="Markdown Viewer - GFM 렌더링, 탭 방식의 다중 문서 작업 공간 및 다크 테마를 지원하는 실시간 분할 화면 Markdown 에디터 및 미리보기 창" width="100%" />
 </p>
@@ -357,8 +361,6 @@ docker compose up -d
 
    # Windows 및 기타 시스템용 애플리케이션 빌드/컴파일
    npm run build
-   # 또는 독립형 포터블 실행 파일 빌드
-   npm run build:portable
    ```
 
 *참고: 직접 컴파일하지 않고 [릴리스](https://github.com/ThisIs-Developer/Markdown-Viewer/releases) 페이지에서 미리 빌드된 독립형 바이너리를 직접 다운로드할 수도 있습니다.*

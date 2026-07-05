@@ -1,30 +1,97 @@
 # Live Share Cloudflare Architecture
 
-Live Share uses a temporary Cloudflare-backed room instead of browser-local storage,
-BroadcastChannel, or peer discovery. The normal Markdown editor remains local-first.
+Live Share is the real-time collaboration feature in Markdown Viewer v3.9.0. It is separate from Share Snapshot. Share Snapshot creates a point-in-time link; Live Share creates a temporary WebSocket room.
 
-## Runtime Flow
+## User Flow
 
-1. A host starts Live Share for the active tab.
-2. The browser creates a Yjs document for that tab and opens a WebSocket to
-   `/live-room/<room-id>?secret=<room-secret>`.
-3. Cloudflare Pages forwards that WebSocket to a `LIVE_ROOMS` Durable Object.
-4. The Durable Object relays Yjs updates, sync requests, participant presence,
-   cursor presence, participant leave events, and host session-end events.
-5. Participants opening the invite link create a separate live tab, join the same
-   room, request the current Yjs state, and render remote participants/cursors.
-6. New invite links do not embed the Markdown document body. The URL contains
-   only the room id, room secret, and tab title so link length does not grow with
-   document size.
+1. The host clicks Live Share.
+2. The host enters or accepts a display name.
+3. The host chooses Can edit or View only.
+4. The app creates a random room id and a random room secret.
+5. The app creates a Yjs document for the active tab.
+6. The host opens a WebSocket to `/live-room/<room-id>?secret=<secret>`.
+7. The invite link is shown only after the room starts.
+8. Participants open the invite link, join a temporary live tab, request the current Yjs state, and render participant avatars/cursors.
+9. The host can end the room for everyone.
 
-## Cloudflare Requirements
+The invite URL contains the room id, secret, and title. It does not embed the full Markdown document body.
 
-- The Pages project must expose a Durable Object binding named `LIVE_ROOMS`.
-- The Durable Object class is `LiveRoom` in `workers/live-room-worker.js`.
-- `wrangler.live-room.toml` deploys the worker and Durable Object migration.
-- The root Pages project does not require a checked-in `wrangler.toml`.
-- Live room document state is not written to KV or a database. Rooms are
-  temporary and exist only while participants are connected.
+## Cloudflare Runtime
 
-`SHARE_KV` is still used only for normal snapshot share links, not for live
-editing transport.
+There are two checked-in Cloudflare entry points:
+
+- `functions/live-room/[[room]].js` is the Pages Function endpoint for `/live-room/<room>`.
+- `workers/live-room-worker.js` contains the `LiveRoom` Durable Object class and a Worker export.
+
+The Pages Function:
+
+- Requires a WebSocket upgrade request.
+- Requires a `LIVE_ROOMS` Durable Object binding.
+- Rejects room names over 160 characters.
+- Rejects secrets over 256 characters.
+- Uses `roomName + ":" + secret` to select the Durable Object id.
+- Returns `Cache-Control: no-store` for non-upgrade status responses.
+
+The Durable Object:
+
+- Accepts the WebSocket pair.
+- Assigns a temporary socket participant id.
+- Relays only known message types: `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `leave`, and `session-end`.
+- Adds `roomId` and `sentAt` to normalized messages.
+- Broadcasts messages to other sockets in the same room.
+- Broadcasts `leave` when a socket closes or errors.
+
+## Limits
+
+| Limit | Value |
+| :--- | :--- |
+| Max live message size | 1 MB |
+| Max WebSocket participants per room | 64 |
+| Participant stale timeout in client UI | 45 seconds |
+| Client join timeout | 8 seconds |
+| Room name length at Pages Function | 160 characters |
+| Secret length at Pages Function | 256 characters |
+
+If the room is full, the Durable Object returns HTTP 429. If credentials or bindings are missing, the endpoints return a plain error response.
+
+## Data Handling
+
+Live Share relays:
+
+- Yjs document updates.
+- Initial sync state.
+- Display names.
+- Participant presence.
+- Cursor positions.
+- Leave events.
+- Host session-end events.
+
+Live Share does not write document content to Cloudflare KV or a database. State is temporary room/connection state in the Durable Object and clients. The normal local workspace remains local, and joined live tabs are temporary so they are not saved into the participant's tab storage.
+
+## Privacy and Security Notes
+
+- The room secret is part of the invite URL. Anyone with the link can try to join while the room is active.
+- No end-to-end encryption is implemented in the app.
+- View-only mode is enforced by the client and message handling. It is useful for normal collaboration, but it is not a cryptographic permission boundary against modified clients.
+- The host should end the room when collaboration is finished.
+- Cloudflare deployment logs and platform behavior are controlled by the deployer's Cloudflare account configuration.
+
+## Required Configuration
+
+`wrangler.toml` binds `LIVE_ROOMS` for the Pages project and binds `SHARE_KV` for Share Snapshot. `wrangler.live-room.toml` deploys the standalone Durable Object worker:
+
+```toml
+name = "markdown-viewer-live-room"
+main = "workers/live-room-worker.js"
+compatibility_date = "2026-07-02"
+
+[[durable_objects.bindings]]
+name = "LIVE_ROOMS"
+class_name = "LiveRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRoom"]
+```
+
+Share Snapshot uses `SHARE_KV`; Live Share uses `LIVE_ROOMS`. They should not be described as the same storage path.

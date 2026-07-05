@@ -1,151 +1,134 @@
-# Markdown Syntax Reference
+# Markdown Reference
 
-This page provides a comprehensive guide to writing GitHub-Flavored Markdown (GFM), LaTeX math formulas, and Mermaid diagrams in **Markdown Viewer** (v3.9.0).
+Markdown Viewer v3.9.0 supports standard Markdown, GitHub-Flavored Markdown (GFM), selected custom inline extensions, LaTeX math, GitHub alerts, frontmatter, and many fenced-code renderers. This makes it useful for README files, documentation, notes, tables, task lists, code blocks, math, diagrams, and other content people often preview before exporting or sharing.
 
----
+All rendered HTML is sanitized before display. Raw HTML is useful for formatting, but scripts and unsafe event handlers are removed. The preview is GitHub-style and GFM-oriented, not a promise of byte-for-byte identical rendering to GitHub, Pandoc, Obsidian, Typora, or other Markdown tools.
 
-## Table of Contents
+## Core Markdown
 
-- [Headings](#headings)
-- [Paragraphs & Line Breaks](#paragraphs--line-breaks)
-- [Emphasis & Text Formatting](#emphasis--text-formatting)
-- [Blockquotes](#blockquotes)
-- [Lists & Task Lists](#lists--task-lists)
-- [Code Elements](#code-elements)
-- [Horizontal Rules](#horizontal-rules)
-- [Links & Images](#links--images)
-- [Tables](#tables)
-- [Footnotes](#footnotes)
-- [HTML Sanitized Formatting](#html-sanitized-formatting)
-- [LaTeX Mathematical Formulas](#latex-mathematical-formulas)
-- [Mermaid Diagrams](#mermaid-diagrams)
-- [Emoji & Alerts](#emoji--alerts)
-
----
-
-## Headings
-
-You can write headings using hash symbols (`#`) at the beginning of a line:
+### Headings
 
 ```markdown
-# Heading 1 (Document Title)
-## Heading 2 (Main Section)
-### Heading 3 (Sub-Section)
+# Heading 1
+## Heading 2
+### Heading 3
 #### Heading 4
 ##### Heading 5
 ###### Heading 6
+
+Setext Heading 1
+================
+
+Setext Heading 2
+----------------
 ```
 
-Alternative Setext syntax for Heading 1 and Heading 2:
-```markdown
-Heading 1
-=========
+Heading ids are generated from heading text so links like `[Jump](#heading-2)` can scroll inside the preview.
 
-Heading 2
----------
+### Paragraphs and Line Breaks
+
+Separate paragraphs with a blank line. End a line with two spaces or a backslash for a hard line break.
+
+```markdown
+First paragraph.
+
+Second paragraph.
+
+Line one\
+Line two
 ```
 
----
-
-## Paragraphs & Line Breaks
-
-*   **Paragraphs:** Separate paragraphs with a blank line.
-*   **Line Breaks:** Insert two spaces at the end of a line, or end the line with a backslash (`\`), to start a new line within the same paragraph.
+### Emphasis
 
 ```markdown
-This is paragraph one.
-
-This is paragraph two.
-
-Line one (ended with a backslash)\
-Line two inside the same paragraph.
-
-Line one (ended with two spaces)  
-Line two inside the same paragraph.
+*italic*
+_italic_
+**bold**
+__bold__
+***bold italic***
+~~strikethrough~~
 ```
 
----
-
-## Emphasis & Text Formatting
-
-| Style | Syntax | Output |
-| :--- | :--- | :--- |
-| **Italic** | `*text*` or `_text_` | *Italic* |
-| **Bold** | `**text**` or `__text__` | **Bold** |
-| **Bold Italic** | `***text***` | ***Bold Italic*** |
-| **Strikethrough** | `~~text~~` | ~~Strikethrough~~ |
-| **Underline (HTML)** | `<u>text</u>` | <u>Underline</u> |
-| **Highlight (HTML)** | `<mark>text</mark>` | <mark>Highlight</mark> |
-
----
-
-## Blockquotes
-
-Use the `>` symbol to indent blockquotes:
+Custom inline extensions:
 
 ```markdown
-> This is a blockquote.
+==highlight==
+^superscript^
+~subscript~
+```
+
+### Blockquotes
+
+```markdown
+> A quote.
 >
-> You can write multiple paragraphs inside a blockquote.
->
->> This is a nested blockquote level 2.
+> > A nested quote.
 ```
 
----
+GitHub alert blocks are also written as blockquotes. See [Alerts](#alerts).
 
-## Lists & Task Lists
+### Lists and Task Lists
 
-### Unordered Lists
-Use `-`, `*`, or `+` to create bulleted lists:
 ```markdown
-- Item A
-- Item B
-  - Nested Item B1
-  - Nested Item B2
+- Item
+- Item
+  - Nested item
+
+1. First
+2. Second
+   1. Nested
+
+- [x] Done
+- [ ] Not done
 ```
 
-### Ordered Lists
-Use numbers followed by a period:
+The editor continues Markdown lists when you press Enter and exits a list when you press Enter on an empty list item.
+
+### Code
+
+Inline:
+
 ```markdown
-1. First item
-2. Second item
-   1. Nested ordered item
+Use `const value = 1`.
 ```
 
-### GFM Task Checklists
-```markdown
-- [x] Completed task item
-- [ ] Incomplete task item
-- [x] Another completed task
-```
-
----
-
-## Code Elements
-
-### Inline Code
-Wrap inline code code segments in single backticks:
-```markdown
-Use the `const api = "/v1"` configuration variable to target the endpoint.
-```
-
-### Code Blocks with Syntax Highlighting
-Wrap code blocks in triple backticks and specify the programming language (e.g. `javascript`, `python`, `html`, `css`, `bash`, `yaml`) to enable syntax highlighting:
+Fenced code:
 
 ````markdown
 ```javascript
-const greet = (name) => {
-    return `Hello, ${name}!`;
-};
-console.log(greet("Developer"));
+console.log("Hello");
 ```
 ````
 
----
+Highlight.js colors known languages. Unknown languages fall back to plaintext.
 
-## Horizontal Rules
+### Links and Images
 
-Insert three or more hyphens, asterisks, or underscores on a line by themselves to create a divider:
+```markdown
+[GitHub](https://github.com)
+[GitHub with title](https://github.com "GitHub")
+[Reference link][repo]
+
+![Alt text](assets/icon.jpg)
+![Alt text with title](assets/icon.jpg "Logo")
+![Reference image][logo]
+
+[repo]: https://github.com/ThisIs-Developer/Markdown-Viewer
+[logo]: assets/icon.jpg
+```
+
+Links and images can request external resources when opened or rendered.
+
+### Tables
+
+```markdown
+| Name | Count | Price |
+| :--- | :---: | ---: |
+| Editor | 1 | $0 |
+| Exporter | 2 | $0 |
+```
+
+### Horizontal Rules
 
 ```markdown
 ---
@@ -153,188 +136,272 @@ Insert three or more hyphens, asterisks, or underscores on a line by themselves 
 ___
 ```
 
----
+## Extended Markdown
 
-## Links & Images
-
-### Links
-```markdown
-# Inline link
-[GitHub](https://github.com)
-
-# Link with a title tooltip
-[GitHub](https://github.com "GitHub Homepage")
-
-# Reference link
-[GitHub][github-link]
-
-[github-link]: https://github.com
-```
-
-### Images
-```markdown
-# Standard image
-![Alt text](assets/icon.jpg)
-
-# Image with a title tooltip
-![Alt text](assets/icon.jpg "Logo")
-
-# Reference-style image
-![Alt text][logo-image]
-
-[logo-image]: assets/icon.jpg
-```
-
----
-
-## Tables
-
-Use vertical bars `|` to separate columns and hyphens `-` to create the header divider. You can align columns using colons `:`:
+### Footnotes
 
 ```markdown
-| Product Name | Quantity | Price |
-| :--- | :---: | ---: |
-| Markdown Editor | 1 | $0.00 |
-| PDF Exporter | 5 | $0.00 |
-| Dynamic Diagrams | 2 | $0.00 |
+This sentence has a footnote.[^1]
+
+[^1]: Footnotes can contain multiple paragraphs.
+
+    Indented continuation lines are part of the note.
 ```
 
-*   `:---`: Left-aligned (default).
-*   `:---:`: Center-aligned.
-*   `---:`: Right-aligned.
+Footnotes render at the bottom with back-reference links. Multi-paragraph footnotes are supported.
 
----
-
-## Footnotes
-
-Add footnotes using carets `[^]`:
+### Definition Lists
 
 ```markdown
-Here is a sentence with a footnote citation.[^1]
-
-[^1]: This is the text of the footnote displayed at the bottom of the page.
+Term
+: Definition text
+: Another definition for the same term
 ```
 
+### Frontmatter
+
+YAML frontmatter can be placed at the top of a document.
+
+```markdown
+---
+title: Project Notes
+status: Draft
+tags:
+  - markdown
+  - docs
 ---
 
-## HTML Sanitized Formatting
+# Body
+```
 
-You can write HTML tags directly in your Markdown files. The application sanitizes HTML using **DOMPurify** to block unsafe code (like `<script>` elements and inline event handlers):
+HTML export parses frontmatter and renders it as a table before the document body.
+
+### Raw HTML
 
 ```html
 <details>
-  <summary>Click to expand additional configurations</summary>
-  <p>Here is some additional content tucked inside an HTML details tag.</p>
+  <summary>Open me</summary>
+  <p>Hidden content.</p>
 </details>
 
-<div class="alert alert-info">
-  This is a custom alert box using Bootstrap styles.
-</div>
+<kbd>Ctrl</kbd> + <kbd>S</kbd>
+<abbr title="Application Programming Interface">API</abbr>
 ```
 
----
+DOMPurify sanitization removes unsafe tags and attributes. Inline scripts and handlers such as `onclick` are not preserved.
 
-## LaTeX Mathematical Formulas
-
-LaTeX mathematical equations are typeset in real time using MathJax.
-
-### Inline Math
-Wrap formulas in single dollar signs (`$`):
-```markdown
-The quadratic formula is defined as $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$ when solving equations.
-```
-
-### Block Math
-Wrap formulas in double dollar signs (`$$`):
-```markdown
-$$
-\int_{a}^{b} f(x) \,dx = F(b) - F(a)
-$$
-```
-
-### LaTeX Examples
-
-| Description | Formula Syntax |
-| :--- | :--- |
-| **Fractions** | `\frac{numerator}{denominator}` |
-| **Integrals** | `\int_{lower}^{upper} x^2 \,dx` |
-| **Summations** | `\sum_{i=1}^{n} a_i` |
-| **Matrices** | `\begin{matrix} a & b \\ c & d \end{matrix}` |
-| **Greek Letters** | `\alpha, \beta, \gamma, \theta, \lambda` |
-| **Roots** | `\sqrt{x^2 + y^2}` |
-
----
-
-## Mermaid Diagrams
-
-Wrap Mermaid syntax in a fenced code block with the `mermaid` language tag:
-
-### Flowchart
-````markdown
-```mermaid
-flowchart TD
-    A[Start Node] --> B{Is Authentication Valid?}
-    B -- Yes --> C[Access granted]
-    B -- No --> D[Access denied]
-```
-````
-
-### Sequence Diagram
-````markdown
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API Worker
-    participant Storage
-    
-    Client->>API Worker: HTTP POST Request (markdown content)
-    API Worker->>Storage: Save file state
-    Storage-->>API Worker: State saved confirmation
-    API Worker-->>Client: HTTP 200 OK Response
-```
-````
-
-### Gantt Chart
-````markdown
-```mermaid
-gantt
-    title Development Sprint Tasks
-    dateFormat YYYY-MM-DD
-    section Parsing Core
-    Web Worker Integration :a1, 2026-06-01, 10d
-    DOM Patching Engine :after a1, 5d
-    section Desktop wrapper
-    Neutralino Shell Integration :2026-06-15, 8d
-```
-````
-
----
-
-## Emoji & Alerts
-
-### Emoji
-Use emoji shortcodes to insert icons:
-```markdown
-:rocket: :tada: :sparkles: :warning: :memo:
-```
-*   Renders as: 🚀 🎉 ✨ ⚠️ 📝
-
-### GitHub Alerts
-GitHub-style alert callouts are rendered with corresponding styling:
+### Alerts
 
 ```markdown
 > [!NOTE]
-> This is a general note callout box.
+> Useful background information.
 
 > [!TIP]
-> This is a helpful tip callout box.
+> A helpful suggestion.
 
 > [!IMPORTANT]
-> This is a critical important callout box.
+> Something the reader should not miss.
 
 > [!WARNING]
-> This is a warning callout box.
+> A risk or possible problem.
 
 > [!CAUTION]
-> This is a caution callout box.
+> A serious warning.
 ```
+
+### Emoji
+
+```markdown
+:rocket: :tada: :warning: :memo:
+```
+
+Emoji shortcode rendering uses the JoyPixels/emoji toolkit when available. The emoji picker can also query GitHub's emoji API.
+
+## Math
+
+Inline math:
+
+```markdown
+Einstein wrote $E = mc^2$.
+```
+
+Display math:
+
+```markdown
+$$
+\int_a^b f(x)\,dx = F(b) - F(a)
+$$
+```
+
+Fenced math:
+
+````markdown
+```math
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+```
+````
+
+MathJax renders math on demand. Escape literal dollar signs as `\$` when they are not math delimiters.
+
+## Diagrams and Rich Fences
+
+### Mermaid
+
+````markdown
+```mermaid
+flowchart TD
+  A[Start] --> B{Ready?}
+  B -- Yes --> C[Ship]
+  B -- No --> D[Fix]
+```
+````
+
+Mermaid renders client-side and supports zoom, pan, copy image, PNG download, and SVG download.
+
+### PlantUML
+
+````markdown
+```plantuml
+@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi
+@enduml
+```
+````
+
+PlantUML rendering uses a remote PlantUML server first and Kroki fallback. Diagram source is sent to the remote renderer.
+
+### D2
+
+````markdown
+```d2
+app -> api -> db
+api.shape: hexagon
+db.shape: cylinder
+```
+````
+
+D2 rendering uses Kroki. Some D2 source is normalized for common SQL-table layout cases.
+
+### Graphviz / DOT
+
+````markdown
+```graphviz
+digraph G {
+  A -> B;
+  B -> C;
+}
+```
+````
+
+You can also use the `dot` fence. Rendering uses Kroki.
+
+### Vega-Lite
+
+````markdown
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "data": {"values": [{"a": "A", "b": 28}, {"a": "B", "b": 55}]},
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "a", "type": "nominal"},
+    "y": {"field": "b", "type": "quantitative"}
+  }
+}
+```
+````
+
+Use `vega-lite` or `vegalite`. Rendering uses Kroki.
+
+### WaveDrom
+
+````markdown
+```wavedrom
+{ signal: [
+  { name: "clk", wave: "p....." },
+  { name: "data", wave: "x.345x", data: ["A", "B", "C"] }
+] }
+```
+````
+
+Rendering uses Kroki.
+
+### Markmap
+
+````markdown
+```markmap
+# Plan
+## Build
+### Parse
+### Render
+## Ship
+```
+````
+
+Markmap renders client-side with Markmap and D3. The app normalizes Markmap fences so nested code fences do not break parsing.
+
+### GeoJSON
+
+````markdown
+```geojson
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-73.9857, 40.7484]},
+      "properties": {"name": "Example point"}
+    }
+  ]
+}
+```
+````
+
+GeoJSON renders as an interactive Leaflet map. Map tiles can require network access depending on the tile source.
+
+### TopoJSON
+
+````markdown
+```topojson
+{
+  "type": "Topology",
+  "objects": {},
+  "arcs": []
+}
+```
+````
+
+TopoJSON is converted with the TopoJSON library and rendered on a Leaflet map.
+
+### STL 3D Models
+
+````markdown
+```stl
+solid example
+endsolid example
+```
+````
+
+STL renders with Three.js. The viewer supports orbit controls, a zoom modal, solid mode, surface-angle mode, wireframe mode, copy image, and PNG export. Large models depend on browser memory and WebGL support.
+
+### ABC Music Notation
+
+````markdown
+```abc
+X:1
+T:Example
+M:4/4
+K:C
+C D E F | G A B c |
+```
+````
+
+ABCJS renders sheet music. Playback uses browser audio support and shows a synchronized cursor and note highlighting when audio is supported.
+
+## Export Notes for Markdown Authors
+
+- Browser Print is usually best for long documents.
+- Raster PDF and PNG exports are screenshots of rendered HTML and can be affected by cross-origin images, very large canvases, and late-loading remote diagrams.
+- Remote-rendered diagrams should finish rendering before export.
+- Wide tables, large diagrams, and huge STL models may be scaled or moved during export.
