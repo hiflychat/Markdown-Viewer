@@ -3479,6 +3479,73 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
   }
 
+  function renderAbcNotationNode(node, context) {
+    if (context.renderId !== previewRenderGeneration) return;
+    const originalCode = node.getAttribute('data-original-code');
+    if (!originalCode) return;
+    const decodedCode = decodeURIComponent(originalCode);
+
+    const container = node.closest('.abc-container');
+    try {
+      node.innerHTML = '';
+      const visualObj = ABCJS.renderAbc(node.id, decodedCode, {
+        responsive: "resize",
+        add_classes: true
+      });
+
+      node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
+
+      const headers = parseAbcHeaders(decodedCode);
+      const svgElement = node.querySelector('svg');
+      if (svgElement) {
+        svgElement.setAttribute('role', 'img');
+        const titleId = 'abc-title-' + node.id;
+        const descId = 'abc-desc-' + node.id;
+        svgElement.setAttribute('aria-labelledby', titleId + ' ' + descId);
+        svgElement.setAttribute('aria-describedby', 'abc-source-' + node.id);
+
+        const svgTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        svgTitle.id = titleId;
+        svgTitle.textContent = `Sheet music for: ${headers.title}`;
+
+        const svgDesc = document.createElementNS('http://www.w3.org/2000/svg', 'desc');
+        svgDesc.id = descId;
+        svgDesc.textContent = `Score in ${headers.key}, ${headers.meter} meter, composed by ${headers.composer}.`;
+
+        svgElement.insertBefore(svgDesc, svgElement.firstChild);
+        svgElement.insertBefore(svgTitle, svgElement.firstChild);
+      }
+
+      if (container) {
+        setDiagramRenderState(container, 'ready');
+
+        const oldRaw = container.querySelector('.abc-raw-code');
+        if (oldRaw) oldRaw.remove();
+        const oldSrOnly = container.querySelector('.abc-sr-only');
+        if (oldSrOnly) oldSrOnly.remove();
+
+        mountDiagramViewer(container, 'abc', [{
+          title: 'Listen to score',
+          ariaLabel: 'Listen to score',
+          html: '<i class="bi bi-play-fill"></i> Listen',
+          onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
+        }]);
+
+        const srOnlyDiv = document.createElement('div');
+        srOnlyDiv.className = 'abc-sr-only';
+        srOnlyDiv.id = 'abc-source-' + node.id;
+        srOnlyDiv.textContent = decodedCode;
+
+        container.appendChild(srOnlyDiv);
+      }
+    } catch (err) {
+      console.error("ABCJS rendering failed:", err);
+      if (container) {
+        setDiagramRenderState(container, 'error', 'ABC notation could not be rendered. Check the score syntax and retry.');
+      }
+    }
+  }
+
   function disposeStlView(viewId) {
     const view = activeStlViews.get(viewId);
     if (!view) return;
@@ -3953,7 +4020,20 @@ document.addEventListener("DOMContentLoaded", async function () {
               tileAttribution += ' &copy; <a href="https://carto.com/attributions">CARTO</a>';
             }
             layer.setUrl(tileUrl);
-            layer.setAttribution(tileAttribution);
+            const oldAttribution = typeof layer.getAttribution === 'function'
+              ? layer.getAttribution()
+              : (layer.options && layer.options.attribution);
+            if (layer.options) {
+              layer.options.attribution = tileAttribution;
+            }
+            if (map.attributionControl) {
+              if (oldAttribution && typeof map.attributionControl.removeAttribution === 'function') {
+                map.attributionControl.removeAttribution(oldAttribution);
+              }
+              if (typeof map.attributionControl.addAttribution === 'function') {
+                map.attributionControl.addAttribution(tileAttribution);
+              }
+            }
           }
         });
       }
@@ -4302,84 +4382,10 @@ ${selector} .arrowheadPath {
       if (abcNodes.length > 0) {
         const renderAbcNodes = function() {
           if (context.renderId !== previewRenderGeneration) return;
-          
-          const observer = new IntersectionObserver((entries, obs) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                const node = entry.target;
-                obs.unobserve(node);
-                
-                setTimeout(() => {
-                  if (context.renderId !== previewRenderGeneration) return;
-                  const originalCode = node.getAttribute('data-original-code');
-                  if (!originalCode) return;
-                  const decodedCode = decodeURIComponent(originalCode);
-                  
-                  const container = node.closest('.abc-container');
-                  try {
-                    node.innerHTML = '';
-                    const visualObj = ABCJS.renderAbc(node.id, decodedCode, {
-                      responsive: "resize",
-                      add_classes: true
-                    });
-                    
-                    node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
-                    
-                    const headers = parseAbcHeaders(decodedCode);
-                    const svgElement = node.querySelector('svg');
-                    if (svgElement) {
-                      svgElement.setAttribute('role', 'img');
-                      const titleId = 'abc-title-' + node.id;
-                      const descId = 'abc-desc-' + node.id;
-                      svgElement.setAttribute('aria-labelledby', titleId + ' ' + descId);
-                      svgElement.setAttribute('aria-describedby', 'abc-source-' + node.id);
-                      
-                      const svgTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                      svgTitle.id = titleId;
-                      svgTitle.textContent = `Sheet music for: ${headers.title}`;
-                      
-                      const svgDesc = document.createElementNS('http://www.w3.org/2000/svg', 'desc');
-                      svgDesc.id = descId;
-                      svgDesc.textContent = `Score in ${headers.key}, ${headers.meter} meter, composed by ${headers.composer}.`;
-                      
-                      svgElement.insertBefore(svgDesc, svgElement.firstChild);
-                      svgElement.insertBefore(svgTitle, svgElement.firstChild);
-                    }
-                    
-                    if (container) {
-                      setDiagramRenderState(container, 'ready');
 
-                      const oldRaw = container.querySelector('.abc-raw-code');
-                      if (oldRaw) oldRaw.remove();
-                      const oldSrOnly = container.querySelector('.abc-sr-only');
-                      if (oldSrOnly) oldSrOnly.remove();
-
-                      mountDiagramViewer(container, 'abc', [{
-                        title: 'Listen to score',
-                        ariaLabel: 'Listen to score',
-                        html: '<i class="bi bi-play-fill"></i> Listen',
-                        onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
-                      }]);
-
-                      const srOnlyDiv = document.createElement('div');
-                      srOnlyDiv.className = 'abc-sr-only';
-                      srOnlyDiv.id = 'abc-source-' + node.id;
-                      srOnlyDiv.textContent = decodedCode;
-
-                      container.appendChild(srOnlyDiv);
-                    }
-                  } catch (err) {
-                    console.error("ABCJS rendering failed:", err);
-                    if (container) {
-                      setDiagramRenderState(container, 'error', 'ABC notation could not be rendered. Check the score syntax and retry.');
-                    }
-                  }
-                }, 0);
-              }
-            });
-          }, { rootMargin: '150px 0px' });
-          
-          abcNodes.forEach(node => observer.observe(node));
+          abcNodes.forEach(function(node) {
+            setTimeout(() => renderAbcNotationNode(node, context), 0);
+          });
         };
         
         const loadAndRenderAbc = function() {
