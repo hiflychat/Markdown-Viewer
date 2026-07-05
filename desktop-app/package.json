@@ -2,7 +2,7 @@
   "name": "markdown-viewer-desktop",
   "version": "3.9.0",
   "private": true,
-  "description": "A premium client-side GitHub-style Markdown editor and live preview tool for desktop, featuring math rendering, diagrams, syntax highlighting, and PDF/HTML exports.",
+  "description": "A premium desktop Markdown editor, viewer, and reader for opening .md files with split live preview, math, diagrams, syntax highlighting, and PDF/HTML/PNG exports.",
   "scripts": {
     "setup": "node setup-binaries.js",
     "postsetup": "node prepare.js",

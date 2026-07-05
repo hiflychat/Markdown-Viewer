@@ -1,97 +1,103 @@
-# Markdown Viewer Desktop App Port
+# Markdown Viewer Desktop App
 
-This is a desktop app port of [Markdown Viewer](https://github.com/ThisIs-Developer/Markdown-Viewer), see [README](../README.md). It is built using [Neutralinojs](https://github.com/neutralinojs/neutralinojs).
+This folder contains the Neutralino desktop wrapper for Markdown Viewer v3.9.0. It turns the browser-based Markdown editor, viewer, and reader into a desktop app for opening local `.md` files, using split live preview, exporting documents, and working with native file dialogs. It reuses the root web app and adds native window lifecycle handling, desktop storage mirroring, and an offline-prepared resource bundle.
+
+For the complete product behavior and privacy reference, see [../wiki/Features.md](../wiki/Features.md).
 
 ## Architecture
 
-The desktop app **shares** its core files (`script.js`, `styles.css`, `assets/`) with the browser version in the repo root. A build script (`prepare.js`) copies these files into `resources/` and injects Neutralinojs-specific additions into `index.html` at build time.
+The desktop app shares the same core product code as the browser version:
 
-Neutralinojs platform binaries are managed by `setup-binaries.js`, which downloads them on first use and caches them in `bin/` (gitignored). The download is version-locked to `cli.binaryVersion` in `neutralino.config.json` and only re-triggered when that version changes.
+- `../index.html`
+- `../script.js`
+- `../styles.css`
+- `../preview-worker.js`
+- `../assets/`
 
-Desktop-only files (not generated):
+`prepare.js` copies those files into `desktop-app/resources`, rewrites paths for Neutralino, downloads external libraries into `resources/libs`, verifies SHA-384 integrity where available, and strips web-only SEO metadata from the desktop HTML.
 
-- `resources/js/main.js` — Neutralinojs lifecycle, tray menu, window events
-- `resources/js/neutralino.js` — Neutralinojs client library
-- `neutralino.config.json` — App configuration
-- `setup-binaries.js` — Idempotent binary setup (downloads on first use)
+Desktop-only files:
+
+- `neutralino.config.json`: Neutralino runtime configuration and native API allowlist.
+- `setup-binaries.js`: Idempotent Neutralino binary setup.
+- `resources/js/main.js`: window close confirmation, tray setup, launch-file import, and external-open handling.
+- `resources/js/neutralino.js`: Neutralino client library.
+
+## Desktop Behavior
+
+- Local editing, preview, document tabs, exports, and settings stay on the local machine.
+- Normal app state is stored in localStorage and mirrored to Neutralino storage.
+- Native Markdown/HTML save and Markdown open flows use Neutralino dialogs and filesystem APIs.
+- A Markdown file passed as a launch argument is loaded into the editor.
+- The app asks before closing the window.
+- Prepared desktop resources load dynamic libraries from local `/libs/...` paths.
+
+Network features still use the network when invoked: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and external links.
 
 ## Development
 
-### Requirements
+Requirements:
 
-- [Node.js](https://nodejs.org/)
+- Node.js and npm.
+- Internet access for first setup and dependency preparation.
 
-### Setup
-
-No installation is required. The app is built and run using `npx` (via npm scripts).
-
-Neutralinojs platform binaries are downloaded automatically on first build or dev run. To manually trigger the download:
+Run:
 
 ```bash
+cd desktop-app
+npm install
 npm run setup
-```
-
-Binaries are cached in `bin/` (gitignored) and only re-downloaded when `cli.binaryVersion` in `neutralino.config.json` changes.
-
-### Running the app
-
-```bash
 npm run dev
 ```
 
-This automatically runs `setup` (downloads binaries if needed and prepares resources) before starting the app. Hot-reload is enabled by default. Enable the browser inspector by setting `"enableInspector": true` in `neutralino.config.json`.
+`npm run setup` downloads Neutralino binaries and runs `prepare.js`. Binaries are cached in `bin/` and refreshed when the configured Neutralino version changes.
 
-For more information, see the [Neutralinojs documentation](https://neutralino.js.org/docs/cli/neu-cli#installation).
-
-### Building the app
-
-**Default** - Build the portable Neutralino bundle:
+## Build
 
 ```bash
 npm run build
 ```
 
-Build output is placed in `dist/`.
+The current build script runs:
 
-Note: `npm run build` writes the portable app directory to
-`dist/markdown-viewer/`, including platform binaries and `resources.neu`. The
-GitHub release workflow archives that directory as a ZIP and also uploads the
-Windows x64 executable as a standalone asset.
+```bash
+npx -y @neutralinojs/neu@11.7.0 build --release --clean
+```
 
-For more information, see the [Neutralinojs documentation](https://neutralino.js.org/docs/cli/neu-cli#neu-build).
+Build output is written under `desktop-app/dist/`.
 
-### Building with Docker
+## Configuration Highlights
 
-Build binaries without installing Node.js locally:
+| Setting | Value |
+| :--- | :--- |
+| Application id | `com.markdownviewer.desktop` |
+| Version | `3.9.0` |
+| Document root | `/resources/` |
+| Default window | 1280 x 720 |
+| Minimum window | 400 x 200 |
+| Native API | Enabled |
+| Token security | One-time |
+| Logging | Disabled |
+| Neutralino binary/client version | 6.5.0 |
+
+Native APIs are intentionally allowlisted: app exit, open/save dialogs, message boxes, external URL open, tray setup, command execution, file read/write, and storage get/set.
+
+## Docker Build
+
+The desktop folder includes Docker files for building desktop artifacts in a container:
 
 ```bash
 docker compose up --build
 ```
 
-Build artifacts will be output to `desktop-app/output/`.
+Check the compose file for the mounted output path used by the current build.
 
 ## Releases
 
-Prebuilt binaries are automatically built and published as GitHub Releases when a tag matching `desktop-v*` is pushed (e.g., `desktop-v1.0.0`). See [`.github/workflows/desktop-build.yml`](../.github/workflows/desktop-build.yml).
+Prebuilt desktop assets are published through GitHub Releases. Release workflows run setup, preparation, build, and checksum generation.
 
-Each release includes:
-
-| Asset | Description |
-| ----- | ----------- |
-| `markdown-viewer-win_x64.exe` | Windows x64 executable |
-| `markdown-viewer-vX.Y.Z-portable.zip` | Portable bundle with `resources.neu` (all platforms) |
-| `source.tar.gz` | Desktop app source archive |
-| `SHA256SUMS.txt` | Checksums for all release assets |
+Unsigned desktop binaries may trigger Windows SmartScreen or macOS quarantine prompts. See [../wiki/Desktop-App.md](../wiki/Desktop-App.md) for platform launch notes.
 
 ## License
 
-**MIT**.
-
-The desktop version uses [Neutralinojs](https://github.com/neutralinojs/neutralinojs), which is also licensed under the MIT License.
-
-- [Neutralinojs](https://github.com/neutralinojs/neutralinojs): [LICENSE (MIT)](LICENSE)
-- [Markdown Viewer & Desktop Port](https://github.com/ThisIs-Developer/Markdown-Viewer): [LICENSE (MIT)](../LICENSE)
-
-## Contributors
-
-[![Contributors](https://contrib.rocks/image?repo=ThisIs-Developer/Markdown-Viewer)](https://github.com/ThisIs-Developer/Markdown-Viewer/graphs/contributors)
+Markdown Viewer is licensed under the Apache License 2.0. Neutralinojs is licensed under MIT; see the bundled Neutralino license file in this folder.

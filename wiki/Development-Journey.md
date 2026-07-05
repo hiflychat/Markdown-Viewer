@@ -1,88 +1,84 @@
-# Project Development Journey
+# Development Journey
 
-This page documents the development history, design decisions, and evolution of **Markdown Viewer** from its initial prototype to the current production release (v3.9.0).
+Markdown Viewer did not begin as a polished roadmap or a finished product. It began as a personal project on a PC: a small Markdown viewer made with curiosity, failed attempts, late fixes, and the simple hope that Markdown could feel easier to read, edit, and share.
 
----
+The [first public version](https://a1b91221.markdownviewer.pages.dev/) is still something to be proud of. It was much smaller than the current app, but it carried the heart of the project: type Markdown, see it render, and make documentation feel less painful. From there, every rough edge became a reason to keep improving.
 
-## Chronological Project Evolution
+The current version exists because people used it, questioned it, broke it, reported issues, shared screenshots and GIFs, suggested workflows, opened PRs, and explained what was confusing. The project grew through community help: feature requests, bug reports, conversations, and practical feedback from real writing and documentation work.
 
-Markdown Viewer was built to address a common need: a fast, privacy-focused Markdown editor that renders rich formatting, math equations, and diagrams client-side without relying on external databases.
+This page keeps the technical record too, but the journey is not only technical. Markdown Viewer came from care, persistence, and community trust. The changelog remains the detailed version-by-version history; this page explains how that work became the v3.9.0 product documented in the wiki.
 
-```
-+------------------------------------+
-|  Phase 1: Basic Renderer (V0.1)     |
-|  - Simple textarea & Marked parser |
-|  - High typing lag on large files  |
-+-----------------+------------------+
-                  |
-                  v
-+------------------------------------+
-|  Phase 2: Off-Thread Parser (V0.5) |
-|  - Shifted parsing to Web Worker   |
-|  - Added basic highlight.js syntax |
-+-----------------+------------------+
-                  |
-                  v
-+------------------------------------+
-|  Phase 3: Patching & Features (V1.0)|
-|  - Incremental DOM patching        |
-|  - MathJax & Mermaid integrations  |
-|  - Multi-document tab bar added    |
-+-----------------+------------------+
-                  |
-                  v
-+------------------------------------+
-|  Phase 4: Release & Desktop (v3.9.0)|
-|  - Cascade PDF layout pagination   |
-|  - Neutralinojs desktop app wrap   |
-|  - Service Worker offline cache    |
-+------------------------------------+
-```
+## High-Level Evolution
 
----
+| Phase | Main Work |
+| :--- | :--- |
+| Early renderer | Basic textarea and live Markdown preview. |
+| Performance foundation | Web Worker parsing, syntax highlighting, debounced rendering, and scroll sync fixes. |
+| Rich Markdown | MathJax, Mermaid, footnotes, alerts, extended Markdown, and sanitized HTML support. |
+| Workspace | Multi-document tabs, autosave, drag reordering, custom undo/redo, mobile parity, and reset flows. |
+| Export | Markdown, standalone HTML, PDF, PNG, diagram export toolbars, and PDF page-break planning. |
+| Desktop | Neutralino wrapper, native dialogs, launch-file support, storage persistence, and offline resource bundling. |
+| Sharing | Compressed URL snapshots, modal share UX, temporary KV-backed large snapshots, and Cloudflare Live Share rooms. |
+| Advanced renderers | PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, Markmap, GeoJSON, TopoJSON, STL, and ABC notation. |
+| Hardening | DOMPurify, SRI, least-privilege desktop APIs, canvas taint protection, accessibility improvements, and service-worker caching. |
 
-## Detailed Version Comparison
+## Current Release Highlights
 
-To see the differences in user interface design, rendering performance, and feature set, you can compare the original prototype with the current production build:
+v3.9.0 separates sharing into two clear workflows:
 
-| Target Area | Initial Prototype (Original V0.1) | Current Production Release (v3.9.0) |
-| :--- | :--- | :--- |
-| **Hosting Link** | [a1b91221.markdownviewer.pages.dev](https://a1b91221.markdownviewer.pages.dev/) | [markdownviewer.pages.dev](https://markdownviewer.pages.dev/) |
-| **Parsing Thread** | Main UI Thread (blocked typing) | Dedicated Background Web Worker |
-| **DOM Rendering** | Full `innerHTML` write (slow reflow) | Incremental FNV-1a Hash DOM Patching |
-| **Scroll Sync** | Basic scroll mapping (caused loops) | Locked `requestAnimationFrame` Sync |
-| **Diagram Support** | None (code text only) | Interactive Mermaid SVGs with Zoom & Pan |
-| **Math Typesetting** | None | LaTeX MathJax rendering with accessibility cleanup |
-| **Tabbed Sessions** | Single document | Drag-and-drop tab bar with localStorage autosave |
-| **Export Formats** | Raw Markdown only | Markdown, Standalone HTML, and sandboxed PDF |
-| **App Wrapper** | Browser only | NeutralinoJS Desktop Application shell |
-| **Offline Mode** | No (required online refresh) | PWA Service Worker caching (Cache-First) |
-| **File Import** | None | Drag & drop file parser and GitHub repo importer |
+- Share Snapshot creates a read-only or editable point-in-time copy. Small documents stay inside the URL hash. Larger documents are stored in Cloudflare KV for 90 days.
+- Live Share creates a temporary Cloudflare Durable Object room for real-time Yjs collaboration. The room relays updates and presence while active and does not store the document as a permanent record.
 
----
+The release also fixed shared rendering so advanced content such as LaTeX, Mermaid, TopoJSON, and other renderers complete after shared content loads, and it fixed desktop startup resource preparation.
 
-## Key Development Milestones
+## Important Design Decisions
 
-### 1. Moving to Background Web Workers
-Early testing with files larger than 10 KB showed noticeable typing lag because the main thread had to compile Markdown and highlight syntax on every keystroke. 
-Moving the parser to `preview-worker.js` resolved this. The main thread now only processes user input and patches the DOM, while the background worker handles document compilation and syntax highlighting.
+### On-Device Core
 
-### 2. Upgrading to Incremental DOM Patching
-Using `element.innerHTML` on every keystroke caused the browser to rebuild the entire preview pane. This reset scroll positions, cleared focus states, and collapsed elements like `<details>` blocks. 
-To fix this, we implemented an FNV-1a hash matching system. The app now compares hashes of incoming blocks and only replaces the DOM nodes that have changed, preserving the overall page state.
+The project started with an on-device editing model. Normal editing, previewing, local file import, local autosave, and most exports run in the browser or desktop webview.
 
-### 3. Preventing Scroll Synchronization Loops
-Initially, syncing scrolls between the editor and preview created an infinite feedback loop. 
-We resolved this by adding scroll locks (`isEditorScrolling` and `isPreviewScrolling`) combined with scheduling scroll updates inside `requestAnimationFrame`. This ensures scroll sync is smooth and loop-free.
+### Explicit Network Boundaries
 
-### 4. Implementing Cascade PDF Layout Pagination
-Default PDF exports often slice images, diagrams, and text lines across page breaks. 
-We addressed this by building a cascade pagination engine in an off-screen sandbox. It converts SVG diagrams to rasters, pushes headings below page breaks, splits tables row-by-row while duplicating the headers, and downscales oversized elements to fit the page.
+As the product grew, some useful features required network access. The documentation now names those boundaries directly:
 
----
+- GitHub import contacts GitHub.
+- Remote diagram renderers can receive diagram source.
+- Stored Share Snapshot uploads a temporary copy to Cloudflare KV.
+- Live Share relays active collaboration data through Cloudflare Durable Objects.
+- CDN libraries and external document assets can be fetched by the browser.
 
-## Transparency & Data Policies
+### Performance Before Frameworks
 
-*   **100% Client-Side Processing:** All text parsing, diagram generation, mathematical typesetting, and file exports happen inside the client browser. No document data is ever sent to an external server.
-*   **Encrypted Hash Links:** The URL sharing feature uses local zlib/deflate compression via `Pako.js`. The compressed document is stored entirely in the URL hash fragment. Because hash fragments are not sent to servers in HTTP requests, your shared content remains private.
-*   **Security Auditing:** External dependencies (DOMPurify, Marked.js, etc.) are loaded with subresource integrity (SRI) hashes to prevent loading modified scripts.
+The app stays mostly vanilla JavaScript. Instead of adopting a frontend framework, it uses:
+
+- Debounced rendering.
+- Optional worker rendering for large documents.
+- Block hashing and segmented DOM patching.
+- Cached line-height calculations.
+- RequestAnimationFrame scroll sync.
+- Lazy loading for heavy libraries.
+
+### Desktop Without Electron
+
+Neutralino was chosen to keep desktop builds lighter than Electron and reuse the web app. Desktop-specific code is limited to lifecycle handling, native dialogs, storage mirroring, and resource preparation.
+
+## Changelog Themes
+
+The changelog records many small fixes. The recurring themes are:
+
+- Rendering correctness for math, footnotes, diagrams, tables, and shared documents.
+- Export reliability for PDFs, images, diagrams, and HTML.
+- Mobile and accessibility parity.
+- Safer desktop permissions and offline packaging.
+- Better privacy wording and sharing UX.
+- Reduced blocking work during typing and startup.
+
+## Current Data Policy Summary
+
+- No analytics, telemetry, ads, accounts, or cookies are implemented.
+- Normal documents are saved locally.
+- Temporary shared/live tabs are excluded from saved workspaces.
+- Small snapshot links keep content in the URL hash.
+- Stored snapshot links use Cloudflare KV for 90 days.
+- Live Share uses Cloudflare Durable Objects as temporary relays.
+- Remote renderer and import features send only the data needed for that feature.

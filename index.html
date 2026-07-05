@@ -38,8 +38,8 @@
 
     <!-- Primary Meta Tags -->
     <meta name="title" content="Markdown Viewer - Secure Online Markdown Editor and Previewer">
-    <meta name="description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
-    <meta name="keywords" content="Markdown Viewer, GitHub-style markdown, live preview, markdown editor, LaTeX support, Mermaid diagrams, PDF export, syntax highlighting, markdown to HTML, secure markdown tool, client-side markdown viewer, ThisIs-Developer, advanced markdown parser, future markdown viewer, next-gen markdown tool">
+    <meta name="description" content="Browser-based Markdown editor, viewer, and reader. Open .md files, use split live preview with sync scroll, GFM, math, Mermaid, and PDF/HTML/PNG export.">
+    <meta name="keywords" content="Markdown Viewer, browser-based markdown editor, online markdown editor, markdown viewer, markdown reader, markdown previewer, live markdown preview, split-screen markdown editor, side-by-side markdown preview, sync scroll markdown, open md file, open markdown file, GitHub-Flavored Markdown, GFM markdown, markdown to PDF, markdown to HTML, markdown to PNG, LaTeX markdown, Mermaid markdown, no signup markdown editor, markdown formatting toolbar">
     <meta name="author" content="ThisIs-Developer">
     <meta name="robots" content="index, follow, max-image-preview:large">
     <meta name="language" content="English">
@@ -52,7 +52,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://markdownviewer.pages.dev/">
     <meta property="og:title" content="Markdown Viewer - Secure Online Markdown Editor and Previewer">
-    <meta property="og:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
+    <meta property="og:description" content="Open, read, edit, preview, and export Markdown files in a browser-based app with GFM, sync scroll, math, diagrams, and optional sharing.">
     <meta property="og:image" content="https://markdownviewer.pages.dev/assets/icon.jpg">
     <meta property="og:site_name" content="Markdown Viewer">
 
@@ -60,7 +60,7 @@
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://markdownviewer.pages.dev/">
     <meta property="twitter:title" content="Markdown Viewer - Secure Online Markdown Editor and Previewer">
-    <meta property="twitter:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
+    <meta property="twitter:description" content="Open, read, edit, preview, and export Markdown files in a browser-based app with GFM, sync scroll, math, diagrams, and optional sharing.">
     <meta property="twitter:image" content="https://markdownviewer.pages.dev/assets/icon.jpg">
 
     <!-- JSON-LD Structured Data Schema for Search Rich Snippets -->
@@ -71,17 +71,22 @@
       "name": "Markdown Viewer",
       "url": "https://markdownviewer.pages.dev/",
       "image": "https://markdownviewer.pages.dev/assets/icon.jpg",
-      "description": "A powerful GitHub-style Markdown rendering tool with live preview, LaTeX, Mermaid, syntax highlighting, and PDF export.",
+      "description": "A browser-based Markdown editor, viewer, and reader for opening .md files, writing plain Markdown, and using split-screen live preview with GitHub-Flavored Markdown, sync scrolling, LaTeX math, Mermaid diagrams, syntax highlighting, and PDF, HTML, PNG, or Markdown export.",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "All",
       "browserRequirements": "Requires HTML5 compatible browser",
       "softwareVersion": "3.9.0",
       "featureList": [
-        "Client-side Markdown editing",
-        "GitHub-style live preview",
+        "Browser-based Markdown editor, viewer, and reader",
+        "Open local .md and .markdown files",
+        "Split-screen live Markdown preview",
+        "Sync scrolling between editor and preview",
+        "GitHub-Flavored Markdown support",
+        "Markdown formatting toolbar",
         "LaTeX math rendering",
         "Mermaid diagram rendering",
-        "PDF, HTML, PNG, and Markdown export"
+        "PDF, HTML, PNG, and Markdown export",
+        "Optional Share Snapshot and Live Share workflows"
       ],
       "author": {
         "@type": "Organization",
@@ -139,13 +144,13 @@
                 <!-- Right section: Toolbar -->
                 <div class="toolbar d-none d-md-flex header-right">
                     <div class="toolbar-group view-toolbar" role="group" aria-label="View mode">
-                        <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Editor only" aria-label="Editor only">
+                        <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only">
                             <i class="bi bi-file-text"></i>
                         </button>
-                        <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split view" aria-label="Split view">
+                        <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview">
                             <i class="bi bi-layout-split"></i>
                         </button>
-                        <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Preview only" aria-label="Preview only">
+                        <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
@@ -248,15 +253,15 @@
 
                         <!-- Story 1.4: Mobile View Mode Buttons -->
                         <div class="mobile-view-mode-group mb-3" role="group" aria-label="View mode">
-                            <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Editor only">
+                            <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Markdown editor only">
                                 <i class="bi bi-file-text"></i>
                                 <span>Editor</span>
                             </button>
-                            <button class="mobile-view-mode-btn active" data-mode="split" aria-pressed="true" title="Split view">
+                            <button class="mobile-view-mode-btn active" data-mode="split" aria-pressed="true" title="Split editor and live preview">
                                 <i class="bi bi-layout-split"></i>
                                 <span>Split</span>
                             </button>
-                            <button class="mobile-view-mode-btn" data-mode="preview" aria-pressed="false" title="Preview only">
+                            <button class="mobile-view-mode-btn" data-mode="preview" aria-pressed="false" title="Markdown preview only">
                                 <i class="bi bi-eye"></i>
                                 <span>Preview</span>
                             </button>
@@ -360,7 +365,7 @@
         </div>
 
         <!-- Markdown Formatting Toolbar -->
-        <div class="markdown-format-toolbar" id="markdown-format-toolbar" role="toolbar" aria-label="Markdown formatting toolbar">
+        <div class="markdown-format-toolbar" id="markdown-format-toolbar" role="toolbar" aria-label="Markdown formatting toolbar for plain-text editing">
           <div class="markdown-toolbar-group">
             <button type="button" class="markdown-tool-btn" data-md-action="undo" title="Undo" aria-label="Undo"><i class="bi bi-arrow-counterclockwise"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="redo" title="Redo" aria-label="Redo"><i class="bi bi-arrow-clockwise"></i></button>
@@ -667,7 +672,7 @@
                 <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="64" height="64" />
                 <div class="about-details">
                   <h3 class="about-title">Markdown Viewer</h3>
-                  <p class="about-description">A GitHub-style Markdown editor with live preview, diagrams, math, syntax highlighting, and export tools.</p>
+                  <p class="about-description">A browser-based Markdown editor, viewer, and reader for opening .md files, split-screen live preview, GFM, sync scroll, diagrams, math, syntax highlighting, and export tools.</p>
                   <p class="about-meta">Version <span id="about-version"></span> &bull; Apache License 2.0 &bull; Open source</p>
                 </div>
               </div>
@@ -1116,7 +1121,7 @@
                     <div class="skeleton-placeholder skeleton-line skeleton-w92"></div>
                     <div class="skeleton-placeholder skeleton-line skeleton-w45"></div>
                 </div>
-                <textarea id="markdown-editor" placeholder="Type or paste your Markdown here..."></textarea>
+                <textarea id="markdown-editor" placeholder="Type, paste, or import Markdown here..." aria-label="Markdown editor input with live preview"></textarea>
                 <div class="drop-hint" aria-hidden="true">
                     <i class="bi bi-cloud-arrow-up me-1"></i>Drop a .md file anywhere to open it
                 </div>
@@ -1125,7 +1130,7 @@
             <div class="resize-divider" role="separator" aria-orientation="vertical" aria-label="Resize panes" tabindex="0">
                 <div class="resize-divider-handle"></div>
             </div>
-            <div class="preview-pane">
+            <div class="preview-pane" role="region" aria-label="Rendered Markdown live preview">
                 <div id="markdown-preview" class="markdown-body">
                     <!-- Initial dynamic article skeleton loader -->
                     <div class="skeleton-preview-container" id="markdown-preview-skeleton" aria-hidden="true">
@@ -1223,7 +1228,7 @@
 
     <textarea id="default-markdown" hidden aria-hidden="true">---
 title: Welcome to Markdown Viewer
-description: A GitHub-style Markdown renderer with live preview, math, diagrams, and export support.
+description: Browser-based Markdown editor, viewer, and reader with .md file opening, live preview, GFM, sync scroll, math, diagrams, and export support.
 author: ThisIs-Developer
 tags: ["markdown", "preview", "mermaid", "latex", "open-source"]
 ---
@@ -1231,8 +1236,9 @@ tags: ["markdown", "preview", "mermaid", "latex", "open-source"]
 # Welcome to Markdown Viewer
 
 ## ✨ Key Features
-- **Live Preview** with GitHub styling
-- **Smart Import/Export** (MD, HTML, PDF)
+- **Split-Screen Live Markdown Preview** with GitHub-style rendering and sync scroll
+- **Open Local .md and .markdown Files** by picker or drag and drop
+- **Smart Import/Export** (MD, HTML, PDF, PNG)
 - **Mermaid Diagrams** for visual documentation
 - **LaTeX Math Support** for scientific notation
 - **Emoji Support** 😄 👍 🎉
@@ -1387,7 +1393,7 @@ Quote someone famous:
 
 ## 🛡️ Security Note
 
-This is a fully client-side application. Your content never leaves your browser and stays secure on your device.
+Markdown Viewer keeps normal editing, previewing, and autosave on your device. Content can leave your device only when you use network features such as GitHub import, remote diagram rendering, Share Snapshot, Live Share, external images, or CDN-hosted libraries.
 </textarea>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous" defer></script>

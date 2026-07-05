@@ -1,43 +1,42 @@
-# Installation & Deployment Guide
+# Installation and Deployment
 
-This page provides detailed installation, setup, and deployment guides for **Markdown Viewer** across all supported platforms.
+Markdown Viewer is a premium browser-based Markdown editor/viewer that can run as a static web app, a self-hosted Docker site, a Cloudflare deployment with optional sharing features, or a Neutralino desktop app. Choose the setup that matches how you want to open, read, edit, preview, and export Markdown files.
 
----
+## Requirements
 
-## Table of Contents
+| Target | Requirements |
+| :--- | :--- |
+| Local web | Modern browser and a local HTTP server. |
+| PWA/offline web | HTTPS or localhost for Service Worker support. |
+| Docker | Docker Engine and port access to the container. |
+| Cloudflare sharing/live | Cloudflare Pages, `SHARE_KV`, and `LIVE_ROOMS` Durable Object bindings. |
+| Desktop build | Node.js/npm, Neutralino binaries, and internet access during setup/prepare. |
 
-- [System Requirements](#system-requirements)
-- [Option 1: Docker Container (Recommended)](#option-1-docker-container-recommended)
-- [Option 2: Docker Compose Setup](#option-2-docker-compose-setup)
-- [Option 3: Self-Hosted Static Web Server](#option-3-self-hosted-static-web-server)
-- [Option 4: Neutralinojs Desktop Application](#option-4-neutralinojs-desktop-application)
-- [Air-Gapped & Offline Isolation Configuration](#air-gapped--offline-isolation-configuration)
+Do not rely on `file://` for normal use. Web Workers and Service Workers can be blocked from local files.
 
----
+## Quick Local Web Run
 
-## System Requirements
-
-### Web & Container Deployments
-*   **Modern Web Browsers:** Google Chrome 90+, Mozilla Firefox 90+, Microsoft Edge 90+, Apple Safari 15+. Note that PWA and Service Worker features require HTTPS or a `localhost` origin for security enforcement.
-*   **Docker Daemon:** Docker Engine 20.10+ (for Docker container deployment).
-*   **System Resources:** Minimum 512 MB RAM, 100 MB disk space.
-
-### Desktop Application Compilation
-*   **Operating Systems:** Windows 10+ (x64), Ubuntu 20.04+ (x64 / ARM64), macOS 11+ (Universal Apple Silicon/Intel).
-*   **Node.js Runtime Environment:** v16.0.0 or later (includes npm package manager).
-*   **System Resources:** Minimum 256 MB RAM, 50 MB disk space.
-
----
-
-## Option 1: Docker Container (Recommended)
-
-Deploy the application using the official Docker image hosted on the GitHub Container Registry (GHCR).
-
-### Running the Container
-Execute the following command to start a detached container that redirects host port `8080` to container port `80`:
+From the repository root:
 
 ```bash
-docker pull ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0
+python -m http.server 8080
+```
+
+or:
+
+```bash
+npx serve . -p 8080
+```
+
+Open `http://localhost:8080`.
+
+This runs the editor, split live preview, sync scrolling, local storage, local `.md` file imports, exports, PWA registration, and CDN-loaded renderers. Cloudflare-only features such as stored Share Snapshot and Live Share require their matching deployed endpoints.
+
+## Docker
+
+Using the published image:
+
+```bash
 docker run -d \
   --name markdown-viewer \
   -p 8080:80 \
@@ -45,162 +44,114 @@ docker run -d \
   ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0
 ```
 
-Open **http://localhost:8080** in your browser.
+Open `http://localhost:8080`.
 
-### Adjusting Ports
-To map the application to a different port (such as `9000`), modify the left side of the `-p` parameter:
+Using Compose from the repository root:
 
-```bash
-docker pull ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0
-docker run -d \
-  --name markdown-viewer \
-  -p 9000:80 \
-  --restart unless-stopped \
-  ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0
-```
-
-### Image Tags
-
-| Tag Name | Production Ready | Target Source Branch | Target Architecture |
-| :--- | :--- | :--- | :--- |
-| `latest` | Yes (Stable Release) | `main` branch (Release tag) | `linux/amd64`, `linux/arm64` |
-| `main` | No (Development) | `main` branch (Commit updates) | `linux/amd64`, `linux/arm64` |
-| `<commit-sha>` | Pinned | Specific Git commit hash | `linux/amd64`, `linux/arm64` |
-
----
-
-## Option 2: Docker Compose Setup
-
-For local deployments and multi-container environments, use Docker Compose.
-
-### 1. Clone the Codebase
-```bash
-git clone https://github.com/ThisIs-Developer/Markdown-Viewer.git
-cd Markdown-Viewer
-```
-
-### 2. Launch the Application
-Start the container using Compose:
 ```bash
 docker compose up -d
 ```
 
-### 3. Verify Container Status
-Confirm the container is running:
+To rebuild from local source:
+
 ```bash
-docker compose ps
+docker compose up -d --build
 ```
 
-### 4. Stop the Container
+The Docker image serves static files with Nginx. It does not magically provide Cloudflare KV or Durable Objects; deploy those separately if you want stored Share Snapshot or Live Share.
+
+## Static Hosting
+
+Serve at least these root files:
+
+- `index.html`
+- `script.js`
+- `styles.css`
+- `preview-worker.js`
+- `sw.js`
+- `manifest.json`
+- `assets/`
+
+For Cloudflare Pages with stored Share Snapshot and Live Share, also deploy:
+
+- `functions/api/share/[[id]].js`
+- `functions/live-room/[[room]].js`
+- `workers/live-room-worker.js`
+- `wrangler.toml`
+- `wrangler.live-room.toml`
+
+If you host under a sub-path, test worker, service-worker, manifest, and dynamic library paths carefully.
+
+## Cloudflare Setup
+
+Share Snapshot storage needs a KV namespace bound as `SHARE_KV`.
+
+Live Share needs a Durable Object binding named `LIVE_ROOMS` using the `LiveRoom` class from `workers/live-room-worker.js`.
+
+Deploy the live room worker with:
+
 ```bash
-docker compose down
+wrangler deploy -c wrangler.live-room.toml
 ```
 
-### Default `docker-compose.yml` Configuration
-```yaml
-services:
-  markdown-viewer:
-    image: ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0
-    container_name: markdown-viewer
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-```
+Then deploy the Pages project with `wrangler.toml` or your Cloudflare Pages configuration. See [Live Share Cloudflare](Live-Share-Cloudflare) and [Configuration](Configuration).
 
-To build a local image instead of pulling the published container, update the `image` field with a `build` directive:
-```yaml
-services:
-  markdown-viewer:
-    build: .
-    container_name: markdown-viewer
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-```
+## Desktop App
 
----
+From `desktop-app/`:
 
-## Option 3: Self-Hosted Static Web Server
-
-Because Markdown Viewer is a fully client-side application, you can serve it from any static web server to serve `index.html` on localhost (`127.0.0.1`) by copying `index.html`, `script.js`, `preview-worker.js`, `styles.css`, `sw.js`, and the `assets/` folder.
-
-### Clone the Repository
 ```bash
-git clone https://github.com/ThisIs-Developer/Markdown-Viewer.git
-cd Markdown-Viewer
+npm install
+npm run setup
+npm run dev
 ```
 
-### Serving with Python (Built-in Web Server)
-Run the following command in the repository root to serve the project on localhost:
+Build release resources and binaries with:
+
 ```bash
-python3 -m http.server 8080
+npm run build
 ```
 
-### Serving with Node.js
-Run the following command in the repository root to serve the project on localhost:
+What setup does:
+
+- Downloads Neutralino binaries.
+- Runs `prepare.js`.
+- Copies the root app into `desktop-app/resources`.
+- Downloads and verifies external libraries where integrity values are available.
+- Rewrites dynamic renderer library paths to local `/libs/...` files.
+- Prepares the desktop app for offline use after the build is complete.
+
+The desktop app uses native open/save dialogs for Markdown and HTML files, asks before closing, and can load a Markdown file passed as a command-line argument.
+
+## Offline Use
+
+Web/PWA:
+
+- First load requires the app shell and any needed CDN libraries.
+- After caching, the app shell and previously fetched CDN libraries can work offline.
+- Features that require live network access still need it: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and map tiles.
+
+Desktop:
+
+- The prepared desktop bundle uses local libraries in `resources/libs`.
+- Local editing, rendering, and export features are available without CDN access after preparation.
+- Network features still use the network when invoked.
+
+## Platform Notes
+
+Windows desktop binaries may trigger SmartScreen because they are unsigned. Choose More info, then Run anyway if you trust the build.
+
+Linux binaries may need execute permission:
+
 ```bash
-npx serve . -p 8080
+chmod +x markdown-viewer-linux_x64
+./markdown-viewer-linux_x64
 ```
-Once started, the application is accessible at **http://localhost:8080** or **http://127.0.0.1:8080**.
 
-### Serving with Nginx
-Copy the project assets to Nginx's HTML folder:
+macOS binaries may need quarantine removal:
+
 ```bash
-cp -r . /usr/share/nginx/html/
+xattr -d com.apple.quarantine markdown-viewer-mac_universal
+chmod +x markdown-viewer-mac_universal
+./markdown-viewer-mac_universal
 ```
-
-> [!WARNING]
-> Opening the `index.html` file directly in a browser via the `file://` protocol may fail due to browser security restrictions (CORS) that block Web Workers and Service Workers from running locally. Always serve the files using a local web server.
-
----
-
-## Option 4: Neutralinojs Desktop Application
-
-Markdown Viewer can also run as a native desktop application powered by **Neutralinojs**.
-
-### Downloading Pre-Built Executables
-Download the binary for your platform from the [GitHub Releases Page](https://github.com/ThisIs-Developer/Markdown-Viewer/releases):
-*   **Windows:** `markdown-viewer-win_x64.exe`
-*   **Linux:** `markdown-viewer-linux_x64`
-*   **Linux ARM (Raspberry Pi):** `markdown-viewer-linux_arm64`
-*   **macOS (Apple Silicon/Intel):** `markdown-viewer-mac_universal`
-
-### Building the Desktop Executable from Source
-Follow these steps to build the binaries locally:
-
-1.  Navigate to the desktop application folder:
-    ```bash
-    cd desktop-app
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Download Neutralino framework binaries:
-    ```bash
-    node setup-binaries.js
-    ```
-4.  Copy files from the project root into the desktop resource folder:
-    ```bash
-    node prepare.js
-    ```
-5.  Compile the executable:
-    ```bash
-    # Build single-file embedded Windows binary
-    npm run build
-    
-    # Build portable distribution zip files for all platforms
-    npm run build:portable
-    ```
-
----
-
-## Air-Gapped & Offline Isolation Configuration
-
-By default, the application loads large rendering dependencies (like MathJax and Mermaid) from external CDNs. In secure, offline, or air-gapped environments, these remote scripts will fail to load.
-
-### Setting Up a Fully Offline Build:
-1.  Download the required JavaScript dependencies (see [Configuration](Configuration) for URLs) and save them to a local directory (e.g., `js/libs/`).
-2.  Update the `<script>` and `<link>` tags in `index.html` to reference your local asset paths.
-3.  Synchronize the desktop app folder by running `node prepare.js`.
-4.  Rebuild your Docker image or desktop application.

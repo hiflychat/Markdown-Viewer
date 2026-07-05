@@ -2185,7 +2185,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       templateText = defaultMarkdownTemplate.textContent ? defaultMarkdownTemplate.textContent.trim() : '';
     }
   }
-  const sampleMarkdown = templateText || '# Welcome to Markdown Viewer\n\nStart typing your markdown here...';
+  const sampleMarkdown = templateText || '# Welcome to Markdown Viewer\n\nStart typing, pasting, or importing Markdown to use the live preview...';
 
   if (!markdownEditor.value) {
     markdownEditor.value = sampleMarkdown;

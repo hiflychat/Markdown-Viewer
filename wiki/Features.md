@@ -1,232 +1,486 @@
-# Detailed Features & Implementation Deep Dive
+# Features and Product Behavior
 
-This document details the features of **Markdown Viewer**, focusing on their architectural execution, performance strategies, and code-level configurations for version v3.9.0.
+This page is the source-of-truth feature reference for Markdown Viewer v3.9.0. It describes what the app does, how each feature behaves for users, the implementation limits that matter in practice, and what happens to document data.
 
----
+## Product Summary
 
-## Table of Contents
+Markdown Viewer is a premium browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a live GitHub-style preview. It runs as a static web app, a Progressive Web App, a Docker-hosted static site, and a Neutralino desktop app. The editor is built around a plain textarea, a split-screen rendered preview pane with sync scrolling, document tabs, import/export tools, sharing tools, rich Markdown renderers, and optional Cloudflare endpoints for Share Snapshot and Live Share.
 
-1.  [Off-Thread Web Worker Parser](#1-off-thread-web-worker-parser)
-2.  [Segmented DOM Patching Engine](#2-segmented-dom-patching-engine)
-3.  [Ratio-Based Proportional Scroll Synchronization](#3-ratio-based-proportional-scroll-synchronization)
-4.  [LaTeX Mathematical Typesetting](#4-latex-mathematical-typesetting)
-5.  [Interactive Mermaid Diagrams with Drag-to-Pan](#5-interactive-mermaid-diagrams-with-drag-to-pan)
-6.  [Cascade PDF Layout Pagination Sandbox](#6-cascade-pdf-layout-pagination-sandbox)
-7.  [Multi-Document Session Persistence & Drag Reordering](#7-multi-document-session-persistence--drag-reordering)
-8.  [Binary Safety Gutter & Multi-File Importer](#8-binary-safety-gutter--multi-file-importer)
-9.  [Serverless Sharing via Compressed Hash Fragments](#9-serverless-sharing-via-compressed-hash-fragments)
-10. [Performance, Security, and UI Variables](#10-performance-security-and-ui-variables)
+Most work happens in the browser or desktop webview. Markdown parsing, syntax highlighting, math rendering, diagram post-processing, PDF/PNG capture, tab storage, undo/redo, search, and formatting tools are client-side. The exceptions are explicit network features: GitHub import, emoji lookup, CDN library loading in the web build, remote diagram fallback services, large Share Snapshot storage, and Live Share relay rooms.
 
----
+## Main Workspace
 
-## 1. Off-Thread Web Worker Parser
+The app opens with a header, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
 
-To prevent typing lag and main-thread blocks, Markdown Viewer offloads compilation to a background Web Worker (`preview-worker.js`).
+- Editor mode shows only the textarea.
+- Split mode shows the editor and preview side by side.
+- Preview mode shows only the rendered document.
+- On small screens, the mobile menu exposes the same core actions and the layout avoids a cramped split view.
+- A draggable divider resizes editor and preview in split mode and keeps both panes above 20% width.
+- The divider also supports keyboard adjustment with left and right arrow keys while split view is active.
+- The GitHub link in the header opens the source repository.
 
-### Size-Aware Debouncing
-The main thread throttles render requests based on the character length of the active document to conserve CPU cycles:
-*   **Small Documents (<10 KB):** 80ms render debounce.
-*   **Medium Documents (10 KB - 50 KB):** 150ms render debounce.
-*   **Large Documents (>50 KB):** 300ms render debounce.
+The editor includes line numbers, wrapped-line height handling, a highlight layer for find results, live cursor overlays during Live Share, and skeleton placeholders during initial or heavy rendering. Line-number calculations are cached so large documents do not force a full layout measurement on every keystroke.
 
-### Segmented Worker Parsing
-1.  **Block Splitting:** The worker splits incoming markdown strings by double-newlines (`\n\n`) while respecting boundary exclusions (like block math `$$` and code fences ` ``` `).
-2.  **FNV-1a Alphanumeric Hashing:** For each block, the worker computes a 32-bit FNV-1a hash. This is a non-cryptographic hash function designed for speed:
+## Document Tabs and Local Workspace Storage
 
-    $$H_i = (H_{i-1} \oplus d_i) \times p$$
+Users can work with multiple documents at once.
 
-    where $p = 16777619$ (FNV prime) and $H_0 = 2166136261$ (offset basis).
-3.  **Selective Compilation:** If the document doesn't use complex global footnotes or reference-style declarations, the worker compiles only changed blocks using `marked.js` and `highlight.js`. It returns an array of compiled HTML strings paired with their FNV-1a hashes.
+- New tabs can be created from the tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
+- Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
+- The app enforces a practical tab limit of 20 tabs. Shared snapshots refuse to open when this limit has been reached.
+- Each normal tab stores a title, content, scroll position, view mode, and creation time.
+- The active tab id and untitled-document counter are stored separately.
+- Temporary Share Snapshot and Live Share tabs are deliberately excluded from persistent tab storage.
+- The Reset button clears the current saved workspace and returns the app to a clean starting state.
 
----
+Storage keys used by the current implementation include:
 
-## 2. Segmented DOM Patching Engine
+| Key | What It Stores |
+| :--- | :--- |
+| `markdownViewerTabs` | Normal saved document tabs. Temporary shared/live tabs are stripped before saving. |
+| `markdownViewerActiveTab` | The active tab id. |
+| `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
+| `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |
+| `app-lang` | Selected interface language. |
+| `find-replace-docked` | Whether the Find and Replace panel is docked. |
 
-Updating the entire preview pane using `element.innerHTML` causes layout repaints, resets scrollbar offsets, wipes focus states, and collapses open toggle elements (like `<details>`). Markdown Viewer employs a custom patching controller:
+On the web, these values live in browser `localStorage`. In the desktop app, the code mirrors selected localStorage values into Neutralino storage, so preferences and workspace state survive desktop restarts.
 
-### Patching Algorithm
-1.  **Hash Comparison:** The main thread compares the hashes of the incoming HTML block array against the child nodes of the preview pane.
-2.  **Targeted Replacement:**
-    *   If a node's hash matches, it is skipped.
-    *   If a node's hash differs, the script replaces the corresponding child node in place using `replaceWith()`.
-    *   If the new array has more elements, new nodes are appended.
-    *   Extra trailing nodes are pruned.
-3.  **Layout Containment:** Every block is wrapped in a `<section>` container configured with modern CSS rules:
-    ```css
-    content-visibility: auto;
-    contain-intrinsic-size: auto 220px;
-    ```
-    This instructs the browser's layout engine to bypass formatting and rendering of off-screen markdown sections, reducing repaint and reflow overhead.
+## Editing and Formatting Tools
 
----
+The formatting toolbar inserts or transforms Markdown at the current selection. It is a helper for writing plain Markdown with live preview, not a full in-place WYSIWYG rich text editor.
 
-## 3. Ratio-Based Proportional Scroll Synchronization
+- Undo and redo use the app's custom per-tab history.
+- Clear document opens a confirmation modal.
+- Bold, italic, strikethrough, quote, inline code, code block, terminal block, horizontal rule, and headings H1-H6 insert standard Markdown.
+- Bulleted and numbered lists work on selected lines or the current line.
+- Pressing Enter inside a list continues the list; pressing Enter on an empty list item exits the list.
+- Tab inserts two spaces; Shift+Tab outdents selected lines.
+- Title case, uppercase, and lowercase transform selected text or the current line.
+- Alignment buttons insert left, center, or right aligned HTML blocks.
+- The direction toggle switches between left-to-right and right-to-left content direction.
+- Link, image, reference, table, emoji, symbol, alert, and diagram buttons open focused modals.
+- Date/time inserts a local timestamp.
+- Fullscreen uses the browser Fullscreen API when available.
+- Help and About buttons open informational modals.
 
-When editing in **Split View**, scrolling the editor textarea scrolls the HTML preview pane proportionally, and vice versa.
+View-only Share Snapshot tabs and view-only Live Share participant tabs block mutating tools and announce that the editor is read-only. Non-mutating actions such as fullscreen, find, help, and info remain available.
 
-### Math Formula
-Proportional scrolling is mapped using the scroll ratio:
+## Custom Undo and Redo
 
-$$R_{\text{scroll}} = \frac{\text{scrollTop}}{\text{scrollHeight} - \text{clientHeight}}$$
+The app keeps its own edit history for each tab so toolbar actions, typed edits, and programmatic changes can be undone consistently.
 
-The target container's scroll position is then calculated as:
+- `Ctrl+Z` or `Cmd+Z` undoes the previous edit in the active editor.
+- `Ctrl+Shift+Z`, `Cmd+Shift+Z`, `Ctrl+Y`, or `Cmd+Y` redoes.
+- Undo and redo buttons are disabled when the current tab cannot be edited.
+- Cursor position is tracked so undo and redo feel close to native textarea behavior.
 
-$$\text{Target-scroll-top} = R_{\text{scroll}} \times (\text{Target-scroll-height} - \text{Target-client-height})$$
+## Find and Replace
 
-### Feedback Loop Prevention
-Since scrolling the target pane triggers its own scroll events, this can create an infinite update loop. To prevent this:
-*   The application implements state locks: `isEditorScrolling = true` and `isPreviewScrolling = true`.
-*   Scroll coordinates are updated within `requestAnimationFrame()`.
-*   A 50ms timeout releases the locks after scrolling stops.
+Find and Replace is a floating or docked panel with editor and preview highlighting.
 
----
+- Open it with the toolbar, `Ctrl+F`, or `Cmd+F`.
+- `Ctrl+H` or `Cmd+H` opens the panel focused on replacement.
+- It supports case-sensitive matching, whole-word matching, regular expressions, selection-only search, and replace-all.
+- Regex replacements can use numbered capture groups like `$1` and named groups like `$<name>`.
+- Preserve-case replacement adjusts replacement casing to match the matched text.
+- Search scope can be limited using a Marked lexer map, including headings, code blocks, Mermaid blocks, LaTeX blocks, or the entire document.
+- Diff preview shows the effect before bulk replacement.
+- The panel can be dragged, docked, undocked, and reset to a visible position. Its floating position is constrained to the viewport.
+- Find history and replace history are kept in memory for the current session, up to 10 entries each.
 
-## 4. LaTeX Mathematical Typesetting
+Limitations:
 
-LaTeX parsing uses **MathJax** loaded dynamically from a CDN.
+- AST scoping depends on Marked token boundaries. Very unusual Markdown can be classified as plain text.
+- Scope validation protects LaTeX delimiters and Mermaid block starts, but it cannot prove every replacement is semantically correct.
+- Preview highlighting works on visible text nodes and may skip text produced inside complex third-party SVG renderers.
 
-### Scanning and Typesetting
-*   The controller scans inputs using a regex test: `/\$\$|\$[^$]|\\\(|\\\[/`.
-*   If math markers are detected, the MathJax libraries are fetched.
-*   Once loaded, equations are rendered by calling:
-    ```javascript
-    MathJax.typesetPromise([previewElement]);
-    ```
+## Markdown Rendering
 
-### Accessibility Post-Processing
-By default, MathJax appends assistive MathML containers (`<mjx-assistive-mml>`) with `tabindex="0"`. This interrupts keyboard tab order. A post-processing script runs after typesetting:
-1.  It queries all `<mjx-assistive-mml>` tags in the preview.
-2.  It removes the `tabindex` attribute from each element.
-3.  These assistive nodes are hidden or stripped prior to PDF canvas capture to prevent overlapping text.
+Markdown is parsed with Marked and highlighted with Highlight.js. Rendered HTML is sanitized with DOMPurify before it is inserted into the preview.
 
----
+Supported Markdown behavior includes:
 
-## 5. Interactive Mermaid Diagrams with Drag-to-Pan
+- CommonMark-style headings, paragraphs, line breaks, emphasis, blockquotes, lists, code blocks, horizontal rules, links, images, and inline HTML.
+- GitHub-Flavored Markdown (GFM) features such as tables, task lists, strikethrough, and autolinks.
+- Heading ids generated from heading text for in-document anchor navigation.
+- Reference definitions and reference links.
+- Multi-paragraph footnotes with back references.
+- Definition lists using a term followed by `: definition`.
+- Superscript with `^text^`.
+- Subscript with `~text~`.
+- Highlight with `==text==`.
+- GitHub-style alert blocks for NOTE, TIP, IMPORTANT, WARNING, and CAUTION.
+- Emoji shortcodes processed through JoyPixels when the emoji library is available.
+- Raw HTML is allowed only after sanitization. Scripts and unsafe event handlers are removed.
 
-Mermaid code blocks are rendered as SVG diagrams with custom interactive features.
+The worker and main renderer both preserve block math, custom diagram shells, footnote state, definition lists, superscript, subscript, and highlight syntax so advanced blocks do not collapse during live updates.
 
-### Floating Action Toolbar
-Every rendered Mermaid diagram is wrapped in a container that appends a floating toolbar with four actions:
-1.  **Zoom modal:** Opens the diagram in a full-screen interactive modal.
-2.  **Download PNG:** Captures the SVG, draws it to a canvas element, and downloads it.
-3.  **Download SVG:** Serializes the SVG XML nodes and triggers a browser download.
-4.  **Copy Image:** Renders the diagram as a PNG blob and copies it to the system clipboard using the asynchronous Clipboard API:
-    ```javascript
-    navigator.clipboard.write([
-        new ClipboardItem({ "image/png": pngBlob })
-    ]);
-    ```
+## Web Worker and Preview Performance
 
-### Drag-to-Pan Mechanics
-Inside the zoom modal, the SVG transform matrix is updated during mouse events:
-*   **Scale:** Computed using mouse-wheel offsets:
+Rendering is designed to keep typing responsive.
 
-    $$\text{scale} = \max(0.1, \min(\text{scale} + \text{delta}, 10))$$
+- Small documents render on the main thread after a short debounce.
+- Very large documents can render in `preview-worker.js`.
+- The current worker threshold is 50,000 characters.
+- Render debounce is size-aware: 100 ms for typical documents, 160 ms for large documents, and 240 ms for huge documents.
+- Worker rendering has a 12 second timeout and falls back if worker rendering fails repeatedly.
+- When safe, the worker splits Markdown into blocks, hashes each block, and returns segmented HTML.
+- The main thread caches sanitized segments and patches only changed preview sections.
+- Segmented rendering is avoided when document constructs need global context, such as footnotes or reference-style definitions.
+- Preview sections use `content-visibility: auto` so off-screen content costs less to lay out.
 
-*   **Panning:** Tracks the difference between starting coordinates and current pointer coordinates:
+Limitations:
 
-    $$X_{\text{pan}} = X_{\text{current}} - X_{\text{dragStart}}$$
+- Huge documents still depend on browser memory and DOM limits.
+- Advanced renderers such as Mermaid, MathJax, maps, STL, ABC, and remote diagrams run after the base Markdown pass, so they can appear slightly later than text.
+- The app retries advanced post-processing when shared or live content loads before renderer libraries are ready.
 
-    $$Y_{\text{pan}} = Y_{\text{current}} - Y_{\text{dragStart}}$$
-*   **CSS Transform:** The updates are applied using hardware-accelerated CSS properties:
-    ```javascript
-    svg.style.transform = `translate(${modalPanX}px, ${modalPanY}px) scale(${modalZoomScale})`;
-    ```
+## Math Rendering
 
----
+MathJax renders LaTeX-style math.
 
-## 6. Cascade PDF Layout Pagination Sandbox
+- Inline math uses `$...$`.
+- Display math uses `$$...$$`, `\(...\)`, or `\[...\]`.
+- Fenced `math` code blocks are converted into display math.
+- Additional MathJax packages are configured for richer notation.
+- MathJax loads only when math-like text is detected.
+- After typesetting, the app removes or hides MathJax assistive markup from export captures so duplicate text does not appear in PDFs or PNGs.
 
-Exporting long, complex Markdown previews to PDF often leads to sliced text lines and cut-off images. Markdown Viewer uses a custom pagination engine:
+Limitations:
 
-### Pagination Pipeline
-1.  **Sandbox Cloning:** The preview DOM is cloned into an off-screen sandbox element (`.pdf-export` class) set to A4 width (210mm).
-2.  **SVG to Raster Conversion:** Because `html2canvas` struggles to render inline SVGs, all Mermaid diagrams are converted to Base64-encoded PNG image elements inside the sandbox.
-3.  **Cascade Pagination Loop:** The pagination engine executes up to 10 passes:
-    *   *Keep-with-Next Headings:* Headings within 70px of a page break are shifted down via margin-top spacers (`.pdf-page-break-spacer`).
-    *   *Table Splitting:* Split rows are shifted, and the table header (`<thead>`) is duplicated onto the subsequent page.
-    *   *Text Alignment:* Lines are shifted downward to align page cuts cleanly between font heights, avoiding sliced characters.
-    *   *Oversized Graphics:* Images exceeding page boundaries are downscaled (minimum scale 0.5) to fit.
-4.  **Compilation:** The stabilized sandbox is captured page-by-page using `html2canvas`, and the resulting canvases are compiled into a PDF via `jsPDF`.
+- The first math render in the web build may require downloading MathJax unless it is already cached.
+- Invalid LaTeX is shown according to MathJax behavior and may produce warnings or unrendered source.
+- A literal dollar sign should be escaped as `\$` when it is not intended to start math.
 
----
+## Diagrams, Charts, Maps, Models, and Music
 
-## 7. Multi-Document Session Persistence & Drag Reordering
+Markdown Viewer supports many fenced-code renderers.
 
-Markdown Viewer supports working with multiple documents simultaneously via a tabbed workspace.
+| Fence Language | Renderer | User Behavior | Network Notes |
+| :--- | :--- | :--- | :--- |
+| `mermaid` | Mermaid.js | Renders diagrams as SVG with zoom, copy, PNG, and SVG actions. | Client-side library. Diagram insertion previews may use mermaid.ink. |
+| `plantuml` | PlantUML/Kroki | Renders SVG and provides zoom, copy, PNG, and SVG actions. | Uses PlantUML server first, then Kroki fallback. |
+| `d2` | Kroki | Renders D2 SVG and provides zoom, copy, PNG, and SVG actions. | Uses Kroki. Some source is normalized for common SQL-table cases. |
+| `graphviz` / `dot` | Kroki | Renders Graphviz SVG and provides zoom, copy, PNG, and SVG actions. | Uses Kroki. |
+| `vega-lite` / `vegalite` | Kroki | Renders Vega-Lite charts. | Uses Kroki. |
+| `wavedrom` | Kroki | Renders WaveDrom timing diagrams. | Uses Kroki. |
+| `markmap` | Markmap, D3 | Renders a mind-map style SVG. | Client-side libraries. |
+| `geojson` | Leaflet | Renders an interactive map. | Client-side library; map tiles may require network depending on tile source. |
+| `topojson` | Leaflet and TopoJSON | Converts TopoJSON to GeoJSON and renders an interactive map. | Client-side library; map tiles may require network. |
+| `stl` | Three.js | Renders a 3D STL model with orbit controls, solid/surface-angle/wireframe modes, zoom modal, copy, and PNG export. | Client-side libraries. |
+| `abc` | ABCJS | Renders sheet music, supports playback, cursor sync, note highlighting, copy, PNG, and SVG export. | Client-side library; browser audio support required for playback. |
 
-### Tab State Schema
-The workspace is managed in a global `tabs` array:
-```javascript
-{
-  id: "tab_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8),
-  title: "Document Title",
-  content: "# Markdown Content...",
-  scrollPos: 0,
-  viewMode: "split", // split | editor | preview
-  createdAt: 1718042710000
-}
-```
+Every diagram shell keeps the original source in a data attribute so the app can rerender after theme changes, shared document loading, and export preparation. Diagram PNG exports add a solid background when needed so transparent SVGs stay visible.
 
-### Save Pipeline
-*   **Debounced Save:** Document changes trigger an auto-save that is debounced by 500ms using a window timer to prevent blocking the UI thread with constant serialization.
-*   **Beforeunload Flush:** To ensure changes are saved when navigating away or closing the page, the state is flushed immediately during `beforeunload` and `visibilitychange` events (when the page is hidden).
+Limitations:
 
-### Drag-and-Drop Reordering
-*   Tab elements in the DOM are configured with `draggable="true"`.
-*   Drag events track the moving tab (`draggedTabId`).
-*   Releasing a tab over another swaps their indices in the state array, saves the updated array to `localStorage`, and updates the tab bar.
+- Remote diagram engines send diagram source to third-party rendering endpoints. Do not use those fences for private diagram text unless you trust the endpoint or provide your own deployment.
+- Remote render requests have a 15 second timeout and retry twice.
+- Clipboard image writing requires a secure context and browser support for `ClipboardItem`.
+- WebGL STL rendering depends on GPU/browser support. The app disposes old STL views to reduce memory leaks.
+- ABC audio playback depends on browser audio APIs and may be unavailable in some environments.
 
----
+## Diagram Insertion Modal
 
-## 8. Binary Safety Gutter & Multi-File Importer
+The diagram modal offers searchable templates grouped by engine. It shows source code and a live preview before insertion.
 
-### Binary File Guard
-To prevent importing corrupted binary files, the file reader scans the first 8 KB of any imported file:
-*   If a null byte (`\x00`) is found, the import is aborted, and an error is displayed.
+- Categories include Mermaid, PlantUML, D2, Graphviz, Vega-Lite, ABC notation, WaveDrom, and Markmap.
+- Template code is cleaned before insertion.
+- Previews are cached in the browser Cache API under `diagram-previews` when possible.
+- Remote preview generation can use Kroki or mermaid.ink depending on the template.
 
-### Multi-File GitHub Importer
-Users can import documents directly from public GitHub repositories:
-1.  **URL Parsing:** The importer resolves repo, branch, folder, or file paths from a pasted URL.
-2.  **API Requests:** It queries public GitHub APIs (`api.github.com/repos/.../contents/...`) to fetch file trees.
-3.  **File Browser Modal:** Users can preview the file tree in a modal, select the files they want, and import them all at once. Selected files are loaded into separate document tabs.
+## Imports
 
----
+Markdown Viewer can open `.md` and `.markdown` documents from local files, drag and drop, GitHub URLs, and desktop file arguments.
 
-## 9. Serverless Sharing via Compressed Hash Fragments
+Local file import:
 
-Markdown Viewer lets you share documents via links that contain the entire compressed document content, eliminating the need for a database.
+- Accepts `.md`, `.markdown`, and `text/markdown`.
+- Extension checks are case-insensitive.
+- Dragging a file over the app shows a full-window drop overlay.
+- The first 8 KB of a file are scanned for null bytes to avoid loading binary files as text.
+- Imported local files open in the active tab or a new tab depending on the action.
 
-### Encoding Pipeline
+GitHub import:
 
-$$\text{Markdown Text} \xrightarrow{\text{TextEncoder}} \text{Bytes} \xrightarrow{\text{Pako.deflate (zlib)}} \text{Compressed Bytes} \xrightarrow{\text{Base64-URL Encoding}} \text{URL Hash}$$
+- Accepts `github.com/owner/repo`, `github.com/owner/repo/tree/ref/path`, `github.com/owner/repo/blob/ref/path`, and `raw.githubusercontent.com` file URLs.
+- Direct Markdown file URLs import immediately.
+- Repository or folder URLs query GitHub's public API to find Markdown files.
+- The modal shows a tree and supports selecting multiple files.
+- Only the first 30 Markdown files are shown if a repository contains more.
+- Requests are rate-limited by the app to avoid hammering GitHub.
+- Selected files are fetched as raw content and opened as separate tabs.
 
-1.  The markdown text is encoded to bytes and compressed using `Pako.js` (DEFLATE).
-2.  The compressed bytes are converted to a Base64 string.
-3.  The string is made URL-safe by replacing `+` with `-`, `/` with `_`, and removing trailing `=` padding.
-4.  The hash is appended to the URL as `#share=<encoded_string>`.
-5.  A warning is displayed if the generated link exceeds 32,000 characters.
+Limitations and privacy:
 
----
+- Local file content is read in the browser or desktop app and is not uploaded by local import.
+- GitHub import sends repository and path information to GitHub and downloads public file contents from GitHub.
+- Private GitHub repositories are not supported because the app does not ask for tokens.
 
-## 10. Performance, Security, and UI Variables
+## Exports
 
-### Repaint & Transition Tuning
-*   Theme changes are managed using CSS variables.
-*   Transition animations are scoped to specific properties (`background-color`, `border-color`) rather than using `transition: all`.
-*   The background transition on the `<body>` element was removed to prevent repainting the entire viewport during theme shifts.
+Export filenames use the active tab title when possible.
 
-### Resizable Panes
-*   The divider between the editor and preview panes can be dragged horizontally.
-*   It updates the CSS grid layout dynamically using percentage variables.
-*   Drag limits prevent either pane from being scaled below 20% of the viewport width.
+Markdown export:
 
-### Sanitization and Security
-*   All compiled HTML is sanitized on the main thread using **DOMPurify** before being rendered:
-    ```javascript
-    const cleanHtml = DOMPurify.sanitize(rawHtml, {
-        USE_PROFILES: { html: true },
-        ADD_ATTR: ['target', 'draggable', 'contenteditable']
-    });
-    ```
-*   This strips inline script handlers (e.g. `onload`, `onclick`) and `<script>` elements to prevent Cross-Site Scripting (XSS) when importing or loading external markdown files.
+- Saves the raw Markdown text.
+- In the web app, it downloads through the browser.
+- In the desktop app, it uses a native save dialog and Neutralino filesystem writing.
+
+HTML export:
+
+- Creates a standalone HTML document from the current Markdown.
+- Includes GitHub-style Markdown CSS, syntax highlighting styles, alert styles, footnote styles, math/diagram support hooks, and frontmatter rendering.
+- YAML frontmatter is parsed and shown as a table before the document body.
+- HTML export uses sanitized rendered content.
+
+PDF export:
+
+- Opens a modal with two modes.
+- Browser Print is recommended. It calls `window.print()` and lets the browser or OS produce the PDF. It is faster and better for long text, but images and complex diagrams may differ by browser.
+- Legacy Raster PDF uses `html2canvas` and `jsPDF`. It clones the preview into an off-screen A4 sandbox, renders Mermaid and ABC to SVG/image form, typesets math, waits for images/fonts, applies page-break rules, captures the document to canvas, and saves a PDF.
+- The raster exporter shows progress and has a cancel button.
+- Raster export uses `allowTaint: false` and `useCORS: true` to avoid unsafe cross-origin canvas capture.
+
+PNG export:
+
+- Captures the rendered document into a PNG using `html2canvas`.
+- It uses a white/dark solid background based on theme and a high-resolution canvas.
+- It renders Mermaid, ABC, and MathJax in the off-screen capture before saving.
+
+Limitations:
+
+- Browser Print output is controlled by the browser and print settings.
+- Raster PDF and PNG are screenshots of rendered HTML, so very long documents can be memory-heavy.
+- Cross-origin images without CORS support may fail to appear in canvas-based PDF/PNG exports.
+- Advanced remote diagrams that have not rendered yet may need a moment before export.
+- Some complex CSS, wide tables, and large diagrams may be moved, scaled, or split differently from the live preview.
+
+## Sharing: Share Snapshot
+
+Share Snapshot creates a link to a point-in-time copy of the current document.
+
+Modes:
+
+- View only opens the shared content in preview mode with the editor hidden.
+- Editable opens the shared content in split mode so the recipient can edit their own copy.
+
+Storage behavior:
+
+- Small documents are compressed with Pako, base64url-encoded, and placed directly in the URL hash as `#share=...`.
+- Hash fragments are not sent to a web server as part of normal HTTP requests.
+- If the encoded legacy URL is too long, or if the Markdown is at least 3,000 bytes, the app stores the snapshot through `/api/share`.
+- Stored snapshots receive an id in `#id=...` form.
+- Stored snapshots are saved in Cloudflare KV for 90 days.
+- The server accepts up to 500,000 characters per stored snapshot.
+- Snapshot ids are random 10-character values using a reduced alphabet and must match the app's id pattern.
+- Stored snapshot responses use `Cache-Control: no-store`.
+- The Share API allows CORS for GET, POST, and OPTIONS.
+- Shared snapshot tabs are temporary and are not saved to the recipient's local workspace.
+
+Privacy implications:
+
+- URL-hash snapshots keep document content inside the link itself.
+- Anyone with a snapshot link can read the snapshot.
+- Editable snapshot links are not collaborative; they only let the recipient edit their local opened copy.
+- Stored snapshots upload document content, mode, title, creation time, and size to the configured Cloudflare KV namespace until expiry.
+- The app prevents sharing a temporary shared snapshot again, and prevents Share Snapshot from a Live Share document, to avoid confusing copies of copies.
+
+## Sharing: Live Share
+
+Live Share creates a temporary real-time collaboration room.
+
+User flow:
+
+- The host chooses a display name and an access mode.
+- Access can be Can edit or View only.
+- The app creates a random room id and a random secret.
+- The invite URL contains the room id, secret, and title. It does not embed the full Markdown body.
+- Participants open the link and join a temporary live tab.
+- Participants see presence avatars and live cursor indicators.
+- The host can end the session for everyone.
+- Participants can leave and return to their original tab state.
+- If a room has ended, expired, or has no active host, the participant sees an expired-room modal.
+
+Implementation:
+
+- The client uses Yjs for the shared document state.
+- Browser clients connect with WebSocket to `/live-room/<room-id>?secret=<secret>`.
+- Cloudflare Pages routes the WebSocket to a Durable Object named `LIVE_ROOMS`.
+- The Durable Object relays `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `leave`, and `session-end` messages.
+- The Durable Object does not write document state to KV or a database.
+- Room identity is derived from room id plus secret.
+
+Limits:
+
+- A live message can be at most 1 MB.
+- A live room can have at most 64 WebSocket participants.
+- Participant presence is considered stale after 45 seconds without updates.
+- Join waits up to 8 seconds for initial room state before showing an expired/unavailable room message.
+- The room exists only while the Durable Object instance and connected sessions are alive.
+
+Privacy implications:
+
+- Live Share document updates, display names, cursor positions, and presence are transmitted through the configured Cloudflare Durable Object.
+- Live room content is temporary relay state, not permanent document storage.
+- Anyone with the invite URL, including the secret, can join while the room is active.
+- View-only mode is enforced by the app and message handling; it is intended for normal use, not as a cryptographic access-control boundary against modified clients.
+
+## Clipboard and Copy Behavior
+
+- Copy Markdown copies the raw Markdown from the editor.
+- `Ctrl+C` or `Cmd+C` respects selected text in inputs/textareas and selected page text.
+- When no text selection is active, the app can copy the full Markdown document.
+- Diagram and ABC copy actions attempt to write PNG image data to the clipboard.
+- Clipboard APIs require browser permission and a secure context. The app falls back to a temporary textarea for text copying when needed.
+
+## Themes, Direction, and Localization
+
+Theme behavior:
+
+- The app supports light and dark themes.
+- Initial theme follows saved preference, then system preference.
+- Theme choices are saved in global state.
+- Diagrams, maps, STL views, and rendered blocks are updated after theme changes when possible.
+
+Direction behavior:
+
+- Users can switch content direction between LTR and RTL.
+- Direction affects editor and preview layout and is saved in global state.
+
+Localization:
+
+- The UI includes English, Simplified Chinese, Japanese, Korean, Brazilian Portuguese, Spanish, French, German, Russian, Italian, Turkish, Polish, Traditional Chinese, and Ukrainian.
+- Language is selected in this order: URL `?lang=`, hash query `?lang=`, saved `app-lang`, browser language, then English.
+- Selecting a language updates the URL query and saves `app-lang`.
+- Translations are static in `I18N_DICTS` inside `script.js`.
+- Some generated renderer messages and third-party output remain English.
+
+## Statistics
+
+The header and mobile menu show:
+
+- Estimated reading time.
+- Word count.
+- Character count.
+
+Reading time is based on a simple words-per-minute estimate. Counts update as the active document changes. Character count is a practical UI metric, not a byte-level file-size guarantee.
+
+## Keyboard and Accessibility
+
+Common shortcuts:
+
+| Action | Shortcut |
+| :--- | :--- |
+| Save/export Markdown | `Ctrl+S` / `Cmd+S` |
+| Find | `Ctrl+F` / `Cmd+F` |
+| Replace | `Ctrl+H` / `Cmd+H` |
+| Toggle scroll sync | `Ctrl+Shift+S` / `Cmd+Shift+S` in split mode |
+| Undo | `Ctrl+Z` / `Cmd+Z` |
+| Redo | `Ctrl+Shift+Z`, `Cmd+Shift+Z`, `Ctrl+Y`, or `Cmd+Y` |
+| New tab | Desktop: `Ctrl+T` / `Cmd+T`; web and desktop: `Alt+Shift+T` |
+| Close tab | Desktop: `Ctrl+W` / `Cmd+W`; web and desktop: `Alt+Shift+W` |
+| Indent | `Tab` in the editor |
+| Outdent | `Shift+Tab` in the editor |
+| Close modals/panels | `Escape` |
+
+Accessibility behavior:
+
+- Tabs use ARIA tablist semantics and roving keyboard focus.
+- Tab bar supports ArrowLeft, ArrowRight, Home, End, Enter, and Space.
+- Modals trap focus and close with Escape or cancel buttons.
+- The resize divider is keyboard focusable.
+- Screen-reader announcements are used for imports, Live Share, read-only states, and other dynamic actions.
+- Touch targets were enlarged in earlier accessibility passes.
+
+## Offline, PWA, and Caching
+
+The web app registers `sw.js` when service workers are supported.
+
+- The service worker cache name is versioned as `markdown-viewer-cache-v3.9.0`.
+- Critical local assets include `/`, `index.html`, `styles.css`, `script.js`, `preview-worker.js`, `manifest.json`, and `assets/icon.jpg`.
+- Local shell assets use a network-first strategy for update-sensitive paths, falling back to cache when offline.
+- CDN assets from cdnjs and jsDelivr use cache-first behavior after first successful load.
+- The app manifest allows standalone PWA installation.
+
+Limitations:
+
+- Service workers require HTTPS or localhost.
+- First use of CDN-based renderers requires network access unless already cached.
+- Clearing site data removes the cached app shell and local documents.
+- Opening `index.html` through `file://` can break workers and service workers because of browser security rules.
+
+## Desktop App
+
+The desktop build wraps the same app in Neutralino.
+
+Desktop-specific behavior:
+
+- Uses a native window with minimum size 400 x 200 and default size 1280 x 720.
+- Uses one-time token security.
+- Logging is disabled in the current config.
+- Native APIs are allowlisted instead of fully open.
+- Allowed APIs include app exit, open/save dialogs, message boxes, external URL opening, tray setup, command execution, file read/write, and Neutralino storage get/set.
+- Local imports and exports use native open/save dialogs.
+- External Markdown file paths passed at launch can be loaded into the editor.
+- Closing the desktop window asks for confirmation before exiting.
+- Desktop resources are built by `desktop-app/prepare.js`.
+- `prepare.js` copies root assets, rewrites paths for `/resources/`, strips web-only SEO metadata, and downloads/bundles external libraries into `/resources/libs/`.
+- Downloaded desktop dependencies are checked against SHA-384 integrity values when SRI is available.
+- The desktop build points dynamic libraries to local `/libs/...` paths, making the prepared desktop app suitable for offline use.
+
+Privacy:
+
+- Desktop documents are stored on the local machine through localStorage and Neutralino storage.
+- Native file reads/writes happen only through user actions or explicit file arguments.
+- Share Snapshot, Live Share, GitHub import, remote diagram fallbacks, and external links still use the network when used.
+
+## Security Model
+
+Important protections:
+
+- DOMPurify sanitizes preview HTML before insertion.
+- Preview sanitization allows needed render attributes and safe URI patterns while blocking scripts and inline event handlers.
+- CDN scripts and styles in `index.html` use Subresource Integrity where checked in.
+- Desktop preparation verifies downloaded assets against SHA-384 integrity values when available.
+- Canvas exports use `allowTaint: false`.
+- The desktop native API allowlist follows least privilege for the app's current features.
+- Share and live endpoints return no-store responses for dynamic content.
+- The app does not include analytics, telemetry scripts, ad pixels, accounts, cookies, or subscription code.
+
+Security limitations:
+
+- Sanitization reduces XSS risk but cannot make every third-party renderer or browser bug impossible.
+- Remote diagram services receive diagram source for supported remote engines.
+- Links and images in Markdown can request external resources when rendered or clicked.
+- View-only Live Share relies on cooperative client enforcement and relay filtering, not end-to-end encryption.
+- Share Snapshot links are bearer links: possession of the URL grants access.
+
+## Data Handling Summary
+
+| Feature | Leaves Device? | Stored Where | Notes |
+| :--- | :--- | :--- | :--- |
+| Typing and local preview | No | Browser memory and saved tabs | Sanitized before preview insertion. |
+| Normal tab autosave | No | `localStorage` or desktop storage mirror | Cleared with site/app data or Reset. |
+| Local file import | No | Current tab/workspace | Reads selected files only. |
+| Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
+| GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
+| Emoji lookup | Yes | GitHub emoji API response in memory | Used for shortcode picker/lookup. |
+| CDN library loading | Yes | Browser/service-worker cache | Web build only, first use unless cached. |
+| Remote diagram engines | Yes | Third-party renderer response/cache | Source is sent to PlantUML, Kroki, or mermaid.ink depending on renderer/preview. |
+| Share Snapshot hash link | Only when user sends the link | Inside URL hash | Small documents are not uploaded by generation. |
+| Stored Share Snapshot | Yes | Cloudflare KV for 90 days | Content, mode, title, createdAt, and size. |
+| Live Share | Yes | Cloudflare Durable Object relay memory | Temporary while active; no KV/database write. |
+| Desktop native storage | No | Local app storage | Mirrors app state for restart persistence. |
+
+## Known Technical Limits
+
+- Browser storage quotas can reject very large saved workspaces.
+- The GitHub importer shows a maximum of 30 Markdown files.
+- Stored Share Snapshot content is limited to 500,000 characters.
+- Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
+- Remote renderer availability depends on third-party services and network conditions.
+- The service worker cannot cache assets that have never been successfully fetched.
+- The desktop app depends on the platform webview and Neutralino runtime behavior.

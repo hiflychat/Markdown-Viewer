@@ -1,98 +1,95 @@
-# Localization & Internationalization (i18n)
+# Localization and Internationalization
 
-Markdown Viewer (v3.9.0) features a fully client-side translation engine that translates all user interface menus, modals, and tooltips dynamically.
+Markdown Viewer v3.9.0 has a client-side translation dictionary in `script.js`. It changes visible UI labels, toolbar text, modal titles, stats labels, and common messages without sending text to a translation service.
 
----
+## Supported Locales
 
-## 🌐 Supported Languages
+| Code | Language |
+| :--- | :--- |
+| `en` | English |
+| `zh` | Simplified Chinese |
+| `ja` | Japanese |
+| `ko` | Korean |
+| `pt` | Portuguese (Brazil) |
+| `es` | Spanish |
+| `fr` | French |
+| `de` | German |
+| `ru` | Russian |
+| `it` | Italian |
+| `tr` | Turkish |
+| `pl` | Polish |
+| `tw` | Traditional Chinese |
+| `uk` | Ukrainian |
 
-The application currently supports **14 language locales**:
+## Selection Order
 
-| Locale Code | Language Name | Flag / Display Name |
-| :--- | :--- | :--- |
-| **`en`** | English | 🇺🇸 English |
-| **`zh`** | 简体中文 (Simplified Chinese) | 🇨🇳 简体中文 |
-| **`tw`** | 繁體中文 (Traditional Chinese) | 🇹🇼 繁體中文 |
-| **`ja`** | 日本語 (Japanese) | 🇯🇵 日本語 |
-| **`ko`** | 한국어 (Korean) | 🇰🇷 한국어 |
-| **`pt`** | Português (Brasil) | 🇧🇷 Português (Brasil) |
-| **`es`** | Español (Spanish) | 🇪🇸 Español |
-| **`fr`** | Français (French) | 🇫🇷 Français |
-| **`de`** | Deutsch (German) | 🇩🇪 Deutsch |
-| **`ru`** | Русский (Russian) | 🇷🇺 Русский |
-| **`it`** | Italiano (Italian) | 🇮🇹 Italiano |
-| **`tr`** | Türkçe (Turkish) | 🇹РУ Türkçe |
-| **`pl`** | Polski (Polish) | 🇵🇱 Polski |
-| **`uk`** | Українська (Ukrainian) | 🇺🇦 Українська |
+The app chooses a language in this order:
 
----
+1. URL query parameter, such as `?lang=pt`.
+2. Hash query parameter when present in a shared URL.
+3. Saved `localStorage` key `app-lang`.
+4. Browser language from `navigator.language`.
+5. English fallback.
 
-## ⚙️ Architecture & Selection Precedence
+When a user picks a language from the dropdown, the app saves `app-lang` and updates the URL query parameter.
 
-When a user visits the application, the translation engine resolves the locale using the following precedence cascade:
+## What Gets Translated
 
-```mermaid
-graph TD
-    A["1. URL Query Parameter (?lang=zh)"] -->|Found| B["Apply Language Settings"]
-    A -->|Not Found| C["2. localStorage ('app-lang')"]
-    C -->|Found| B
-    C -->|Not Found| D["3. Browser Language (navigator.language)"]
-    D -->|Match| B
-    D -->|No Match| E["4. Default Locale ('en')"]
-    E --> B
-```
+The dictionary covers:
 
-### 1. URL Query Parameter Mapping
-If the URL contains a `?lang=` query parameter (e.g., `https://markdownviewer.pages.dev/?lang=pt`), it overrides all other settings.
+- Main toolbar labels.
+- Import/export labels.
+- Share Snapshot and Live Share labels.
+- View mode labels.
+- Stats labels.
+- Theme labels.
+- Modal titles for help, about, share, rename, link, reference, image, table, and find/replace.
+- Loading messages for emoji lookup and GitHub file loading.
+- Placeholder text.
 
-### 2. Local Storage Persistence
-When a user manually selects a language from the dropdown menu, their choice is saved to `localStorage` under the key `'app-lang'`. This preference is loaded on subsequent visits.
+Some strings remain English because they come from dynamic renderer output, browser APIs, third-party libraries, generated filenames, external services, or low-level error messages.
 
-### 3. Automatic Browser Detection
-If no parameter or storage key is found, the engine queries `navigator.language` and falls back to matching the user's primary browser settings.
+## Dictionary Shape
 
----
-
-## 📝 Localization Dictionary Schema
-
-All translations are defined statically within `script.js` inside the `I18N_DICTS` object. The localized items use the following dictionary schema:
+Translations are stored in `I18N_DICTS`:
 
 ```javascript
 {
   title: "Markdown Viewer",
-  subtitle: "Live Markdown Editor",
-  new: "New",
-  open: "Open",
+  import: "Import",
   export: "Export",
   exportMd: "Markdown (.md)",
   exportHtml: "HTML",
   exportPdf: "PDF",
   exportPng: "Image (.png)",
   copy: "Copy",
-  copied: "Copied!",
-  share: "Share",
+  shareSnapshot: "Share Snapshot",
+  liveShare: "Live Share",
   reset: "Reset",
   editor: "Editor",
   split: "Split",
   preview: "Preview",
-  minRead: "Min read",
+  minRead: "Min Read",
   words: "Words",
   chars: "Chars",
-  switchRtl: "Switch to RTL",
-  switchLtr: "Switch to LTR",
   darkMode: "Dark Mode",
   lightMode: "Light Mode",
-  helpTitle: "Markdown Viewer Help",
-  aboutTitle: "About Markdown",
-  shareTitle: "Share Document",
-  renameTitle: "Rename File",
-  insertLink: "Insert Link",
-  insertRef: "Insert Quote",
-  insertImg: "Insert Image",
-  insertTable: "Insert Table",
-  findReplace: "Find & Replace",
-  placeholder: "Type your markdown here...",
-  loadingEmojis: "Loading emojis...",
-  loadingFiles: "Fetching file structure..."
+  findReplace: "Find & Replace"
 }
 ```
+
+Add new keys to every locale when introducing new visible UI text. If a key is missing, code should fall back to English or a hard-coded safe label.
+
+## Contributor Checklist
+
+- Update `I18N_DICTS` for all supported locales.
+- Update desktop resources by running the desktop prepare step.
+- Check desktop and mobile menus.
+- Check modal titles and buttons.
+- Check Share Snapshot and Live Share labels.
+- Check `?lang=` URLs.
+- Keep language names readable in both desktop and mobile dropdowns.
+
+## Privacy
+
+Localization is local. The app does not send document text or UI text to machine translation APIs.

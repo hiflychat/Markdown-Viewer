@@ -1,179 +1,130 @@
-# Desktop Application Guide
+# Desktop Application
 
-This page describes the architecture, development setup, build options, and platform installation procedures for the desktop version of **Markdown Viewer** (v3.9.0), powered by the **Neutralinojs** runtime framework.
+The desktop app wraps Markdown Viewer in Neutralino. It uses the same editor, preview, renderer, sharing, and export code as the web app, with native file dialogs and local desktop storage.
 
----
+## What Is Different From The Web App?
 
-## Table of Contents
+- Runs in a native Neutralino window.
+- Uses native open/save dialogs for Markdown and HTML.
+- Can read a Markdown file path passed as a launch argument.
+- Asks for confirmation before closing.
+- Mirrors selected localStorage values into Neutralino storage for restart persistence.
+- Uses a restricted native API allowlist.
+- Prepared builds load renderer libraries from local `/libs/...` files instead of CDNs.
 
-- [Overview](#overview)
-- [Workspace Directory Structure](#workspace-directory-structure)
-- [Prerequisites](#prerequisites)
-- [Local Development Setup](#local-development-setup)
-- [Running in Hot-Reload Dev Mode](#running-in-hot-reload-dev-mode)
-- [Building the Application](#building-the-application)
-- [Build Output Configurations](#build-output-configurations)
-- [Building with Docker Containerization](#building-with-docker-containerization)
-- [Platform-Specific Installation Guidelines](#platform-specific-installation-guidelines)
-  - [Windows](#windows)
-  - [Linux](#linux)
-  - [macOS](#macos)
+Network features remain network features: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and external links can still contact remote services.
 
----
+## Directory Structure
 
-## Overview
-
-The desktop version of Markdown Viewer wraps the core web application (HTML, CSS, JS) inside a lightweight native OS webview container using the **Neutralinojs** framework. 
-
-### Why Neutralinojs?
-*   **Minimal Footprint:** Unlike Electron, which bundles a full Chromium browser and Node.js instance, Neutralinojs uses the system's built-in webview. This results in an executable size of less than 15 MB (compared to 150+ MB for Electron).
-*   **Low Resource Usage:** Idle memory usage is typically under 50 MB.
-*   **Shared Codebase:** The desktop app uses the exact same core files (`script.js`, `styles.css`, `assets/`) as the web application.
-
----
-
-## Workspace Directory Structure
-
-The `desktop-app` directory contains the configuration files and build scripts for the desktop version:
-
-```
+```text
 desktop-app/
-├── package.json              # Contains npm build scripts
-├── neutralino.config.json    # Configures Neutralino window size, titles, and API permissions
-├── setup-binaries.js         # Script to download Neutralino binaries for target platforms
-├── prepare.js                # Copies core files from the root folder into the resources folder
-└── resources/                # Assets packaged into the desktop application
-    ├── index.html            # Compiled template page
-    ├── styles.css            # Stylesheet copied from the root folder
-    ├── js/
-    │   ├── main.js           # Handles desktop lifecycle events and tray menus
-    │   ├── script.js         # Copied from the root folder
-    │   └── neutralino.js     # Neutralino client API library
-    └── assets/               # Image assets copied from the root folder
+  neutralino.config.json
+  package.json
+  setup-binaries.js
+  prepare.js
+  resources/
+    index.html
+    styles.css
+    js/
+      main.js
+      script.js
+      preview-worker.js
+      neutralino.js
+    libs/
+    assets/
 ```
 
----
+`prepare.js` recreates the resource files from the root web app. Do not hand-edit generated resource copies unless you plan to rerun preparation.
 
-## Prerequisites
-
-To compile the desktop application from source, you will need:
-*   **Node.js** (v16.0.0 or later) and **npm** (installed automatically with Node).
-*   **An active internet connection** (only required during the initial setup to download Neutralino runtimes).
-
----
-
-## Local Development Setup
-
-To set up the desktop project directory locally:
-
-1.  Open your terminal and navigate to the `desktop-app` folder:
-    ```bash
-    cd Markdown-Viewer/desktop-app
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Download the required Neutralino framework binaries for Windows, Linux, and macOS:
-    ```bash
-    node setup-binaries.js
-    ```
-4.  Copy the latest frontend code from the repository root into the desktop build resources folder:
-    ```bash
-    node prepare.js
-    ```
-
----
-
-## Running in Hot-Reload Dev Mode
-
-To run the application locally in development mode:
+## Development
 
 ```bash
+cd desktop-app
+npm install
+npm run setup
 npm run dev
 ```
 
-This starts the desktop application in a new window. It enables a development server with **hot-reload**: edits to files in the `resources/` folder will immediately update the running application without requiring a manual rebuild.
+`npm run setup` downloads Neutralino binaries and runs `prepare.js`. Development runs the Neutralino app through `npx -y @neutralinojs/neu@11.7.0 run`.
 
----
+## Build
 
-## Building the Application
-
-You can package the application in three ways:
-
-### 1. Embedded Binary (Recommended for Windows)
-This builds a single, self-contained Windows executable file that has all application resources embedded inside the binary:
 ```bash
 npm run build
 ```
 
-### 2. Portable Distribution
-This builds the application with the binary and a separate `resources.neu` file. This is standard for multi-platform distributions:
-```bash
-npm run build:portable
-```
+The current package script runs Neutralino release build with `--clean` and removes `dist/markdown-viewer-release.zip` if it exists. Generated files appear under `desktop-app/dist/`.
 
-### 3. Build All Formats
-This compiles both the portable distribution ZIP file and the embedded Windows executable:
-```bash
-npm run build:all
-```
+## Runtime Configuration
 
----
+Important `neutralino.config.json` values:
 
-## Build Output Configurations
+| Setting | Current Value |
+| :--- | :--- |
+| Application id | `com.markdownviewer.desktop` |
+| Version | `3.9.0` |
+| Document root | `/resources/` |
+| Default mode | `window` |
+| Window size | 1280 x 720 |
+| Minimum size | 400 x 200 |
+| Native API | Enabled |
+| Token security | One-time |
+| Logging | Disabled |
+| Binary/client version | 6.5.0 |
 
-Compiled files are placed in the `desktop-app/dist/` directory:
+Allowed native APIs:
 
-```
-dist/
-├── markdown-viewer/                         # Contains portable binaries
-├── markdown-viewer-release.zip              # Compressed portable distribution
-└── windows-embedded/
-    └── markdown-viewer/
-        └── markdown-viewer-win_x64.exe      # Single-file Windows binary
-```
+- `app.exit`
+- `os.showOpenDialog`
+- `os.showSaveDialog`
+- `os.showMessageBox`
+- `os.open`
+- `os.setTray`
+- `os.execCommand`
+- `filesystem.readFile`
+- `filesystem.writeFile`
+- `storage.setData`
+- `storage.getData`
 
----
+Browser/chrome modes block filesystem and OS APIs more tightly.
 
-## Building with Docker Containerization
+## Desktop Preparation
 
-To package the application without installing Node.js locally, use the provided Docker Compose configuration to compile the binaries inside a container:
+`prepare.js`:
 
-```bash
-# Run from the desktop-app folder
-docker compose up --build
-```
+- Copies the root app into `desktop-app/resources`.
+- Copies assets.
+- Moves runtime scripts to the desktop resource structure.
+- Rewrites library URLs for Neutralino.
+- Downloads required external libraries to `resources/libs`.
+- Verifies SHA-384 integrity when SRI hashes are available.
+- Bundles Bootstrap icon fonts.
+- Strips web-only SEO/canonical/hreflang/schema metadata from the desktop HTML.
 
-The container downloads the required binaries, runs the build scripts, and saves the output to the host system's `dist/` directory using a volume mount.
+This is why the prepared desktop app can run core renderers offline after setup.
 
----
+## Platform Notes
 
-## Platform-Specific Installation Guidelines
+Windows may show SmartScreen warnings because binaries are unsigned.
 
-### Windows
-*   **Installation:** No installer is needed. Run `markdown-viewer-win_x64.exe` directly.
-*   **SmartScreen Warning:** Because the executable is unsigned, Windows SmartScreen may display a warning on first launch. Click **More info**, then select **Run anyway** to launch the application.
+Linux:
 
-### Linux
-Make the binary executable before running it:
 ```bash
 chmod +x markdown-viewer-linux_x64
 ./markdown-viewer-linux_x64
 ```
 
-### macOS
-macOS blocks unsigned binaries by default. To run the app, clear the quarantine flag and make the file executable:
+macOS:
 
 ```bash
-# Remove the macOS quarantine flag
 xattr -d com.apple.quarantine markdown-viewer-mac_universal
-
-# Grant execution permissions
 chmod +x markdown-viewer-mac_universal
-
-# Run the app
 ./markdown-viewer-mac_universal
 ```
 
-Alternatively, right-click the app binary in Finder, click **Open**, and select **Open** in the confirmation dialog.
+## Data Handling
+
+- Normal documents and settings are local to the machine.
+- Native file access happens through explicit open/save actions or launch arguments.
+- The app does not include analytics or telemetry.
+- Sharing/import/remote-rendering features use the same network behavior as the web app.

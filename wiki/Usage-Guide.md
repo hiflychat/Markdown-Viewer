@@ -1,177 +1,160 @@
-# User Operations & Usage Guide
+# Usage Guide
 
-This guide details how to work with the editing workspace, importing flows, exporting tools, and serverless sharing mechanisms in **Markdown Viewer** (v3.9.0).
+This guide explains how to use Markdown Viewer v3.9.0 as a premium browser-based Markdown editor, viewer, reader, and live preview tool. For deeper implementation notes and privacy details, see [Features](Features).
 
----
+## Workspace Layout
 
-## Table of Contents
+The app has five main areas:
 
-- [User Interface Layout](#user-interface-layout)
-- [Workspace Tab Management](#workspace-tab-management)
-- [Importing Documents](#importing-documents)
-- [Exporting & Compiling Documents](#exporting--compiling-documents)
-- [View Modes and Layout Control](#view-modes-and-layout-control)
-- [Theme Configurations](#theme-configurations)
-- [Proportional Scroll Sync](#proportional-scroll-sync)
-- [Content Analytics & Metrics](#content-analytics--metrics)
-- [Serverless URL Hash Sharing](#serverless-url-hash-sharing)
-- [Keyboard Shortcuts Reference](#keyboard-shortcuts-reference)
+| Area | What It Does |
+| :--- | :--- |
+| Header | Shows app name, stats, view controls, import/export, copy, sharing, language, and theme controls. |
+| Tab bar | Holds up to 20 normal document tabs, plus temporary shared/live tabs. |
+| Formatting toolbar | Inserts Markdown syntax, opens helper modals, starts find/replace, and toggles fullscreen/help/about. |
+| Editor pane | Plain-text Markdown textarea with line numbers, custom undo/redo, list continuation, and find highlights. |
+| Preview pane | Sanitized rendered Markdown with math, diagrams, maps, models, music, alerts, and syntax highlighting. |
 
----
+Use the view buttons to switch between Editor, Split, and Preview. Split view is the main live Markdown preview workflow: type, paste, or open Markdown on one side and read the rendered result on the other. Sync scrolling can keep the source and preview aligned while you write. Drag the divider to change the pane widths. The app prevents either side from becoming too narrow. On small screens, the mobile menu exposes the same main actions without forcing a cramped split layout.
 
-## User Interface Layout
+## Tabs and Autosave
 
-The interface is structured into a header section, formatting toolbar, document tabs, and a resizable workspace.
+- Click New Tab to create a document.
+- Rename a tab from its menu or rename action.
+- Duplicate, delete, or reorder tabs from the tab UI.
+- Closing the last normal tab resets to a clean document.
+- Reset clears the saved workspace.
+- Normal tabs autosave to local browser storage or desktop storage.
+- Temporary Share Snapshot and Live Share tabs are not saved to the recipient's workspace.
 
-```
-+-----------------------------------------------------------------------+
-|  App Header (.app-header)                                             |
-|  [Tab 1] [Tab 2] [Tab 3]                   [View Modes] [Settings]    |
-+-----------------------------------------------------------------------+
-|  Formatting Toolbar (.markdown-format-toolbar)                        |
-|  [Bold] [Italic] [Link] [Image] [Table] [Mermaid] [Math]              |
-+-----------------------------------------------------------------------+
-|                                  |                                    |
-|  Editor Pane (.editor-pane)      |  Preview Pane (.preview-pane)      |
-|                                  |                                    |
-|  [Gutter]  # Welcome...          |  # Welcome...                      |
-|    1       This is markdown      |  This is markdown.                 |
-|    2                             |                                    |
-|                                  |                                    |
-+-----------------------------------------------------------------------+
-|  Status Bar                                                           |
-|  Words: 4   Chars: 21                          Reading Time: 1 min    |
-+-----------------------------------------------------------------------+
-```
+Storage is local unless you explicitly use a network feature such as GitHub import, Share Snapshot storage, or Live Share.
 
-*   **Editor Pane (Left):** Monospace editing workspace with a line gutter showing line numbers.
-*   **Preview Pane (Right):** Sandbox layout area rendering GitHub-Flavored Markdown outputs.
-*   **Splitter Bar (Center):** Resizable divider allowing width adjustments. Drag boundaries clamp either pane from scaling below 20% width.
+## Editing Tools
 
----
+The toolbar can:
 
-## Workspace Tab Management
+- Format text as bold, italic, strikethrough, quote, inline code, fenced code, terminal block, headings, lists, and horizontal rules.
+- Insert links, images, reference links, tables, date/time stamps, emoji shortcodes, symbols/entities, GitHub alerts, and diagram templates.
+- Change selected text to title case, uppercase, or lowercase.
+- Insert left, center, or right aligned HTML blocks.
+- Switch document direction between LTR and RTL.
+- Open Find and Replace, Help, About, and fullscreen.
 
-Markdown Viewer allows you to open and edit multiple documents concurrently.
+The editor also supports list continuation on Enter, two-space indent on Tab, outdent on Shift+Tab, and custom undo/redo. View-only shared tabs block editing actions and keep reading, find, help, and fullscreen available.
 
-*   **Create Tabs:** Click the **`+`** button in the tab header bar.
-*   **Rename Tabs:** Double-click a tab label or open the tab menu to change the name.
-*   **Reorder Tabs:** Drag and drop tab components horizontally to reorganize them.
-*   **Duplicate Tabs:** Choose **Duplicate** from the tab's context dropdown to clone the document.
-*   **Delete Tabs:** Click the **`x`** icon on the tab. Deleting the last tab clears editor content and resets state.
-*   **Auto-Save Cache:** Tabs are auto-saved to `localStorage` every 500ms when typing, and flushed immediately during `beforeunload` or `visibilitychange` lifecycle states.
+## Find and Replace
 
----
+Open Find and Replace with the toolbar, `Ctrl+F`, or `Cmd+F`. Open replacement focus with `Ctrl+H` or `Cmd+H`.
+
+Supported options:
+
+- Case-sensitive search.
+- Whole-word search.
+- Regular expressions.
+- Regex capture replacements such as `$1` and `$<name>`.
+- Preserve-case replacement.
+- Search only within the selected text.
+- Scope matching to the whole document, headings, code, Mermaid, or LaTeX.
+- Replace current match or replace all.
+- Diff preview before bulk replacement.
+- Floating, docked, draggable, and resettable panel positions.
+
+Scope matching uses Marked's lexer and is best-effort for unusual Markdown.
 
 ## Importing Documents
 
-Load files into the workspace using three different paths:
+### Local Files
 
-### 1. Drag & Drop
-Drag a `.md` or `.markdown` text file from your file system and drop it directly onto the editor pane. The contents will overwrite the active tab. A binary safety guard scans the first 8 KB of the file for null bytes (`\x00`) to block corrupted or binary files.
+Use Import > From files, the mobile import button, or drag and drop to open local Markdown files.
 
-### 2. File Picker
-Click **Import** in the toolbar, select **From files**, and choose one or more Markdown files from your system.
+- Supported file types are `.md`, `.markdown`, and `text/markdown`.
+- Extension matching is case-insensitive.
+- Dragging over the app shows a drop overlay.
+- The app scans the first 8 KB for null bytes and rejects likely binary files.
+- Local file content stays on the device unless you later share it.
 
-### 3. GitHub Importer
-1.  Click **Import** and select **From GitHub**.
-2.  Paste a public GitHub URL (e.g., repository main page, subdirectory, or direct blob file link):
-    *   `https://github.com/owner/repository`
-    *   `https://github.com/owner/repository/tree/main/src/docs`
-    *   `https://github.com/owner/repository/blob/main/README.md`
-3.  The importer fetches the file tree from GitHub's API.
-4.  In the file selection modal, choose the files you want to import. You can select all files or clear the selection.
-5.  Click **Import Selected** to load the selected files into separate document tabs.
+### GitHub
 
----
+Use Import > From GitHub and paste one of these URL types:
 
-## Exporting & Compiling Documents
+- `https://github.com/owner/repo`
+- `https://github.com/owner/repo/tree/main/docs`
+- `https://github.com/owner/repo/blob/main/README.md`
+- `https://raw.githubusercontent.com/owner/repo/main/README.md`
 
-Export options are available in the **Export** dropdown in the toolbar:
+Direct Markdown file URLs import immediately. Repository and folder URLs query GitHub's public API, show a tree of Markdown files, and let you import selected files into separate tabs. If more than 30 Markdown files exist, only the first 30 are shown.
 
-### 1. Raw Markdown (`.md`)
-Saves the raw text buffer of the active tab.
+GitHub import sends the repository/path request to GitHub and only works for public content. The app does not ask for GitHub credentials.
 
-### 2. Standalone HTML (`.html`)
-Generates a self-contained HTML file. It bundles the compiled Markdown content, highlights code blocks, renders diagrams, and inlines GitHub-markdown styles so the document displays correctly offline.
+## Exporting
 
-### 3. Compiled PDF (`.pdf`)
-Generates a PDF using `jsPDF` and `html2canvas` via an off-screen sandbox. It converts SVG diagrams to rasters, scales oversized elements, and runs a cascade pagination loop to keep headings with their sections and prevent text lines from being cut in half.
+Export names use the active tab title when possible.
 
-> [!TIP]
-> For the highest PDF rendering quality, use your browser's built-in Print functionality (`Ctrl+P` or `Cmd+P`) and select "Save as PDF".
-
----
-
-## View Modes and Layout Control
-
-Configure the workspace layout to fit your current writing context:
-
-| View Mode | Toolbar Icon | Layout Description |
-| :--- | :---: | :--- |
-| **Split View** | `⬜⬜` | Dual-pane side-by-side editing and previewing (Default desktop view). |
-| **Editor Only** | `⬜` | Single pane showing only the editor for distraction-free writing. |
-| **Preview Only** | `◼` | Single pane showing only the compiled HTML output for reading. |
-
-*   **Mobile Layout Auto-Collapse:** On viewports below 768px wide, split mode is disabled. The application displays either the editor or the preview, toggling via the view mode icons.
-
----
-
-## Theme Configurations
-
-Switch themes using the toggle icon in the toolbar:
-*   **Light Theme:** White background matching standard GitHub styling.
-*   **Dark Theme:** Dark theme (`#0d1117`) matching GitHub Dark.
-
-Theme variables default to system preferences and are written to the document root class attribute.
-
----
-
-## Proportional Scroll Sync
-
-When working in Split View, scrolling the editor or preview will automatically update the opposite pane:
-*   **Scroll Sync Toggle:** Enable or disable synchronization via the scroll lock toggle in the toolbar.
-*   **Ratio-Based Calculations:** Computes relative scroll offsets based on total scrollable heights to keep text and headers aligned.
-*   **Feedback Mitigation:** Employs scroll event locks and frame scheduling via `requestAnimationFrame` to prevent circular updates.
-
----
-
-## Content Analytics & Metrics
-
-Toggle the **📊 Stats** view in the toolbar to display:
-*   **Word Count:** Total count of space-separated strings.
-*   **Character Count:** Total count of character bytes, excluding whitespace.
-*   **Lines:** Total line count of the document.
-*   **Estimated Reading Time:** Calculated at an average speed of 200 words per minute.
-
----
-
-## Serverless URL Hash Sharing
-
-Create serverless, database-free sharing links using the **Share** button in the toolbar:
-1.  Markdown text is compressed using `Pako.js` (zlib DEFLATE).
-2.  Data is converted to a URL-safe Base64 string (replacing `+` with `-`, `/` with `_`, and removing trailing `=` padding).
-3.  The string is appended as a URL hash fragment: `http://domain/#share=<payload>`.
-4.  Copy and share this link. Opening it decodes and decompresses the hash to load the document in the editor.
-5.  A warning is displayed if the generated URL exceeds 32,000 characters.
-
----
-
-## Keyboard Shortcuts Reference
-
-The following shortcut keys are active inside the editor:
-
-| Action | Windows / Linux | macOS |
+| Export | Behavior | Main Limitations |
 | :--- | :--- | :--- |
-| **Export raw Markdown** | `Ctrl + S` | `⌘ + S` |
-| **Copy Rich HTML** | `Ctrl + C` (with no text selected) | `⌘ + C` (with no text selected) |
-| **Toggle Scroll Sync** | `Ctrl + Shift + S` | `⌘ + Shift + S` |
-| **Open a New Tab** | `Ctrl + T` | `⌘ + T` |
-| **Close the Active Tab** | `Ctrl + W` | `⌘ + W` |
-| **Open Find & Replace** | `Ctrl + F` | `⌘ + F` |
-| **Undo Last Edit** | `Ctrl + Z` | `⌘ + Z` |
-| **Redo Last Edit** | `Ctrl + Shift + Z` / `Ctrl + Y` | `⌘ + Shift + Z` / `⌘ + Y` |
-| **Insert Code Block** | `Ctrl + Shift + C` | `⌘ + Shift + C` |
-| **Toggle Fullscreen Editor** | `F11` | `F11` |
-| **Insert 2-space Indent** | `Tab` | `Tab` |
-| **Outdent Line** | `Shift + Tab` | `Shift + Tab` |
+| Markdown | Saves the raw `.md` text. | Browser downloads or desktop native save dialog only. |
+| HTML | Saves standalone rendered HTML with styles and renderer support hooks. | External content referenced by the document may still load remotely when opened. |
+| PDF: Browser Print | Calls `window.print()` and lets the browser save/print. Recommended for most long documents. | Browser print engines vary; complex images/diagrams may differ. |
+| PDF: Legacy Raster | Uses `html2canvas` and `jsPDF` with page-break planning. | Memory-heavy for very long documents; cross-origin images need CORS. |
+| PNG | Captures the rendered document to a PNG. | Browser canvas limits apply; cross-origin images need CORS. |
+
+Raster PDF and PNG exports render Mermaid, ABC, and MathJax in an off-screen capture before saving. Export progress can be cancelled.
+
+## Share Snapshot
+
+Use Share Snapshot when you want to send a point-in-time copy.
+
+1. Choose View only or Editable.
+2. Click Share.
+3. Copy the generated link.
+
+View only opens the document in preview mode and hides editing. Editable opens the copy in split mode so the recipient can edit their own local copy. It is not real-time collaboration.
+
+Small documents are compressed into the URL hash as `#share=...`. Large documents, or documents whose encoded URL would be too long, are stored through `/api/share` and opened with `#id=...`. Stored snapshots use Cloudflare KV for 90 days and can contain up to 500,000 characters.
+
+Anyone with the link can open the snapshot. Shared snapshot tabs are temporary and are not saved into the recipient's workspace.
+
+## Live Share
+
+Use Live Share when you want a temporary real-time room.
+
+1. Click Live Share.
+2. Enter or accept a display name.
+3. Choose Can edit or View only.
+4. Start the session.
+5. Copy the invite link after the room starts.
+
+Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, and title, not the full document body.
+
+Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
+
+## Rendering Advanced Content
+
+Use fenced code blocks for advanced renderers:
+
+- `mermaid` for Mermaid diagrams.
+- `plantuml`, `d2`, `graphviz`/`dot`, `vega-lite`, `wavedrom`, and `markmap` for diagrams and charts.
+- `geojson` and `topojson` for maps.
+- `stl` for 3D models.
+- `abc` for sheet music and playback.
+- `math` for display math.
+
+Mermaid, Markmap, maps, STL, ABC, and MathJax use client-side libraries. PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, and some diagram previews can send source to remote rendering endpoints such as PlantUML, Kroki, or mermaid.ink.
+
+## Keyboard Shortcuts
+
+| Action | Shortcut |
+| :--- | :--- |
+| Save/export Markdown | `Ctrl+S` / `Cmd+S` |
+| Copy selected text, or whole Markdown when nothing is selected | `Ctrl+C` / `Cmd+C` |
+| Toggle scroll sync in Split view | `Ctrl+Shift+S` / `Cmd+Shift+S` |
+| Find | `Ctrl+F` / `Cmd+F` |
+| Replace | `Ctrl+H` / `Cmd+H` |
+| Undo | `Ctrl+Z` / `Cmd+Z` |
+| Redo | `Ctrl+Shift+Z`, `Cmd+Shift+Z`, `Ctrl+Y`, or `Cmd+Y` |
+| New tab | Desktop: `Ctrl+T` / `Cmd+T`; web and desktop: `Alt+Shift+T` |
+| Close tab | Desktop: `Ctrl+W` / `Cmd+W`; web and desktop: `Alt+Shift+W` |
+| Indent | `Tab` |
+| Outdent | `Shift+Tab` |
+| Close modals, panels, tab menus, and diagram modals | `Escape` |
+
+Browser shortcuts are intentionally not all intercepted on the web. For example, web tab creation/closing uses `Alt+Shift+T/W` so the app does not hijack browser tab shortcuts.
