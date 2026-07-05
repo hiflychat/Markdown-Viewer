@@ -5811,6 +5811,8 @@ html[data-theme="dark"] .mermaid svg {
   .resize-divider,
   .mobile-menu,
   #mobile-menu-overlay,
+  .modal-overlay,
+  .reset-modal-overlay,
   .pdf-progress-overlay,
   .diagram-toolbar,
   .mermaid-toolbar,
@@ -5891,6 +5893,20 @@ html[data-theme="dark"] .mermaid svg {
     --color-accent-emphasis: #0969da;
     --color-attention-subtle: #fff8c5;
     --color-danger-fg: #cf222e;
+    --text-color: #24292f;
+    --preview-text-color: #24292f;
+    --bg-color: #ffffff;
+    --editor-bg: #ffffff;
+    --preview-bg: #ffffff;
+    --code-bg: #f6f8fa;
+    --table-bg: #f6f8fa;
+    --border-color: #d0d7de;
+    --button-bg: #ffffff;
+    --button-hover: #f6f8fa;
+    --accent-color: #0969da;
+    --danger-color: #cf222e;
+    --skeleton-bg: #f6f8fa;
+    --skeleton-glow: rgba(255, 255, 255, 0.8);
   }
 
   .markdown-body pre,
@@ -5898,6 +5914,71 @@ html[data-theme="dark"] .mermaid svg {
   [data-theme="dark"] .markdown-body pre,
   [data-theme="dark"] .markdown-body code {
     background-color: var(--color-canvas-subtle) !important;
+    color: var(--color-fg-default) !important;
+  }
+
+  .markdown-body,
+  .markdown-body * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  .markdown-body a {
+    color: var(--color-accent-fg) !important;
+  }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4,
+  .markdown-body h5,
+  .markdown-body h6,
+  .markdown-body p,
+  .markdown-body li,
+  .markdown-body td,
+  .markdown-body th,
+  .markdown-body blockquote,
+  .markdown-body details,
+  .markdown-body summary,
+  .markdown-body figcaption {
+    color: var(--color-fg-default) !important;
+  }
+
+  .markdown-body blockquote {
+    background: #ffffff !important;
+    border-left-color: var(--color-border-default) !important;
+  }
+
+  .markdown-body mark {
+    background: #fff8c5 !important;
+    color: #24292f !important;
+  }
+
+  .frontmatter-table,
+  .frontmatter-table th,
+  .frontmatter-table td,
+  .map-popup-table,
+  .map-popup-table td {
+    border-color: var(--color-border-default) !important;
+    color: var(--color-fg-default) !important;
+  }
+
+  .frontmatter-table tr:nth-child(odd) th,
+  .frontmatter-table tr:nth-child(odd) td,
+  .frontmatter-table tr:nth-child(even) th,
+  .frontmatter-table tr:nth-child(even) td {
+    background-color: #ffffff !important;
+  }
+
+  .frontmatter-table tr:nth-child(2n) th,
+  .frontmatter-table tr:nth-child(2n) td {
+    background-color: #f6f8fa !important;
+  }
+
+  .fm-complex,
+  .fm-tag {
+    background: #f6f8fa !important;
+    border-color: var(--color-border-default) !important;
     color: var(--color-fg-default) !important;
   }
 
@@ -5910,6 +5991,148 @@ html[data-theme="dark"] .mermaid svg {
   .markdown-body table tr:nth-child(2n),
   [data-theme="dark"] .markdown-body table tr:nth-child(2n) {
     background-color: #f6f8fa !important;
+  }
+
+  .markdown-body table th,
+  .markdown-body table td,
+  [data-theme="dark"] .markdown-body table th,
+  [data-theme="dark"] .markdown-body table td {
+    border-color: var(--color-border-default) !important;
+    color: var(--color-fg-default) !important;
+  }
+
+  .markdown-body .markdown-alert-note {
+    color: #0969da !important;
+    border-left-color: #0969da !important;
+    background-color: #ddf4ff !important;
+  }
+
+  .markdown-body .markdown-alert-tip {
+    color: #1a7f37 !important;
+    border-left-color: #1a7f37 !important;
+    background-color: #dafbe1 !important;
+  }
+
+  .markdown-body .markdown-alert-important {
+    color: #8250df !important;
+    border-left-color: #8250df !important;
+    background-color: #fbefff !important;
+  }
+
+  .markdown-body .markdown-alert-warning {
+    color: #9a6700 !important;
+    border-left-color: #9a6700 !important;
+    background-color: #fff8c5 !important;
+  }
+
+  .markdown-body .markdown-alert-caution {
+    color: #cf222e !important;
+    border-left-color: #cf222e !important;
+    background-color: #ffebe9 !important;
+  }
+
+  .markdown-body .markdown-alert>*:not(.markdown-alert-title) {
+    color: var(--color-fg-default) !important;
+  }
+
+  .mermaid-container,
+  .abc-container,
+  .geojson-container,
+  .topojson-container,
+  .stl-container,
+  .plantuml-container,
+  .d2-container,
+  .graphviz-container,
+  .diagram-viewer,
+  .diagram-surface,
+  .diagram-status {
+    background: #ffffff !important;
+    border-color: var(--color-border-default) !important;
+    color: var(--color-fg-default) !important;
+  }
+
+  .diagram-status,
+  .diagram-viewer.is-error>.diagram-status {
+    background: #f6f8fa !important;
+  }
+
+  .markdown-body svg,
+  .markdown-body img,
+  .plantuml-diagram img,
+  .plantuml-img,
+  .d2-diagram img,
+  .d2-img,
+  .graphviz-diagram img,
+  .graphviz-img,
+  .plantuml-diagram>svg,
+  .graphviz-diagram>svg,
+  .d2-diagram>svg,
+  .diagram-surface svg {
+    filter: none !important;
+    background: transparent !important;
+  }
+
+  .markdown-body .mermaid svg {
+    background: #ffffff !important;
+    color: #24292f !important;
+  }
+
+  .markdown-body .mermaid text,
+  .markdown-body .mermaid tspan,
+  .markdown-body .mermaid .nodeLabel,
+  .markdown-body .mermaid .edgeLabel,
+  .markdown-body .mermaid .label,
+  .markdown-body .mermaid span {
+    color: #24292f !important;
+    fill: #24292f !important;
+  }
+
+  .markdown-body .mermaid .node rect,
+  .markdown-body .mermaid .node circle,
+  .markdown-body .mermaid .node ellipse,
+  .markdown-body .mermaid .node polygon,
+  .markdown-body .mermaid .actor,
+  .markdown-body .mermaid .note,
+  .markdown-body .mermaid .labelBox {
+    fill: #f6f8fa !important;
+    stroke: #8c959f !important;
+  }
+
+  .markdown-body .mermaid .edgeLabel,
+  .markdown-body .mermaid .cluster rect {
+    background-color: #ffffff !important;
+    fill: #ffffff !important;
+    color: #24292f !important;
+  }
+
+  .markdown-body .mermaid .flowchart-link,
+  .markdown-body .mermaid .edgePath .path,
+  .markdown-body .mermaid .messageLine0,
+  .markdown-body .mermaid .messageLine1,
+  .markdown-body .mermaid .loopLine,
+  .markdown-body .mermaid .activation0,
+  .markdown-body .mermaid .activation1,
+  .markdown-body .mermaid .activation2 {
+    stroke: #57606a !important;
+  }
+
+  .markdown-body .mermaid marker path,
+  .markdown-body .mermaid .arrowheadPath {
+    fill: #57606a !important;
+    stroke: #57606a !important;
+  }
+
+  .abc-notation svg,
+  .markmap-diagram .markmap-foreign,
+  mjx-container,
+  mjx-container * {
+    color: var(--color-fg-default) !important;
+  }
+
+  .stl-viewer canvas,
+  .geojson-map,
+  .topojson-map {
+    background: #ffffff !important;
   }
 
   body,

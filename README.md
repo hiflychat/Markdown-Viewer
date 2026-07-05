@@ -178,7 +178,7 @@ Access a fully localized user interface with support for English, Simplified Chi
 </p>
 
 ### 📤 Markdown to PDF, HTML & PNG Export
-Export your documents to raw Markdown, centered inline HTML, high-quality PNG images, or paginated PDF with re-engineered page breaks.
+Export your documents to raw Markdown, centered inline HTML, high-quality PNG images, or PDF. Browser Print prepares a clean light PDF view even from dark mode, while Legacy Raster PDF keeps the app's page-break planning for complex captures.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/36a9710d-df23-4fc5-9193-c8d43ca96408" alt="Layout-Aware PDF, HTML & PNG Export" width="90%" />
 </p>

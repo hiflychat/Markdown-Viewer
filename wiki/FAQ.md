@@ -94,7 +94,7 @@ The importer limits repository/folder results to the first 30 Markdown files to 
 
 ### Which PDF export should I use?
 
-Use Browser Print for most documents. It is faster and better for long text. Use Legacy Raster PDF when you need the app's page-break planning for images, tables, math, and diagrams, but expect higher memory use and possible browser canvas limits.
+Use Browser Print for most documents. It is faster and better for long text, and it always prepares a light print theme even if the app is currently in dark mode. Use Legacy Raster PDF when you need the app's page-break planning for images, tables, math, and diagrams, but expect higher memory use and possible browser canvas limits.
 
 ### Why are images missing from PDF or PNG export?
 
@@ -103,6 +103,8 @@ Canvas-based exports require images to be loaded and CORS-compatible. A remote i
 ### Why does exported PDF differ from the preview?
 
 Browser Print depends on the browser print engine. Legacy Raster PDF captures an off-screen layout to canvas, applies page-break changes, scales some content, and may move blocks to avoid bad page cuts. That can differ from the live preview.
+
+Browser Print removes the app's dark-mode styling before printing and restores it afterward. It does not rewrite colors that were intentionally placed in your Markdown, embedded HTML, SVG, image files, or diagram source.
 
 ## Installation and Offline Use
 

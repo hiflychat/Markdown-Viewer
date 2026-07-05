@@ -93,7 +93,7 @@ Export names use the active tab title when possible.
 | :--- | :--- | :--- |
 | Markdown | Saves the raw `.md` text. | Browser downloads or desktop native save dialog only. |
 | HTML | Saves standalone rendered HTML with styles and renderer support hooks. | External content referenced by the document may still load remotely when opened. |
-| PDF: Browser Print | Calls `window.print()` and lets the browser save/print. Recommended for most long documents. | Browser print engines vary; complex images/diagrams may differ. |
+| PDF: Browser Print | Temporarily prepares a light print preview, refreshes theme-sensitive diagrams, then calls `window.print()`. Recommended for most long documents. | Browser print engines vary; author-specified dark colors inside diagrams, SVGs, HTML, or images are preserved. |
 | PDF: Legacy Raster | Uses `html2canvas` and `jsPDF` with page-break planning. | Memory-heavy for very long documents; cross-origin images need CORS. |
 | PNG | Captures the rendered document to a PNG. | Browser canvas limits apply; cross-origin images need CORS. |
 

@@ -239,7 +239,7 @@ HTML export:
 PDF export:
 
 - Opens a modal with two modes.
-- Browser Print is recommended. It calls `window.print()` and lets the browser or OS produce the PDF. It is faster and better for long text, but images and complex diagrams may differ by browser.
+- Browser Print is recommended. It prepares the preview with a clean light print theme, hides app chrome and open modals, rerenders Mermaid with printable light SVG colors, refreshes theme-sensitive map and STL styling, then calls `window.print()` so the browser or OS can save or print the document. When the print preview closes, the app restores the user's previous light or dark UI theme.
 - Legacy Raster PDF uses `html2canvas` and `jsPDF`. It clones the preview into an off-screen A4 sandbox, renders Mermaid and ABC to SVG/image form, typesets math, waits for images/fonts, applies page-break rules, captures the document to canvas, and saves a PDF.
 - The raster exporter shows progress and has a cancel button.
 - Raster export uses `allowTaint: false` and `useCORS: true` to avoid unsafe cross-origin canvas capture.
@@ -253,6 +253,7 @@ PNG export:
 Limitations:
 
 - Browser Print output is controlled by the browser and print settings.
+- Browser Print removes app dark-mode styling from printed output, but it does not rewrite colors that a document author explicitly placed inside SVG, HTML, image files, or diagram source. A diagram that intentionally uses a dark background can still print dark.
 - Raster PDF and PNG are screenshots of rendered HTML, so very long documents can be memory-heavy.
 - Cross-origin images without CORS support may fail to appear in canvas-based PDF/PNG exports.
 - Advanced remote diagrams that have not rendered yet may need a moment before export.
