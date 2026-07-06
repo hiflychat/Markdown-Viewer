@@ -4684,31 +4684,75 @@ ${selector} .arrowheadPath {
     }
   }
 
-  function importMarkdownFile(file) {
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File is too large (maximum 10MB supported).');
-      return;
-    }
+  function isMarkdownFile(file) {
+    return Boolean(file) && (
+      file.type === "text/markdown" ||
+      /\.(md|markdown)$/i.test(file.name || "")
+    );
+  }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const text = e.target.result || '';
-      
-      // Simple binary check: look for null bytes in the first 8KB
-      const checkLength = Math.min(text.length, 8000);
-      for (let i = 0; i < checkLength; i++) {
-        if (text.charCodeAt(i) === 0) {
-          alert('Cannot import: The selected file appears to be a binary file.');
-          return;
-        }
+  function getMarkdownFileTitle(file) {
+    return (file && file.name ? file.name : "document.md").replace(/\.(md|markdown)$/i, "");
+  }
+
+  function importMarkdownFile(file) {
+    return new Promise(function(resolve) {
+      if (!file) {
+        resolve(false);
+        return;
       }
 
-      newTab(text, file.name.replace(/\.md$/i, ''));
-    };
-    reader.onerror = function() {
-      alert('Failed to read the file. Please check permissions and try again.');
-    };
-    reader.readAsText(file);
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large (maximum 10MB supported).');
+        resolve(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result || '';
+      
+        // Simple binary check: look for null bytes in the first 8KB
+        const checkLength = Math.min(text.length, 8000);
+        for (let i = 0; i < checkLength; i++) {
+          if (text.charCodeAt(i) === 0) {
+            alert('Cannot import: The selected file appears to be a binary file.');
+            resolve(false);
+            return;
+          }
+        }
+
+        newTab(text, getMarkdownFileTitle(file));
+        resolve(true);
+      };
+      reader.onerror = function() {
+        alert('Failed to read the file. Please check permissions and try again.');
+        resolve(false);
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  async function importMarkdownFiles(fileList, options) {
+    const settings = options || {};
+    const files = Array.from(fileList || []);
+    const markdownFiles = files.filter(isMarkdownFile);
+
+    if (!markdownFiles.length) {
+      if (settings.showInvalidAlert !== false) {
+        alert("Please upload Markdown files (.md or .markdown)");
+      }
+      return 0;
+    }
+
+    let importedCount = 0;
+    for (const file of markdownFiles) {
+      if (await importMarkdownFile(file)) {
+        importedCount++;
+      }
+    }
+
+    return importedCount;
   }
 
   function isMarkdownPath(path) {
@@ -10110,12 +10154,12 @@ ${selector} .arrowheadPath {
     });
   }
 
-  fileInput.addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    if (file) {
-      importMarkdownFile(file);
+  fileInput.addEventListener("change", async function (e) {
+    try {
+      await importMarkdownFiles(e.target.files);
+    } finally {
+      this.value = "";
     }
-    this.value = "";
   });
 
   exportMd.addEventListener("click", function () {
@@ -14466,19 +14510,11 @@ ${selector} .arrowheadPath {
     handleDrop(e);
   }, false);
 
-  function handleDrop(e) {
+  async function handleDrop(e) {
     const dt = e.dataTransfer;
-    const files = dt.files;
-    if (files.length) {
-      const file = files[0];
-      const isMarkdownFile =
-        file.type === "text/markdown" ||
-        /\.(md|markdown)$/i.test(file.name || "");
-      if (isMarkdownFile) {
-        importMarkdownFile(file);
-      } else {
-        alert("Please upload a Markdown file (.md or .markdown)");
-      }
+    const files = dt && dt.files;
+    if (files && files.length) {
+      await importMarkdownFiles(files);
     }
   }
 
