@@ -5574,6 +5574,70 @@ html[data-theme="dark"] .diagram-preview-container {
   height: 100%;
 }
 
+.diagram-svg-abcnotation .abc-thumb-svg {
+  width: 88% !important;
+  max-width: 88% !important;
+  max-height: 72px !important;
+  overflow: visible;
+}
+
+.diagram-svg-abcnotation .abc-thumb-staff,
+.diagram-svg-abcnotation .abc-thumb-note line,
+.diagram-svg-abcnotation .abc-thumb-beam,
+.diagram-svg-abcnotation .abc-thumb-brace,
+.diagram-svg-abcnotation .abc-thumb-slur {
+  fill: none;
+  stroke: #111827;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.diagram-svg-abcnotation .abc-thumb-staff {
+  stroke-width: 1.15;
+}
+
+.diagram-svg-abcnotation .abc-thumb-note ellipse {
+  fill: #111827;
+}
+
+.diagram-svg-abcnotation .abc-thumb-note line,
+.diagram-svg-abcnotation .abc-thumb-beam {
+  stroke-width: 3;
+}
+
+.diagram-svg-abcnotation .abc-thumb-brace,
+.diagram-svg-abcnotation .abc-thumb-slur {
+  stroke-width: 1.8;
+}
+
+.diagram-svg-abcnotation .abc-thumb-chord,
+.diagram-svg-abcnotation .abc-thumb-lyric,
+.diagram-svg-abcnotation .abc-thumb-clef,
+.diagram-svg-abcnotation .abc-thumb-sharp {
+  fill: #111827;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+.diagram-svg-abcnotation .abc-thumb-chord {
+  fill: #2563eb;
+  font-size: 13px;
+}
+
+.diagram-svg-abcnotation .abc-thumb-lyric {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.diagram-svg-abcnotation .abc-thumb-clef {
+  font-size: 34px;
+}
+
+.diagram-svg-abcnotation .abc-thumb-sharp {
+  font-size: 15px;
+}
+
 /* Hide card level toolbars to maintain clean card design */
 .diagram-card-preview .mermaid-toolbar,
 .diagram-card-preview .plantuml-toolbar,
@@ -5683,6 +5747,25 @@ html[data-theme="dark"] .diagram-svg-abcnotation svg line {
 html[data-theme="dark"] .diagram-svg-abcnotation svg path {
   fill: #eceff4 !important;
   stroke: #eceff4 !important;
+}
+
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-staff,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-note line,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-beam,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-brace,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-slur {
+  stroke: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-note ellipse,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-lyric,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-clef,
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-sharp {
+  fill: #f9fafb !important;
+}
+
+html[data-theme="dark"] .diagram-svg-abcnotation .abc-thumb-chord {
+  fill: #93c5fd !important;
 }
 
 /* Fix Dark Mode Sankey Diagram rendering color mismatch by preventing mix-blend-mode: multiply from blending with dark backgrounds */
