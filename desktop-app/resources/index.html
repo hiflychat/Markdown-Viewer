@@ -83,7 +83,7 @@
                             <li><a class="dropdown-item" href="#" id="import-from-github"><i class="bi bi-github me-2"></i>From GitHub</a></li>
                         </ul>
                     </div>
-                    <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown">
+                    <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown" multiple>
                     
                     <div class="dropdown">
                         <button class="tool-button dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Export Markdown">
@@ -1016,7 +1016,7 @@
         <div id="drag-overlay" class="drag-overlay" aria-hidden="true">
             <div class="drag-overlay-inner">
                 <i class="bi bi-cloud-arrow-up drag-overlay-icon"></i>
-                <p class="drag-overlay-text">Drop your Markdown file anywhere</p>
+                <p class="drag-overlay-text">Drop your Markdown files anywhere</p>
                 <p class="drag-overlay-sub">.md or .markdown files supported</p>
             </div>
         </div>
@@ -1039,7 +1039,7 @@
                 </div>
                 <textarea id="markdown-editor" placeholder="Type or paste your Markdown here..."></textarea>
                 <div class="drop-hint" aria-hidden="true">
-                    <i class="bi bi-cloud-arrow-up me-1"></i>Drop a .md file anywhere to open it
+                    <i class="bi bi-cloud-arrow-up me-1"></i>Drop .md files anywhere to open them
                 </div>
             </div>
             <!-- Resize Divider - Story 1.3 -->
