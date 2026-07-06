@@ -5456,33 +5456,34 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
 .diagram-modal-sidebar {
   width: 220px;
   border-right: 1px solid var(--border-color);
-  padding: 16px 8px;
+  padding: 14px 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
-.diagram-sidebar-group-title {
-  padding: 14px 14px 5px;
-  color: var(--text-muted, #6b7280);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  text-transform: uppercase;
+.diagram-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.diagram-sidebar-group-title:first-child {
-  padding-top: 2px;
+.diagram-sidebar-group-title {
+  padding: 0 10px 4px;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
 }
 
 .diagram-sidebar-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border: none;
   background: transparent;
   color: var(--text-color);
@@ -5495,12 +5496,13 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
 }
 
 .diagram-sidebar-btn:hover {
-  background-color: var(--button-hover-bg, rgba(120, 120, 120, 0.1));
+  background-color: var(--button-hover-bg, rgba(120, 120, 120, 0.08));
 }
 
 .diagram-sidebar-btn.is-active {
-  background-color: var(--accent-color, #0076ff);
-  color: #fff;
+  background-color: color-mix(in srgb, var(--accent-color, #0076ff) 12%, transparent);
+  color: var(--accent-color, #0076ff);
+  font-weight: 650;
 }
 
 .diagram-modal-content {
@@ -5764,6 +5766,10 @@ html[data-theme="dark"] .diagram-preview-container {
 
   .diagram-sidebar-group-title {
     display: none;
+  }
+
+  .diagram-sidebar-group {
+    display: contents;
   }
 
   .diagram-modal-box {

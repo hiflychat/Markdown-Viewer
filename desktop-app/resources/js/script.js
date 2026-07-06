@@ -6894,7 +6894,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // STL (3D) local previews
     const svgStlTetrahedron = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,18 34,90 126,90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><polygon points="80,18 34,90 80,70" fill="#93c5fd" opacity="0.85"/><polygon points="80,18 126,90 80,70" fill="#60a5fa" opacity="0.85"/><polygon points="34,90 126,90 80,70" fill="#1d4ed8" opacity="0.75"/><line x1="80" y1="18" x2="80" y2="70" stroke="#1e40af" stroke-width="1.5"/><text x="80" y="108" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e3a8a" font-weight="bold">STL</text></svg>`;
-    const svgStlBracket = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M38 78 L82 32 L126 54 L82 100 Z" fill="#e0f2fe" stroke="#075985" stroke-width="2"/><path d="M82 32 L126 54 L126 76 L82 100 Z" fill="#7dd3fc" opacity="0.85" stroke="#075985" stroke-width="1.4"/><path d="M38 78 L82 100 L82 78 L58 66 Z" fill="#38bdf8" opacity="0.85" stroke="#075985" stroke-width="1.4"/><circle cx="82" cy="66" r="9" fill="#ffffff" stroke="#075985" stroke-width="2"/><text x="80" y="18" text-anchor="middle" font-size="8" font-family="monospace" fill="#075985" font-weight="bold">3D Mesh</text></svg>`;
+    const svgStlCube = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="58,24 118,44 88,62 28,42" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8"/><polygon points="28,42 88,62 88,100 28,80" fill="#93c5fd" stroke="#2563eb" stroke-width="1.8"/><polygon points="88,62 118,44 118,82 88,100" fill="#60a5fa" stroke="#2563eb" stroke-width="1.8"/><line x1="58" y1="24" x2="58" y2="62" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="28" y2="80" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="118" y2="82" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><text x="80" y="16" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">20 mm cube</text></svg>`;
 
     const templates = [
       // Mermaid
@@ -7491,12 +7491,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         code: '```stl\nsolid tetrahedron\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 0\n      vertex 1 0 0\n      vertex 0 1 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 1\n      vertex 1 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 1 0\n      vertex 0 0 1\n    endloop\n  endfacet\n  facet normal 1 1 1\n    outer loop\n      vertex 1 0 0\n      vertex 0 0 1\n      vertex 0 1 0\n    endloop\n  endfacet\nendsolid tetrahedron\n```\n'
       },
       {
-        id: 'stl-triangle-panel',
+        id: 'stl-calibration-cube',
         category: 'STL (3D)',
-        title: 'Triangle Panel',
-        label: 'Triangle Panel',
-        svg: svgStlBracket,
-        code: '```stl\nsolid triangle_panel\n  facet normal 0 0 1\n    outer loop\n      vertex -1 -1 0\n      vertex 1 -1 0\n      vertex 0 1 0\n    endloop\n  endfacet\n  facet normal 0 0 -1\n    outer loop\n      vertex -1 -1 -0.15\n      vertex 0 1 -0.15\n      vertex 1 -1 -0.15\n    endloop\n  endfacet\nendsolid triangle_panel\n```\n'
+        title: 'Calibration Cube',
+        label: 'Calibration Cube',
+        svg: svgStlCube,
+        code: '```stl\nsolid calibration_cube_20mm\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 0\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 20 0\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 20 20 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 0 20 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 20\n      vertex 20 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 0 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 20 20\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 20 20 20\n      vertex 0 20 20\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 0 20 20\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 20 20\n      vertex 0 0 20\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 0 20\n      vertex 0 0 0\n    endloop\n  endfacet\nendsolid calibration_cube_20mm\n```\n'
       }
     ];
     
@@ -7506,11 +7506,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     function renderSidebar() {
       sidebar.textContent = '';
       categoryGroups.forEach(group => {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'diagram-sidebar-group';
+
         const heading = document.createElement('div');
         heading.className = 'diagram-sidebar-group-title';
         heading.setAttribute('role', 'presentation');
         heading.textContent = group.label;
-        sidebar.appendChild(heading);
+        groupEl.appendChild(heading);
 
         group.categories.forEach(cat => {
           const btn = document.createElement('button');
@@ -7523,8 +7526,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             renderSidebar();
             renderGrid();
           });
-          sidebar.appendChild(btn);
+          groupEl.appendChild(btn);
         });
+
+        sidebar.appendChild(groupEl);
       });
     }
     
