@@ -2215,17 +2215,28 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateLiveEditorAccess();
   }
 
-  function getSafeDocumentFilename(title, extension, fallback) {
+  function getSafeDocumentBasename(title, fallback) {
     if (title) {
       title = title.replace(/\.(md|markdown|html|pdf|png)$/i, '');
       title = title.replace(/[\\/:*?"<>|]/g, "_").trim();
     }
-    return title ? `${title}.${extension}` : fallback;
+    return title || fallback;
+  }
+
+  function getSafeDocumentFilename(title, extension, fallback) {
+    const fallbackBase = fallback ? fallback.replace(/\.[^.]+$/, '') : 'document';
+    const basename = getSafeDocumentBasename(title, fallbackBase);
+    return `${basename}.${extension}`;
   }
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
     return getSafeDocumentFilename(activeTab ? activeTab.title : "", extension, fallback);
+  }
+
+  function getBrowserPrintDocumentTitle() {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return getSafeDocumentBasename(activeTab ? activeTab.title : "", "document");
   }
 
   function loadTabsFromStorage() {
@@ -11371,6 +11382,55 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   pdfExportCancelBtn?.addEventListener("click", () => closeAppModal(pdfExportModal));
 
+  async function runBrowserPrintExport() {
+    const previousDocumentTitle = document.title;
+    document.title = getBrowserPrintDocumentTitle();
+    let restored = false;
+    const mediaQuery = window.matchMedia ? window.matchMedia('print') : null;
+
+    const restoreOnce = function() {
+      if (restored) return;
+      restored = true;
+      window.removeEventListener('afterprint', restoreOnce);
+      window.removeEventListener('focus', restoreOnce);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (mediaQuery) {
+        if (typeof mediaQuery.removeEventListener === 'function') {
+          mediaQuery.removeEventListener('change', handlePrintMediaChange);
+        } else if (typeof mediaQuery.removeListener === 'function') {
+          mediaQuery.removeListener(handlePrintMediaChange);
+        }
+      }
+      document.title = previousDocumentTitle;
+    };
+
+    const handlePrintMediaChange = function(event) {
+      if (!event.matches) restoreOnce();
+    };
+
+    const handleVisibilityChange = function() {
+      if (!document.hidden) restoreOnce();
+    };
+
+    window.addEventListener('afterprint', restoreOnce);
+    window.addEventListener('focus', restoreOnce);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (mediaQuery) {
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handlePrintMediaChange);
+      } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(handlePrintMediaChange);
+      }
+    }
+
+    try {
+      window.print();
+    } catch (error) {
+      restoreOnce();
+      throw error;
+    }
+  }
+
   pdfExportConfirmBtn?.addEventListener("click", async function (event) {
     event.preventDefault();
     closeAppModal(pdfExportModal);
@@ -11379,7 +11439,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (selectedMode === "vector") {
       logPdfExportDebug("PDF (Vector) export button clicked!");
-      window.print();
+      await runBrowserPrintExport();
     } else if (selectedMode === "raster") {
       logPdfExportDebug("PDF export button clicked!");
       if (activePdfExport) {

@@ -2215,17 +2215,28 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateLiveEditorAccess();
   }
 
-  function getSafeDocumentFilename(title, extension, fallback) {
+  function getSafeDocumentBasename(title, fallback) {
     if (title) {
       title = title.replace(/\.(md|markdown|html|pdf|png)$/i, '');
       title = title.replace(/[\\/:*?"<>|]/g, "_").trim();
     }
-    return title ? `${title}.${extension}` : fallback;
+    return title || fallback;
+  }
+
+  function getSafeDocumentFilename(title, extension, fallback) {
+    const fallbackBase = fallback ? fallback.replace(/\.[^.]+$/, '') : 'document';
+    const basename = getSafeDocumentBasename(title, fallbackBase);
+    return `${basename}.${extension}`;
   }
 
   function getExportFilename(extension, fallback) {
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
     return getSafeDocumentFilename(activeTab ? activeTab.title : "", extension, fallback);
+  }
+
+  function getBrowserPrintDocumentTitle() {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return getSafeDocumentBasename(activeTab ? activeTab.title : "", "document");
   }
 
   function loadTabsFromStorage() {
@@ -4314,7 +4325,15 @@ ${selector} .arrowheadPath {
   }
 
   async function runBrowserPrintExport() {
-    const restoreBrowserPrintExport = await prepareBrowserPrintExport();
+    const previousDocumentTitle = document.title;
+    document.title = getBrowserPrintDocumentTitle();
+    let restoreBrowserPrintExport;
+    try {
+      restoreBrowserPrintExport = await prepareBrowserPrintExport();
+    } catch (error) {
+      document.title = previousDocumentTitle;
+      throw error;
+    }
     let restored = false;
     const mediaQuery = window.matchMedia ? window.matchMedia('print') : null;
 
@@ -4332,6 +4351,7 @@ ${selector} .arrowheadPath {
         }
       }
       restoreBrowserPrintExport();
+      document.title = previousDocumentTitle;
     };
 
     const handlePrintMediaChange = function(event) {
