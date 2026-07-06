@@ -5376,6 +5376,20 @@ html[data-theme="dark"] .d2-diagram > svg:not([data-diagram-native-dark="true"])
   flex-shrink: 0;
 }
 
+.diagram-sidebar-group-title {
+  padding: 14px 14px 5px;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.diagram-sidebar-group-title:first-child {
+  padding-top: 2px;
+}
+
 .diagram-sidebar-btn {
   display: flex;
   align-items: center;
@@ -5658,6 +5672,11 @@ html[data-theme="dark"] .diagram-preview-container {
     border-bottom: 1px solid var(--border-color);
     padding: 8px;
   }
+
+  .diagram-sidebar-group-title {
+    display: none;
+  }
+
   .diagram-modal-box {
     height: 95vh;
   }

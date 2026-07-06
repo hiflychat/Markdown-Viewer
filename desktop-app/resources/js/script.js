@@ -6596,7 +6596,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       WaveDrom: 'wavedrom',
       Markmap: 'markmap',
       Mermaid: 'mermaid',
-      'ABC Notation': 'abc'
+      'ABC Notation': 'abc',
+      'STL (3D)': 'stl'
     };
     return engines[category] || null;
   }
@@ -6698,7 +6699,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const cleanCode = getCleanCode(template.code);
     const engine = getDiagramEngineForCategory(template.category);
     try {
-      if (template.category === 'ABC Notation') {
+      if (template.category === 'ABC Notation' || template.category === 'STL (3D)') {
         callback(null);
         return;
       }
@@ -6758,15 +6759,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (previewCode) previewCode.value = '';
     confirmBtn.disabled = true;
     
-    const categories = [
-      'Mermaid',
-      'PlantUML',
-      'Graphviz',
-      'D2',
-      'Vega-Lite',
-      'ABC Notation',
-      'WaveDrom',
-      'Markmap'
+    const categoryGroups = [
+      {
+        label: 'Diagrams',
+        categories: ['Mermaid', 'PlantUML', 'Graphviz', 'D2']
+      },
+      {
+        label: 'Mind Maps',
+        categories: ['Markmap']
+      },
+      {
+        label: 'Data Visualization',
+        categories: ['Vega-Lite']
+      },
+      {
+        label: 'Technical Notation',
+        categories: ['WaveDrom', 'ABC Notation']
+      },
+      {
+        label: '3D Models',
+        categories: ['STL (3D)']
+      }
     ];
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
@@ -6878,6 +6891,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Markmap additional (Aesthetic: colorful mindmaps, checklist notation)
     const svgMarkmapChecklist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Tasks</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#5e35b1" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#5e35b1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#5e35b1"/><circle cx="90" cy="90" r="3" fill="#5e35b1"/><text x="96" y="33" font-size="7" font-family="sans-serif">☒ Todo A</text><text x="96" y="93" font-size="7" font-family="sans-serif">☑ Todo B</text></svg>`;
     const svgMarkmapCode = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#eceff1" stroke="#455a64" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#455a64" font-weight="bold">Project</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#455a64" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#455a64" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#455a64"/><circle cx="90" cy="90" r="3" fill="#455a64"/><text x="96" y="33" font-size="7" font-family="monospace">code()</text><text x="96" y="93" font-size="7" font-family="monospace">test()</text></svg>`;
+
+    // STL (3D) local previews
+    const svgStlTetrahedron = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,18 34,90 126,90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><polygon points="80,18 34,90 80,70" fill="#93c5fd" opacity="0.85"/><polygon points="80,18 126,90 80,70" fill="#60a5fa" opacity="0.85"/><polygon points="34,90 126,90 80,70" fill="#1d4ed8" opacity="0.75"/><line x1="80" y1="18" x2="80" y2="70" stroke="#1e40af" stroke-width="1.5"/><text x="80" y="108" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e3a8a" font-weight="bold">STL</text></svg>`;
+    const svgStlBracket = `<svg viewBox="0 0 160 120" width="100%" height="100%"><path d="M38 78 L82 32 L126 54 L82 100 Z" fill="#e0f2fe" stroke="#075985" stroke-width="2"/><path d="M82 32 L126 54 L126 76 L82 100 Z" fill="#7dd3fc" opacity="0.85" stroke="#075985" stroke-width="1.4"/><path d="M38 78 L82 100 L82 78 L58 66 Z" fill="#38bdf8" opacity="0.85" stroke="#075985" stroke-width="1.4"/><circle cx="82" cy="66" r="9" fill="#ffffff" stroke="#075985" stroke-width="2"/><text x="80" y="18" text-anchor="middle" font-size="8" font-family="monospace" fill="#075985" font-weight="bold">3D Mesh</text></svg>`;
 
     const templates = [
       // Mermaid
@@ -7462,6 +7479,24 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: 'Inline Code Blocks',
         svg: svgMarkmapCode,
         code: '```markmap\n# Development\n## Languages\n- `JavaScript`\n- `Python`\n## Functions\n- `main()`\n- `helper_func()`\n```\n'
+      },
+
+      // STL (3D)
+      {
+        id: 'stl-tetrahedron',
+        category: 'STL (3D)',
+        title: 'Tetrahedron Mesh',
+        label: 'Tetrahedron Mesh',
+        svg: svgStlTetrahedron,
+        code: '```stl\nsolid tetrahedron\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 0\n      vertex 1 0 0\n      vertex 0 1 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 1\n      vertex 1 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 1 0\n      vertex 0 0 1\n    endloop\n  endfacet\n  facet normal 1 1 1\n    outer loop\n      vertex 1 0 0\n      vertex 0 0 1\n      vertex 0 1 0\n    endloop\n  endfacet\nendsolid tetrahedron\n```\n'
+      },
+      {
+        id: 'stl-triangle-panel',
+        category: 'STL (3D)',
+        title: 'Triangle Panel',
+        label: 'Triangle Panel',
+        svg: svgStlBracket,
+        code: '```stl\nsolid triangle_panel\n  facet normal 0 0 1\n    outer loop\n      vertex -1 -1 0\n      vertex 1 -1 0\n      vertex 0 1 0\n    endloop\n  endfacet\n  facet normal 0 0 -1\n    outer loop\n      vertex -1 -1 -0.15\n      vertex 0 1 -0.15\n      vertex 1 -1 -0.15\n    endloop\n  endfacet\nendsolid triangle_panel\n```\n'
       }
     ];
     
@@ -7470,18 +7505,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     
     function renderSidebar() {
       sidebar.textContent = '';
-      categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'diagram-sidebar-btn';
-        if (cat === activeCategory) btn.classList.add('is-active');
-        btn.textContent = cat;
-        btn.addEventListener('click', () => {
-          activeCategory = cat;
-          renderSidebar();
-          renderGrid();
+      categoryGroups.forEach(group => {
+        const heading = document.createElement('div');
+        heading.className = 'diagram-sidebar-group-title';
+        heading.setAttribute('role', 'presentation');
+        heading.textContent = group.label;
+        sidebar.appendChild(heading);
+
+        group.categories.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'diagram-sidebar-btn';
+          if (cat === activeCategory) btn.classList.add('is-active');
+          btn.textContent = cat;
+          btn.addEventListener('click', () => {
+            activeCategory = cat;
+            renderSidebar();
+            renderGrid();
+          });
+          sidebar.appendChild(btn);
         });
-        sidebar.appendChild(btn);
       });
     }
     
@@ -7514,7 +7557,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const previewDiv = document.createElement('div');
         previewDiv.className = 'diagram-card-preview';
         
-        const catClass = t.category.toLowerCase().replace(/\s+/g, '');
+        const catClass = t.category.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
         previewDiv.innerHTML = `
           <div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
@@ -7552,7 +7595,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           if (previewCode) previewCode.value = t.code.trim();
           confirmBtn.disabled = false;
 
-          const catClass = t.category.toLowerCase().replace(/\s+/g, '');
+          const catClass = t.category.toLowerCase().replace(/[^a-z0-9]+/g, '');
           // Render bottom preview container with API image & fallback
           previewContainer.innerHTML = `
             <div class="diagram-svg-container diagram-svg-${catClass}" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
