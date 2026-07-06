@@ -2215,14 +2215,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateLiveEditorAccess();
   }
 
-  function getExportFilename(extension, fallback) {
-    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
-    let title = activeTab ? activeTab.title : "";
+  function getSafeDocumentFilename(title, extension, fallback) {
     if (title) {
       title = title.replace(/\.(md|markdown|html|pdf|png)$/i, '');
       title = title.replace(/[\\/:*?"<>|]/g, "_").trim();
     }
     return title ? `${title}.${extension}` : fallback;
+  }
+
+  function getExportFilename(extension, fallback) {
+    const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    return getSafeDocumentFilename(activeTab ? activeTab.title : "", extension, fallback);
   }
 
   function loadTabsFromStorage() {
@@ -2352,16 +2355,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function runTabMenuAction(tabId, action, isMobileMenu) {
-    const tab = tabs.find(function(t) { return t.id === tabId; });
-    if (isShareSnapshotTab(tab) && action === 'duplicate') {
-      alert('Shared snapshot tabs are temporary and cannot be duplicated.');
-      return;
-    }
     if (action === 'rename') {
       if (isMobileMenu) closeMobileMenu();
       renameTab(tabId);
     } else if (action === 'duplicate') {
       duplicateTab(tabId);
+      if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'download') {
+      downloadTabMarkdown(tabId);
       if (isMobileMenu) closeMobileMenu();
     } else if (action === 'delete') {
       deleteTab(tabId);
@@ -2393,10 +2394,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const duplicateAction = isShareSnapshotTab(tab)
       ? ''
       : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>';
+    const downloadAction = isShareSnapshotTab(tab)
+      ? ''
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="bi bi-download"></i> Download Markdown</button>';
     const closeLabel = isShareSnapshotTab(tab) ? 'Close' : 'Delete';
     dropdown.innerHTML =
       '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil"></i> Rename</button>' +
       duplicateAction +
+      downloadAction +
       '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> ' + closeLabel + '</button>';
 
     menuBtn.addEventListener('click', function(e) {
@@ -2880,6 +2885,50 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else {
       saveTabsToStorage(tabs);
       renderTabBar(tabs, activeTabId);
+    }
+  }
+
+  async function downloadTabMarkdown(tabId) {
+    if (tabId === activeTabId) {
+      saveCurrentTabState();
+    }
+
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (isShareSnapshotTab(tab)) {
+      alert('Shared snapshot tabs are temporary and cannot be downloaded.');
+      return;
+    }
+
+    const content = typeof tab.content === 'string' ? tab.content : '';
+    const filename = getSafeDocumentFilename(tab.title, "md", "document.md");
+
+    if (typeof Neutralino !== 'undefined') {
+      try {
+        const result = await Neutralino.os.showSaveDialog("Save Markdown File", {
+          filters: [
+            { name: "Markdown files (*.md)", extensions: ["md", "markdown"] },
+            { name: "All files (*.*)", extensions: ["*"] }
+          ]
+        });
+        if (result) {
+          await Neutralino.filesystem.writeFile(result, content);
+        }
+      } catch (e) {
+        console.error("Native tab download failed:", e);
+        alert("Native tab download failed: " + e.message);
+      }
+      return;
+    }
+
+    try {
+      const blob = new Blob([content], {
+        type: "text/markdown;charset=utf-8",
+      });
+      saveAs(blob, filename);
+    } catch (e) {
+      console.error("Tab download failed:", e);
+      alert("Tab download failed: " + e.message);
     }
   }
 
