@@ -7002,25 +7002,42 @@ ${selector} .arrowheadPath {
     const categoryGroups = [
       {
         label: 'Diagrams',
+        icon: 'bi-diagram-3',
         categories: ['Mermaid', 'PlantUML', 'Graphviz', 'D2']
       },
       {
         label: 'Mind Maps',
+        icon: 'bi-diagram-2',
         categories: ['Markmap']
       },
       {
         label: 'Data Visualization',
+        icon: 'bi-bar-chart-line',
         categories: ['Vega-Lite']
       },
       {
         label: 'Technical Notation',
+        icon: 'bi-code-slash',
         categories: ['WaveDrom', 'ABC Notation']
       },
       {
         label: '3D Models',
+        icon: 'bi-box',
         categories: ['STL (3D)']
       }
     ];
+
+    const categoryIcons = {
+      Mermaid: 'bi-water',
+      PlantUML: 'bi-leaf',
+      Graphviz: 'bi-bezier2',
+      D2: 'bi-badge-2d',
+      Markmap: 'bi-diagram-2',
+      'Vega-Lite': 'bi-bar-chart-line',
+      WaveDrom: 'bi-activity',
+      'ABC Notation': 'bi-music-note-beamed',
+      'STL (3D)': 'bi-box'
+    };
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
     const svgMermaidFlowchartLR = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Left</text><path d="M 50 60 L 110 60" stroke="#2e7d32" stroke-width="1.2" marker-end="url(#arrow-flr)"/><rect x="110" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="130" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Right</text><defs><marker id="arrow-flr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/></marker></defs></svg>`;
@@ -7746,28 +7763,51 @@ ${selector} .arrowheadPath {
     function renderSidebar() {
       sidebar.textContent = '';
       categoryGroups.forEach(group => {
+        const isExpanded = group.categories.includes(activeCategory);
         const groupEl = document.createElement('div');
         groupEl.className = 'diagram-sidebar-group';
+        if (isExpanded) groupEl.classList.add('is-expanded');
 
-        const heading = document.createElement('div');
-        heading.className = 'diagram-sidebar-group-title';
-        heading.setAttribute('role', 'presentation');
-        heading.textContent = group.label;
+        const heading = document.createElement('button');
+        heading.type = 'button';
+        heading.className = 'diagram-sidebar-group-header';
+        heading.setAttribute('aria-expanded', String(isExpanded));
+        heading.innerHTML = `
+          <i class="bi ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
+          <span>${group.label}</span>
+          <i class="bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
+        `;
+        heading.addEventListener('click', () => {
+          if (!isExpanded) {
+            activeCategory = group.categories[0];
+            selectedTemplate = null;
+            renderSidebar();
+            renderGrid();
+          }
+        });
         groupEl.appendChild(heading);
+
+        const itemsEl = document.createElement('div');
+        itemsEl.className = 'diagram-sidebar-items';
 
         group.categories.forEach(cat => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'diagram-sidebar-btn';
           if (cat === activeCategory) btn.classList.add('is-active');
-          btn.textContent = cat;
+          btn.innerHTML = `
+            <i class="bi ${categoryIcons[cat] || 'bi-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
+            <span>${cat}</span>
+          `;
           btn.addEventListener('click', () => {
             activeCategory = cat;
             renderSidebar();
             renderGrid();
           });
-          groupEl.appendChild(btn);
+          itemsEl.appendChild(btn);
         });
+
+        groupEl.appendChild(itemsEl);
 
         sidebar.appendChild(groupEl);
       });
