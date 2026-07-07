@@ -5491,7 +5491,7 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
   min-height: 38px;
   padding: 0 10px;
   border-radius: 6px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .diagram-sidebar-group-header:hover {
@@ -5499,6 +5499,7 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
 }
 
 .diagram-sidebar-group-icon,
+.diagram-sidebar-item-icon,
 .diagram-sidebar-chevron {
   display: inline-flex;
   align-items: center;
@@ -5535,7 +5536,7 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
   min-height: 34px;
   padding: 0 9px;
   border-radius: 6px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .diagram-sidebar-btn:hover {
@@ -5543,25 +5544,20 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
 }
 
 .diagram-sidebar-btn.is-active {
-  background-color: var(--button-hover);
+  background-color: color-mix(in srgb, var(--accent-color, #0076ff) 14%, transparent);
   color: var(--accent-color, #0076ff);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--accent-color, #0076ff);
+  font-weight: 400;
 }
 
-.diagram-sidebar-item-dot {
-  width: 6px;
-  height: 6px;
-  border: 1px solid var(--text-secondary);
-  border-radius: 50%;
+.diagram-sidebar-item-icon {
+  width: 18px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
   flex: 0 0 auto;
-  opacity: 0.75;
 }
 
-.diagram-sidebar-btn.is-active .diagram-sidebar-item-dot {
-  background: var(--accent-color, #0076ff);
-  border-color: var(--accent-color, #0076ff);
-  opacity: 1;
+.diagram-sidebar-btn.is-active .diagram-sidebar-item-icon {
+  color: var(--accent-color, #0076ff);
 }
 
 .diagram-modal-content {

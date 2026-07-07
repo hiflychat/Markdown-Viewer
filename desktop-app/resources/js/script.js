@@ -6786,6 +6786,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         categories: ['STL (3D)']
       }
     ];
+
+    const categoryIcons = {
+      Mermaid: 'bi-water',
+      PlantUML: 'bi-braces',
+      Graphviz: 'bi-bezier2',
+      D2: 'bi-grid-3x3',
+      Markmap: 'bi-diagram-2',
+      'Vega-Lite': 'bi-bar-chart-line',
+      WaveDrom: 'bi-activity',
+      'ABC Notation': 'bi-music-note-beamed',
+      'STL (3D)': 'bi-badge-3d'
+    };
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
     const svgMermaidFlowchartLR = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Left</text><path d="M 50 60 L 110 60" stroke="#2e7d32" stroke-width="1.2" marker-end="url(#arrow-flr)"/><rect x="110" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="130" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Right</text><defs><marker id="arrow-flr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/></marker></defs></svg>`;
@@ -7544,7 +7556,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           btn.className = 'diagram-sidebar-btn';
           if (cat === activeCategory) btn.classList.add('is-active');
           btn.innerHTML = `
-            <span class="diagram-sidebar-item-dot" aria-hidden="true"></span>
+            <i class="bi ${categoryIcons[cat] || 'bi-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
             <span>${cat}</span>
           `;
           btn.addEventListener('click', () => {
