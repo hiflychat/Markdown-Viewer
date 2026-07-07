@@ -1990,6 +1990,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function normalizeDiagramSvg(node, engine, source) {
     const svg = node ? node.querySelector('svg') : null;
     if (!svg) return null;
+    if (engine === 'wavedrom') isolateWaveDromSvgStyles(svg);
 
     let intrinsicWidth = 0;
     let intrinsicHeight = 0;
@@ -2031,6 +2032,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     svg.style.maxWidth = '100%';
     svg.style.maxHeight = 'min(70vh, 720px)';
     return svg;
+  }
+
+  function isolateWaveDromSvgStyles(svg) {
+    if (svg.getAttribute('data-wavedrom-style-scoped') === 'true') return;
+    let scopeId = svg.getAttribute('data-wavedrom-style-scope');
+    if (!scopeId) {
+      scopeId = `wavedrom-${Math.random().toString(36).slice(2, 10)}`;
+      svg.setAttribute('data-wavedrom-style-scope', scopeId);
+    }
+
+    const classMap = new Map();
+    const getScopedClass = className => {
+      if (!classMap.has(className)) {
+        classMap.set(className, `wd-${scopeId}-${className}`);
+      }
+      return classMap.get(className);
+    };
+
+    svg.querySelectorAll('[class]').forEach(element => {
+      const classes = (element.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean);
+      if (classes.length) {
+        element.setAttribute('class', classes.map(getScopedClass).join(' '));
+      }
+    });
+
+    svg.querySelectorAll('style').forEach(style => {
+      const css = style.textContent || '';
+      style.textContent = scopeWaveDromStyleClasses(css, getScopedClass);
+      style.setAttribute('data-wavedrom-style-scoped', 'true');
+    });
+    svg.setAttribute('data-wavedrom-style-scoped', 'true');
+  }
+
+  function scopeWaveDromStyleClasses(css, getScopedClass) {
+    return css.replace(/\.([A-Za-z_-][A-Za-z0-9_-]*)/g, (match, className) => {
+      return `.${getScopedClass(className)}`;
+    });
   }
 
   function getDiagramFailureMessage(engine, error) {
@@ -6836,7 +6874,8 @@ ${selector} .arrowheadPath {
       WaveDrom: 'wavedrom',
       Markmap: 'markmap',
       Mermaid: 'mermaid',
-      'ABC Notation': 'abc'
+      'ABC Notation': 'abc',
+      'STL (3D)': 'stl'
     };
     return engines[category] || null;
   }
@@ -6938,7 +6977,7 @@ ${selector} .arrowheadPath {
     const cleanCode = getCleanCode(template.code);
     const engine = getDiagramEngineForCategory(template.category);
     try {
-      if (template.category === 'ABC Notation') {
+      if (template.category === 'ABC Notation' || template.category === 'GeoJSON' || template.category === 'TopoJSON' || template.category === 'STL (3D)') {
         callback(null);
         return;
       }
@@ -6998,16 +7037,52 @@ ${selector} .arrowheadPath {
     if (previewCode) previewCode.value = '';
     confirmBtn.disabled = true;
     
-    const categories = [
-      'Mermaid',
-      'PlantUML',
-      'Graphviz',
-      'D2',
-      'Vega-Lite',
-      'ABC Notation',
-      'WaveDrom',
-      'Markmap'
+    const categoryGroups = [
+      {
+        label: 'Diagrams',
+        icon: 'bi-diagram-3',
+        categories: ['Mermaid', 'PlantUML', 'Graphviz', 'D2']
+      },
+      {
+        label: 'Mind Maps',
+        icon: 'bi-list-ul',
+        categories: ['Markmap']
+      },
+      {
+        label: 'Data Visualization',
+        icon: 'bi-bar-chart-line',
+        categories: ['Vega-Lite']
+      },
+      {
+        label: 'Technical Notation',
+        icon: 'bi-code-slash',
+        categories: ['WaveDrom', 'ABC Notation']
+      },
+      {
+        label: '3D Models',
+        icon: 'bi-box',
+        categories: ['STL (3D)']
+      },
+      {
+        label: 'Maps',
+        icon: 'bi-map',
+        categories: ['GeoJSON', 'TopoJSON']
+      }
     ];
+
+    const categoryIcons = {
+      Mermaid: 'bi-water',
+      PlantUML: 'bi-braces',
+      Graphviz: 'bi-bezier2',
+      D2: 'bi-grid-3x3',
+      Markmap: 'bi-diagram-2',
+      'Vega-Lite': 'bi-bar-chart-line',
+      GeoJSON: 'bi-pin-map',
+      TopoJSON: 'bi-layers',
+      WaveDrom: 'bi-activity',
+      'ABC Notation': 'bi-music-note-beamed',
+      'STL (3D)': 'bi-badge-3d'
+    };
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
     const svgMermaidFlowchartLR = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="30" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Left</text><path d="M 50 60 L 110 60" stroke="#2e7d32" stroke-width="1.2" marker-end="url(#arrow-flr)"/><rect x="110" y="47" width="40" height="26" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="3"/><text x="130" y="63" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1b5e20" font-weight="bold">Right</text><defs><marker id="arrow-flr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/></marker></defs></svg>`;
@@ -7118,6 +7193,165 @@ ${selector} .arrowheadPath {
     // Markmap additional (Aesthetic: colorful mindmaps, checklist notation)
     const svgMarkmapChecklist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Tasks</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#5e35b1" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#5e35b1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#5e35b1"/><circle cx="90" cy="90" r="3" fill="#5e35b1"/><text x="96" y="33" font-size="7" font-family="sans-serif">☒ Todo A</text><text x="96" y="93" font-size="7" font-family="sans-serif">☑ Todo B</text></svg>`;
     const svgMarkmapCode = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#eceff1" stroke="#455a64" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#455a64" font-weight="bold">Project</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#455a64" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#455a64" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#455a64"/><circle cx="90" cy="90" r="3" fill="#455a64"/><text x="96" y="33" font-size="7" font-family="monospace">code()</text><text x="96" y="93" font-size="7" font-family="monospace">test()</text></svg>`;
+
+    // Map local previews
+    const svgGeoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#eef6ff" stroke="#94a3b8" stroke-width="1.4"/><path d="M22 84 C40 70, 52 76, 68 58 C86 38, 104 52, 124 30" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0.85"/><path d="M28 32 L65 24 L82 48 L60 76 L30 68 Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.6"/><path d="M86 66 L126 56 L138 86 L102 96 Z" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.6"/><circle cx="112" cy="46" r="6" fill="#ef4444" stroke="#fff" stroke-width="2"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">GeoJSON</text></svg>`;
+    const svgTopoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4"/><path d="M30 30 L68 24 L86 52 L58 84 L26 70 Z" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.6"/><path d="M86 30 L126 38 L134 78 L104 94 L82 66 Z" fill="#dcfce7" stroke="#15803d" stroke-width="1.6"/><path d="M68 24 L86 52 L82 66" fill="none" stroke="#f59e0b" stroke-width="2.6" stroke-dasharray="4 3"/><circle cx="68" cy="24" r="3" fill="#f59e0b"/><circle cx="86" cy="52" r="3" fill="#f59e0b"/><circle cx="82" cy="66" r="3" fill="#f59e0b"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">TopoJSON</text></svg>`;
+    const geoJsonPointCode = '```geojson\n{\n  "type": "FeatureCollection",\n  "features": [\n    {\n      "type": "Feature",\n      "properties": { "name": "Taj Mahal" },\n      "geometry": {\n        "type": "Point",\n        "coordinates": [78.0421, 27.1751]\n      }\n    }\n  ]\n}\n```\n';
+    const topoJsonPointCode = '```topojson\n{\n  "type": "Topology",\n  "objects": {\n    "example": {\n      "type": "GeometryCollection",\n      "geometries": [\n        {\n          "type": "Point",\n          "coordinates": [2.2945, 48.8584],\n          "properties": { "name": "Eiffel Tower" }\n        }\n      ]\n    }\n  },\n  "arcs": [],\n  "transform": {\n    "scale": [1, 1],\n    "translate": [0, 0]\n  }\n}\n```\n';
+    const geoJsonMapCode = '```geojson\n{\n  "type": "FeatureCollection",\n  "features": [\n    {\n      "type": "Feature",\n      "properties": { "name": "Demo district" },\n      "geometry": {\n        "type": "Polygon",\n        "coordinates": [[\n          [-122.45, 37.76],\n          [-122.41, 37.76],\n          [-122.40, 37.79],\n          [-122.44, 37.80],\n          [-122.45, 37.76]\n        ]]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Walking route" },\n      "geometry": {\n        "type": "LineString",\n        "coordinates": [\n          [-122.45, 37.77],\n          [-122.43, 37.78],\n          [-122.41, 37.79]\n        ]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Meeting point" },\n      "geometry": {\n        "type": "Point",\n        "coordinates": [-122.42, 37.785]\n      }\n    }\n  ]\n}\n```\n';
+    const topoJsonMapCode = '```topojson\n{\n  "type": "Topology",\n  "transform": {\n    "scale": [0.01, 0.01],\n    "translate": [-122.45, 37.76]\n  },\n  "objects": {\n    "districts": {\n      "type": "GeometryCollection",\n      "geometries": [\n        {\n          "type": "Polygon",\n          "properties": { "name": "North zone" },\n          "arcs": [[0]]\n        },\n        {\n          "type": "Polygon",\n          "properties": { "name": "South zone" },\n          "arcs": [[1]]\n        }\n      ]\n    }\n  },\n  "arcs": [\n    [[0, 0], [4, 0], [0, 3], [-4, 0], [0, -3]],\n    [[4, 0], [4, 0], [0, 3], [-4, 0], [0, -3]]\n  ]\n}\n```\n';
+
+    // STL (3D) local previews
+    const svgStlTetrahedron = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,18 34,90 126,90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><polygon points="80,18 34,90 80,70" fill="#93c5fd" opacity="0.85"/><polygon points="80,18 126,90 80,70" fill="#60a5fa" opacity="0.85"/><polygon points="34,90 126,90 80,70" fill="#1d4ed8" opacity="0.75"/><line x1="80" y1="18" x2="80" y2="70" stroke="#1e40af" stroke-width="1.5"/><text x="80" y="108" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e3a8a" font-weight="bold">STL</text></svg>`;
+    const svgStlCube = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="58,24 118,44 88,62 28,42" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8"/><polygon points="28,42 88,62 88,100 28,80" fill="#93c5fd" stroke="#2563eb" stroke-width="1.8"/><polygon points="88,62 118,44 118,82 88,100" fill="#60a5fa" stroke="#2563eb" stroke-width="1.8"/><line x1="58" y1="24" x2="58" y2="62" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="28" y2="80" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="118" y2="82" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><text x="80" y="16" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">20 mm cube</text></svg>`;
+    const svgStlSpikedBall = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,8 88,32 112,22 104,48 130,56 104,68 118,92 90,84 80,108 70,84 42,92 56,68 30,56 56,48 48,22 72,32" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.7" stroke-linejoin="round"/><circle cx="80" cy="60" r="34" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1.8"/><path d="M58 42 C70 28, 96 30, 106 46 C92 40, 72 39, 58 42 Z" fill="#dbeafe" opacity="0.85"/><circle cx="68" cy="53" r="4" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.1"/><circle cx="92" cy="67" r="5" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1.1"/><text x="80" y="116" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">spiked ball</text></svg>`;
+    const svgStlGear = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,12 89,29 107,21 109,40 128,43 116,58 130,72 111,77 110,96 92,88 80,105 68,88 50,96 49,77 30,72 44,58 32,43 51,40 53,21 71,29" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8"/><circle cx="80" cy="60" r="22" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1.8"/><circle cx="80" cy="60" r="9" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/><text x="80" y="116" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">gear mesh</text></svg>`;
+    const svgStlTwist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="58,24 94,16 112,38 78,48" fill="#dbeafe" stroke="#2563eb" stroke-width="1.7"/><polygon points="46,82 82,102 116,78 78,60" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1.7"/><polygon points="58,24 78,48 78,60 46,82" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.5"/><polygon points="94,16 112,38 116,78 82,102" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/><polygon points="78,48 112,38 116,78 78,60" fill="#60a5fa" opacity="0.85" stroke="#1d4ed8" stroke-width="1.5"/><text x="80" y="114" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">twist</text></svg>`;
+
+    function formatStlNumber(value) {
+      return Number(value.toFixed(4)).toString();
+    }
+
+    function stlFacet(normal, vertices) {
+      const vertexLines = vertices.map(vertex => `      vertex ${vertex.map(formatStlNumber).join(' ')}\n`).join('');
+      return `  facet normal ${normal.map(formatStlNumber).join(' ')}\n    outer loop\n${vertexLines}    endloop\n  endfacet\n`;
+    }
+
+    function wrapStl(name, facets) {
+      return `\`\`\`stl\nsolid ${name}\n${facets.join('')}endsolid ${name}\n\`\`\`\n`;
+    }
+
+    function normalizeVector(vector) {
+      const length = Math.hypot(vector[0], vector[1], vector[2]) || 1;
+      return vector.map(value => value / length);
+    }
+
+    function scaleVector(vector, scale) {
+      return vector.map(value => value * scale);
+    }
+
+    function addVectors(a, b) {
+      return a.map((value, index) => value + b[index]);
+    }
+
+    function crossVectors(a, b) {
+      return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+      ];
+    }
+
+    function createConeSpikeFacets(direction, baseRadius, bodyRadius, spikeLength, segments) {
+      const normal = normalizeVector(direction);
+      const tangentSeed = Math.abs(normal[2]) > 0.82 ? [1, 0, 0] : [0, 0, 1];
+      const u = normalizeVector(crossVectors(normal, tangentSeed));
+      const v = normalizeVector(crossVectors(normal, u));
+      const baseCenter = scaleVector(normal, bodyRadius - 1.4);
+      const tip = scaleVector(normal, bodyRadius + spikeLength);
+      const ring = Array.from({ length: segments }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / segments;
+        return addVectors(baseCenter, addVectors(scaleVector(u, Math.cos(angle) * baseRadius), scaleVector(v, Math.sin(angle) * baseRadius)));
+      });
+      const facets = [];
+      ring.forEach((point, index) => {
+        const next = ring[(index + 1) % ring.length];
+        facets.push(stlFacet([0, 0, 0], [point, next, tip]));
+      });
+      return facets;
+    }
+
+    function createSpikedBallStl() {
+      const facets = [];
+      const segments = 12;
+      const rings = [-60, -30, 0, 30, 60].map(degrees => {
+        const phi = (degrees * Math.PI) / 180;
+        const radius = Math.cos(phi) * 10;
+        const z = Math.sin(phi) * 10;
+        return Array.from({ length: segments }, (_, index) => {
+          const theta = (Math.PI * 2 * index) / segments;
+          return [Math.cos(theta) * radius, Math.sin(theta) * radius, z];
+        });
+      });
+      const south = [0, 0, -10];
+      const north = [0, 0, 10];
+
+      for (let index = 0; index < segments; index += 1) {
+        const next = (index + 1) % segments;
+        facets.push(stlFacet([0, 0, 0], [south, rings[0][next], rings[0][index]]));
+        facets.push(stlFacet([0, 0, 0], [rings[rings.length - 1][index], rings[rings.length - 1][next], north]));
+      }
+
+      for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
+        for (let index = 0; index < segments; index += 1) {
+          const next = (index + 1) % segments;
+          facets.push(stlFacet([0, 0, 0], [rings[ringIndex][index], rings[ringIndex][next], rings[ringIndex + 1][next]]));
+          facets.push(stlFacet([0, 0, 0], [rings[ringIndex][index], rings[ringIndex + 1][next], rings[ringIndex + 1][index]]));
+        }
+      }
+
+      const spikeDirections = [
+        [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1],
+        [1, 1, 1], [-1, 1, 1], [1, -1, 1], [-1, -1, 1],
+        [1, 1, -1], [-1, 1, -1], [1, -1, -1], [-1, -1, -1]
+      ];
+      spikeDirections.forEach(direction => {
+        facets.push(...createConeSpikeFacets(direction, 2.8, 10, 6, 6));
+      });
+
+      return wrapStl('spiked_round_ball', facets);
+    }
+
+    function createRadialPrismStl(name, points, z0, z1) {
+      const facets = [];
+      const centerBottom = [0, 0, z0];
+      const centerTop = [0, 0, z1];
+      points.forEach((point, index) => {
+        const next = points[(index + 1) % points.length];
+        const bottomA = [point[0], point[1], z0];
+        const bottomB = [next[0], next[1], z0];
+        const topA = [point[0], point[1], z1];
+        const topB = [next[0], next[1], z1];
+        facets.push(stlFacet([0, 0, -1], [centerBottom, bottomB, bottomA]));
+        facets.push(stlFacet([0, 0, 1], [centerTop, topA, topB]));
+        facets.push(stlFacet([0, 0, 0], [bottomA, bottomB, topB]));
+        facets.push(stlFacet([0, 0, 0], [bottomA, topB, topA]));
+      });
+      return wrapStl(name, facets);
+    }
+
+    function createGearStl() {
+      const points = Array.from({ length: 24 }, (_, index) => {
+        const radius = index % 2 === 0 ? 16 : 12;
+        const angle = (Math.PI * 2 * index) / 24;
+        return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+      });
+      return createRadialPrismStl('faceted_gear_wheel_24_tooth', points, 0, 5);
+    }
+
+    function createTwistedColumnStl() {
+      const sides = 8;
+      const bottom = Array.from({ length: sides }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / sides;
+        return [Math.cos(angle) * 9, Math.sin(angle) * 9, 0];
+      });
+      const top = Array.from({ length: sides }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / sides + Math.PI / 5;
+        return [Math.cos(angle) * 7, Math.sin(angle) * 7, 28];
+      });
+      const facets = [];
+      const bottomCenter = [0, 0, 0];
+      const topCenter = [0, 0, 28];
+      bottom.forEach((point, index) => {
+        const next = (index + 1) % sides;
+        facets.push(stlFacet([0, 0, -1], [bottomCenter, bottom[next], point]));
+        facets.push(stlFacet([0, 0, 1], [topCenter, top[index], top[next]]));
+        facets.push(stlFacet([0, 0, 0], [bottom[index], bottom[next], top[next]]));
+        facets.push(stlFacet([0, 0, 0], [bottom[index], top[next], top[index]]));
+      });
+      return wrapStl('twisted_octagonal_column', facets);
+    }
 
     const templates = [
       // Mermaid
@@ -7702,6 +7936,82 @@ ${selector} .arrowheadPath {
         label: 'Inline Code Blocks',
         svg: svgMarkmapCode,
         code: '```markmap\n# Development\n## Languages\n- `JavaScript`\n- `Python`\n## Functions\n- `main()`\n- `helper_func()`\n```\n'
+      },
+
+      // Maps
+      {
+        id: 'geojson-landmark-point',
+        category: 'GeoJSON',
+        title: 'Landmark Point',
+        label: 'Landmark Point',
+        svg: svgGeoJsonMap,
+        code: geoJsonPointCode
+      },
+      {
+        id: 'topojson-landmark-point',
+        category: 'TopoJSON',
+        title: 'Landmark Point',
+        label: 'Landmark Point',
+        svg: svgTopoJsonMap,
+        code: topoJsonPointCode
+      },
+      {
+        id: 'geojson-feature-collection',
+        category: 'GeoJSON',
+        title: 'Feature Collection Map',
+        label: 'Feature Collection Map',
+        svg: svgGeoJsonMap,
+        code: geoJsonMapCode
+      },
+      {
+        id: 'topojson-topology',
+        category: 'TopoJSON',
+        title: 'Topology Map',
+        label: 'Topology Map',
+        svg: svgTopoJsonMap,
+        code: topoJsonMapCode
+      },
+
+      // STL (3D)
+      {
+        id: 'stl-tetrahedron',
+        category: 'STL (3D)',
+        title: 'Tetrahedron Mesh',
+        label: 'Tetrahedron Mesh',
+        svg: svgStlTetrahedron,
+        code: '```stl\nsolid tetrahedron\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 0\n      vertex 1 0 0\n      vertex 0 1 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 1\n      vertex 1 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 1 0\n      vertex 0 0 1\n    endloop\n  endfacet\n  facet normal 1 1 1\n    outer loop\n      vertex 1 0 0\n      vertex 0 0 1\n      vertex 0 1 0\n    endloop\n  endfacet\nendsolid tetrahedron\n```\n'
+      },
+      {
+        id: 'stl-calibration-cube',
+        category: 'STL (3D)',
+        title: 'Calibration Cube',
+        label: 'Calibration Cube',
+        svg: svgStlCube,
+        code: '```stl\nsolid calibration_cube_20mm\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 0\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 20 0\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 20 20 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 0 20 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 20\n      vertex 20 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 0 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 20 20\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 20 20 20\n      vertex 0 20 20\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 0 20 20\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 20 20\n      vertex 0 0 20\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 0 20\n      vertex 0 0 0\n    endloop\n  endfacet\nendsolid calibration_cube_20mm\n```\n'
+      },
+      {
+        id: 'stl-spiked-round-ball',
+        category: 'STL (3D)',
+        title: 'Spiked Round Ball',
+        label: 'Spiked Round Ball',
+        svg: svgStlSpikedBall,
+        code: createSpikedBallStl()
+      },
+      {
+        id: 'stl-faceted-gear',
+        category: 'STL (3D)',
+        title: 'Faceted Gear Wheel',
+        label: 'Faceted Gear Wheel',
+        svg: svgStlGear,
+        code: createGearStl()
+      },
+      {
+        id: 'stl-twisted-column',
+        category: 'STL (3D)',
+        title: 'Twisted Column',
+        label: 'Twisted Column',
+        svg: svgStlTwist,
+        code: createTwistedColumnStl()
       }
     ];
     
@@ -7710,18 +8020,54 @@ ${selector} .arrowheadPath {
     
     function renderSidebar() {
       sidebar.textContent = '';
-      categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'diagram-sidebar-btn';
-        if (cat === activeCategory) btn.classList.add('is-active');
-        btn.textContent = cat;
-        btn.addEventListener('click', () => {
-          activeCategory = cat;
-          renderSidebar();
-          renderGrid();
+      categoryGroups.forEach(group => {
+        const isExpanded = group.categories.includes(activeCategory);
+        const groupEl = document.createElement('div');
+        groupEl.className = 'diagram-sidebar-group';
+        if (isExpanded) groupEl.classList.add('is-expanded');
+
+        const heading = document.createElement('button');
+        heading.type = 'button';
+        heading.className = 'diagram-sidebar-group-header';
+        heading.setAttribute('aria-expanded', String(isExpanded));
+        heading.innerHTML = `
+          <i class="bi ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
+          <span>${group.label}</span>
+          <i class="bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
+        `;
+        heading.addEventListener('click', () => {
+          if (!isExpanded) {
+            activeCategory = group.categories[0];
+            selectedTemplate = null;
+            renderSidebar();
+            renderGrid();
+          }
         });
-        sidebar.appendChild(btn);
+        groupEl.appendChild(heading);
+
+        const itemsEl = document.createElement('div');
+        itemsEl.className = 'diagram-sidebar-items';
+
+        group.categories.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'diagram-sidebar-btn';
+          if (cat === activeCategory) btn.classList.add('is-active');
+          btn.innerHTML = `
+            <i class="bi ${categoryIcons[cat] || 'bi-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
+            <span>${cat}</span>
+          `;
+          btn.addEventListener('click', () => {
+            activeCategory = cat;
+            renderSidebar();
+            renderGrid();
+          });
+          itemsEl.appendChild(btn);
+        });
+
+        groupEl.appendChild(itemsEl);
+
+        sidebar.appendChild(groupEl);
       });
     }
     
@@ -7754,7 +8100,7 @@ ${selector} .arrowheadPath {
         const previewDiv = document.createElement('div');
         previewDiv.className = 'diagram-card-preview';
         
-        const catClass = t.category.toLowerCase().replace(/\s+/g, '');
+        const catClass = t.category.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
         previewDiv.innerHTML = `
           <div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
@@ -7792,7 +8138,7 @@ ${selector} .arrowheadPath {
           if (previewCode) previewCode.value = t.code.trim();
           confirmBtn.disabled = false;
 
-          const catClass = t.category.toLowerCase().replace(/\s+/g, '');
+          const catClass = t.category.toLowerCase().replace(/[^a-z0-9]+/g, '');
           // Render bottom preview container with API image & fallback
           previewContainer.innerHTML = `
             <div class="diagram-svg-container diagram-svg-${catClass}" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">

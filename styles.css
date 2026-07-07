@@ -5454,39 +5454,124 @@ html[data-theme="dark"] .d2-diagram>svg:not([data-diagram-native-dark="true"]) {
 }
 
 .diagram-modal-sidebar {
-  width: 220px;
+  width: 244px;
   border-right: 1px solid var(--border-color);
-  padding: 16px 8px;
+  background: var(--header-bg);
+  padding: 10px 8px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+.diagram-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.diagram-sidebar-group-header,
+.diagram-sidebar-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.diagram-sidebar-group-header {
+  display: grid;
+  grid-template-columns: 18px 1fr 16px;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--text-color) 3%, transparent);
+  font-weight: 400;
+}
+
+.diagram-sidebar-group-header span,
+.diagram-sidebar-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagram-sidebar-group-header:hover {
+  background-color: color-mix(in srgb, var(--button-hover) 72%, transparent);
+}
+
+.diagram-sidebar-group-icon,
+.diagram-sidebar-item-icon,
+.diagram-sidebar-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.diagram-sidebar-group-icon {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.diagram-sidebar-chevron {
+  justify-self: end;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.diagram-sidebar-items {
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  margin: 1px 0 6px 17px;
+  padding: 2px 0 4px 10px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+}
+
+.diagram-sidebar-group.is-expanded .diagram-sidebar-items {
+  display: flex;
 }
 
 .diagram-sidebar-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: none;
-  background: transparent;
-  color: var(--text-color);
-  text-align: left;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 9px 0 8px;
   border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 400;
 }
 
 .diagram-sidebar-btn:hover {
-  background-color: var(--button-hover-bg, rgba(120, 120, 120, 0.1));
+  background-color: var(--button-hover);
 }
 
 .diagram-sidebar-btn.is-active {
-  background-color: var(--accent-color, #0076ff);
-  color: #fff;
+  background-color: color-mix(in srgb, var(--accent-color, #0076ff) 14%, transparent);
+  color: var(--accent-color, #0076ff);
+  font-weight: 400;
+}
+
+.diagram-sidebar-item-icon {
+  width: 18px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  flex: 0 0 auto;
+}
+
+.diagram-sidebar-btn.is-active .diagram-sidebar-item-icon {
+  color: var(--accent-color, #0076ff);
 }
 
 .diagram-modal-content {
@@ -5734,7 +5819,7 @@ html[data-theme="dark"] .diagram-preview-container {
   display: none !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .diagram-modal-body {
     flex-direction: column;
   }
@@ -5746,6 +5831,26 @@ html[data-theme="dark"] .diagram-preview-container {
     border-right: none;
     border-bottom: 1px solid var(--border-color);
     padding: 8px;
+    gap: 6px;
+  }
+
+  .diagram-sidebar-group-header {
+    display: none;
+  }
+
+  .diagram-sidebar-group {
+    display: contents;
+  }
+
+  .diagram-sidebar-items {
+    display: contents;
+  }
+
+  .diagram-sidebar-btn {
+    width: auto;
+    min-height: 36px;
+    flex-shrink: 0;
+    padding: 0 12px;
   }
 
   .diagram-modal-box {
