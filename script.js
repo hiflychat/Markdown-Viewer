@@ -7016,11 +7016,6 @@ ${selector} .arrowheadPath {
         categories: ['Vega-Lite']
       },
       {
-        label: 'Maps',
-        icon: 'bi-map',
-        categories: ['GeoJSON', 'TopoJSON']
-      },
-      {
         label: 'Technical Notation',
         icon: 'bi-code-slash',
         categories: ['WaveDrom', 'ABC Notation']
@@ -7029,6 +7024,11 @@ ${selector} .arrowheadPath {
         label: '3D Models',
         icon: 'bi-box',
         categories: ['STL (3D)']
+      },
+      {
+        label: 'Maps',
+        icon: 'bi-map',
+        categories: ['GeoJSON', 'TopoJSON']
       }
     ];
 
@@ -7159,6 +7159,8 @@ ${selector} .arrowheadPath {
     // Map local previews
     const svgGeoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#eef6ff" stroke="#94a3b8" stroke-width="1.4"/><path d="M22 84 C40 70, 52 76, 68 58 C86 38, 104 52, 124 30" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0.85"/><path d="M28 32 L65 24 L82 48 L60 76 L30 68 Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.6"/><path d="M86 66 L126 56 L138 86 L102 96 Z" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.6"/><circle cx="112" cy="46" r="6" fill="#ef4444" stroke="#fff" stroke-width="2"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">GeoJSON</text></svg>`;
     const svgTopoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4"/><path d="M30 30 L68 24 L86 52 L58 84 L26 70 Z" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.6"/><path d="M86 30 L126 38 L134 78 L104 94 L82 66 Z" fill="#dcfce7" stroke="#15803d" stroke-width="1.6"/><path d="M68 24 L86 52 L82 66" fill="none" stroke="#f59e0b" stroke-width="2.6" stroke-dasharray="4 3"/><circle cx="68" cy="24" r="3" fill="#f59e0b"/><circle cx="86" cy="52" r="3" fill="#f59e0b"/><circle cx="82" cy="66" r="3" fill="#f59e0b"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">TopoJSON</text></svg>`;
+    const geoJsonPointCode = '```geojson\n{\n  "type": "FeatureCollection",\n  "features": [\n    {\n      "type": "Feature",\n      "properties": { "name": "Taj Mahal" },\n      "geometry": {\n        "type": "Point",\n        "coordinates": [78.0421, 27.1751]\n      }\n    }\n  ]\n}\n```\n';
+    const topoJsonPointCode = '```topojson\n{\n  "type": "Topology",\n  "objects": {\n    "example": {\n      "type": "GeometryCollection",\n      "geometries": [\n        {\n          "type": "Point",\n          "coordinates": [2.2945, 48.8584],\n          "properties": { "name": "Eiffel Tower" }\n        }\n      ]\n    }\n  },\n  "arcs": [],\n  "transform": {\n    "scale": [1, 1],\n    "translate": [0, 0]\n  }\n}\n```\n';
     const geoJsonMapCode = '```geojson\n{\n  "type": "FeatureCollection",\n  "features": [\n    {\n      "type": "Feature",\n      "properties": { "name": "Demo district" },\n      "geometry": {\n        "type": "Polygon",\n        "coordinates": [[\n          [-122.45, 37.76],\n          [-122.41, 37.76],\n          [-122.40, 37.79],\n          [-122.44, 37.80],\n          [-122.45, 37.76]\n        ]]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Walking route" },\n      "geometry": {\n        "type": "LineString",\n        "coordinates": [\n          [-122.45, 37.77],\n          [-122.43, 37.78],\n          [-122.41, 37.79]\n        ]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Meeting point" },\n      "geometry": {\n        "type": "Point",\n        "coordinates": [-122.42, 37.785]\n      }\n    }\n  ]\n}\n```\n';
     const topoJsonMapCode = '```topojson\n{\n  "type": "Topology",\n  "transform": {\n    "scale": [0.01, 0.01],\n    "translate": [-122.45, 37.76]\n  },\n  "objects": {\n    "districts": {\n      "type": "GeometryCollection",\n      "geometries": [\n        {\n          "type": "Polygon",\n          "properties": { "name": "North zone" },\n          "arcs": [[0]]\n        },\n        {\n          "type": "Polygon",\n          "properties": { "name": "South zone" },\n          "arcs": [[1]]\n        }\n      ]\n    }\n  },\n  "arcs": [\n    [[0, 0], [4, 0], [0, 3], [-4, 0], [0, -3]],\n    [[4, 0], [4, 0], [0, 3], [-4, 0], [0, -3]]\n  ]\n}\n```\n';
 
@@ -7900,12 +7902,28 @@ ${selector} .arrowheadPath {
 
       // Maps
       {
+        id: 'geojson-landmark-point',
+        category: 'GeoJSON',
+        title: 'Landmark Point',
+        label: 'Landmark Point',
+        svg: svgGeoJsonMap,
+        code: geoJsonPointCode
+      },
+      {
         id: 'geojson-feature-collection',
         category: 'GeoJSON',
         title: 'Feature Collection Map',
         label: 'Feature Collection Map',
         svg: svgGeoJsonMap,
         code: geoJsonMapCode
+      },
+      {
+        id: 'topojson-landmark-point',
+        category: 'TopoJSON',
+        title: 'Landmark Point',
+        label: 'Landmark Point',
+        svg: svgTopoJsonMap,
+        code: topoJsonPointCode
       },
       {
         id: 'topojson-topology',

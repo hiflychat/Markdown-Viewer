@@ -5366,7 +5366,7 @@ html[data-theme="dark"] .d2-diagram > svg:not([data-diagram-native-dark="true"])
 }
 
 .diagram-modal-sidebar {
-  width: 228px;
+  width: 244px;
   border-right: 1px solid var(--border-color);
   background: var(--header-bg);
   padding: 10px 8px;
@@ -5404,6 +5404,14 @@ html[data-theme="dark"] .d2-diagram > svg:not([data-diagram-native-dark="true"])
   padding: 0 10px;
   border-radius: 6px;
   font-weight: 400;
+}
+
+.diagram-sidebar-group-header span,
+.diagram-sidebar-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .diagram-sidebar-group-header:hover {
