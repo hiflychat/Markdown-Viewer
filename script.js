@@ -7240,7 +7240,8 @@ ${selector} .arrowheadPath {
 
       const spikeDirections = [
         [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1],
-        [1, 1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, -1], [-1, -1, 1], [-1, 1, -1]
+        [1, 1, 1], [-1, 1, 1], [1, -1, 1], [-1, -1, 1],
+        [1, 1, -1], [-1, 1, -1], [1, -1, -1], [-1, -1, -1]
       ];
       spikeDirections.forEach(direction => {
         facets.push(...createConeSpikeFacets(direction, 2.2, 10, 6, 6));
