@@ -1990,6 +1990,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function normalizeDiagramSvg(node, engine, source) {
     const svg = node ? node.querySelector('svg') : null;
     if (!svg) return null;
+    if (engine === 'wavedrom') isolateWaveDromSvgStyles(svg);
 
     let intrinsicWidth = 0;
     let intrinsicHeight = 0;
@@ -2031,6 +2032,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     svg.style.maxWidth = '100%';
     svg.style.maxHeight = 'min(70vh, 720px)';
     return svg;
+  }
+
+  function isolateWaveDromSvgStyles(svg) {
+    if (svg.getAttribute('data-wavedrom-style-scoped') === 'true') return;
+    let scopeId = svg.getAttribute('data-wavedrom-style-scope');
+    if (!scopeId) {
+      scopeId = `wavedrom-${Math.random().toString(36).slice(2, 10)}`;
+      svg.setAttribute('data-wavedrom-style-scope', scopeId);
+    }
+
+    const classMap = new Map();
+    const getScopedClass = className => {
+      if (!classMap.has(className)) {
+        classMap.set(className, `wd-${scopeId}-${className}`);
+      }
+      return classMap.get(className);
+    };
+
+    svg.querySelectorAll('[class]').forEach(element => {
+      const classes = (element.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean);
+      if (classes.length) {
+        element.setAttribute('class', classes.map(getScopedClass).join(' '));
+      }
+    });
+
+    svg.querySelectorAll('style').forEach(style => {
+      const css = style.textContent || '';
+      style.textContent = scopeWaveDromStyleClasses(css, getScopedClass);
+      style.setAttribute('data-wavedrom-style-scoped', 'true');
+    });
+    svg.setAttribute('data-wavedrom-style-scoped', 'true');
+  }
+
+  function scopeWaveDromStyleClasses(css, getScopedClass) {
+    return css.replace(/\.([A-Za-z_-][A-Za-z0-9_-]*)/g, (match, className) => {
+      return `.${getScopedClass(className)}`;
+    });
   }
 
   function getDiagramFailureMessage(engine, error) {
