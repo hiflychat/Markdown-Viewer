@@ -7670,20 +7670,20 @@ document.addEventListener("DOMContentLoaded", async function () {
         code: geoJsonPointCode
       },
       {
-        id: 'geojson-feature-collection',
-        category: 'GeoJSON',
-        title: 'Feature Collection Map',
-        label: 'Feature Collection Map',
-        svg: svgGeoJsonMap,
-        code: geoJsonMapCode
-      },
-      {
         id: 'topojson-landmark-point',
         category: 'TopoJSON',
         title: 'Landmark Point',
         label: 'Landmark Point',
         svg: svgTopoJsonMap,
         code: topoJsonPointCode
+      },
+      {
+        id: 'geojson-feature-collection',
+        category: 'GeoJSON',
+        title: 'Feature Collection Map',
+        label: 'Feature Collection Map',
+        svg: svgGeoJsonMap,
+        code: geoJsonMapCode
       },
       {
         id: 'topojson-topology',
