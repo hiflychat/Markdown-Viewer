@@ -6912,6 +6912,101 @@ document.addEventListener("DOMContentLoaded", async function () {
     // STL (3D) local previews
     const svgStlTetrahedron = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,18 34,90 126,90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><polygon points="80,18 34,90 80,70" fill="#93c5fd" opacity="0.85"/><polygon points="80,18 126,90 80,70" fill="#60a5fa" opacity="0.85"/><polygon points="34,90 126,90 80,70" fill="#1d4ed8" opacity="0.75"/><line x1="80" y1="18" x2="80" y2="70" stroke="#1e40af" stroke-width="1.5"/><text x="80" y="108" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e3a8a" font-weight="bold">STL</text></svg>`;
     const svgStlCube = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="58,24 118,44 88,62 28,42" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8"/><polygon points="28,42 88,62 88,100 28,80" fill="#93c5fd" stroke="#2563eb" stroke-width="1.8"/><polygon points="88,62 118,44 118,82 88,100" fill="#60a5fa" stroke="#2563eb" stroke-width="1.8"/><line x1="58" y1="24" x2="58" y2="62" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="28" y2="80" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><line x1="58" y1="62" x2="118" y2="82" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="3 3"/><text x="80" y="16" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">20 mm cube</text></svg>`;
+    const svgStlBracket = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="28,72 88,92 132,66 72,46" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.8"/><polygon points="72,46 132,66 132,82 72,62" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1.5"/><polygon points="48,50 76,60 76,82 48,72" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/><polygon points="94,48 118,56 118,76 94,68" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/><circle cx="62" cy="68" r="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/><circle cx="106" cy="64" r="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/><text x="80" y="20" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">bracket</text></svg>`;
+    const svgStlGear = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,12 89,29 107,21 109,40 128,43 116,58 130,72 111,77 110,96 92,88 80,105 68,88 50,96 49,77 30,72 44,58 32,43 51,40 53,21 71,29" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8"/><circle cx="80" cy="60" r="22" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1.8"/><circle cx="80" cy="60" r="9" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/><text x="80" y="116" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">gear mesh</text></svg>`;
+    const svgStlTwist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="58,24 94,16 112,38 78,48" fill="#dbeafe" stroke="#2563eb" stroke-width="1.7"/><polygon points="46,82 82,102 116,78 78,60" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1.7"/><polygon points="58,24 78,48 78,60 46,82" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.5"/><polygon points="94,16 112,38 116,78 82,102" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/><polygon points="78,48 112,38 116,78 78,60" fill="#60a5fa" opacity="0.85" stroke="#1d4ed8" stroke-width="1.5"/><text x="80" y="114" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e3a8a" font-weight="bold">twist</text></svg>`;
+
+    function formatStlNumber(value) {
+      return Number(value.toFixed(4)).toString();
+    }
+
+    function stlFacet(normal, vertices) {
+      const vertexLines = vertices.map(vertex => `      vertex ${vertex.map(formatStlNumber).join(' ')}\n`).join('');
+      return `  facet normal ${normal.map(formatStlNumber).join(' ')}\n    outer loop\n${vertexLines}    endloop\n  endfacet\n`;
+    }
+
+    function wrapStl(name, facets) {
+      return `\`\`\`stl\nsolid ${name}\n${facets.join('')}endsolid ${name}\n\`\`\`\n`;
+    }
+
+    function createBoxFacets(x0, y0, z0, x1, y1, z1) {
+      const p = {
+        a: [x0, y0, z0], b: [x1, y0, z0], c: [x1, y1, z0], d: [x0, y1, z0],
+        e: [x0, y0, z1], f: [x1, y0, z1], g: [x1, y1, z1], h: [x0, y1, z1]
+      };
+      const face = (normal, v1, v2, v3, v4) => [
+        stlFacet(normal, [v1, v2, v3]),
+        stlFacet(normal, [v1, v3, v4])
+      ];
+      return [
+        ...face([0, 0, -1], p.a, p.b, p.c, p.d),
+        ...face([0, 0, 1], p.e, p.h, p.g, p.f),
+        ...face([0, -1, 0], p.a, p.e, p.f, p.b),
+        ...face([1, 0, 0], p.b, p.f, p.g, p.c),
+        ...face([0, 1, 0], p.c, p.g, p.h, p.d),
+        ...face([-1, 0, 0], p.d, p.h, p.e, p.a)
+      ];
+    }
+
+    function createSteppedBracketStl() {
+      return wrapStl('stepped_bracket_with_raised_bosses', [
+        ...createBoxFacets(-24, -12, 0, 24, 12, 4),
+        ...createBoxFacets(-18, -6, 4, 18, 6, 9),
+        ...createBoxFacets(-20, -10, 9, -8, 10, 18),
+        ...createBoxFacets(8, -10, 9, 20, 10, 18),
+        ...createBoxFacets(-5, -4, 9, 5, 4, 15)
+      ]);
+    }
+
+    function createRadialPrismStl(name, points, z0, z1) {
+      const facets = [];
+      const centerBottom = [0, 0, z0];
+      const centerTop = [0, 0, z1];
+      points.forEach((point, index) => {
+        const next = points[(index + 1) % points.length];
+        const bottomA = [point[0], point[1], z0];
+        const bottomB = [next[0], next[1], z0];
+        const topA = [point[0], point[1], z1];
+        const topB = [next[0], next[1], z1];
+        facets.push(stlFacet([0, 0, -1], [centerBottom, bottomB, bottomA]));
+        facets.push(stlFacet([0, 0, 1], [centerTop, topA, topB]));
+        facets.push(stlFacet([0, 0, 0], [bottomA, bottomB, topB]));
+        facets.push(stlFacet([0, 0, 0], [bottomA, topB, topA]));
+      });
+      return wrapStl(name, facets);
+    }
+
+    function createGearStl() {
+      const points = Array.from({ length: 24 }, (_, index) => {
+        const radius = index % 2 === 0 ? 16 : 12;
+        const angle = (Math.PI * 2 * index) / 24;
+        return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+      });
+      return createRadialPrismStl('faceted_gear_wheel_24_tooth', points, 0, 5);
+    }
+
+    function createTwistedColumnStl() {
+      const sides = 8;
+      const bottom = Array.from({ length: sides }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / sides;
+        return [Math.cos(angle) * 9, Math.sin(angle) * 9, 0];
+      });
+      const top = Array.from({ length: sides }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / sides + Math.PI / 5;
+        return [Math.cos(angle) * 7, Math.sin(angle) * 7, 28];
+      });
+      const facets = [];
+      const bottomCenter = [0, 0, 0];
+      const topCenter = [0, 0, 28];
+      bottom.forEach((point, index) => {
+        const next = (index + 1) % sides;
+        facets.push(stlFacet([0, 0, -1], [bottomCenter, bottom[next], point]));
+        facets.push(stlFacet([0, 0, 1], [topCenter, top[index], top[next]]));
+        facets.push(stlFacet([0, 0, 0], [bottom[index], bottom[next], top[next]]));
+        facets.push(stlFacet([0, 0, 0], [bottom[index], top[next], top[index]]));
+      });
+      return wrapStl('twisted_octagonal_column', facets);
+    }
 
     const templates = [
       // Mermaid
@@ -7514,6 +7609,30 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: 'Calibration Cube',
         svg: svgStlCube,
         code: '```stl\nsolid calibration_cube_20mm\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 0\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 0 -1\n    outer loop\n      vertex 0 0 0\n      vertex 20 20 0\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 20 20 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 0 1\n    outer loop\n      vertex 0 0 20\n      vertex 0 20 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 0 0 20\n      vertex 20 0 20\n    endloop\n  endfacet\n  facet normal 0 -1 0\n    outer loop\n      vertex 0 0 0\n      vertex 20 0 20\n      vertex 20 0 0\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 0 20\n      vertex 20 20 20\n    endloop\n  endfacet\n  facet normal 1 0 0\n    outer loop\n      vertex 20 0 0\n      vertex 20 20 20\n      vertex 20 20 0\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 20 20 20\n      vertex 0 20 20\n    endloop\n  endfacet\n  facet normal 0 1 0\n    outer loop\n      vertex 20 20 0\n      vertex 0 20 20\n      vertex 0 20 0\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 20 20\n      vertex 0 0 20\n    endloop\n  endfacet\n  facet normal -1 0 0\n    outer loop\n      vertex 0 20 0\n      vertex 0 0 20\n      vertex 0 0 0\n    endloop\n  endfacet\nendsolid calibration_cube_20mm\n```\n'
+      },
+      {
+        id: 'stl-stepped-bracket',
+        category: 'STL (3D)',
+        title: 'Stepped Bracket',
+        label: 'Stepped Bracket',
+        svg: svgStlBracket,
+        code: createSteppedBracketStl()
+      },
+      {
+        id: 'stl-faceted-gear',
+        category: 'STL (3D)',
+        title: 'Faceted Gear Wheel',
+        label: 'Faceted Gear Wheel',
+        svg: svgStlGear,
+        code: createGearStl()
+      },
+      {
+        id: 'stl-twisted-column',
+        category: 'STL (3D)',
+        title: 'Twisted Column',
+        label: 'Twisted Column',
+        svg: svgStlTwist,
+        code: createTwistedColumnStl()
       }
     ];
     
