@@ -6939,7 +6939,7 @@ ${selector} .arrowheadPath {
     const cleanCode = getCleanCode(template.code);
     const engine = getDiagramEngineForCategory(template.category);
     try {
-      if (template.category === 'ABC Notation' || template.category === 'STL (3D)') {
+      if (template.category === 'ABC Notation' || template.category === 'GeoJSON' || template.category === 'TopoJSON' || template.category === 'STL (3D)') {
         callback(null);
         return;
       }
@@ -7016,6 +7016,11 @@ ${selector} .arrowheadPath {
         categories: ['Vega-Lite']
       },
       {
+        label: 'Maps',
+        icon: 'bi-map',
+        categories: ['GeoJSON', 'TopoJSON']
+      },
+      {
         label: 'Technical Notation',
         icon: 'bi-code-slash',
         categories: ['WaveDrom', 'ABC Notation']
@@ -7034,6 +7039,8 @@ ${selector} .arrowheadPath {
       D2: 'bi-grid-3x3',
       Markmap: 'bi-diagram-2',
       'Vega-Lite': 'bi-bar-chart-line',
+      GeoJSON: 'bi-pin-map',
+      TopoJSON: 'bi-layers',
       WaveDrom: 'bi-activity',
       'ABC Notation': 'bi-music-note-beamed',
       'STL (3D)': 'bi-badge-3d'
@@ -7148,6 +7155,12 @@ ${selector} .arrowheadPath {
     // Markmap additional (Aesthetic: colorful mindmaps, checklist notation)
     const svgMarkmapChecklist = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#5e35b1" font-weight="bold">Tasks</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#5e35b1" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#5e35b1" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#5e35b1"/><circle cx="90" cy="90" r="3" fill="#5e35b1"/><text x="96" y="33" font-size="7" font-family="sans-serif">☒ Todo A</text><text x="96" y="93" font-size="7" font-family="sans-serif">☑ Todo B</text></svg>`;
     const svgMarkmapCode = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="10" y="50" width="35" height="18" rx="2" fill="#eceff1" stroke="#455a64" stroke-width="1.5"/><text x="27" y="61" font-size="7" text-anchor="middle" font-family="sans-serif" fill="#455a64" font-weight="bold">Project</text><path d="M 45 59 C 65 59, 70 30, 90 30" fill="none" stroke="#455a64" stroke-width="1.5"/><path d="M 45 59 C 65 59, 70 90, 90 90" fill="none" stroke="#455a64" stroke-width="1.5"/><circle cx="90" cy="30" r="3" fill="#455a64"/><circle cx="90" cy="90" r="3" fill="#455a64"/><text x="96" y="33" font-size="7" font-family="monospace">code()</text><text x="96" y="93" font-size="7" font-family="monospace">test()</text></svg>`;
+
+    // Map local previews
+    const svgGeoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#eef6ff" stroke="#94a3b8" stroke-width="1.4"/><path d="M22 84 C40 70, 52 76, 68 58 C86 38, 104 52, 124 30" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0.85"/><path d="M28 32 L65 24 L82 48 L60 76 L30 68 Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.6"/><path d="M86 66 L126 56 L138 86 L102 96 Z" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.6"/><circle cx="112" cy="46" r="6" fill="#ef4444" stroke="#fff" stroke-width="2"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">GeoJSON</text></svg>`;
+    const svgTopoJsonMap = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="12" y="12" width="136" height="96" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4"/><path d="M30 30 L68 24 L86 52 L58 84 L26 70 Z" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.6"/><path d="M86 30 L126 38 L134 78 L104 94 L82 66 Z" fill="#dcfce7" stroke="#15803d" stroke-width="1.6"/><path d="M68 24 L86 52 L82 66" fill="none" stroke="#f59e0b" stroke-width="2.6" stroke-dasharray="4 3"/><circle cx="68" cy="24" r="3" fill="#f59e0b"/><circle cx="86" cy="52" r="3" fill="#f59e0b"/><circle cx="82" cy="66" r="3" fill="#f59e0b"/><text x="80" y="112" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155" font-weight="bold">TopoJSON</text></svg>`;
+    const geoJsonMapCode = '```geojson\n{\n  "type": "FeatureCollection",\n  "features": [\n    {\n      "type": "Feature",\n      "properties": { "name": "Demo district" },\n      "geometry": {\n        "type": "Polygon",\n        "coordinates": [[\n          [-122.45, 37.76],\n          [-122.41, 37.76],\n          [-122.40, 37.79],\n          [-122.44, 37.80],\n          [-122.45, 37.76]\n        ]]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Walking route" },\n      "geometry": {\n        "type": "LineString",\n        "coordinates": [\n          [-122.45, 37.77],\n          [-122.43, 37.78],\n          [-122.41, 37.79]\n        ]\n      }\n    },\n    {\n      "type": "Feature",\n      "properties": { "name": "Meeting point" },\n      "geometry": {\n        "type": "Point",\n        "coordinates": [-122.42, 37.785]\n      }\n    }\n  ]\n}\n```\n';
+    const topoJsonMapCode = '```topojson\n{\n  "type": "Topology",\n  "transform": {\n    "scale": [0.01, 0.01],\n    "translate": [-122.45, 37.76]\n  },\n  "objects": {\n    "districts": {\n      "type": "GeometryCollection",\n      "geometries": [\n        {\n          "type": "Polygon",\n          "properties": { "name": "North zone" },\n          "arcs": [[0]]\n        },\n        {\n          "type": "Polygon",\n          "properties": { "name": "South zone" },\n          "arcs": [[1]]\n        }\n      ]\n    }\n  },\n  "arcs": [\n    [[0, 0], [4, 0], [0, 3], [-4, 0], [0, -3]],\n    [[4, 0], [4, 0], [0, 3], [-4, 0], [0, -3]]\n  ]\n}\n```\n';
 
     // STL (3D) local previews
     const svgStlTetrahedron = `<svg viewBox="0 0 160 120" width="100%" height="100%"><polygon points="80,18 34,90 126,90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><polygon points="80,18 34,90 80,70" fill="#93c5fd" opacity="0.85"/><polygon points="80,18 126,90 80,70" fill="#60a5fa" opacity="0.85"/><polygon points="34,90 126,90 80,70" fill="#1d4ed8" opacity="0.75"/><line x1="80" y1="18" x2="80" y2="70" stroke="#1e40af" stroke-width="1.5"/><text x="80" y="108" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e3a8a" font-weight="bold">STL</text></svg>`;
@@ -7883,6 +7896,24 @@ ${selector} .arrowheadPath {
         label: 'Inline Code Blocks',
         svg: svgMarkmapCode,
         code: '```markmap\n# Development\n## Languages\n- `JavaScript`\n- `Python`\n## Functions\n- `main()`\n- `helper_func()`\n```\n'
+      },
+
+      // Maps
+      {
+        id: 'geojson-feature-collection',
+        category: 'GeoJSON',
+        title: 'Feature Collection Map',
+        label: 'Feature Collection Map',
+        svg: svgGeoJsonMap,
+        code: geoJsonMapCode
+      },
+      {
+        id: 'topojson-topology',
+        category: 'TopoJSON',
+        title: 'Topology Map',
+        label: 'Topology Map',
+        svg: svgTopoJsonMap,
+        code: topoJsonMapCode
       },
 
       // STL (3D)
