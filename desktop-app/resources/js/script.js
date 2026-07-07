@@ -6955,7 +6955,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const tangentSeed = Math.abs(normal[2]) > 0.82 ? [1, 0, 0] : [0, 0, 1];
       const u = normalizeVector(crossVectors(normal, tangentSeed));
       const v = normalizeVector(crossVectors(normal, u));
-      const baseCenter = scaleVector(normal, bodyRadius);
+      const baseCenter = scaleVector(normal, bodyRadius - 1.4);
       const tip = scaleVector(normal, bodyRadius + spikeLength);
       const ring = Array.from({ length: segments }, (_, index) => {
         const angle = (Math.PI * 2 * index) / segments;
@@ -7004,7 +7004,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         [1, 1, -1], [-1, 1, -1], [1, -1, -1], [-1, -1, -1]
       ];
       spikeDirections.forEach(direction => {
-        facets.push(...createConeSpikeFacets(direction, 2.2, 10, 6, 6));
+        facets.push(...createConeSpikeFacets(direction, 2.8, 10, 6, 6));
       });
 
       return wrapStl('spiked_round_ball', facets);
