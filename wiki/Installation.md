@@ -1,6 +1,6 @@
-# Installation and Deployment
+# Install Markdown Viewer: Browser, Docker, Cloudflare, and Desktop
 
-Markdown Viewer is a premium browser-based Markdown editor/viewer that can run as a static web app, a self-hosted Docker site, a Cloudflare deployment with optional sharing features, or a Neutralino desktop app. Choose the setup that matches how you want to open, read, edit, preview, and export Markdown files.
+Markdown Viewer is a browser-based Markdown editor and viewer that can run as a static web app, a self-hosted Docker site, a Cloudflare deployment with optional sharing features, or a Neutralino desktop app. Choose the setup that matches how you want to open, read, edit, preview, and export Markdown files.
 
 ## Requirements
 
@@ -119,7 +119,7 @@ What setup does:
 - Copies the root app into `desktop-app/resources`.
 - Downloads and verifies external libraries where integrity values are available.
 - Rewrites dynamic renderer library paths to local `/libs/...` files.
-- Prepares the desktop app for offline use after the build is complete.
+- Prepares bundled renderer and export libraries for local desktop loading after setup.
 
 The desktop app uses native open/save dialogs for Markdown and HTML files, asks before closing, and can load a Markdown file passed as a command-line argument.
 

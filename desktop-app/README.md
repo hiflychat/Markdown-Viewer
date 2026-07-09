@@ -1,6 +1,6 @@
 # Markdown Viewer Desktop App
 
-This folder contains the Neutralino desktop wrapper for Markdown Viewer v3.9.0. It turns the browser-based Markdown editor, viewer, and reader into a desktop app for opening local `.md` files, using split live preview, exporting documents, and working with native file dialogs. It reuses the root web app and adds native window lifecycle handling, desktop storage mirroring, and an offline-prepared resource bundle.
+This folder contains the Neutralinojs desktop wrapper for Markdown Viewer. It turns the browser-based Markdown editor, viewer, and reader into a lightweight desktop build for opening local `.md` files, using split live preview, exporting documents, and working with native file dialogs. It reuses the root web app and adds window lifecycle handling, desktop storage mirroring, and prepared local renderer assets.
 
 For the complete product behavior and privacy reference, see [../wiki/Features.md](../wiki/Features.md).
 
@@ -30,7 +30,7 @@ Desktop-only files:
 - Native Markdown/HTML save and Markdown open flows use Neutralino dialogs and filesystem APIs.
 - A Markdown file passed as a launch argument is loaded into the editor.
 - The app asks before closing the window.
-- Prepared desktop resources load dynamic libraries from local `/libs/...` paths.
+- Prepared desktop resources load dynamic libraries from local `/libs/...` paths after setup.
 
 Network features still use the network when invoked: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and external links.
 
@@ -71,14 +71,12 @@ Build output is written under `desktop-app/dist/`.
 | Setting | Value |
 | :--- | :--- |
 | Application id | `com.markdownviewer.desktop` |
-| Version | `3.9.0` |
 | Document root | `/resources/` |
 | Default window | 1280 x 720 |
 | Minimum window | 400 x 200 |
 | Native API | Enabled |
 | Token security | One-time |
 | Logging | Disabled |
-| Neutralino binary/client version | 6.5.0 |
 
 Native APIs are intentionally allowlisted: app exit, open/save dialogs, message boxes, external URL open, tray setup, command execution, file read/write, and storage get/set.
 

@@ -1,7 +1,7 @@
 {
   "name": "Markdown Viewer",
   "short_name": "Markdown Viewer",
-  "description": "Premium browser-based Markdown editor, viewer, and reader for opening .md files with split live preview, sync scroll, GFM, math, diagrams, and PDF/HTML/PNG export.",
+  "description": "No-login browser-based Markdown editor and viewer with GFM live preview, diagrams, sharing, export, and client-side defaults.",
   "id": "/",
   "start_url": "./index.html?utm_source=pwa",
   "scope": "./",

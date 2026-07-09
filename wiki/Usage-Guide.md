@@ -1,8 +1,8 @@
-# Usage Guide
+# Usage Guide: Online Markdown Editor with Live Preview
 
-This guide explains how to use Markdown Viewer v3.9.0 as a premium browser-based Markdown editor, viewer, reader, and live preview tool. For deeper implementation notes and privacy details, see [Features](Features).
+This guide explains how to use Markdown Viewer as a browser-based Markdown editor, viewer, reader, and live preview tool. For deeper implementation notes, privacy details, and renderer limits, see [Features](Features).
 
-## Workspace Layout
+## Workspace Layout for Editing and Previewing Markdown
 
 The app has five main areas:
 
@@ -85,7 +85,7 @@ Direct Markdown file URLs import immediately. Repository and folder URLs query G
 
 GitHub import sends the repository/path request to GitHub and only works for public content. The app does not ask for GitHub credentials.
 
-## Exporting
+## Export Markdown to PDF, HTML, PNG, and MD
 
 Export names use the active tab title when possible.
 
@@ -99,7 +99,7 @@ Export names use the active tab title when possible.
 
 Raster PDF and PNG exports render Mermaid, ABC, and MathJax in an off-screen capture before saving. Export progress can be cancelled.
 
-## Share Snapshot
+## Share Markdown with Snapshot Links
 
 Use Share Snapshot when you want to send a point-in-time copy.
 
@@ -113,7 +113,7 @@ Small documents are compressed into the URL hash as `#share=...`. Large document
 
 Anyone with the link can open the snapshot. Shared snapshot tabs are temporary and are not saved into the recipient's workspace.
 
-## Live Share
+## Live Share Rooms for Markdown Collaboration
 
 Use Live Share when you want a temporary real-time room.
 
@@ -127,7 +127,7 @@ Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It d
 
 Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
 
-## Rendering Advanced Content
+## Rendering Diagrams, Maps, Math, STL, and ABC Notation
 
 Use fenced code blocks for advanced renderers:
 

@@ -1,10 +1,10 @@
-# Features and Product Behavior
+# Markdown Viewer Features: Live Markdown Preview, Diagrams, Export, and Sharing
 
-This page is the source-of-truth feature reference for Markdown Viewer v3.9.0. It describes what the app does, how each feature behaves for users, the implementation limits that matter in practice, and what happens to document data.
+This page is the source-of-truth feature reference for Markdown Viewer. It describes what the app does, how each feature behaves for users, the implementation limits that matter in practice, and what happens to document data.
 
 ## Product Summary
 
-Markdown Viewer is a premium browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a live GitHub-style preview. It runs as a static web app, a Progressive Web App, a Docker-hosted static site, and a Neutralino desktop app. The editor is built around a plain textarea, a split-screen rendered preview pane with sync scrolling, document tabs, import/export tools, sharing tools, rich Markdown renderers, and optional Cloudflare endpoints for Share Snapshot and Live Share.
+Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a live GitHub-style preview. It runs as a static web app, a Progressive Web App, a Docker-hosted static site, and a Neutralino desktop app. The editor is built around a plain textarea, a split-screen rendered preview pane with sync scrolling, document tabs, import/export tools, sharing tools, rich Markdown renderers, and optional Cloudflare endpoints for Share Snapshot and Live Share.
 
 Most work happens in the browser or desktop webview. Markdown parsing, syntax highlighting, math rendering, diagram post-processing, PDF/PNG capture, tab storage, undo/redo, search, and formatting tools are client-side. The exceptions are explicit network features: GitHub import, emoji lookup, CDN library loading in the web build, remote diagram fallback services, large Share Snapshot storage, and Live Share relay rooms.
 
@@ -49,7 +49,7 @@ On the web, these values live in browser `localStorage`. In the desktop app, the
 
 ## Editing and Formatting Tools
 
-The formatting toolbar inserts or transforms Markdown at the current selection. It is a helper for writing plain Markdown with live preview, not a full in-place WYSIWYG rich text editor.
+The formatting toolbar inserts or transforms Markdown at the current selection. It provides WYSIWYG-style helpers for plain Markdown with live preview, not full in-place rich-text editing.
 
 - Undo and redo use the app's custom per-tab history.
 - Clear document opens a confirmation modal.
@@ -96,7 +96,7 @@ Limitations:
 - Scope validation protects LaTeX delimiters and Mermaid block starts, but it cannot prove every replacement is semantically correct.
 - Preview highlighting works on visible text nodes and may skip text produced inside complex third-party SVG renderers.
 
-## Markdown Rendering
+## Live Markdown Preview and GitHub-Flavored Markdown
 
 Markdown is parsed with Marked and highlighted with Highlight.js. Rendered HTML is sanitized with DOMPurify before it is inserted into the preview.
 
@@ -154,9 +154,9 @@ Limitations:
 - Invalid LaTeX is shown according to MathJax behavior and may produce warnings or unrendered source.
 - A literal dollar sign should be escaped as `\$` when it is not intended to start math.
 
-## Diagrams, Charts, Maps, Models, and Music
+## Insert Diagrams, Charts, Maps, Models, and Music
 
-Markdown Viewer supports many fenced-code renderers.
+Markdown Viewer supports many fenced-code renderers, so it can work as a Markdown diagram editor, Mermaid editor, PlantUML editor, Graphviz/DOT editor, D2 diagram editor, Vega-Lite chart previewer, Markmap mind map viewer, WaveDrom timing diagram viewer, ABC notation viewer, map previewer, and 3D STL viewer.
 
 | Fence Language | Renderer | User Behavior | Network Notes |
 | :--- | :--- | :--- | :--- |
@@ -182,9 +182,9 @@ Limitations:
 - WebGL STL rendering depends on GPU/browser support. The app disposes old STL views to reduce memory leaks.
 - ABC audio playback depends on browser audio APIs and may be unavailable in some environments.
 
-## Diagram Insertion Modal
+## Insert Diagram & More Modal
 
-The diagram modal offers searchable templates grouped by engine. It shows source code and a live preview before insertion.
+The **Insert Diagram & More** modal offers searchable templates grouped by engine. It shows source code and a live preview before insertion.
 
 - Categories include Mermaid, PlantUML, D2, Graphviz, Vega-Lite, ABC notation, WaveDrom, and Markmap.
 - Template code is cleaned before insertion.
@@ -219,7 +219,7 @@ Limitations and privacy:
 - GitHub import sends repository and path information to GitHub and downloads public file contents from GitHub.
 - Private GitHub repositories are not supported because the app does not ask for tokens.
 
-## Exports
+## Export Markdown to PDF, HTML, PNG, and MD
 
 Export filenames use the active tab title when possible.
 
@@ -259,7 +259,7 @@ Limitations:
 - Advanced remote diagrams that have not rendered yet may need a moment before export.
 - Some complex CSS, wide tables, and large diagrams may be moved, scaled, or split differently from the live preview.
 
-## Sharing: Share Snapshot
+## Share Markdown with Snapshot Links
 
 Share Snapshot creates a link to a point-in-time copy of the current document.
 
@@ -289,7 +289,7 @@ Privacy implications:
 - Stored snapshots upload document content, mode, title, creation time, and size to the configured Cloudflare KV namespace until expiry.
 - The app prevents sharing a temporary shared snapshot again, and prevents Share Snapshot from a Live Share document, to avoid confusing copies of copies.
 
-## Sharing: Live Share
+## Live Share Rooms for Markdown Collaboration
 
 Live Share creates a temporary real-time collaboration room.
 
@@ -400,7 +400,7 @@ Accessibility behavior:
 
 The web app registers `sw.js` when service workers are supported.
 
-- The service worker cache name is versioned as `markdown-viewer-cache-v3.9.0`.
+- The service worker cache name is versioned in `sw.js` so stale caches can be retired safely.
 - Critical local assets include `/`, `index.html`, `styles.css`, `script.js`, `preview-worker.js`, `manifest.json`, and `assets/icon.jpg`.
 - Local shell assets use a network-first strategy for update-sensitive paths, falling back to cache when offline.
 - CDN assets from cdnjs and jsDelivr use cache-first behavior after first successful load.
@@ -430,7 +430,7 @@ Desktop-specific behavior:
 - Desktop resources are built by `desktop-app/prepare.js`.
 - `prepare.js` copies root assets, rewrites paths for `/resources/`, strips web-only SEO metadata, and downloads/bundles external libraries into `/resources/libs/`.
 - Downloaded desktop dependencies are checked against SHA-384 integrity values when SRI is available.
-- The desktop build points dynamic libraries to local `/libs/...` paths, making the prepared desktop app suitable for offline use.
+- The desktop build points dynamic libraries to local `/libs/...` paths, so prepared desktop resources do not need CDN-hosted renderer libraries after setup.
 
 Privacy:
 

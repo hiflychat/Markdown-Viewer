@@ -1,6 +1,6 @@
 # Localization and Internationalization
 
-Markdown Viewer v3.9.0 has a client-side translation dictionary in `script.js`. It changes visible UI labels, toolbar text, modal titles, stats labels, and common messages without sending text to a translation service.
+Markdown Viewer has a client-side translation dictionary in `script.js`. It changes visible UI labels, toolbar text, modal titles, stats labels, and common messages without sending text to a translation service.
 
 ## Supported Locales
 

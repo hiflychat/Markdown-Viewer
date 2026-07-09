@@ -5,7 +5,7 @@
  *
  * Copies shared browser-version files (script.js, styles.css, assets/)
  * from the repo root into desktop-app/resources/, downloads all remote CDN
- * libraries locally for 100% offline capabilities, validates their cryptographic
+ * libraries locally for desktop resource loading after setup, validates their cryptographic
  * integrity using SRI hashes (SHA-384), and generates a Neutralinojs-compatible index.html.
  */
 

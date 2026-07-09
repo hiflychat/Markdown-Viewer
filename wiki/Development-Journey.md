@@ -1,12 +1,12 @@
-# Development Journey
+# Markdown Viewer Development Journey
 
-Markdown Viewer did not begin as a polished roadmap or a finished product. It began as a personal project on a PC: a small Markdown viewer made with curiosity, failed attempts, late fixes, and the simple hope that Markdown could feel easier to read, edit, and share.
+Markdown Viewer did not begin as a polished roadmap or a finished product. It began as a personal project on a PC: a small Markdown viewer made with curiosity, failed attempts, late fixes, and the simple hope that Markdown could feel easier to read, edit, preview, and share.
 
 The [first public version](https://a1b91221.markdownviewer.pages.dev/) is still something to be proud of. It was much smaller than the current app, but it carried the heart of the project: type Markdown, see it render, and make documentation feel less painful. From there, every rough edge became a reason to keep improving.
 
 The current version exists because people used it, questioned it, broke it, reported issues, shared screenshots and GIFs, suggested workflows, opened PRs, and explained what was confusing. The project grew through community help: feature requests, bug reports, conversations, and practical feedback from real writing and documentation work.
 
-This page keeps the technical record too, but the journey is not only technical. Markdown Viewer came from care, persistence, and community trust. The changelog remains the detailed version-by-version history; this page explains how that work became the v3.9.0 product documented in the wiki.
+This page keeps the technical record too, but the journey is not only technical. Markdown Viewer came from care, persistence, and community trust. The changelog remains the detailed version-by-version history; this page explains how that work became the product documented in the wiki.
 
 ## High-Level Evolution
 
@@ -17,19 +17,19 @@ This page keeps the technical record too, but the journey is not only technical.
 | Rich Markdown | MathJax, Mermaid, footnotes, alerts, extended Markdown, and sanitized HTML support. |
 | Workspace | Multi-document tabs, autosave, drag reordering, custom undo/redo, mobile parity, and reset flows. |
 | Export | Markdown, standalone HTML, PDF, PNG, diagram export toolbars, and PDF page-break planning. |
-| Desktop | Neutralino wrapper, native dialogs, launch-file support, storage persistence, and offline resource bundling. |
+| Desktop | Neutralino wrapper, native dialogs, launch-file support, storage persistence, and local resource bundling. |
 | Sharing | Compressed URL snapshots, modal share UX, temporary KV-backed large snapshots, and Cloudflare Live Share rooms. |
 | Advanced renderers | PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, Markmap, GeoJSON, TopoJSON, STL, and ABC notation. |
 | Hardening | DOMPurify, SRI, least-privilege desktop APIs, canvas taint protection, accessibility improvements, and service-worker caching. |
 
 ## Current Release Highlights
 
-v3.9.0 separates sharing into two clear workflows:
+Current sharing behavior separates two clear workflows:
 
 - Share Snapshot creates a read-only or editable point-in-time copy. Small documents stay inside the URL hash. Larger documents are stored in Cloudflare KV for 90 days.
 - Live Share creates a temporary Cloudflare Durable Object room for real-time Yjs collaboration. The room relays updates and presence while active and does not store the document as a permanent record.
 
-The release also fixed shared rendering so advanced content such as LaTeX, Mermaid, TopoJSON, and other renderers complete after shared content loads, and it fixed desktop startup resource preparation.
+Recent work also fixed shared rendering so advanced content such as LaTeX, Mermaid, TopoJSON, and other renderers complete after shared content loads, and it improved desktop startup resource preparation.
 
 ## Important Design Decisions
 
@@ -69,7 +69,7 @@ The changelog records many small fixes. The recurring themes are:
 - Rendering correctness for math, footnotes, diagrams, tables, and shared documents.
 - Export reliability for PDFs, images, diagrams, and HTML.
 - Mobile and accessibility parity.
-- Safer desktop permissions and offline packaging.
+- Safer desktop permissions and local resource packaging.
 - Better privacy wording and sharing UX.
 - Reduced blocking work during typing and startup.
 

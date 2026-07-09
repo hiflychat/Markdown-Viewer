@@ -1,6 +1,6 @@
-# Markdown Viewer Wiki
+# Markdown Viewer Wiki: Online Markdown Editor, Live Preview, Diagrams, and Export
 
-Welcome to the documentation for Markdown Viewer v3.9.0. Markdown Viewer is a premium browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a split-screen live preview with sync scrolling. It includes document tabs, rich renderers, Markdown-to-PDF/HTML/PNG exports, Share Snapshot links, Live Share rooms, a PWA-capable web build, Docker deployment, and a Neutralino desktop app.
+Welcome to the documentation for Markdown Viewer. Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a split-screen live Markdown preview with sync scrolling. It includes document tabs, GitHub-Flavored Markdown, rich visual renderers, Markdown-to-PDF/HTML/PNG exports, Share Snapshot links, Live Share rooms, a PWA-capable web build, Docker deployment, and a lightweight Neutralinojs desktop build.
 
 Most editing and rendering happens on your own device. The important exceptions are documented clearly: GitHub import contacts GitHub, remote diagram fallbacks contact third-party renderers, large Share Snapshot links use temporary Cloudflare KV storage, and Live Share relays temporary collaboration updates through Cloudflare Durable Objects.
 
@@ -29,7 +29,7 @@ Most editing and rendering happens on your own device. The important exceptions 
 | Node static server | `npx serve . -p 8080` | `http://localhost:8080` |
 | Docker Compose | `docker compose up -d` | `http://localhost:8080` |
 | Docker image | `docker run -d --name markdown-viewer -p 8080:80 ghcr.io/thisis-developer/markdown-viewer:sha-15eafb0` | `http://localhost:8080` |
-| Desktop app | Download from GitHub Releases or build from `desktop-app/` | Native window |
+| Desktop app | Download from GitHub Releases or build from `desktop-app/` | Desktop window |
 
 Run local web builds through `localhost` or another HTTP(S) server. Opening `index.html` with `file://` can break Web Workers and Service Workers because browsers block those APIs from local files.
 
@@ -37,11 +37,11 @@ Run local web builds through `localhost` or another HTTP(S) server. Opening `ind
 
 | Principle | What It Means |
 | :--- | :--- |
-| On-device editing | Normal typing, preview, tabs, exports, themes, and settings stay on the user's device. No account is required. |
+| On-device editing | Normal typing, preview, tabs, exports, themes, and settings stay on the user's device. No login is required. |
 | Explicit network features | Any feature that sends content elsewhere is user-triggered or tied to a renderer/importer that is documented. |
-| Rich Markdown support | The live preview supports GFM tables/task lists, math, footnotes, alerts, diagrams, maps, STL, ABC notation, and more. |
+| Rich Markdown support | The live preview supports GFM tables/task lists, math, footnotes, alerts, Mermaid, PlantUML, Graphviz, D2, Vega-Lite, Markmap, WaveDrom, maps, STL, ABC notation, and more. |
 | Responsive performance | Large documents use debounced rendering, optional worker rendering, DOM patching, and cached measurements. |
-| Deploy anywhere | The app can run as static files, a PWA, a Docker container, or a Neutralino desktop app. |
+| Deploy anywhere | The app can run as static files, a PWA, a Docker container, or a lightweight Neutralinojs desktop build. |
 
 ## Privacy At A Glance
 

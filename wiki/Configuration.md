@@ -1,6 +1,6 @@
-# Configuration
+# Markdown Viewer Configuration and Data Boundaries
 
-This page documents the runtime, storage, dependency, Docker, Cloudflare, and desktop configuration used by Markdown Viewer v3.9.0.
+This page documents the runtime, storage, dependency, Docker, Cloudflare, and desktop configuration used by Markdown Viewer, including the boundaries between client-side Markdown editing and optional network features.
 
 ## Browser and Desktop Storage
 
@@ -24,30 +24,30 @@ Temporary shared content is intentionally not persisted:
 
 The web build loads core libraries from CDN with Subresource Integrity where checked into `index.html`. Larger feature libraries are lazy-loaded from `script.js` only when needed.
 
-| Library | Version / Source | Used For | Load Behavior |
+| Library | Source | Used For | Load Behavior |
 | :--- | :--- | :--- | :--- |
-| Bootstrap | 5.3.2 | UI components | Initial page load |
-| Bootstrap Icons | 1.11.3 | Icons | Initial page load |
-| github-markdown-css | 5.3.0 | Preview styling | Initial page load |
-| Marked | 9.1.6 | Markdown parsing | Initial page load and worker |
-| Highlight.js | 11.9.0 | Code highlighting | Initial page load and worker |
-| DOMPurify | 3.0.9 | HTML sanitization | Initial page load |
-| FileSaver.js | 2.0.5 | Browser downloads | Initial page load |
-| js-yaml | 4.1.0 | Frontmatter parsing | Initial page load |
-| MathJax | 3.2.2 | LaTeX math | Lazy |
-| Mermaid | 11.15.0 | Mermaid diagrams | Lazy |
-| jsPDF | 2.5.1 | Legacy raster PDF | Lazy |
-| html2canvas | 1.4.1 | PDF/PNG capture | Lazy |
-| Pako | 2.1.0 | Share compression, diagram encoding | Lazy |
-| JoyPixels / emoji-toolkit | 9.0.1 | Emoji shortcodes | Lazy |
-| ABCJS | 6.5.2 | ABC notation and playback | Lazy |
-| Leaflet | 1.9.4 | GeoJSON/TopoJSON maps | Lazy |
-| TopoJSON | 3.0.2 | TopoJSON conversion | Lazy |
-| Three.js | r128 | STL 3D rendering | Lazy |
-| STLLoader / OrbitControls | Three r128 examples | STL loading and controls | Lazy |
-| D3 | 7 | Markmap | Lazy |
-| Markmap | 0.18.12 | Markmap diagrams | Lazy |
-| Yjs | 13.6.10 via esm.sh | Live Share document sync | Lazy |
+| Bootstrap | CDN or prepared desktop copy | UI components | Initial page load |
+| Bootstrap Icons | CDN or prepared desktop copy | Icons | Initial page load |
+| github-markdown-css | CDN or prepared desktop copy | Preview styling | Initial page load |
+| Marked | CDN or prepared desktop copy | Markdown parsing | Initial page load and worker |
+| Highlight.js | CDN or prepared desktop copy | Code highlighting | Initial page load and worker |
+| DOMPurify | CDN or prepared desktop copy | HTML sanitization | Initial page load |
+| FileSaver.js | CDN or prepared desktop copy | Browser downloads | Initial page load |
+| js-yaml | CDN or prepared desktop copy | Frontmatter parsing | Initial page load |
+| MathJax | CDN or prepared desktop copy | LaTeX math | Lazy |
+| Mermaid | CDN or prepared desktop copy | Mermaid diagrams | Lazy |
+| jsPDF | CDN or prepared desktop copy | Legacy raster PDF | Lazy |
+| html2canvas | CDN or prepared desktop copy | PDF/PNG capture | Lazy |
+| Pako | CDN or prepared desktop copy | Share compression, diagram encoding | Lazy |
+| JoyPixels / emoji-toolkit | CDN or prepared desktop copy | Emoji shortcodes | Lazy |
+| ABCJS | CDN or prepared desktop copy | ABC notation and playback | Lazy |
+| Leaflet | CDN or prepared desktop copy | GeoJSON/TopoJSON maps | Lazy |
+| TopoJSON | CDN or prepared desktop copy | TopoJSON conversion | Lazy |
+| Three.js | CDN or prepared desktop copy | STL 3D rendering | Lazy |
+| STLLoader / OrbitControls | CDN or prepared desktop copy | STL loading and controls | Lazy |
+| D3 | CDN or prepared desktop copy | Markmap | Lazy |
+| Markmap | CDN or prepared desktop copy | Markmap diagrams | Lazy |
+| Yjs | CDN or prepared desktop copy | Live Share document sync | Lazy |
 
 When running inside Neutralino, dynamic library URLs are rewritten to local `/libs/...` files prepared by `desktop-app/prepare.js`.
 
@@ -85,7 +85,7 @@ Export paths use similar expanded sanitizer settings for SVG/math capture. Scrip
 
 ## Service Worker and PWA
 
-`sw.js` uses cache name `markdown-viewer-cache-v3.9.0`.
+`sw.js` uses a versioned cache name so stale caches can be retired safely.
 
 Critical assets:
 
@@ -159,7 +159,6 @@ Current `desktop-app/neutralino.config.json` highlights:
 | Setting | Value |
 | :--- | :--- |
 | `applicationId` | `com.markdownviewer.desktop` |
-| `version` | `3.9.0` |
 | `documentRoot` | `/resources/` |
 | `url` | `/` |
 | `enableServer` | `true` |
@@ -169,7 +168,6 @@ Current `desktop-app/neutralino.config.json` highlights:
 | Minimum window | 400 x 200 |
 | Logging | disabled |
 | Binary name | `markdown-viewer` |
-| Neutralino binary/client version | 6.5.0 |
 
 Native allowlist:
 
@@ -200,4 +198,4 @@ The browser/chrome modes block filesystem and/or OS APIs more aggressively.
 | `prebuild` | Runs setup before build. |
 | `build` | Runs `npx -y @neutralinojs/neu@11.7.0 build --release --clean` and removes the release zip if present. |
 
-`prepare.js` copies root app files into `desktop-app/resources`, downloads and verifies libraries, rewrites dynamic library paths, strips web-only SEO metadata, and prepares an offline-capable desktop resource bundle.
+`prepare.js` copies root app files into `desktop-app/resources`, downloads and verifies libraries, rewrites dynamic library paths, strips web-only SEO metadata, and prepares local renderer/export resources for the desktop bundle.

@@ -14,7 +14,7 @@
     <!-- JSON-LD Structured Data Schema for Search Rich Snippets -->
     
 
-    <title>Markdown Viewer - Secure Online Markdown Editor and Previewer</title>
+    <title>Markdown Viewer - Online Markdown Editor with Live Preview</title>
     <link href="/assets/icon.jpg" rel="icon" type="image/jpg">
     <!-- Updated libraries to latest versions with Subresource Integrity (SRI) -->
     <link rel="stylesheet" href="/libs/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -40,7 +40,7 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Logo, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
-                    <h1 class="h4 mb-0 me-2">Markdown Viewer</h1>
+                    <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
                         <i class="bi bi-github"></i>
                     </a>
@@ -588,7 +588,7 @@
                 <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="64" height="64" />
                 <div class="about-details">
                   <h3 class="about-title">Markdown Viewer</h3>
-                  <p class="about-description">A GitHub-style Markdown editor with live preview, diagrams, math, syntax highlighting, and export tools.</p>
+                  <p class="about-description">A browser-based Markdown editor and viewer with GFM live preview, diagrams, maps, STL previews, ABC notation, sharing, export tools, and a lightweight Neutralinojs desktop build.</p>
                   <p class="about-meta">Version <span id="about-version"></span> &bull; Apache License 2.0 &bull; Open source</p>
                 </div>
               </div>
@@ -713,7 +713,7 @@
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Temporary in-memory room. No document data is stored.</p>
+              <p class="share-modal-description">Temporary in-memory room. No permanent document storage is created.</p>
               <div class="reset-modal-field">
                 <label class="reset-modal-label" for="live-share-display-name">Display name</label>
                 <input type="text" id="live-share-display-name" class="rename-modal-input" maxlength="40" autocomplete="off" placeholder="Fresh Tomato" />
@@ -1144,18 +1144,20 @@
 
     <textarea id="default-markdown" hidden aria-hidden="true">---
 title: Welcome to Markdown Viewer
-description: A GitHub-style Markdown renderer with live preview, math, diagrams, and export support.
+description: Browser-based Markdown editor and viewer with live preview, GFM, diagrams, maps, STL previews, ABC notation, sharing, and export support.
 author: ThisIs-Developer
-tags: ["markdown", "preview", "mermaid", "latex", "open-source"]
+tags: ["markdown", "live-preview", "gfm", "mermaid", "plantuml", "stl", "abc-notation", "open-source"]
 ---
 
 # Welcome to Markdown Viewer
 
 ## ✨ Key Features
-- **Live Preview** with GitHub styling
-- **Smart Import/Export** (MD, HTML, PDF)
-- **Mermaid Diagrams** for visual documentation
+- **Split-Screen Live Markdown Preview** with GitHub-Flavored Markdown and sync scroll
+- **Smart Import/Export** (Markdown, HTML, PDF, PNG)
+- **Insert Diagram & More** for Mermaid, PlantUML, Graphviz, D2, Vega-Lite, WaveDrom, Markmap, maps, STL, and ABC notation
 - **LaTeX Math Support** for scientific notation
+- **Share Snapshot and Live Share** for quick Markdown sharing workflows
+- **No-login client-side defaults** for normal editing, preview, autosave, local file import, settings, and most exports
 - **Emoji Support** 😄 👍 🎉
 
 ## 💻 Code with Syntax Highlighting
@@ -1308,7 +1310,7 @@ Quote someone famous:
 
 ## 🛡️ Security Note
 
-This is a fully client-side application. Your content never leaves your browser and stays secure on your device.
+Markdown Viewer keeps normal editing, previewing, and autosave on your device. Content can leave your device only when you use network features such as GitHub import, remote diagram rendering, Share Snapshot, Live Share, external images, or CDN-hosted libraries.
 </textarea>
 
     <script src="/libs/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous" defer></script>

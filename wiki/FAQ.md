@@ -1,10 +1,10 @@
-# Frequently Asked Questions
+# Markdown Viewer FAQ
 
 ## General
 
 ### What is Markdown Viewer?
 
-Markdown Viewer is a premium browser-based Markdown editor, viewer, reader, and previewer for opening `.md` files, writing in plain Markdown, and using a split-screen live preview with sync scrolling. It also includes document tabs, rich Markdown rendering, math, diagrams, maps, STL models, ABC music notation, export tools, optional sharing, and a desktop app.
+Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` files, writing in plain Markdown, and using a split-screen live preview with sync scrolling. It also includes document tabs, GitHub-Flavored Markdown, math, diagrams, maps, STL models, ABC music notation, export tools, optional sharing, and a desktop app.
 
 ### Is it free?
 
@@ -16,7 +16,7 @@ No. There is no login, subscription, account system, analytics identity, or clou
 
 ### Is it a WYSIWYG Markdown editor?
 
-Not in the strict sense. Markdown Viewer uses a plain-text Markdown editor plus a rendered live preview. The toolbar helps insert Markdown syntax, but you do not directly edit the rendered preview like a full rich text or Typora-style WYSIWYG editor.
+Not in the strict sense. Markdown Viewer is a plain-text Markdown editor with live preview and WYSIWYG-style toolbar helpers. You can quickly insert common formatting, but you do not directly edit the rendered preview like a full rich-text editor.
 
 ### Can it open local .md files?
 

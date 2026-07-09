@@ -1,10 +1,10 @@
-# Desktop Application
+# Desktop Markdown Editor App
 
-The desktop app wraps Markdown Viewer in Neutralino. It uses the same editor, preview, renderer, sharing, and export code as the web app, with native file dialogs and local desktop storage.
+The desktop app wraps Markdown Viewer in Neutralinojs for users who want a lightweight local Markdown editor and viewer window. It uses the same editor, preview, renderer, sharing, and export code as the web app, with native file dialogs and local desktop storage.
 
 ## What Is Different From The Web App?
 
-- Runs in a native Neutralino window.
+- Runs in a Neutralinojs desktop window.
 - Uses native open/save dialogs for Markdown and HTML.
 - Can read a Markdown file path passed as a launch argument.
 - Asks for confirmation before closing.
@@ -62,7 +62,6 @@ Important `neutralino.config.json` values:
 | Setting | Current Value |
 | :--- | :--- |
 | Application id | `com.markdownviewer.desktop` |
-| Version | `3.9.0` |
 | Document root | `/resources/` |
 | Default mode | `window` |
 | Window size | 1280 x 720 |
@@ -70,7 +69,6 @@ Important `neutralino.config.json` values:
 | Native API | Enabled |
 | Token security | One-time |
 | Logging | Disabled |
-| Binary/client version | 6.5.0 |
 
 Allowed native APIs:
 
@@ -101,7 +99,7 @@ Browser/chrome modes block filesystem and OS APIs more tightly.
 - Bundles Bootstrap icon fonts.
 - Strips web-only SEO/canonical/hreflang/schema metadata from the desktop HTML.
 
-This is why the prepared desktop app can run core renderers offline after setup.
+This is why the prepared desktop app can load core bundled renderer libraries without CDNs after setup.
 
 ## Platform Notes
 

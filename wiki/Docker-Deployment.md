@@ -1,6 +1,6 @@
-# Docker Deployment
+# Docker Deployment for the Markdown Viewer Web App
 
-Markdown Viewer's Docker image serves the static web app with Nginx. It is useful for local networks, self-hosting, and reverse-proxy deployments.
+Markdown Viewer's Docker image serves the browser-based Markdown editor and viewer as a static web app with Nginx. It is useful for local networks, self-hosting, and reverse-proxy deployments.
 
 ## Quick Start
 

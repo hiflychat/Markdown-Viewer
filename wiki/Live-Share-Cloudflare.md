@@ -1,6 +1,6 @@
-# Live Share Cloudflare Architecture
+# Live Share Rooms for Markdown Collaboration on Cloudflare
 
-Live Share is the real-time collaboration feature in Markdown Viewer v3.9.0. It is separate from Share Snapshot. Share Snapshot creates a point-in-time link; Live Share creates a temporary WebSocket room.
+Live Share is the temporary Markdown collaboration feature in Markdown Viewer. It is separate from Share Snapshot. Share Snapshot creates a point-in-time link; Live Share creates a temporary WebSocket room.
 
 ## User Flow
 

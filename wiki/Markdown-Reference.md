@@ -1,10 +1,10 @@
-# Markdown Reference
+# GitHub-Flavored Markdown Reference: GFM, Diagrams, Math, Maps, STL, and ABC
 
-Markdown Viewer v3.9.0 supports standard Markdown, GitHub-Flavored Markdown (GFM), selected custom inline extensions, LaTeX math, GitHub alerts, frontmatter, and many fenced-code renderers. This makes it useful for README files, documentation, notes, tables, task lists, code blocks, math, diagrams, and other content people often preview before exporting or sharing.
+Markdown Viewer supports standard Markdown, GitHub-Flavored Markdown (GFM), selected custom inline extensions, LaTeX math, GitHub alerts, frontmatter, and many fenced-code renderers. This makes it useful for README files, documentation, notes, tables, task lists, code blocks, math, Mermaid, PlantUML, Graphviz/DOT, D2, Vega-Lite, WaveDrom, Markmap, maps, STL 3D models, ABC notation, and other content people often preview before exporting or sharing.
 
 All rendered HTML is sanitized before display. Raw HTML is useful for formatting, but scripts and unsafe event handlers are removed. The preview is GitHub-style and GFM-oriented, not a promise of byte-for-byte identical rendering to GitHub, Pandoc, Obsidian, Typora, or other Markdown tools.
 
-## Core Markdown
+## Core Markdown and GFM
 
 ### Headings
 
@@ -217,7 +217,7 @@ DOMPurify sanitization removes unsafe tags and attributes. Inline scripts and ha
 
 Emoji shortcode rendering uses the JoyPixels/emoji toolkit when available. The emoji picker can also query GitHub's emoji API.
 
-## Math
+## LaTeX Math Notation
 
 Inline math:
 
@@ -243,7 +243,7 @@ Fenced math:
 
 MathJax renders math on demand. Escape literal dollar signs as `\$` when they are not math delimiters.
 
-## Diagrams and Rich Fences
+## Diagrams, Maps, Music, and Rich Fences
 
 ### Mermaid
 
