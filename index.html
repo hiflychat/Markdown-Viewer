@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME='; worker-src 'self'; connect-src 'self' ws: wss: https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME=' 'sha256-NnbK2LG1LUwYyZ1xgJN7k3oK4oTvHY4o9852VxwNA/o='; script-src-attr 'none'; worker-src 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io wss://markdownviewer.pages.dev ws://localhost:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src-attr 'unsafe-inline'; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; frame-src 'none'; upgrade-insecure-requests">
     <!-- DNS Prefetch & Preconnect CDN Origins to Warm Up Latency -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -710,6 +710,14 @@
                 </ul>
               </div>
               <div class="modal-section">
+                <h3 class="modal-section-title">Storage privacy</h3>
+                <p class="modal-subtext">By default, document tabs are saved on this device for convenience. Private mode stops saving document content until it is turned off.</p>
+                <div class="modal-action-row">
+                  <button type="button" class="reset-modal-btn reset-modal-cancel" id="private-mode-toggle">Private mode off</button>
+                  <button type="button" class="reset-modal-btn reset-modal-danger" id="clear-local-data-btn">Clear local data</button>
+                </div>
+              </div>
+              <div class="modal-section">
                 <h3 class="modal-section-title">Open-source credits</h3>
                 <p class="modal-subtext">Markdown Viewer is built on top of open-source libraries maintained by the community. Thank you to every contributor and maintainer.</p>
               </div>
@@ -730,7 +738,7 @@
               </button>
             </div>
             <div class="modal-body">
-              <p class="share-modal-description">Small documents stay encoded in the URL. Large documents use temporary Cloudflare KV for 90 days. Shared tabs are not saved locally on the recipient's device.</p>
+              <p class="share-modal-description">Small documents stay encoded in the URL. Large documents use temporary Cloudflare KV for up to 90 days. Shared tabs are not saved locally on the recipient's device.</p>
               <div class="live-share-section-title">Access</div>
               <div class="share-mode-cards">
                 <label class="share-mode-card" id="share-card-view" for="share-mode-view">
@@ -738,7 +746,7 @@
                   <span class="share-card-icon"><i class="bi bi-eye"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">View only</span>
-                    <span class="share-card-desc">Opens in preview mode. The editor is hidden.</span>
+                    <span class="share-card-desc">Opens in preview mode and hides editing controls. Recipients can still inspect content delivered to their browser.</span>
                   </span>
                   <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
                 </label>
@@ -762,6 +770,10 @@
                   <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-copy-btn" title="Copy link">
                     <i class="bi bi-clipboard"></i>
                     <span>Copy</span>
+                  </button>
+                  <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-delete-btn" title="Delete stored snapshot" hidden>
+                    <i class="bi bi-trash"></i>
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>

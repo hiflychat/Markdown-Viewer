@@ -4,20 +4,31 @@ export async function onRequest(context) {
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
     return new Response("Markdown Viewer live room endpoint", {
-      headers: {
+      headers: secureHeaders({
         "Cache-Control": "no-store",
         "Content-Type": "text/plain; charset=utf-8"
-      }
+      })
     });
   }
 
   if (!env || !env.LIVE_ROOMS) {
     return new Response("Missing LIVE_ROOMS Durable Object binding", {
       status: 503,
-      headers: {
+      headers: secureHeaders({
         "Cache-Control": "no-store",
         "Content-Type": "text/plain; charset=utf-8"
-      }
+      })
+    });
+  }
+
+  const origin = request.headers.get("Origin") || "";
+  if (!isAllowedLiveOrigin(origin)) {
+    return new Response("Live room origin is not allowed", {
+      status: 403,
+      headers: secureHeaders({
+        "Cache-Control": "no-store",
+        "Content-Type": "text/plain; charset=utf-8"
+      })
     });
   }
 
@@ -33,4 +44,23 @@ export async function onRequest(context) {
 
   const id = env.LIVE_ROOMS.idFromName(roomName + ":" + secret);
   return env.LIVE_ROOMS.get(id).fetch(request);
+}
+
+function secureHeaders(base) {
+  return Object.assign({
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "accelerometer=(), ambient-light-sensor=(), autoplay=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), speaker-selection=(), usb=(), xr-spatial-tracking=()",
+    "Cross-Origin-Resource-Policy": "same-site"
+  }, base || {});
+}
+
+function isAllowedLiveOrigin(origin) {
+  if (origin === "https://markdownviewer.pages.dev" || origin === "null") {
+    return true;
+  }
+  if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin)) {
+    return true;
+  }
+  return false;
 }

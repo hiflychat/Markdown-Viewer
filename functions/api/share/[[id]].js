@@ -1,16 +1,43 @@
 const SHARE_TTL_SECONDS = 60 * 60 * 24 * 90;
 const MAX_CONTENT_CHARS = 500000;
 const SHARE_ID_LENGTH = 10;
+const SHARE_DELETE_TOKEN_BYTES = 18;
 const SHARE_ID_PATTERN = /^[a-z2-9]{6,20}$/;
 const SHARE_ID_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+const ALLOWED_ORIGINS = new Set([
+  "https://markdownviewer.pages.dev",
+  "null"
+]);
 
-function jsonResponse(body, init) {
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  return /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin);
+}
+
+function applyCorsHeaders(headers, request) {
+  const origin = request.headers.get("Origin") || "";
+  headers.set("Vary", "Origin");
+  if (isAllowedOrigin(origin) && origin) {
+    headers.set("Access-Control-Allow-Origin", origin);
+  }
+  headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function applySecurityHeaders(headers) {
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "accelerometer=(), ambient-light-sensor=(), autoplay=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), speaker-selection=(), usb=(), xr-spatial-tracking=()");
+  headers.set("Cross-Origin-Resource-Policy", "same-site");
+}
+
+function jsonResponse(body, init, request) {
   const headers = new Headers(init && init.headers);
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("Cache-Control", "no-store");
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  applySecurityHeaders(headers);
+  if (request) applyCorsHeaders(headers, request);
 
   return new Response(JSON.stringify(body), {
     status: init && init.status ? init.status : 200,
@@ -18,11 +45,11 @@ function jsonResponse(body, init) {
   });
 }
 
-function emptyResponse(init) {
+function emptyResponse(init, request) {
   const headers = new Headers(init && init.headers);
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  headers.set("Cache-Control", "no-store");
+  applySecurityHeaders(headers);
+  if (request) applyCorsHeaders(headers, request);
 
   return new Response(null, {
     status: init && init.status ? init.status : 204,
@@ -45,6 +72,25 @@ function generateShareId(length = SHARE_ID_LENGTH) {
   return id;
 }
 
+function generateShareDeleteToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(SHARE_DELETE_TOKEN_BYTES));
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function hashDeleteToken(token) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(token || "")));
+  let binary = "";
+  const bytes = new Uint8Array(digest);
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 async function createUniqueShareId(kv) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const id = generateShareId();
@@ -63,12 +109,16 @@ function sanitizeTitle(title) {
 }
 
 export async function onRequest({ request, env, params }) {
+  if (!isAllowedOrigin(request.headers.get("Origin") || "")) {
+    return jsonResponse({ error: "origin not allowed" }, { status: 403 }, request);
+  }
+
   if (request.method === "OPTIONS") {
-    return emptyResponse({ status: 204 });
+    return emptyResponse({ status: 204 }, request);
   }
 
   if (!env || !env.SHARE_KV) {
-    return jsonResponse({ error: "SHARE_KV binding is not configured" }, { status: 503 });
+    return jsonResponse({ error: "SHARE_KV binding is not configured" }, { status: 503 }, request);
   }
 
   const id = getShareId(params);
@@ -78,24 +128,26 @@ export async function onRequest({ request, env, params }) {
     try {
       body = await request.json();
     } catch (_) {
-      return jsonResponse({ error: "invalid json" }, { status: 400 });
+      return jsonResponse({ error: "invalid json" }, { status: 400 }, request);
     }
 
     const content = body && body.content;
     if (typeof content !== "string" || content.length === 0) {
-      return jsonResponse({ error: "content required" }, { status: 400 });
+      return jsonResponse({ error: "content required" }, { status: 400 }, request);
     }
     if (content.length > MAX_CONTENT_CHARS) {
-      return jsonResponse({ error: "content too large" }, { status: 413 });
+      return jsonResponse({ error: "content too large" }, { status: 413 }, request);
     }
 
     const shareId = await createUniqueShareId(env.SHARE_KV);
+    const deleteToken = generateShareDeleteToken();
     const record = {
       content,
       mode: sanitizeMode(body.mode),
       title: sanitizeTitle(body.title),
       createdAt: Date.now(),
-      size: content.length
+      size: content.length,
+      deleteTokenHash: await hashDeleteToken(deleteToken)
     };
 
     await env.SHARE_KV.put(shareId, JSON.stringify(record), {
@@ -104,25 +156,63 @@ export async function onRequest({ request, env, params }) {
 
     return jsonResponse({
       id: shareId,
+      deleteToken,
       expiresIn: SHARE_TTL_SECONDS
-    }, { status: 201 });
+    }, { status: 201 }, request);
   }
 
-  if (request.method === "GET" && id) {
+  if (request.method === "DELETE" && id) {
     if (!SHARE_ID_PATTERN.test(id)) {
-      return jsonResponse({ error: "invalid id" }, { status: 400 });
+      return jsonResponse({ error: "invalid id" }, { status: 400 }, request);
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch (_) {
+      return jsonResponse({ error: "invalid json" }, { status: 400 }, request);
+    }
+
+    const providedToken = body && typeof body.deleteToken === "string" ? body.deleteToken : "";
+    if (!providedToken || providedToken.length > 128) {
+      return jsonResponse({ error: "delete token required" }, { status: 400 }, request);
     }
 
     const raw = await env.SHARE_KV.get(id);
     if (!raw) {
-      return jsonResponse({ error: "not found" }, { status: 404 });
+      return jsonResponse({ error: "not found" }, { status: 404 }, request);
     }
 
     let record;
     try {
       record = JSON.parse(raw);
     } catch (_) {
-      return jsonResponse({ error: "invalid record" }, { status: 500 });
+      return jsonResponse({ error: "invalid record" }, { status: 500 }, request);
+    }
+
+    if (!record.deleteTokenHash || record.deleteTokenHash !== await hashDeleteToken(providedToken)) {
+      return jsonResponse({ error: "not found" }, { status: 404 }, request);
+    }
+
+    await env.SHARE_KV.delete(id);
+    return jsonResponse({ deleted: true }, {}, request);
+  }
+
+  if (request.method === "GET" && id) {
+    if (!SHARE_ID_PATTERN.test(id)) {
+      return jsonResponse({ error: "invalid id" }, { status: 400 }, request);
+    }
+
+    const raw = await env.SHARE_KV.get(id);
+    if (!raw) {
+      return jsonResponse({ error: "not found" }, { status: 404 }, request);
+    }
+
+    let record;
+    try {
+      record = JSON.parse(raw);
+    } catch (_) {
+      return jsonResponse({ error: "invalid record" }, { status: 500 }, request);
     }
 
     return jsonResponse({
@@ -131,8 +221,8 @@ export async function onRequest({ request, env, params }) {
       title: sanitizeTitle(record.title),
       createdAt: record.createdAt || null,
       size: record.size || (record.content ? record.content.length : 0)
-    });
+    }, {}, request);
   }
 
-  return jsonResponse({ error: "not found" }, { status: 404 });
+  return jsonResponse({ error: "not found" }, { status: 404 }, request);
 }
