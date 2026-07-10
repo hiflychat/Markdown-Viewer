@@ -3120,6 +3120,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     function doReset() {
       closeAppModal(modal);
       cleanup();
+      disconnectLiveCollaboration({ restoreOriginal: false, silent: true });
+      applyShareSnapshotAccessMode('edit');
+      resetShareSnapshotLink();
       tabs = [];
       untitledCounter = 0;
       saveUntitledCounter(0);
@@ -12872,7 +12875,6 @@ ${selector} .arrowheadPath {
   const shareUrlInput     = document.getElementById('share-url-input');
   const shareGenerateBtn  = document.getElementById('share-generate-btn');
   const shareCopyBtn      = document.getElementById('share-copy-btn');
-  const shareDeleteBtn    = document.getElementById('share-delete-btn');
   const shareInviteState  = document.getElementById('share-invite-state');
   const shareModeView     = document.getElementById('share-mode-view');
   const shareModeEdit     = document.getElementById('share-mode-edit');
@@ -12978,11 +12980,6 @@ ${selector} .arrowheadPath {
     if (shareCopyBtn) {
       shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
     }
-    if (shareDeleteBtn) {
-      shareDeleteBtn.hidden = true;
-      shareDeleteBtn.disabled = true;
-      shareDeleteBtn.innerHTML = '<i class="bi bi-trash"></i><span>Delete</span>';
-    }
     setShareInviteState('Ready to copy');
   }
 
@@ -12998,30 +12995,6 @@ ${selector} .arrowheadPath {
       return await createStoredShareUrl(mode);
     }
     return url;
-  }
-
-  async function deleteStoredShareSnapshot() {
-    if (!generatedShareSnapshotId || !generatedShareSnapshotDeleteToken) {
-      throw new Error('This link cannot be deleted from here.');
-    }
-    const response = await fetch(getShareApiBaseUrl() + '/api/share/' + encodeURIComponent(generatedShareSnapshotId), {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        deleteToken: generatedShareSnapshotDeleteToken
-      })
-    });
-
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (_) {}
-
-    if (!response.ok || !payload || payload.deleted !== true) {
-      throw new Error((payload && payload.error) || ('HTTP ' + response.status));
-    }
   }
 
   function openShareModal() {
@@ -13094,11 +13067,6 @@ ${selector} .arrowheadPath {
         generatedShareSnapshotUrl = url;
         shareUrlInput.value = url;
         shareCopyBtn.disabled = false;
-        if (shareDeleteBtn) {
-          const canDeleteStoredSnapshot = Boolean(generatedShareSnapshotId && generatedShareSnapshotDeleteToken);
-          shareDeleteBtn.hidden = !canDeleteStoredSnapshot;
-          shareDeleteBtn.disabled = !canDeleteStoredSnapshot;
-        }
         if (shareInviteSection) {
           shareInviteSection.dataset.state = 'active';
         }
@@ -13113,10 +13081,6 @@ ${selector} .arrowheadPath {
         generatedShareSnapshotExpiresIn = null;
         shareUrlInput.value = 'Failed to create share link.';
         shareCopyBtn.disabled = true;
-        if (shareDeleteBtn) {
-          shareDeleteBtn.hidden = true;
-          shareDeleteBtn.disabled = true;
-        }
         if (shareInviteSection) {
           shareInviteSection.dataset.state = 'error';
         }
@@ -13125,33 +13089,6 @@ ${selector} .arrowheadPath {
       } finally {
         shareGenerateBtn.disabled = false;
         shareGenerateBtn.innerHTML = originalHTML;
-      }
-    });
-  }
-
-  if (shareDeleteBtn) {
-    shareDeleteBtn.addEventListener('click', async function () {
-      if (shareDeleteBtn.disabled || !generatedShareSnapshotId || !generatedShareSnapshotDeleteToken) return;
-      if (!confirm('Delete this stored snapshot now? The copied link will stop working.')) return;
-      const originalHTML = shareDeleteBtn.innerHTML;
-      shareDeleteBtn.disabled = true;
-      shareDeleteBtn.innerHTML = '<i class="bi bi-hourglass-split"></i><span>Deleting</span>';
-      try {
-        await deleteStoredShareSnapshot();
-        generatedShareSnapshotUrl = '';
-        generatedShareSnapshotId = '';
-        generatedShareSnapshotDeleteToken = '';
-        generatedShareSnapshotExpiresIn = null;
-        shareUrlInput.value = '';
-        shareUrlInput.placeholder = 'Stored snapshot deleted';
-        shareCopyBtn.disabled = true;
-        shareDeleteBtn.hidden = true;
-        setShareInviteState('Stored snapshot deleted');
-      } catch (error) {
-        console.error('Share deletion failed:', error);
-        shareDeleteBtn.disabled = false;
-        shareDeleteBtn.innerHTML = originalHTML;
-        showShareErrorModal('Failed to delete stored snapshot: ' + error.message);
       }
     });
   }

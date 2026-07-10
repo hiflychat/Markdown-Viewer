@@ -3369,6 +3369,7 @@ a:focus {
   align-items: flex-start;
   gap: 9px;
   min-width: 0;
+  min-height: 86px;
   padding: 10px;
   border-radius: 8px;
   background: var(--button-bg);
@@ -3394,7 +3395,9 @@ a:focus {
 
 #share-modal .share-card-body {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 2px;
+  height: 100%;
 }
 
 #share-modal .share-card-title {
