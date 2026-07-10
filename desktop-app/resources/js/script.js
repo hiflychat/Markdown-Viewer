@@ -1,4 +1,20 @@
 document.addEventListener("DOMContentLoaded", async function () {
+  const PRIVATE_MODE_KEY = 'markdownViewerPrivateMode';
+  const DOCUMENT_STORAGE_KEYS = new Set([
+    'markdownViewerGlobalState',
+    'markdownViewerTabs',
+    'markdownViewerActiveTab',
+    'markdownViewerUntitledCounter'
+  ]);
+
+  function isPrivateStorageMode() {
+    try {
+      return localStorage.getItem(PRIVATE_MODE_KEY) === 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
   function isNeutralinoRuntimeAvailable() {
     return Boolean(
       typeof Neutralino !== 'undefined' &&
@@ -21,6 +37,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       try {
         const value = await Neutralino.storage.getData(key);
         if (value !== undefined && value !== null) {
+          if (DOCUMENT_STORAGE_KEYS.has(key) && isPrivateStorageMode()) {
+            continue;
+          }
           localStorage.setItem(key, value);
         }
       } catch (err) {
@@ -30,6 +49,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function saveStorageItem(key, value) {
+    if (DOCUMENT_STORAGE_KEYS.has(key) && isPrivateStorageMode()) {
+      try {
+        localStorage.removeItem(key);
+      } catch (_) {}
+      return;
+    }
     localStorage.setItem(key, value);
     if (isNeutralinoRuntimeAvailable()) {
       Neutralino.storage.setData(key, value).catch(err => {
@@ -47,6 +72,26 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   // PERF-002: Lazy script loader for optional heavy libraries
+  const CDN_INTEGRITY = Object.freeze({
+    'https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js': 'sha384-yQ4mmBBT+vhTAwjFH0toJXNYJ6O4usWnt6EPIdWwrRvx2V/n5lXuDZQwQFeSFydF',
+    'https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js': 'sha384-M5jmNxKC9EVnuqeMwRHvFuYUE8Hhp0TgBruj/GZRkYtiMrCRgH7yvv5KY+Owi7TW',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js': 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk',
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js': 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H',
+    'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js': 'sha384-rNlaE5fs9dGIjmxWDALQh/RBAaGRYT5ChrzHo6tRfgrZ36iRFAiquP5g41Jsv+0j',
+    'https://cdn.jsdelivr.net/npm/emoji-toolkit@9.0.1/lib/js/joypixels.min.js': 'sha384-1+n1eMmP5I08CibRJ6JmycJ0hP3G6C0fuUtTb4bEuQgl9uFdS9pnPePfpmrXl9ll',
+    'https://cdn.jsdelivr.net/npm/emoji-toolkit@9.0.1/extras/css/joypixels.min.css': 'sha384-4ok+tBQQdy5hcPT56tzcE11yQ2BkN0Py1uDE8ZOiXYstHOpUB61pJafm+NidByp4',
+    'https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.5.2/abcjs-basic-min.js': 'sha384-nxKtRsFgPYIlwn4dow7ndIEZj9Ud11cUkJdJVOUjHhm8dFHiL0+VF356f6xBzeaL',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css': 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js': 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
+    'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js': 'sha384-9dCJK6nh7skY14HrcvlLYlFga9/MehJjL9ONWRflmiXNRuf8p2jiF4Y5PR881PTq',
+    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js': 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu',
+    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js': 'sha384-QF8EmP6pyNE+i7WmcltzC4ddzFVKDxfn5WD5gXyKTSE4SCw0R25TI+q0LUlnf7tq',
+    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js': 'sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf',
+    'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js': 'sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i',
+    'https://cdn.jsdelivr.net/npm/markmap-lib@0.18.12/dist/browser/index.iife.js': 'sha384-ZlXKtR0wcZqxEYI8i3TPFFiOJR1MEdIzdVvnhSOonCrPsBup4dnkRw49FeYhfsHF',
+    'https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js': 'sha384-p+gyhsDIg0RmvIKRr9BBGSyJ9NDDkiFsbilRwdZd20Q8mUL2v7e8+orY4pvTV52w'
+  });
+
   const _loadedScripts = new Set();
   const _loadingScripts = new Map();
   function loadScript(url) {
@@ -55,6 +100,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const loadPromise = new Promise(function(resolve, reject) {
       const script = document.createElement('script');
       script.src = url;
+      if (CDN_INTEGRITY[url]) {
+        script.integrity = CDN_INTEGRITY[url];
+        script.crossOrigin = 'anonymous';
+      }
       script.onload = function() {
         _loadedScripts.add(url);
         _loadingScripts.delete(url);
@@ -79,6 +128,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = url;
+      if (CDN_INTEGRITY[url]) {
+        link.integrity = CDN_INTEGRITY[url];
+        link.crossOrigin = 'anonymous';
+      }
       link.onload = function() {
         _loadedStyles.add(url);
         _loadingStyles.delete(url);
@@ -420,6 +473,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const aboutModalClose = document.getElementById("about-modal-close");
   const aboutModalCloseIcon = document.getElementById("about-modal-close-icon");
   const aboutVersion = document.getElementById("about-version");
+  const privateModeToggle = document.getElementById("private-mode-toggle");
+  const clearLocalDataBtn = document.getElementById("clear-local-data-btn");
   if (aboutVersion) {
     aboutVersion.textContent = APP_VERSION;
   }
@@ -517,6 +572,65 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveGlobalState(patch) {
     _globalStateCache = { ...loadGlobalState(), ...patch };
     saveStorageItem(GLOBAL_STATE_KEY, JSON.stringify(_globalStateCache));
+  }
+
+  function updatePrivateModeButton() {
+    if (!privateModeToggle) return;
+    const enabled = isPrivateStorageMode();
+    privateModeToggle.textContent = enabled ? 'Private mode on' : 'Private mode off';
+    privateModeToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+  }
+
+  async function clearDocumentStorage() {
+    DOCUMENT_STORAGE_KEYS.forEach(function(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (_) {}
+    });
+    _globalStateCache = {};
+    if (isNeutralinoRuntimeAvailable()) {
+      const neutralinoValues = {
+        markdownViewerGlobalState: '{}',
+        markdownViewerTabs: '[]',
+        markdownViewerActiveTab: '',
+        markdownViewerUntitledCounter: '0'
+      };
+      await Promise.all(Object.keys(neutralinoValues).map(function(key) {
+        return Neutralino.storage.setData(key, neutralinoValues[key]).catch(function(err) {
+          console.warn('Failed to clear Neutralino storage key:', key, err);
+        });
+      }));
+    }
+  }
+
+  async function setPrivateStorageMode(enabled) {
+    try {
+      localStorage.setItem(PRIVATE_MODE_KEY, enabled ? 'true' : 'false');
+    } catch (_) {}
+    if (enabled) {
+      await clearDocumentStorage();
+    }
+    updatePrivateModeButton();
+  }
+
+  updatePrivateModeButton();
+  if (privateModeToggle) {
+    privateModeToggle.addEventListener('click', function() {
+      setPrivateStorageMode(!isPrivateStorageMode()).catch(function(error) {
+        console.warn('Failed to update private mode:', error);
+      });
+    });
+  }
+  if (clearLocalDataBtn) {
+    clearLocalDataBtn.addEventListener('click', function() {
+      if (!confirm('Clear saved Markdown tabs and document state from this device?')) return;
+      clearDocumentStorage().then(function() {
+        resetAllTabs();
+        updatePrivateModeButton();
+      }).catch(function(error) {
+        console.warn('Failed to clear local data:', error);
+      });
+    });
   }
 
   // Check dark mode preference first for proper initialization
@@ -1921,15 +2035,31 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!svg || svg.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
       throw new Error(`${REMOTE_DIAGRAM_ENGINES[engine].label} returned invalid SVG`);
     }
+    svg.querySelectorAll('foreignObject, foreignobject').forEach(element => element.remove());
     svg.querySelectorAll('script').forEach(script => script.remove());
     svg.querySelectorAll('*').forEach(element => {
       Array.from(element.attributes).forEach(attribute => {
         if (/^on/i.test(attribute.name)) element.removeAttribute(attribute.name);
+        if (/^(?:href|xlink:href)$/i.test(attribute.name) && !isSafeDiagramSvgUrl(attribute.value)) {
+          element.removeAttribute(attribute.name);
+        }
       });
     });
     node.replaceChildren(document.importNode(svg, true));
     prepareDiagramSvg(node.querySelector('svg'), engine);
     normalizeDiagramSvg(node, engine, source);
+  }
+
+  function isSafeDiagramSvgUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return true;
+    if (raw.startsWith('#')) return true;
+    try {
+      const parsed = new URL(raw, window.location.href);
+      return ['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol);
+    } catch (_) {
+      return false;
+    }
   }
 
   function isLightCanvasFill(fill) {
@@ -2223,7 +2353,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       templateText = defaultMarkdownTemplate.textContent ? defaultMarkdownTemplate.textContent.trim() : '';
     }
   }
-  const sampleMarkdown = templateText || '# Welcome to Markdown Viewer\n\nStart typing your markdown here...';
+  const sampleMarkdown = templateText || '# Welcome to Markdown Viewer\n\nStart typing, pasting, or importing Markdown to use the live preview...';
 
   if (!markdownEditor.value) {
     markdownEditor.value = sampleMarkdown;
@@ -3577,6 +3707,73 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
   }
 
+  function renderAbcNotationNode(node, context) {
+    if (context.renderId !== previewRenderGeneration) return;
+    const originalCode = node.getAttribute('data-original-code');
+    if (!originalCode) return;
+    const decodedCode = decodeURIComponent(originalCode);
+
+    const container = node.closest('.abc-container');
+    try {
+      node.innerHTML = '';
+      const visualObj = ABCJS.renderAbc(node.id, decodedCode, {
+        responsive: "resize",
+        add_classes: true
+      });
+
+      node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
+
+      const headers = parseAbcHeaders(decodedCode);
+      const svgElement = node.querySelector('svg');
+      if (svgElement) {
+        svgElement.setAttribute('role', 'img');
+        const titleId = 'abc-title-' + node.id;
+        const descId = 'abc-desc-' + node.id;
+        svgElement.setAttribute('aria-labelledby', titleId + ' ' + descId);
+        svgElement.setAttribute('aria-describedby', 'abc-source-' + node.id);
+
+        const svgTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        svgTitle.id = titleId;
+        svgTitle.textContent = `Sheet music for: ${headers.title}`;
+
+        const svgDesc = document.createElementNS('http://www.w3.org/2000/svg', 'desc');
+        svgDesc.id = descId;
+        svgDesc.textContent = `Score in ${headers.key}, ${headers.meter} meter, composed by ${headers.composer}.`;
+
+        svgElement.insertBefore(svgDesc, svgElement.firstChild);
+        svgElement.insertBefore(svgTitle, svgElement.firstChild);
+      }
+
+      if (container) {
+        setDiagramRenderState(container, 'ready');
+
+        const oldRaw = container.querySelector('.abc-raw-code');
+        if (oldRaw) oldRaw.remove();
+        const oldSrOnly = container.querySelector('.abc-sr-only');
+        if (oldSrOnly) oldSrOnly.remove();
+
+        mountDiagramViewer(container, 'abc', [{
+          title: 'Listen to score',
+          ariaLabel: 'Listen to score',
+          html: '<i class="bi bi-play-fill"></i> Listen',
+          onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
+        }]);
+
+        const srOnlyDiv = document.createElement('div');
+        srOnlyDiv.className = 'abc-sr-only';
+        srOnlyDiv.id = 'abc-source-' + node.id;
+        srOnlyDiv.textContent = decodedCode;
+
+        container.appendChild(srOnlyDiv);
+      }
+    } catch (err) {
+      console.error("ABCJS rendering failed:", err);
+      if (container) {
+        setDiagramRenderState(container, 'error', 'ABC notation could not be rendered. Check the score syntax and retry.');
+      }
+    }
+  }
+
   function disposeStlView(viewId) {
     const view = activeStlViews.get(viewId);
     if (!view) return;
@@ -3709,7 +3906,39 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  const MAX_STL_SOURCE_CHARS = 2 * 1024 * 1024;
+  const MAX_STL_VERTICES = 300000;
+
+  function validateStlSource(code) {
+    const sourceLength = String(code || '').length;
+    if (!sourceLength) {
+      throw new Error('STL source is empty.');
+    }
+    if (sourceLength > MAX_STL_SOURCE_CHARS) {
+      throw new Error('STL source is too large to render safely.');
+    }
+  }
+
+  function validateStlGeometry(geometry) {
+    if (!geometry || typeof geometry.getAttribute !== 'function') {
+      throw new Error('STL geometry could not be parsed.');
+    }
+    const position = geometry.getAttribute('position');
+    if (!position || !position.array || position.count < 3) {
+      throw new Error('STL geometry does not contain enough vertices.');
+    }
+    if (position.count > MAX_STL_VERTICES) {
+      throw new Error('STL geometry has too many vertices to render safely.');
+    }
+    for (let i = 0; i < position.array.length; i += 1) {
+      if (!Number.isFinite(position.array[i])) {
+        throw new Error('STL geometry contains non-finite coordinates.');
+      }
+    }
+  }
+
   function renderStlInContainer(container, code, viewId) {
+    validateStlSource(code);
     const width = container.clientWidth || 400;
     const height = container.clientHeight || 400;
     
@@ -3755,6 +3984,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Parse geometry
     const loader = new THREE.STLLoader();
     const geometry = loader.parse(new TextEncoder().encode(code).buffer);
+    validateStlGeometry(geometry);
     
     // Rotate geometry from Z-up (CAD/STL standard) to Y-up (Three.js standard)
     geometry.rotateX(-Math.PI / 2);
@@ -4051,7 +4281,20 @@ document.addEventListener("DOMContentLoaded", async function () {
               tileAttribution += ' &copy; <a href="https://carto.com/attributions">CARTO</a>';
             }
             layer.setUrl(tileUrl);
-            layer.setAttribution(tileAttribution);
+            const oldAttribution = typeof layer.getAttribution === 'function'
+              ? layer.getAttribution()
+              : (layer.options && layer.options.attribution);
+            if (layer.options) {
+              layer.options.attribution = tileAttribution;
+            }
+            if (map.attributionControl) {
+              if (oldAttribution && typeof map.attributionControl.removeAttribution === 'function') {
+                map.attributionControl.removeAttribution(oldAttribution);
+              }
+              if (typeof map.attributionControl.addAttribution === 'function') {
+                map.attributionControl.addAttribution(tileAttribution);
+              }
+            }
           }
         });
       }
@@ -4103,6 +4346,240 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
       }
     });
+  }
+
+  function waitForBrowserPrintFrame() {
+    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
+  function withBrowserPrintTimeout(promise, timeoutMs) {
+    return Promise.race([
+      promise,
+      new Promise(resolve => setTimeout(resolve, timeoutMs))
+    ]);
+  }
+
+  function getSafeCssIdSelector(id) {
+    if (window.CSS && typeof window.CSS.escape === 'function') {
+      return `#${window.CSS.escape(id)}`;
+    }
+    return `#${String(id).replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`;
+  }
+
+  function applyLightMermaidPrintOverrides(node) {
+    const svg = node ? node.querySelector('svg') : null;
+    if (!svg) return;
+
+    if (!svg.id) {
+      svg.id = `mermaid-print-${Math.random().toString(36).slice(2)}`;
+    }
+
+    svg.querySelectorAll('style[data-browser-print-light-override]').forEach(style => style.remove());
+
+    const selector = getSafeCssIdSelector(svg.id);
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.setAttribute('data-browser-print-light-override', 'true');
+    style.textContent = `
+${selector} {
+  background: #ffffff !important;
+  color: #24292f !important;
+}
+${selector} text,
+${selector} tspan,
+${selector} .nodeLabel,
+${selector} .edgeLabel,
+${selector} .label,
+${selector} foreignObject,
+${selector} foreignObject * {
+  color: #24292f !important;
+  fill: #24292f !important;
+}
+${selector} rect,
+${selector} polygon,
+${selector} circle,
+${selector} ellipse,
+${selector} .actor,
+${selector} .note,
+${selector} .labelBox {
+  fill: #f6f8fa !important;
+  stroke: #8c959f !important;
+}
+${selector} .cluster rect,
+${selector} .edgeLabel rect,
+${selector} .labelBox {
+  fill: #ffffff !important;
+}
+${selector} .edgePath path,
+${selector} .flowchart-link,
+${selector} .messageLine0,
+${selector} .messageLine1,
+${selector} .loopLine,
+${selector} .activation0,
+${selector} .activation1,
+${selector} .activation2 {
+  fill: none !important;
+  stroke: #57606a !important;
+}
+${selector} marker path,
+${selector} .arrowheadPath {
+  fill: #57606a !important;
+  stroke: #57606a !important;
+}
+`;
+    svg.insertBefore(style, svg.firstChild);
+  }
+
+  function applyLightMermaidPrintOverridesToPreview() {
+    markdownPreview.querySelectorAll('.mermaid').forEach(applyLightMermaidPrintOverrides);
+  }
+
+  async function renderThemeSensitivePreviewContentForPrint() {
+    const context = {
+      renderId: previewRenderGeneration,
+      previewDocumentId: getActivePreviewDocumentId(),
+      reason: 'browser-print-theme'
+    };
+
+    try {
+      const mermaidNodes = Array.from(markdownPreview.querySelectorAll('.mermaid'));
+      if (mermaidNodes.length > 0) {
+        if (typeof mermaid === 'undefined') {
+          await loadDiagramLibrary(CDN.mermaid);
+        }
+        initMermaid(true);
+        mermaidNodes.forEach(function(node) {
+          restoreDiagramNodeSource(node);
+          const container = node.closest('.mermaid-container');
+          if (container) {
+            container.querySelectorAll('.mermaid-toolbar').forEach(toolbar => toolbar.remove());
+            setDiagramRenderState(container, 'loading', 'Preparing Mermaid for print...');
+          }
+        });
+        await renderMermaidNodeList(mermaidNodes, context);
+        if (document.documentElement.getAttribute('data-browser-print-export') === 'light') {
+          mermaidNodes.forEach(applyLightMermaidPrintOverrides);
+        }
+      }
+    } catch (error) {
+      console.warn('Mermaid print theme preparation failed:', error);
+      markdownPreview.querySelectorAll('.mermaid-container.is-loading').forEach(function(container) {
+        setDiagramRenderState(container, 'ready');
+      });
+      if (document.documentElement.getAttribute('data-browser-print-export') === 'light') {
+        applyLightMermaidPrintOverridesToPreview();
+      }
+    }
+
+    try {
+      updateMapThemes();
+    } catch (error) {
+      console.warn('Map print theme preparation failed:', error);
+    }
+
+    try {
+      updateStlThemes();
+      activeStlViews.forEach(function(view) {
+        if (view && view.renderer && view.scene && view.camera) {
+          view.renderer.render(view.scene, view.camera);
+        }
+      });
+    } catch (error) {
+      console.warn('STL print theme preparation failed:', error);
+    }
+
+    await waitForBrowserPrintFrame();
+  }
+
+  async function prepareBrowserPrintExport() {
+    const root = document.documentElement;
+    const previousTheme = root.getAttribute('data-theme') || initialTheme || 'light';
+    const previousPrintExport = root.getAttribute('data-browser-print-export');
+    const shouldForceLightTheme = previousTheme === 'dark';
+
+    root.setAttribute('data-browser-print-export', 'light');
+    if (shouldForceLightTheme) {
+      root.setAttribute('data-theme', 'light');
+    }
+
+    await renderThemeSensitivePreviewContentForPrint();
+
+    if (document.fonts && document.fonts.ready) {
+      await withBrowserPrintTimeout(document.fonts.ready.catch(() => null), 1500);
+    }
+    await withBrowserPrintTimeout(waitForAllImages(markdownPreview), 2500);
+    await waitForBrowserPrintFrame();
+
+    return function restoreBrowserPrintExport() {
+      if (previousPrintExport === null) {
+        root.removeAttribute('data-browser-print-export');
+      } else {
+        root.setAttribute('data-browser-print-export', previousPrintExport);
+      }
+
+      if (shouldForceLightTheme) {
+        root.setAttribute('data-theme', previousTheme);
+        renderThemeSensitivePreviewContentForPrint().catch(function(error) {
+          console.warn('Preview theme restoration after print failed:', error);
+        });
+      }
+    };
+  }
+
+  async function runBrowserPrintExport() {
+    const previousDocumentTitle = document.title;
+    document.title = getBrowserPrintDocumentTitle();
+    let restoreBrowserPrintExport;
+    try {
+      restoreBrowserPrintExport = await prepareBrowserPrintExport();
+    } catch (error) {
+      document.title = previousDocumentTitle;
+      throw error;
+    }
+    let restored = false;
+    const mediaQuery = window.matchMedia ? window.matchMedia('print') : null;
+
+    const restoreOnce = function() {
+      if (restored) return;
+      restored = true;
+      window.removeEventListener('afterprint', restoreOnce);
+      window.removeEventListener('focus', restoreOnce);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (mediaQuery) {
+        if (typeof mediaQuery.removeEventListener === 'function') {
+          mediaQuery.removeEventListener('change', handlePrintMediaChange);
+        } else if (typeof mediaQuery.removeListener === 'function') {
+          mediaQuery.removeListener(handlePrintMediaChange);
+        }
+      }
+      restoreBrowserPrintExport();
+      document.title = previousDocumentTitle;
+    };
+
+    const handlePrintMediaChange = function(event) {
+      if (!event.matches) restoreOnce();
+    };
+
+    const handleVisibilityChange = function() {
+      if (!document.hidden) restoreOnce();
+    };
+
+    window.addEventListener('afterprint', restoreOnce);
+    window.addEventListener('focus', restoreOnce);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (mediaQuery) {
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handlePrintMediaChange);
+      } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(handlePrintMediaChange);
+      }
+    }
+
+    try {
+      window.print();
+    } catch (error) {
+      restoreOnce();
+      throw error;
+    }
   }
 
   function postProcessPreview(rawVal, context, patchResult) {
@@ -4175,84 +4652,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (abcNodes.length > 0) {
         const renderAbcNodes = function() {
           if (context.renderId !== previewRenderGeneration) return;
-          
-          const observer = new IntersectionObserver((entries, obs) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                const node = entry.target;
-                obs.unobserve(node);
-                
-                setTimeout(() => {
-                  if (context.renderId !== previewRenderGeneration) return;
-                  const originalCode = node.getAttribute('data-original-code');
-                  if (!originalCode) return;
-                  const decodedCode = decodeURIComponent(originalCode);
-                  
-                  const container = node.closest('.abc-container');
-                  try {
-                    node.innerHTML = '';
-                    const visualObj = ABCJS.renderAbc(node.id, decodedCode, {
-                      responsive: "resize",
-                      add_classes: true
-                    });
-                    
-                    node.innerHTML = DOMPurify.sanitize(node.innerHTML, PREVIEW_SANITIZE_OPTIONS);
-                    
-                    const headers = parseAbcHeaders(decodedCode);
-                    const svgElement = node.querySelector('svg');
-                    if (svgElement) {
-                      svgElement.setAttribute('role', 'img');
-                      const titleId = 'abc-title-' + node.id;
-                      const descId = 'abc-desc-' + node.id;
-                      svgElement.setAttribute('aria-labelledby', titleId + ' ' + descId);
-                      svgElement.setAttribute('aria-describedby', 'abc-source-' + node.id);
-                      
-                      const svgTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                      svgTitle.id = titleId;
-                      svgTitle.textContent = `Sheet music for: ${headers.title}`;
-                      
-                      const svgDesc = document.createElementNS('http://www.w3.org/2000/svg', 'desc');
-                      svgDesc.id = descId;
-                      svgDesc.textContent = `Score in ${headers.key}, ${headers.meter} meter, composed by ${headers.composer}.`;
-                      
-                      svgElement.insertBefore(svgDesc, svgElement.firstChild);
-                      svgElement.insertBefore(svgTitle, svgElement.firstChild);
-                    }
-                    
-                    if (container) {
-                      setDiagramRenderState(container, 'ready');
 
-                      const oldRaw = container.querySelector('.abc-raw-code');
-                      if (oldRaw) oldRaw.remove();
-                      const oldSrOnly = container.querySelector('.abc-sr-only');
-                      if (oldSrOnly) oldSrOnly.remove();
-
-                      mountDiagramViewer(container, 'abc', [{
-                        title: 'Listen to score',
-                        ariaLabel: 'Listen to score',
-                        html: '<i class="bi bi-play-fill"></i> Listen',
-                        onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
-                      }]);
-
-                      const srOnlyDiv = document.createElement('div');
-                      srOnlyDiv.className = 'abc-sr-only';
-                      srOnlyDiv.id = 'abc-source-' + node.id;
-                      srOnlyDiv.textContent = decodedCode;
-
-                      container.appendChild(srOnlyDiv);
-                    }
-                  } catch (err) {
-                    console.error("ABCJS rendering failed:", err);
-                    if (container) {
-                      setDiagramRenderState(container, 'error', 'ABC notation could not be rendered. Check the score syntax and retry.');
-                    }
-                  }
-                }, 0);
-              }
-            });
-          }, { rootMargin: '150px 0px' });
-          
-          abcNodes.forEach(node => observer.observe(node));
+          abcNodes.forEach(function(node) {
+            setTimeout(() => renderAbcNotationNode(node, context), 0);
+          });
         };
         
         const loadAndRenderAbc = function() {
@@ -6691,6 +7094,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   async function compileDiagramLocally(engine, code) {
     if (typeof Neutralino === 'undefined') return null;
+    if (!Neutralino.os || !Neutralino.os.execCommand) return null;
+    if (!isLocalDiagramCommandExecutionAllowed(engine, code)) return null;
     try {
       if (engine === 'd2') {
         const result = await Neutralino.os.execCommand('d2 - -', { stdIn: code });
@@ -6714,6 +7119,21 @@ document.addEventListener("DOMContentLoaded", async function () {
       console.warn(`Local execution for ${engine} failed:`, e);
     }
     return null;
+  }
+
+  function isLocalDiagramCommandExecutionAllowed(engine, code) {
+    const supported = engine === 'd2' || engine === 'plantuml';
+    if (!supported) return false;
+    const source = String(code || '');
+    if (!source || source.length > 200000 || /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(source)) {
+      return false;
+    }
+    try {
+      return localStorage.getItem('markdownViewerAllowLocalDiagramCommands') === 'true' ||
+        window.MARKDOWN_VIEWER_ENABLE_LOCAL_RENDERERS === true;
+    } catch (_) {
+      return window.MARKDOWN_VIEWER_ENABLE_LOCAL_RENDERERS === true;
+    }
   }
 
   async function fetchDiagramPreview(apiUrl) {
@@ -10394,13 +10814,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       const cssTheme = isDarkTheme
         ? "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown-dark.min.css"
         : "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown.min.css";
+      const cssIntegrity = isDarkTheme
+        ? "sha384-tah+rtrY/RrDGiE3nwf/q5WWsyjjRO4iOPWuZi/NpDqjWEEsEU9fPpjX2f5lremS"
+        : "sha384-hZuxRjC/Dsr4zEx1JlUhDQqkvqBPp2VLHsgXfnxPq1ULDy1eIdWCiux7nvO1RIZP";
       const fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdnjs.cloudflare.com; img-src data: blob: https:; font-src data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;">
   <title>Markdown Export</title>
-  <link rel="stylesheet" href="${cssTheme}">
+  <link rel="stylesheet" href="${cssTheme}" integrity="${cssIntegrity}" crossorigin="anonymous">
   <script>
       window.MathJax = {
           loader: { load: ['[tex]/ams', '[tex]/boldsymbol'] },
@@ -10412,9 +10836,9 @@ document.addEventListener("DOMContentLoaded", async function () {
           }
       };
   </script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.5.2/abcjs-basic-min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" integrity="sha384-M5jmNxKC9EVnuqeMwRHvFuYUE8Hhp0TgBruj/GZRkYtiMrCRgH7yvv5KY+Owi7TW" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js" integrity="sha384-zkWMJO4sgpPUzyuOgDx8HB/K55glbAwajEpk1Go2NWRuPkPA/wIhoEJTuSkmOYrV" crossorigin="anonymous"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.5.2/abcjs-basic-min.js" integrity="sha384-nxKtRsFgPYIlwn4dow7ndIEZj9Ud11cUkJdJVOUjHhm8dFHiL0+VF356f6xBzeaL" crossorigin="anonymous"></script>
   <style>
       html {
           background-color: ${isDarkTheme ? "#0d1117" : "#ffffff"};
@@ -11747,55 +12171,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   pdfExportCancelBtn?.addEventListener("click", () => closeAppModal(pdfExportModal));
 
-  async function runBrowserPrintExport() {
-    const previousDocumentTitle = document.title;
-    document.title = getBrowserPrintDocumentTitle();
-    let restored = false;
-    const mediaQuery = window.matchMedia ? window.matchMedia('print') : null;
-
-    const restoreOnce = function() {
-      if (restored) return;
-      restored = true;
-      window.removeEventListener('afterprint', restoreOnce);
-      window.removeEventListener('focus', restoreOnce);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (mediaQuery) {
-        if (typeof mediaQuery.removeEventListener === 'function') {
-          mediaQuery.removeEventListener('change', handlePrintMediaChange);
-        } else if (typeof mediaQuery.removeListener === 'function') {
-          mediaQuery.removeListener(handlePrintMediaChange);
-        }
-      }
-      document.title = previousDocumentTitle;
-    };
-
-    const handlePrintMediaChange = function(event) {
-      if (!event.matches) restoreOnce();
-    };
-
-    const handleVisibilityChange = function() {
-      if (!document.hidden) restoreOnce();
-    };
-
-    window.addEventListener('afterprint', restoreOnce);
-    window.addEventListener('focus', restoreOnce);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    if (mediaQuery) {
-      if (typeof mediaQuery.addEventListener === 'function') {
-        mediaQuery.addEventListener('change', handlePrintMediaChange);
-      } else if (typeof mediaQuery.addListener === 'function') {
-        mediaQuery.addListener(handlePrintMediaChange);
-      }
-    }
-
-    try {
-      window.print();
-    } catch (error) {
-      restoreOnce();
-      throw error;
-    }
-  }
-
   pdfExportConfirmBtn?.addEventListener("click", async function (event) {
     event.preventDefault();
     closeAppModal(pdfExportModal);
@@ -12497,14 +12872,21 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareUrlInput     = document.getElementById('share-url-input');
   const shareGenerateBtn  = document.getElementById('share-generate-btn');
   const shareCopyBtn      = document.getElementById('share-copy-btn');
+  const shareDeleteBtn    = document.getElementById('share-delete-btn');
   const shareInviteState  = document.getElementById('share-invite-state');
   const shareModeView     = document.getElementById('share-mode-view');
   const shareModeEdit     = document.getElementById('share-mode-edit');
   const shareCardView     = document.getElementById('share-card-view');
   const shareCardEdit     = document.getElementById('share-card-edit');
   let generatedShareSnapshotUrl = '';
+  let generatedShareSnapshotExpiresIn = null;
+  let generatedShareSnapshotId = '';
+  let generatedShareSnapshotDeleteToken = '';
 
   function buildShareUrl(mode) {
+    generatedShareSnapshotExpiresIn = null;
+    generatedShareSnapshotId = '';
+    generatedShareSnapshotDeleteToken = '';
     const markdownText = markdownEditor.value;
     let encoded;
     try {
@@ -12542,8 +12924,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!payload || !SERVER_SHARE_ID_PATTERN.test(payload.id || '')) {
       throw new Error('Invalid share id returned');
     }
+    generatedShareSnapshotExpiresIn = Number.isFinite(payload.expiresIn) ? payload.expiresIn : null;
+    generatedShareSnapshotId = payload.id;
+    generatedShareSnapshotDeleteToken = typeof payload.deleteToken === 'string' ? payload.deleteToken : '';
 
     return getPublicAppBaseUrl() + '#' + getShareHashForMode(payload.id, mode);
+  }
+
+  function formatShareExpiry(seconds) {
+    const days = Math.round(Number(seconds || 0) / 86400);
+    if (days > 1) return `${days} days`;
+    if (days === 1) return '1 day';
+    const hours = Math.max(1, Math.round(Number(seconds || 0) / 3600));
+    return `${hours} hour${hours === 1 ? '' : 's'}`;
   }
 
   function setShareInviteState(text) {
@@ -12568,6 +12961,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function resetShareSnapshotLink() {
     generatedShareSnapshotUrl = '';
+    generatedShareSnapshotExpiresIn = null;
+    generatedShareSnapshotId = '';
+    generatedShareSnapshotDeleteToken = '';
     shareUrlInput.value = '';
     shareUrlInput.placeholder = 'Share link appears here';
     shareCopyBtn.disabled = true;
@@ -12581,6 +12977,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (shareCopyBtn) {
       shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
+    }
+    if (shareDeleteBtn) {
+      shareDeleteBtn.hidden = true;
+      shareDeleteBtn.disabled = true;
+      shareDeleteBtn.innerHTML = '<i class="bi bi-trash"></i><span>Delete</span>';
     }
     setShareInviteState('Ready to copy');
   }
@@ -12597,6 +12998,30 @@ document.addEventListener("DOMContentLoaded", async function () {
       return await createStoredShareUrl(mode);
     }
     return url;
+  }
+
+  async function deleteStoredShareSnapshot() {
+    if (!generatedShareSnapshotId || !generatedShareSnapshotDeleteToken) {
+      throw new Error('This link cannot be deleted from here.');
+    }
+    const response = await fetch(getShareApiBaseUrl() + '/api/share/' + encodeURIComponent(generatedShareSnapshotId), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        deleteToken: generatedShareSnapshotDeleteToken
+      })
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_) {}
+
+    if (!response.ok || !payload || payload.deleted !== true) {
+      throw new Error((payload && payload.error) || ('HTTP ' + response.status));
+    }
   }
 
   function openShareModal() {
@@ -12669,15 +13094,29 @@ document.addEventListener("DOMContentLoaded", async function () {
         generatedShareSnapshotUrl = url;
         shareUrlInput.value = url;
         shareCopyBtn.disabled = false;
+        if (shareDeleteBtn) {
+          const canDeleteStoredSnapshot = Boolean(generatedShareSnapshotId && generatedShareSnapshotDeleteToken);
+          shareDeleteBtn.hidden = !canDeleteStoredSnapshot;
+          shareDeleteBtn.disabled = !canDeleteStoredSnapshot;
+        }
         if (shareInviteSection) {
           shareInviteSection.dataset.state = 'active';
         }
-        setShareInviteState('Ready to copy');
+        setShareInviteState(generatedShareSnapshotExpiresIn
+          ? `Ready to copy. Stored snapshot expires in ${formatShareExpiry(generatedShareSnapshotExpiresIn)}.`
+          : 'Ready to copy');
       } catch (error) {
         console.error('Share link generation failed:', error);
         generatedShareSnapshotUrl = '';
+        generatedShareSnapshotId = '';
+        generatedShareSnapshotDeleteToken = '';
+        generatedShareSnapshotExpiresIn = null;
         shareUrlInput.value = 'Failed to create share link.';
         shareCopyBtn.disabled = true;
+        if (shareDeleteBtn) {
+          shareDeleteBtn.hidden = true;
+          shareDeleteBtn.disabled = true;
+        }
         if (shareInviteSection) {
           shareInviteSection.dataset.state = 'error';
         }
@@ -12686,6 +13125,33 @@ document.addEventListener("DOMContentLoaded", async function () {
       } finally {
         shareGenerateBtn.disabled = false;
         shareGenerateBtn.innerHTML = originalHTML;
+      }
+    });
+  }
+
+  if (shareDeleteBtn) {
+    shareDeleteBtn.addEventListener('click', async function () {
+      if (shareDeleteBtn.disabled || !generatedShareSnapshotId || !generatedShareSnapshotDeleteToken) return;
+      if (!confirm('Delete this stored snapshot now? The copied link will stop working.')) return;
+      const originalHTML = shareDeleteBtn.innerHTML;
+      shareDeleteBtn.disabled = true;
+      shareDeleteBtn.innerHTML = '<i class="bi bi-hourglass-split"></i><span>Deleting</span>';
+      try {
+        await deleteStoredShareSnapshot();
+        generatedShareSnapshotUrl = '';
+        generatedShareSnapshotId = '';
+        generatedShareSnapshotDeleteToken = '';
+        generatedShareSnapshotExpiresIn = null;
+        shareUrlInput.value = '';
+        shareUrlInput.placeholder = 'Stored snapshot deleted';
+        shareCopyBtn.disabled = true;
+        shareDeleteBtn.hidden = true;
+        setShareInviteState('Stored snapshot deleted');
+      } catch (error) {
+        console.error('Share deletion failed:', error);
+        shareDeleteBtn.disabled = false;
+        shareDeleteBtn.innerHTML = originalHTML;
+        showShareErrorModal('Failed to delete stored snapshot: ' + error.message);
       }
     });
   }
@@ -12882,6 +13348,25 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function normalizeLiveAccessMode(mode) {
     return mode === LIVE_SHARE_ACCESS_VIEW ? LIVE_SHARE_ACCESS_VIEW : LIVE_SHARE_ACCESS_EDIT;
+  }
+
+  function normalizeLiveSocketRole(role) {
+    return role === 'host' || role === LIVE_SHARE_ACCESS_EDIT ? role : LIVE_SHARE_ACCESS_VIEW;
+  }
+
+  function createLiveCapabilities() {
+    return {
+      host: 'host-' + getRandomBase64Url(32),
+      edit: 'edit-' + getRandomBase64Url(32),
+      view: 'view-' + getRandomBase64Url(32)
+    };
+  }
+
+  function getLiveCapabilityForAccess(capabilities, mode) {
+    if (!capabilities) return '';
+    return normalizeLiveAccessMode(mode) === LIVE_SHARE_ACCESS_EDIT
+      ? capabilities.edit
+      : capabilities.view;
   }
 
   function getSelectedLiveAccessMode() {
@@ -13091,9 +13576,18 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
-  function getLiveRoomSocketUrl(roomId, secret) {
+  function getLiveRoomSocketUrl(roomId, secret, auth) {
     const encodedRoom = encodeURIComponent(roomId);
-    const query = '?secret=' + encodeURIComponent(secret);
+    const params = new URLSearchParams();
+    params.set('secret', secret);
+    if (auth && auth.role) params.set('role', normalizeLiveSocketRole(auth.role));
+    if (auth && auth.capability) params.set('cap', auth.capability);
+    if (auth && auth.capabilities) {
+      params.set('hostCap', auth.capabilities.host || '');
+      params.set('editCap', auth.capabilities.edit || '');
+      params.set('viewCap', auth.capabilities.view || '');
+    }
+    const query = '?' + params.toString();
     const configuredBase = String(window.MARKDOWN_VIEWER_LIVE_ROOM_URL || '').trim();
 
     if (configuredBase) {
@@ -13142,7 +13636,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function createLiveRoomConnection(options) {
     const pendingMessages = [];
-    const socketUrl = getLiveRoomSocketUrl(options.roomId, options.secret);
+    const socketUrl = getLiveRoomSocketUrl(options.roomId, options.secret, {
+      role: options.role,
+      capability: options.capability,
+      capabilities: options.capabilities
+    });
     let socket = null;
     let destroyed = false;
     let opened = false;
@@ -13283,7 +13781,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     return (normalized || 'Live Share').slice(0, 120);
   }
 
-  function buildLiveInviteUrl(roomId, secret, title) {
+  function buildLiveInviteUrl(roomId, secret, title, accessMode, capabilities) {
     const isLocal = window.location.origin.includes('localhost') ||
                     window.location.origin.startsWith('file://') ||
                     typeof Neutralino !== 'undefined';
@@ -13294,9 +13792,17 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const base = baseUrl + '#live=' + encodeURIComponent(roomId + '.' + secret);
     const params = [];
+    const normalizedAccess = normalizeLiveAccessMode(accessMode);
+    const role = normalizedAccess === LIVE_SHARE_ACCESS_EDIT ? LIVE_SHARE_ACCESS_EDIT : LIVE_SHARE_ACCESS_VIEW;
+    const capability = getLiveCapabilityForAccess(capabilities, normalizedAccess);
     const safeTitle = getSafeLiveTitle(title);
     if (safeTitle) {
       params.push('title=' + encodeURIComponent(safeTitle));
+    }
+    params.push('access=' + encodeURIComponent(normalizedAccess));
+    params.push('role=' + encodeURIComponent(role));
+    if (capability) {
+      params.push('cap=' + encodeURIComponent(capability));
     }
 
     return params.length ? base + '&' + params.join('&') : base;
@@ -13318,6 +13824,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       roomId,
       secret,
       title: params.get('title') || '',
+      accessMode: normalizeLiveAccessMode(params.get('access')),
+      role: normalizeLiveSocketRole(params.get('role')),
+      capability: params.get('cap') || '',
       seed: params.get('seed') || ''
     };
   }
@@ -13356,7 +13865,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     const safeTitle = getSafeLiveTitle(title);
     liveCollaboration.roomTitle = safeTitle;
     if (liveShareUrlInput) {
-      liveShareUrlInput.value = buildLiveInviteUrl(liveCollaboration.roomId, liveCollaboration.secret, safeTitle);
+      liveShareUrlInput.value = buildLiveInviteUrl(
+        liveCollaboration.roomId,
+        liveCollaboration.secret,
+        safeTitle,
+        liveCollaboration.accessMode,
+        liveCollaboration.capabilities
+      );
     }
     if (liveCollaboration.tabId) {
       const tab = tabs.find(function(t) { return t.id === liveCollaboration.tabId; });
@@ -14238,7 +14753,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
     const requestedTitle = options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share';
     const hostTitle = getSafeLiveTitle(requestedTitle);
-    const inviteUrl = buildLiveInviteUrl(roomId, secret, hostTitle);
     if (!isHost && options.initialUpdate) {
       try {
         modules.Y.applyUpdate(ydoc, options.initialUpdate);
@@ -14252,6 +14766,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         ? (options.accessMode || getSelectedLiveAccessMode())
         : (sessionMap.get('accessMode') || options.accessMode || LIVE_SHARE_ACCESS_VIEW)
     );
+    const liveCapabilities = isHost ? (options.capabilities || createLiveCapabilities()) : null;
+    const liveRole = isHost ? 'host' : normalizeLiveSocketRole(options.role || requestedAccessMode);
+    const liveCapability = isHost
+      ? liveCapabilities.host
+      : (options.capability || '');
+    const inviteUrl = buildLiveInviteUrl(roomId, secret, hostTitle, requestedAccessMode, liveCapabilities);
     if (isHost && yText.length === 0) {
       yText.insert(0, markdownEditor.value || '');
     }
@@ -14320,6 +14840,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       returnTabId,
       removeTabOnLeave,
       isHost,
+      socketRole: liveRole,
+      socketCapability: liveCapability,
+      capabilities: liveCapabilities,
       pendingJoinTab: shouldDeferParticipantTab,
       hasReceivedRemoteState: false,
       joinTimeoutId: null,
@@ -14399,6 +14922,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     liveCollaboration.connection = createLiveRoomConnection({
       roomId,
       secret,
+      role: liveCollaboration.socketRole,
+      capability: liveCollaboration.socketCapability,
+      capabilities: liveCollaboration.isHost ? liveCollaboration.capabilities : null,
       ydoc,
       Y: modules.Y,
       participantId: liveCollaboration.localParticipantId,
@@ -14510,6 +15036,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         roomId: parsed.roomId,
         secret: parsed.secret,
         title: parsed.title,
+        accessMode: parsed.accessMode,
+        role: parsed.role,
+        capability: parsed.capability,
         isHost: false,
         forceGeneratedName: true,
         originalTabSnapshot,

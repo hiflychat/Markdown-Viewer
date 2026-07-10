@@ -78,7 +78,13 @@ Build output is written under `desktop-app/dist/`.
 | Token security | One-time |
 | Logging | Disabled |
 
-Native APIs are intentionally allowlisted: app exit, open/save dialogs, message boxes, external URL open, tray setup, command execution, file read/write, and storage get/set.
+Native APIs are intentionally allowlisted: app exit, open/save dialogs, message boxes, external URL open, tray setup, file read/write, and storage get/set. Command execution is not part of the default allowlist.
+
+## Local Renderer Security
+
+Markdown content is treated as untrusted input. The desktop app does not allow Markdown preview rendering to run local shell commands by default. Native file open/save remains available through Neutralino dialogs and filesystem APIs.
+
+Remote-safe diagram rendering continues to work where supported. Local command renderers such as D2 or PlantUML should only be enabled in a custom build after the user has explicitly accepted that local renderer programs process document content on their machine, and only fixed commands with stdin input should be allowed.
 
 ## Docker Build
 
