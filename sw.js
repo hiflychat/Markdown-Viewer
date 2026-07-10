@@ -110,7 +110,9 @@ self.addEventListener('fetch', event => {
         })
     );
   } else {
-    // Network-only for non-CDN external requests
-    event.respondWith(fetch(event.request));
+    // Let arbitrary external resources use the browser's normal request path.
+    // Wrapping user-supplied images in service-worker fetch() makes them subject
+    // to connect-src instead of img-src, which blocks otherwise valid images.
+    return;
   }
 });
