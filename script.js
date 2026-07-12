@@ -262,7 +262,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let currentViewMode = 'split'; // 'editor', 'split', or 'preview'
   const shareSnapshotViewOnlyTabIds = new Set();
   const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
-  const APP_VERSION = '3.9.0';
+  const APP_VERSION = '3.9.1';
   let activeModal = null;
   let lastFocusedElement = null;
   let isFindModalOpen = false;
