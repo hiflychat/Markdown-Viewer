@@ -2,7 +2,7 @@
 
 Welcome to the documentation for Markdown Viewer. Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a split-screen live Markdown preview with sync scrolling. It includes document tabs, GitHub-Flavored Markdown, rich visual renderers, Markdown-to-PDF/HTML/PNG exports, Share Snapshot links, Live Share rooms, a PWA-capable web build, Docker deployment, and a lightweight Neutralinojs desktop build.
 
-Most editing and rendering happens on your own device. The important exceptions are documented clearly: GitHub import contacts GitHub, remote diagram fallbacks contact third-party renderers, large Share Snapshot links use temporary Cloudflare KV storage, and Live Share relays temporary collaboration updates through Cloudflare Durable Objects.
+Most editing and rendering happens on your own device. The important exceptions are documented clearly: GitHub import contacts GitHub, remote diagram fallbacks contact third-party renderers, large Share Snapshot links use temporary Cloudflare KV storage, and Live Share relays temporary collaboration updates through Cloudflare Durable Objects. The web deployment also applies CSP and security headers, while the desktop build uses a restricted native API allowlist.
 
 ## Start Here
 
@@ -47,9 +47,11 @@ Run local web builds through `localhost` or another HTTP(S) server. Opening `ind
 
 - No accounts, cookies, analytics, ads, or telemetry are implemented.
 - Normal documents and settings are stored in browser localStorage or local desktop storage.
+- Private mode clears document state and prevents normal document-state persistence until it is turned off; the About dialog also provides Clear local data.
 - Small Share Snapshot links keep compressed content in the URL hash.
-- Large Share Snapshot links upload the snapshot to Cloudflare KV for 90 days.
+- Large Share Snapshot links upload the snapshot to Cloudflare KV for up to 90 days and remain bearer links for anyone who has the URL.
 - Live Share sends real-time updates, display names, cursors, and presence through a Cloudflare Durable Object while the room is active.
+- Live Share host, edit, and view capabilities are authenticated server-side, and unsupported WebSocket origins are rejected.
 - Remote diagram renderers receive diagram source when PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, or some preview helpers need them.
 
 For the complete table of data flows, see [Features](Features#data-handling-summary).

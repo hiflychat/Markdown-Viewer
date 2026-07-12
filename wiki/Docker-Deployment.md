@@ -66,13 +66,18 @@ The Docker image uses `nginx:alpine`. Production deployments should keep these b
 - Serve `index.html`, `script.js`, `styles.css`, `preview-worker.js`, `sw.js`, `manifest.json`, and `assets/`.
 - Serve JavaScript files with correct MIME types.
 - Allow Service Worker registration from the app origin.
-- Send security headers such as:
+- Send security headers that match the app's CSP and deployment policy. The current Docker image includes:
 
 ```nginx
 add_header X-Frame-Options "SAMEORIGIN" always;
 add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 ```
+
+The Dockerfile also sets a Content-Security-Policy with the external origins required by the web app. Review that policy when adding a renderer or changing lazy-loaded resources.
+
+Cloudflare Pages deployments use the stricter root `_headers` and `_redirects` files, including CSP, HSTS, clickjacking, permissions, cross-origin, and sensitive-path protections. When self-hosting behind Docker or another reverse proxy, keep the CSP compatible with `index.html`, lazy-loaded renderers, Share Snapshot, and Live Share instead of copying a wildcard policy.
 
 Use long caching carefully. `sw.js`, `index.html`, `script.js`, and `styles.css` are update-sensitive; stale versions can keep old app behavior alive.
 

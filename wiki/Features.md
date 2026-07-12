@@ -47,6 +47,11 @@ Storage keys used by the current implementation include:
 
 On the web, these values live in browser `localStorage`. In the desktop app, the code mirrors selected localStorage values into Neutralino storage, so preferences and workspace state survive desktop restarts.
 
+The About dialog includes two storage controls:
+
+- **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
+- **Clear local data** removes saved document tabs, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+
 ## Editing and Formatting Tools
 
 The formatting toolbar inserts or transforms Markdown at the current selection. It provides WYSIWYG-style helpers for plain Markdown with live preview, not full in-place rich-text editing.
@@ -235,6 +240,7 @@ HTML export:
 - Includes GitHub-style Markdown CSS, syntax highlighting styles, alert styles, footnote styles, math/diagram support hooks, and frontmatter rendering.
 - YAML frontmatter is parsed and shown as a table before the document body.
 - HTML export uses sanitized rendered content.
+- Exported HTML includes a restrictive document CSP and Subresource Integrity metadata for its external CSS/scripts where applicable.
 
 PDF export:
 
@@ -278,7 +284,8 @@ Storage behavior:
 - The server accepts up to 500,000 characters per stored snapshot.
 - Snapshot ids are random 10-character values using a reduced alphabet and must match the app's id pattern.
 - Stored snapshot responses use `Cache-Control: no-store`.
-- The Share API allows CORS for GET, POST, and OPTIONS.
+- The Share API allows CORS only for the production app, `null`, and `localhost`/`127.0.0.1` development origins; unsupported origins are rejected.
+- Creating a stored snapshot returns a creator-side deletion token. The token is hashed in KV and is required for `DELETE /api/share/<id>`; it is not part of the share URL.
 - Shared snapshot tabs are temporary and are not saved to the recipient's local workspace.
 
 Privacy implications:
@@ -309,8 +316,10 @@ Implementation:
 
 - The client uses Yjs for the shared document state.
 - Browser clients connect with WebSocket to `/live-room/<room-id>?secret=<secret>`.
+- The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, `null`, and localhost development origins are allowed.
+- The host connection establishes separate host, edit, and view capabilities. The Durable Object stores these capabilities and authenticates each joining role server-side.
 - Cloudflare Pages routes the WebSocket to a Durable Object named `LIVE_ROOMS`.
-- The Durable Object relays `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `leave`, and `session-end` messages.
+- The Durable Object relays only known message types and filters them by role: viewers cannot send updates or session-end messages, editors can send document sync messages, and only the host can send every supported type.
 - The Durable Object does not write document state to KV or a database.
 - Room identity is derived from room id plus secret.
 
@@ -423,7 +432,7 @@ Desktop-specific behavior:
 - Uses one-time token security.
 - Logging is disabled in the current config.
 - Native APIs are allowlisted instead of fully open.
-- Allowed APIs include app exit, open/save dialogs, message boxes, external URL opening, tray setup, command execution, file read/write, and Neutralino storage get/set.
+- Allowed APIs include app exit, open/save dialogs, message boxes, external URL opening, tray setup, file read/write, and Neutralino storage get/set. `os.execCommand` is intentionally not in the default allowlist.
 - Local imports and exports use native open/save dialogs.
 - External Markdown file paths passed at launch can be loaded into the editor.
 - Closing the desktop window asks for confirmation before exiting.
@@ -446,8 +455,11 @@ Important protections:
 - Preview sanitization allows needed render attributes and safe URI patterns while blocking scripts and inline event handlers.
 - CDN scripts and styles in `index.html` use Subresource Integrity where checked in.
 - Desktop preparation verifies downloaded assets against SHA-384 integrity values when available.
+- Cloudflare Pages supplies CSP, clickjacking, referrer, permissions, cross-origin, HSTS, and MIME-sniffing protections through `_headers`; sensitive deployment files are redirected to 404 through `_redirects`.
 - Canvas exports use `allowTaint: false`.
+- STL rendering validates source size, finite vertex coordinates, and geometry vertex count before creating a WebGL view.
 - The desktop native API allowlist follows least privilege for the app's current features.
+- Private mode and Clear local data provide explicit controls over local document persistence.
 - Share and live endpoints return no-store responses for dynamic content.
 - The app does not include analytics, telemetry scripts, ad pixels, accounts, cookies, or subscription code.
 
@@ -458,6 +470,7 @@ Security limitations:
 - Links and images in Markdown can request external resources when rendered or clicked.
 - View-only Live Share relies on cooperative client enforcement and relay filtering, not end-to-end encryption.
 - Share Snapshot links are bearer links: possession of the URL grants access.
+- Security headers and CSP depend on the deployment surface; self-hosters should preserve the policies in `_headers` and review the Docker/Nginx policy when customizing it.
 
 ## Data Handling Summary
 
@@ -465,6 +478,7 @@ Security limitations:
 | :--- | :--- | :--- | :--- |
 | Typing and local preview | No | Browser memory and saved tabs | Sanitized before preview insertion. |
 | Normal tab autosave | No | `localStorage` or desktop storage mirror | Cleared with site/app data or Reset. |
+| Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
 | GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
@@ -481,6 +495,7 @@ Security limitations:
 - Browser storage quotas can reject very large saved workspaces.
 - The GitHub importer shows a maximum of 30 Markdown files.
 - Stored Share Snapshot content is limited to 500,000 characters.
+- STL source is limited to 2 MiB and parsed geometry to 300,000 vertices.
 - Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
 - Remote renderer availability depends on third-party services and network conditions.
 - The service worker cannot cache assets that have never been successfully fetched.

@@ -12,6 +12,7 @@ This page documents the runtime, storage, dependency, Docker, Cloudflare, and de
 | `markdownViewerGlobalState` | `localStorage`, mirrored in desktop | Theme, direction, view mode, scroll sync, and other global UI preferences. |
 | `app-lang` | `localStorage` | Selected UI language. |
 | `find-replace-docked` | `localStorage` | Find and Replace panel dock preference. |
+| `markdownViewerPrivateMode` | `localStorage` | Whether document-state persistence is disabled. This preference remains while document-state keys are cleared. |
 
 The desktop app starts by copying known Neutralino storage values back into `localStorage`, then writes through `saveStorageItem()` to keep both layers aligned.
 
@@ -19,6 +20,8 @@ Temporary shared content is intentionally not persisted:
 
 - Share Snapshot tabs have `kind: "share-snapshot"`.
 - Live Share participant/host tabs are stripped or restored when leaving the session.
+
+Private mode clears the normal document-state keys (`markdownViewerTabs`, `markdownViewerActiveTab`, `markdownViewerUntitledCounter`, and `markdownViewerGlobalState`) when enabled and prevents them from being written until the mode is turned off. Use **Clear local data** in the About dialog to clear the same local state without enabling private mode.
 
 ## Client Libraries
 
@@ -72,6 +75,8 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 | Stored Share Snapshot TTL | 90 days |
 | Live Share max participants | 64 |
 | Live Share max message | 1 MB |
+| STL source limit | 2 MiB |
+| STL geometry limit | 300,000 vertices |
 
 ## Sanitization
 
@@ -82,6 +87,8 @@ The main preview path calls DOMPurify with additional tags and attributes needed
 - Allowed URI schemes include HTTP(S), `mailto:`, `tel:`, `blob:`, relative URLs, and safe non-script values.
 
 Export paths use similar expanded sanitizer settings for SVG/math capture. Scripts and unsafe event handlers are still removed.
+
+Standalone HTML export also includes a restrictive CSP and SRI metadata for its external CSS and renderer scripts where applicable.
 
 ## Service Worker and PWA
 
@@ -131,12 +138,13 @@ script_name = "markdown-viewer-live-room"
 - `OPTIONS` for CORS preflight.
 - `POST /api/share` to create a stored snapshot.
 - `GET /api/share/<id>` to load a stored snapshot.
+- `DELETE /api/share/<id>` to delete a stored snapshot when the creator supplies its deletion token.
 
-Responses set `Cache-Control: no-store` and `Access-Control-Allow-Origin: *`. Stored records contain content, mode, title, createdAt, and size. Invalid ids, missing content, oversized content, missing KV binding, and unknown routes return JSON errors.
+Responses set `Cache-Control: no-store` and vary CORS by request origin. The allowed origins are the production app, `null`, and localhost/127.0.0.1 development origins; unsupported origins receive `403`. Stored records contain content, mode, title, creation time, size, and a hash of the creator deletion token. The token is returned only when the snapshot is created. Invalid ids, missing content, oversized content, invalid deletion tokens, missing KV binding, and unknown routes return JSON errors.
 
 ## Live Room API
 
-`functions/live-room/[[room]].js` supports WebSocket upgrades only. It validates room and secret length, requires `LIVE_ROOMS`, and forwards to a Durable Object chosen by `roomName + ":" + secret`.
+`functions/live-room/[[room]].js` supports WebSocket upgrades only. It validates the WebSocket `Origin`, room and secret length, requires `LIVE_ROOMS`, and forwards to a Durable Object chosen by `roomName + ":" + secret`. The Durable Object authenticates host, edit, and view capabilities, filters message types by role, and enforces the participant/message limits.
 
 See [Live Share Cloudflare](Live-Share-Cloudflare) for runtime flow and limits.
 
@@ -146,11 +154,15 @@ The root Docker build serves static files with Nginx on port 80. The repository 
 
 Security headers configured in Docker/Nginx documentation include:
 
-- `X-Frame-Options: SAMEORIGIN`
+- `Strict-Transport-Security` (Cloudflare Pages)
+- `Content-Security-Policy`
+- `X-Frame-Options: DENY` (Cloudflare Pages; the Docker image has its own Nginx policy)
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy`
+- `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy`
 
-Self-hosters should make sure `preview-worker.js`, `sw.js`, `manifest.json`, `script.js`, `styles.css`, `assets/`, `workers/`, and `functions/` or their Cloudflare equivalents are deployed according to the features they intend to use.
+Cloudflare Pages reads the root `_headers` and `_redirects` files. `_redirects` hides `.env`, `_headers`, and source-map paths behind 404 responses. Self-hosters should preserve equivalent policies and make sure `preview-worker.js`, `sw.js`, `manifest.json`, `script.js`, `styles.css`, `assets/`, `workers/`, and `functions/` or their Cloudflare equivalents are deployed according to the features they intend to use.
 
 ## Neutralino Desktop Configuration
 
@@ -177,11 +189,12 @@ Native allowlist:
 - `os.showMessageBox`
 - `os.open`
 - `os.setTray`
-- `os.execCommand`
 - `filesystem.readFile`
 - `filesystem.writeFile`
 - `storage.setData`
 - `storage.getData`
+
+`os.execCommand` is intentionally absent from the default allowlist. The desktop renderer therefore cannot execute local shell commands through the standard configuration.
 
 The browser/chrome modes block filesystem and/or OS APIs more aggressively.
 

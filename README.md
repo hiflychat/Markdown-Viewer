@@ -47,6 +47,7 @@
   - [Project Directory Structure](#project-directory-structure)
   - [Built With (Technology Stack)](#built-with-technology-stack)
   - [Privacy](#privacy)
+  - [Security and Privacy Controls](#security-and-privacy-controls)
   - [Contributing & Code Quality](#contributing--code-quality)
   - [Showcase & Community Projects](#showcase--community-projects)
   - [Contributors](#contributors)
@@ -93,10 +94,11 @@ Markdown Viewer handles the usual Markdown basics, but its real value is helping
    - **STL 3D Model Renderer**: inspect 3D model previews alongside technical notes.
    - **ABC Music Player & Sheet Music Viewer**: render sheet music and play notation in the browser.
 
-3. **Live Share Temporary Rooms**: collaborate in real time for quick editing sessions, reviews, or pair-writing, with access modes for editable or view-only sessions.
-4. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly.
+3. **Live Share Temporary Rooms**: collaborate in real time for quick editing sessions, reviews, or pair-writing, with server-checked host, editable, and view-only capabilities.
+4. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly. Large stored snapshots expire after 90 days.
 5. **LaTeX Math Notation**: render inline and display formulas with MathJax, useful for math-heavy notes, papers, and technical explanations.
 6. **Markdown to PDF, HTML & PNG Export**: export Markdown, HTML, PNG, Browser Print / Save as PDF, or Legacy Raster PDF for documents that need sharing, printing, or archiving.
+7. **Privacy and Security Controls**: use Private mode to prevent document persistence, clear saved local data, and rely on sanitized previews, hardened export HTML, and restricted desktop native APIs.
 
 For the full feature list, details, limitations, and privacy notes, see the [features reference](wiki/Features.md#product-summary).
 
@@ -126,12 +128,12 @@ Markdown Viewer works well as a Markdown diagram editor for technical notes, doc
 
 ## Sharing, Collaboration, and Export
 
-- **Share Snapshot** creates quick links for point-in-time Markdown sharing. Small documents can stay in the URL hash; larger snapshots use temporary Cloudflare KV storage when that backend is configured.
+- **Share Snapshot** creates quick links for point-in-time Markdown sharing. Small documents can stay in the URL hash; larger snapshots use temporary Cloudflare KV storage for up to 90 days when that backend is configured. Snapshot links are bearer links: anyone who has the link can open it.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />
 </p>
 
-- **Live Share rooms** provide temporary collaborative editing through Cloudflare Durable Objects, with access modes for editable collaboration or view-only review. They are useful for reviews and pair-writing, but they are not end-to-end encrypted.
+- **Live Share rooms** provide temporary collaborative editing through Cloudflare Durable Objects, with server-checked host, editable, and view-only capabilities. They are useful for reviews and pair-writing, but they are not end-to-end encrypted.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/4d7a72c7-8eec-48df-9f66-49fe9f205d4f" alt="Live Share rooms" width="90%" />
 </p>
@@ -267,7 +269,15 @@ Some advanced diagram engines use remote renderers such as PlantUML, Kroki, or m
 
 Markdown Viewer is not a cloud workspace. Normal typing, preview rendering, local file import, tab autosave, theme settings, and most exports happen on your device. No login is required, and the app does not implement analytics, telemetry, ads, or tracking cookies.
 
-Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
+Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode stops saving document content and workspace state locally; the About dialog also provides a Clear local data action. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
+
+## Security and Privacy Controls
+
+- Preview HTML is sanitized before insertion, and exported HTML includes a restrictive CSP plus SRI metadata for its external assets.
+- Cloudflare Pages deployments use `_headers` for CSP, clickjacking protection, referrer and permissions policies, and no-sniff protection; sensitive paths are redirected to 404 responses.
+- Stored Share Snapshot API CORS is limited to the production app, `null`, and local development origins. Stored responses are `no-store`, and creators receive a deletion token from the API.
+- STL rendering rejects oversized sources, non-finite geometry, and excessive vertex counts before WebGL rendering.
+- The Neutralino desktop build removes the default `os.execCommand` exposure and keeps native APIs on an explicit allowlist. See the [security model](wiki/Features.md#security-model) and [configuration reference](wiki/Configuration.md#share-api).
 
 ---
 

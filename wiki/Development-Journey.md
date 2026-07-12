@@ -20,14 +20,16 @@ This page keeps the technical record too, but the journey is not only technical.
 | Desktop | Neutralino wrapper, native dialogs, launch-file support, storage persistence, and local resource bundling. |
 | Sharing | Compressed URL snapshots, modal share UX, temporary KV-backed large snapshots, and Cloudflare Live Share rooms. |
 | Advanced renderers | PlantUML, D2, Graphviz, Vega-Lite, WaveDrom, Markmap, GeoJSON, TopoJSON, STL, and ABC notation. |
-| Hardening | DOMPurify, SRI, least-privilege desktop APIs, canvas taint protection, accessibility improvements, and service-worker caching. |
+| Hardening | DOMPurify, CSP/security headers, SRI, least-privilege desktop APIs, server-side Share/Live authorization, STL validation, canvas taint protection, accessibility improvements, and service-worker caching. |
 
 ## Current Release Highlights
 
 Current sharing behavior separates two clear workflows:
 
-- Share Snapshot creates a read-only or editable point-in-time copy. Small documents stay inside the URL hash. Larger documents are stored in Cloudflare KV for 90 days.
+- Share Snapshot creates a read-only or editable point-in-time copy. Small documents stay inside the URL hash. Larger documents are stored in Cloudflare KV for 90 days, with restricted API origins and creator-side deletion tokens.
 - Live Share creates a temporary Cloudflare Durable Object room for real-time Yjs collaboration. The room relays updates and presence while active and does not store the document as a permanent record.
+
+The security-hardening work also added Private mode and Clear local data controls, hardened exported HTML, validated STL source/geometry before WebGL rendering, rejected unsupported Live Share origins, and moved Live Share role enforcement into the Durable Object rather than relying only on the client.
 
 Recent work also fixed shared rendering so advanced content such as LaTeX, Mermaid, TopoJSON, and other renderers complete after shared content loads, and it improved desktop startup resource preparation.
 
@@ -80,5 +82,6 @@ The changelog records many small fixes. The recurring themes are:
 - Temporary shared/live tabs are excluded from saved workspaces.
 - Small snapshot links keep content in the URL hash.
 - Stored snapshot links use Cloudflare KV for 90 days.
+- Private mode prevents normal document-state persistence and Clear local data removes saved workspace state.
 - Live Share uses Cloudflare Durable Objects as temporary relays.
 - Remote renderer and import features send only the data needed for that feature.

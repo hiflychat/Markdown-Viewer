@@ -11,6 +11,7 @@ The desktop app wraps Markdown Viewer in Neutralinojs for users who want a light
 - Mirrors selected localStorage values into Neutralino storage for restart persistence.
 - Uses a restricted native API allowlist.
 - Prepared builds load renderer libraries from local `/libs/...` files instead of CDNs.
+- The default configuration does not expose `os.execCommand`; Markdown preview cannot execute local shell commands through the standard desktop build.
 
 Network features remain network features: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and external links can still contact remote services.
 
@@ -78,11 +79,12 @@ Allowed native APIs:
 - `os.showMessageBox`
 - `os.open`
 - `os.setTray`
-- `os.execCommand`
 - `filesystem.readFile`
 - `filesystem.writeFile`
 - `storage.setData`
 - `storage.getData`
+
+`os.execCommand` is intentionally absent from the default allowlist. A custom build that adds local command execution must treat document content as untrusted and use an explicit opt-in with fixed, narrowly scoped commands.
 
 Browser/chrome modes block filesystem and OS APIs more tightly.
 

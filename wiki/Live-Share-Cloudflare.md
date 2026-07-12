@@ -10,8 +10,8 @@ Live Share is the temporary Markdown collaboration feature in Markdown Viewer. I
 4. The app creates a random room id and a random room secret.
 5. The app creates a Yjs document for the active tab.
 6. The host opens a WebSocket to `/live-room/<room-id>?secret=<secret>`.
-7. The invite link is shown only after the room starts.
-8. Participants open the invite link, join a temporary live tab, request the current Yjs state, and render participant avatars/cursors.
+7. The host connection establishes separate host, edit, and view capabilities before the invite link is shown.
+8. The invite link includes the selected role and capability for the recipient. Participants open it, join a temporary live tab, request the current Yjs state, and render participant avatars/cursors.
 9. The host can end the room for everyone.
 
 The invite URL contains the room id, secret, and title. It does not embed the full Markdown document body.
@@ -26,6 +26,7 @@ There are two checked-in Cloudflare entry points:
 The Pages Function:
 
 - Requires a WebSocket upgrade request.
+- Allows only the production app, `null`, and localhost/127.0.0.1 development `Origin` values.
 - Requires a `LIVE_ROOMS` Durable Object binding.
 - Rejects room names over 160 characters.
 - Rejects secrets over 256 characters.
@@ -35,8 +36,10 @@ The Pages Function:
 The Durable Object:
 
 - Accepts the WebSocket pair.
+- Authenticates the host capability when the room is first created and checks edit/view capabilities against the stored room credentials for later connections.
 - Assigns a temporary socket participant id.
 - Relays only known message types: `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `leave`, and `session-end`.
+- Filters messages by role: viewers can send presence/sync requests but not document updates or session-end; editors can send document sync messages; only the host can send every supported message type.
 - Adds `roomId` and `sentAt` to normalized messages.
 - Broadcasts messages to other sockets in the same room.
 - Broadcasts `leave` when a socket closes or errors.
@@ -73,6 +76,8 @@ Live Share does not write document content to Cloudflare KV or a database. State
 - The room secret is part of the invite URL. Anyone with the link can try to join while the room is active.
 - No end-to-end encryption is implemented in the app.
 - View-only mode is enforced by the client and message handling. It is useful for normal collaboration, but it is not a cryptographic permission boundary against modified clients.
+- Capability values are bearer credentials in the invite URL. Treat role-specific invite links as sensitive and do not paste them into public channels.
+- The server rejects unsupported WebSocket origins, but origin checks do not replace authentication or end-to-end encryption.
 - The host should end the room when collaboration is finished.
 - Cloudflare deployment logs and platform behavior are controlled by the deployer's Cloudflare account configuration.
 

@@ -40,11 +40,11 @@ No analytics, telemetry, ads, tracking pixels, or app-specific cookies are imple
 
 ### What does the app store locally?
 
-The app stores normal tabs, active tab id, untitled-tab counter, theme/direction/view settings, language selection, scroll sync state, and Find and Replace dock preference. Web storage uses browser `localStorage`; the desktop app mirrors selected values into Neutralino storage.
+The app stores normal tabs, active tab id, untitled-tab counter, theme/direction/view settings, language selection, scroll sync state, and Find and Replace dock preference. Web storage uses browser `localStorage`; the desktop app mirrors selected values into Neutralino storage. Private mode clears document/workspace state and prevents those document-state keys from being written until it is turned off.
 
 ### Are Share Snapshot links private?
 
-They are bearer links. Anyone with the link can open the snapshot.
+They are bearer links. Anyone with the link can open the snapshot. Large stored snapshots expire after 90 days. The creator-side API response includes a separate deletion token that can be used to delete the stored record before expiry; it is not included in the share URL.
 
 Small snapshots keep compressed content inside the URL hash. Large snapshots use `/api/share`, which stores content, mode, title, creation time, and size in Cloudflare KV for 90 days. Editable snapshots are not collaborative; they only let the recipient edit their opened copy.
 
@@ -58,7 +58,11 @@ No end-to-end encryption is implemented. The room id and secret are included in 
 
 ### How do I clear local data?
 
-Use the app's Reset button to clear saved documents, or clear the site's storage from browser settings/developer tools. Clearing site data also removes cached app assets and any saved settings for that origin.
+Use **Clear local data** in the About dialog, or use the app's Reset button to clear saved documents. Private mode also clears document/workspace state and prevents it from being saved. Clearing site data from browser settings/developer tools removes cached app assets and any saved settings for that origin.
+
+### What security protections are enabled?
+
+Preview HTML is sanitized, exported HTML uses CSP/SRI protections, Cloudflare Pages sets security headers and hides sensitive paths, Share Snapshot CORS is restricted, Live Share validates origins and capabilities server-side, and the desktop build does not expose Neutralino's command-execution API by default. These protections reduce risk but do not make shared links private or Live Share end-to-end encrypted.
 
 ## Editing and Rendering
 

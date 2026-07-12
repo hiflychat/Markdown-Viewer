@@ -25,6 +25,8 @@ Use the view buttons to switch between Editor, Split, and Preview. Split view is
 - Reset clears the saved workspace.
 - Normal tabs autosave to local browser storage or desktop storage.
 - Temporary Share Snapshot and Live Share tabs are not saved to the recipient's workspace.
+- Use **Private mode** from the About dialog to clear existing document state and prevent normal document-state persistence while it is enabled.
+- Use **Clear local data** from the About dialog to remove saved tabs, active-tab state, workspace preferences, and desktop storage mirrors.
 
 Storage is local unless you explicitly use a network feature such as GitHub import, Share Snapshot storage, or Live Share.
 
@@ -92,7 +94,7 @@ Export names use the active tab title when possible.
 | Export | Behavior | Main Limitations |
 | :--- | :--- | :--- |
 | Markdown | Saves the raw `.md` text. | Browser downloads or desktop native save dialog only. |
-| HTML | Saves standalone rendered HTML with styles and renderer support hooks. | External content referenced by the document may still load remotely when opened. |
+| HTML | Saves standalone rendered HTML with sanitized content, styles, renderer support hooks, a restrictive CSP, and SRI metadata where applicable. | External content referenced by the document may still load remotely when opened. |
 | PDF: Browser Print | Temporarily prepares a light print preview, refreshes theme-sensitive diagrams, then calls `window.print()`. Recommended for most long documents. | Browser print engines vary; author-specified dark colors inside diagrams, SVGs, HTML, or images are preserved. |
 | PDF: Legacy Raster | Uses `html2canvas` and `jsPDF` with page-break planning. | Memory-heavy for very long documents; cross-origin images need CORS. |
 | PNG | Captures the rendered document to a PNG. | Browser canvas limits apply; cross-origin images need CORS. |
@@ -109,9 +111,9 @@ Use Share Snapshot when you want to send a point-in-time copy.
 
 View only opens the document in preview mode and hides editing. Editable opens the copy in split mode so the recipient can edit their own local copy. It is not real-time collaboration.
 
-Small documents are compressed into the URL hash as `#share=...`. Large documents, or documents whose encoded URL would be too long, are stored through `/api/share` and opened with `#id=...`. Stored snapshots use Cloudflare KV for 90 days and can contain up to 500,000 characters.
+Small documents are compressed into the URL hash as `#share=...`. Large documents, or documents whose encoded URL would be too long, are stored through `/api/share` and opened with `#id=...`. Stored snapshots use Cloudflare KV for up to 90 days and can contain up to 500,000 characters. They are bearer links: anyone with the URL can open the snapshot. The creator-side API response includes a deletion token; keep it separate from the share URL if you need to delete the stored record before expiry.
 
-Anyone with the link can open the snapshot. Shared snapshot tabs are temporary and are not saved into the recipient's workspace.
+Shared snapshot tabs are temporary and are not saved into the recipient's workspace.
 
 ## Live Share Rooms for Markdown Collaboration
 
@@ -123,7 +125,7 @@ Use Live Share when you want a temporary real-time room.
 4. Start the session.
 5. Copy the invite link after the room starts.
 
-Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, and title, not the full document body.
+Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role.
 
 Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
 
@@ -134,7 +136,7 @@ Use fenced code blocks for advanced renderers:
 - `mermaid` for Mermaid diagrams.
 - `plantuml`, `d2`, `graphviz`/`dot`, `vega-lite`, `wavedrom`, and `markmap` for diagrams and charts.
 - `geojson` and `topojson` for maps.
-- `stl` for 3D models.
+- `stl` for 3D models. STL sources over 2 MiB, non-finite geometry, and geometry over 300,000 vertices are rejected before rendering.
 - `abc` for sheet music and playback.
 - `math` for display math.
 
