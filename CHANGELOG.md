@@ -3,6 +3,20 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## v3.9.1
+
+- **Description:** Improved export reliability, file workflows, diagram insertion, shared-document safety, and browser compatibility.
+  - **PDF & Print:** Hid diagram toolbars from PDF output, kept browser PDF exports on a readable light background in every theme, and used the active tab name for browser print exports.
+  - **Files & Tabs:** Added multi-file Markdown drag-and-drop imports and a direct Markdown download action for the active tab.
+  - **Diagrams & Templates:** Reorganized the diagram picker into clearer categories, refined its sidebar and thumbnails, expanded STL and map examples, isolated WaveDrom SVG styles, and improved diagram rendering compatibility across browsers.
+  - **Sharing & Offline Use:** Polished Share Snapshot access resets and allowed external Markdown images to load correctly through the service worker.
+  - **Security & Documentation:** Hardened sanitization, exports, desktop permissions, and sharing endpoints following a security audit, then updated the related documentation, metadata, and SEO guidance.
+- **Date:** 2026-07-13
+- **Commits:** `d2849a8b700a11a6a187d663f41f814a41213687` through `0cec0788a0583cea8f08c40ce15d484fdf45ecd5`
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.1
+
+---
+
 ## v3.9.0
 
 - **Description:** Introduced clearer sharing flows for Live Share and Share Snapshot, with fixes for shared Markdown rendering and desktop startup.
