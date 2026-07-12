@@ -263,6 +263,16 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareSnapshotViewOnlyTabIds = new Set();
   const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
   const APP_VERSION = '3.9.0';
+  const REVIEW_TARGET_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, pre, .diagram-viewer, .geojson-container, .topojson-container, .stl-container';
+  const REVIEW_TEXT_LIMIT = 2000;
+  let reviewModeActive = false;
+  const reviewPreviousViewModes = new Map();
+  let reviewFilter = 'open';
+  let reviewComposerKind = 'comment';
+  let activeReviewAnchor = null;
+  let reviewPinsResizeObserver = null;
+  let reviewPinsLayoutFrame = null;
+  let reviewTargetSourceSnapshots = new WeakMap();
   let activeModal = null;
   let lastFocusedElement = null;
   let isFindModalOpen = false;
@@ -292,6 +302,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   const markdownEditor = document.getElementById("markdown-editor");
   const markdownPreview = document.getElementById("markdown-preview");
+  const reviewPinsLayer = document.getElementById('review-pins-layer');
   const markdownFormatToolbar = document.getElementById("markdown-format-toolbar");
   const themeToggle = document.getElementById("theme-toggle");
   const directionToggle = document.getElementById("direction-toggle");
@@ -318,6 +329,24 @@ document.addEventListener("DOMContentLoaded", async function () {
   const readingTimeElement = document.getElementById("reading-time");
   const wordCountElement = document.getElementById("word-count");
   const charCountElement = document.getElementById("char-count");
+  const reviewToggle = document.getElementById('review-toggle');
+  const mobileReviewToggle = document.getElementById('mobile-review-toggle');
+  const reviewCountBadge = document.getElementById('review-count-badge');
+  const mobileReviewCountBadge = document.getElementById('mobile-review-count-badge');
+  const reviewPanel = document.getElementById('review-panel');
+  const reviewPanelBackdrop = document.getElementById('review-panel-backdrop');
+  const reviewPanelClose = document.getElementById('review-panel-close');
+  const reviewPanelSummary = document.getElementById('review-panel-summary');
+  const reviewCopySummary = document.getElementById('review-copy-summary');
+  const reviewComposer = document.getElementById('review-composer');
+  const reviewComposerAnchor = document.getElementById('review-composer-anchor');
+  const reviewComposerCancel = document.getElementById('review-composer-cancel');
+  const reviewFeedbackLabel = document.getElementById('review-feedback-label');
+  const reviewFeedbackInput = document.getElementById('review-feedback-input');
+  const reviewFeedbackCount = document.getElementById('review-feedback-count');
+  const reviewFeedbackSubmit = document.getElementById('review-feedback-submit');
+  const reviewList = document.getElementById('review-list');
+  const reviewEmptyState = document.getElementById('review-empty-state');
 
   // View Mode Elements - Story 1.1
   const contentContainer = document.querySelector(".content-container");
@@ -395,6 +424,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getEditorReadOnlyMessage() {
+    if (reviewModeActive) {
+      return 'Review mode keeps the Markdown source read only.';
+    }
     if (isShareSnapshotViewOnlyActive()) {
       return 'This shared snapshot is view only.';
     }
@@ -662,6 +694,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function applyDirectionToContent(direction) {
     if (markdownEditor) markdownEditor.setAttribute("dir", direction);
     if (markdownPreview) markdownPreview.setAttribute("dir", direction);
+    scheduleReviewPinsLayout();
   }
   applyDirectionToContent(initialDirection);
   updateDirectionToggleUI(initialDirection);
@@ -2377,6 +2410,833 @@ document.addEventListener("DOMContentLoaded", async function () {
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
 
+  // ========================================
+  // COMMENTS & SUGGESTIONS
+  // ========================================
+
+  function normalizeReviewThreads(rawThreads) {
+    if (!Array.isArray(rawThreads)) return [];
+    return rawThreads.slice(-500).map(function(thread) {
+      if (!thread || typeof thread !== 'object' || !thread.anchor || typeof thread.anchor.key !== 'string') {
+        return null;
+      }
+      const body = typeof thread.body === 'string' ? thread.body.trim().slice(0, REVIEW_TEXT_LIMIT) : '';
+      if (!body) return null;
+      const createdAt = Number.isFinite(Number(thread.createdAt)) ? Number(thread.createdAt) : Date.now();
+      const updatedAt = Number.isFinite(Number(thread.updatedAt)) ? Number(thread.updatedAt) : createdAt;
+      return {
+        id: typeof thread.id === 'string' && thread.id ? thread.id.slice(0, 120) : createReviewId(),
+        anchor: {
+          key: thread.anchor.key.slice(0, 240),
+          type: typeof thread.anchor.type === 'string' ? thread.anchor.type.slice(0, 40) : 'block',
+          label: typeof thread.anchor.label === 'string' ? thread.anchor.label.slice(0, 120) : 'Document block',
+          excerpt: typeof thread.anchor.excerpt === 'string' ? thread.anchor.excerpt.slice(0, 240) : '',
+          duplicateCount: Number.isFinite(Number(thread.anchor.duplicateCount))
+            ? Math.max(1, Number(thread.anchor.duplicateCount))
+            : null,
+          context: typeof thread.anchor.context === 'string' ? thread.anchor.context.slice(0, 80) : null
+        },
+        kind: thread.kind === 'suggestion' ? 'suggestion' : 'comment',
+        body: body,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        resolved: thread.resolved === true
+      };
+    }).filter(Boolean);
+  }
+
+  function createReviewId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return 'review_' + window.crypto.randomUUID();
+    }
+    return 'review_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function getActiveReviewTab() {
+    return tabs.find(function(tab) { return tab.id === activeTabId; }) || null;
+  }
+
+  function getActiveReviewThreads() {
+    const tab = getActiveReviewTab();
+    if (!tab) return [];
+    if (!Array.isArray(tab.reviewThreads)) {
+      tab.reviewThreads = [];
+    }
+    return tab.reviewThreads;
+  }
+
+  function decodeReviewSource(value) {
+    if (!value) return '';
+    try {
+      return decodeURIComponent(value);
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  function getReviewTargetType(target) {
+    if (!target) return 'block';
+    if (target.matches('.diagram-viewer, .geojson-container, .topojson-container, .stl-container')) return 'diagram';
+    if (target.tagName === 'PRE') return 'code';
+    if (/^H[1-6]$/.test(target.tagName)) return 'heading';
+    if (target.tagName === 'P') return 'paragraph';
+    return 'block';
+  }
+
+  function normalizeReviewSource(source, preserveLines) {
+    const normalized = String(source || '').replace(/\r\n?/g, '\n');
+    if (!preserveLines) {
+      return normalized.replace(/\s+/g, ' ').trim();
+    }
+    return normalized.split('\n').map(function(line) {
+      return line.replace(/[ \t]+$/g, '');
+    }).join('\n').trim();
+  }
+
+  function computeReviewTargetSource(target, type) {
+    if (!target) return '';
+    if (type === 'diagram') {
+      const sourceNode = target.hasAttribute('data-original-code')
+        ? target
+        : target.querySelector('[data-original-code]');
+      return normalizeReviewSource(sourceNode ? decodeReviewSource(sourceNode.getAttribute('data-original-code')) : '', true);
+    }
+    if (type === 'code') {
+      const code = target.querySelector('code');
+      return normalizeReviewSource(code ? code.textContent : target.textContent, true);
+    }
+
+    const clone = target.cloneNode(true);
+    clone.querySelectorAll('.review-target-button, .footnote-backref').forEach(function(node) {
+      node.remove();
+    });
+    clone.querySelectorAll('img').forEach(function(image) {
+      image.replaceWith(document.createTextNode(image.getAttribute('alt') || ''));
+    });
+    return normalizeReviewSource(clone.textContent, false);
+  }
+
+  function getReviewTargetSource(target, type) {
+    const snapshot = target ? reviewTargetSourceSnapshots.get(target) : null;
+    if (snapshot && snapshot.type === type) return snapshot.source;
+    return computeReviewTargetSource(target, type);
+  }
+
+  function snapshotMathReviewTargetSources(mathTargets) {
+    if (!Array.isArray(mathTargets) || mathTargets.length === 0) return;
+    getReviewTargets().forEach(function(target) {
+      if (reviewTargetSourceSnapshots.has(target)) return;
+      const containsMathTarget = mathTargets.some(function(mathTarget) {
+        return mathTarget === target || mathTarget.contains(target) || target.contains(mathTarget);
+      });
+      if (!containsMathTarget) return;
+      const type = getReviewTargetType(target);
+      reviewTargetSourceSnapshots.set(target, {
+        type: type,
+        source: computeReviewTargetSource(target, type)
+      });
+    });
+  }
+
+  function invalidateReviewTargetSourceSnapshots(roots) {
+    (roots || []).forEach(function(root) {
+      const element = root && root.nodeType === Node.ELEMENT_NODE ? root : (root && root.parentElement);
+      if (!element) return;
+      const ancestorTarget = element.closest && element.closest(REVIEW_TARGET_SELECTOR);
+      if (ancestorTarget && markdownPreview.contains(ancestorTarget)) {
+        reviewTargetSourceSnapshots.delete(ancestorTarget);
+      }
+      if (element.matches && element.matches(REVIEW_TARGET_SELECTOR)) {
+        reviewTargetSourceSnapshots.delete(element);
+      }
+      element.querySelectorAll(REVIEW_TARGET_SELECTOR).forEach(function(target) {
+        reviewTargetSourceSnapshots.delete(target);
+      });
+    });
+  }
+
+  function hashReviewSource(value) {
+    let hash = 2166136261;
+    const text = String(value || '');
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function getReviewTargetLabel(target, type) {
+    if (type === 'heading') return 'Heading ' + target.tagName;
+    if (type === 'paragraph') return 'Paragraph';
+    if (type === 'code') {
+      const code = target.querySelector('code');
+      const languageClass = code ? Array.from(code.classList).find(function(className) {
+        return className !== 'hljs' && className !== 'language-plaintext' && className !== 'plaintext';
+      }) : '';
+      const language = languageClass ? languageClass.replace(/^language-/, '') : '';
+      return language ? language + ' code block' : 'Code block';
+    }
+    if (type === 'diagram') {
+      let engine = target.getAttribute('data-diagram-engine');
+      if (!engine && target.matches('.geojson-container')) engine = 'geojson';
+      if (!engine && target.matches('.topojson-container')) engine = 'topojson';
+      if (!engine && target.matches('.stl-container')) engine = 'stl';
+      const specialLabels = {
+        geojson: 'GeoJSON map',
+        topojson: 'TopoJSON map',
+        stl: 'STL model'
+      };
+      if (specialLabels[engine]) return specialLabels[engine];
+      const engineLabel = engine ? getDiagramEngineLabel(engine) : 'Diagram';
+      return engineLabel === 'Diagram' ? engineLabel : engineLabel + ' diagram';
+    }
+    return 'Document block';
+  }
+
+  function getReviewAnchorDescriptor(target) {
+    if (!target || !target.dataset.reviewAnchor) return null;
+    const type = target.dataset.reviewType || getReviewTargetType(target);
+    const source = getReviewTargetSource(target, type);
+    const excerpt = source.length > 180 ? source.slice(0, 177) + '...' : source;
+    return {
+      key: target.dataset.reviewAnchor,
+      type: type,
+      label: target.dataset.reviewLabel || getReviewTargetLabel(target, type),
+      excerpt: excerpt || 'Empty rendered block',
+      duplicateCount: Math.max(1, Number(target.dataset.reviewDuplicateCount) || 1),
+      context: target.dataset.reviewContext || null
+    };
+  }
+
+  function getReviewTargets() {
+    if (!markdownPreview) return [];
+    return Array.from(markdownPreview.querySelectorAll(REVIEW_TARGET_SELECTOR)).filter(function(target) {
+      const diagramContainer = target.closest('.diagram-viewer, .geojson-container, .topojson-container, .stl-container');
+      if (diagramContainer && diagramContainer !== target) {
+        return false;
+      }
+      return !target.closest('.review-target-button');
+    });
+  }
+
+  function clearReviewDecorations() {
+    if (!markdownPreview) return;
+    if (reviewPinsLayer) reviewPinsLayer.textContent = '';
+    if (reviewPinsResizeObserver) {
+      reviewPinsResizeObserver.disconnect();
+      reviewPinsResizeObserver = null;
+    }
+    if (reviewPinsLayoutFrame) {
+      cancelAnimationFrame(reviewPinsLayoutFrame);
+      reviewPinsLayoutFrame = null;
+    }
+    markdownPreview.querySelectorAll('[data-review-anchor]').forEach(function(target) {
+      target.classList.remove(
+        'review-target',
+        'review-target--heading',
+        'review-target--paragraph',
+        'review-target--code',
+        'review-target--diagram',
+        'has-review-thread',
+        'is-review-target-active'
+      );
+      delete target.dataset.reviewAnchor;
+      delete target.dataset.reviewType;
+      delete target.dataset.reviewLabel;
+      delete target.dataset.reviewDuplicateCount;
+      delete target.dataset.reviewContext;
+    });
+  }
+
+  function positionReviewPins() {
+    reviewPinsLayoutFrame = null;
+    if (!reviewModeActive || !reviewPinsLayer || !previewPaneElement) return;
+    const paneRect = previewPaneElement.getBoundingClientRect();
+    const isRtl = markdownPreview && markdownPreview.getAttribute('dir') === 'rtl';
+    reviewPinsLayer.querySelectorAll('.review-target-button').forEach(function(button) {
+      const anchor = {
+        key: button.dataset.reviewAnchor,
+        duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
+        context: button.dataset.reviewContext || null
+      };
+      const target = findReviewTarget(anchor);
+      if (!target) {
+        button.hidden = true;
+        return;
+      }
+      button.hidden = false;
+      const targetRect = target.getBoundingClientRect();
+      const isDiagram = target.dataset.reviewType === 'diagram';
+      const top = isDiagram ? targetRect.bottom - 40 : targetRect.top + 4;
+      const left = isRtl ? targetRect.left + 4 : targetRect.right - 4;
+      button.style.top = (top - paneRect.top + previewPaneElement.scrollTop) + 'px';
+      button.style.left = (left - paneRect.left + previewPaneElement.scrollLeft) + 'px';
+      button.style.transform = isRtl ? 'none' : 'translateX(-100%)';
+    });
+  }
+
+  function scheduleReviewPinsLayout() {
+    if (!reviewModeActive || reviewPinsLayoutFrame) return;
+    reviewPinsLayoutFrame = requestAnimationFrame(positionReviewPins);
+  }
+
+  function observeReviewPinLayout() {
+    if (typeof ResizeObserver === 'undefined') {
+      scheduleReviewPinsLayout();
+      return;
+    }
+    reviewPinsResizeObserver = new ResizeObserver(scheduleReviewPinsLayout);
+    reviewPinsResizeObserver.observe(markdownPreview);
+    if (previewPaneElement) reviewPinsResizeObserver.observe(previewPaneElement);
+    scheduleReviewPinsLayout();
+  }
+
+  function decorateReviewTargets() {
+    clearReviewDecorations();
+    if (!reviewModeActive || !markdownPreview || previewContainsSkeleton()) return;
+
+    const threads = getActiveReviewThreads();
+    const threadsByAnchor = new Map();
+    threads.forEach(function(thread) {
+      const key = thread.anchor && thread.anchor.key;
+      if (!key) return;
+      if (!threadsByAnchor.has(key)) threadsByAnchor.set(key, []);
+      threadsByAnchor.get(key).push(thread);
+    });
+
+    const targetEntries = getReviewTargets().map(function(target) {
+      const type = getReviewTargetType(target);
+      const source = getReviewTargetSource(target, type);
+      const signature = type + '\u241f' + source;
+      return { target: target, type: type, source: source, signature: signature };
+    });
+    targetEntries.forEach(function(entry, index) {
+      const before = index > 0 ? targetEntries[index - 1].signature : 'review-start';
+      const after = index < targetEntries.length - 1 ? targetEntries[index + 1].signature : 'review-end';
+      entry.context = hashReviewSource(before) + ':' + hashReviewSource(after);
+    });
+    const signatureCounts = new Map();
+    targetEntries.forEach(function(entry) {
+      signatureCounts.set(entry.signature, (signatureCounts.get(entry.signature) || 0) + 1);
+    });
+
+    const occurrences = new Map();
+    targetEntries.forEach(function(entry) {
+      const target = entry.target;
+      const type = entry.type;
+      const source = entry.source;
+      const signature = entry.signature;
+      const duplicateContext = entry.context;
+      const occurrence = occurrences.get(signature) || 0;
+      occurrences.set(signature, occurrence + 1);
+      const duplicateCount = signatureCounts.get(signature) || 1;
+      const context = duplicateCount > 1 ? duplicateContext : '';
+      const anchorKey = type + ':' + hashReviewSource(signature) + ':' + occurrence;
+      const label = getReviewTargetLabel(target, type);
+      const targetThreads = (threadsByAnchor.get(anchorKey) || []).filter(function(thread) {
+        return (!thread.anchor.duplicateCount || thread.anchor.duplicateCount === duplicateCount) &&
+          (!thread.anchor.context || thread.anchor.context === context);
+      });
+
+      target.dataset.reviewAnchor = anchorKey;
+      target.dataset.reviewType = type;
+      target.dataset.reviewLabel = label;
+      target.dataset.reviewDuplicateCount = String(duplicateCount);
+      target.dataset.reviewContext = context;
+      target.classList.add('review-target', 'review-target--' + type);
+      target.classList.toggle('has-review-thread', targetThreads.length > 0);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'review-target-button';
+      button.dataset.reviewAnchor = anchorKey;
+      button.dataset.reviewDuplicateCount = String(duplicateCount);
+      button.dataset.reviewContext = context;
+      button.dataset.html2canvasIgnore = 'true';
+      button.title = targetThreads.length > 0 ? 'Add feedback to this block' : 'Comment on this block';
+      button.setAttribute('aria-label', targetThreads.length > 0
+        ? 'Add feedback to ' + label + '. ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' attached.'
+        : 'Add feedback to ' + label);
+
+      const icon = document.createElement('i');
+      icon.className = 'bi bi-chat-square-text';
+      icon.setAttribute('aria-hidden', 'true');
+      button.appendChild(icon);
+      if (targetThreads.length > 0) {
+        button.dataset.reviewCount = String(targetThreads.length);
+      }
+      if (reviewPinsLayer) reviewPinsLayer.appendChild(button);
+    });
+
+    observeReviewPinLayout();
+    renderReviewPanel();
+  }
+
+  function findReviewTarget(anchor) {
+    const anchorKey = typeof anchor === 'string' ? anchor : (anchor && anchor.key);
+    if (!markdownPreview || !anchorKey) return null;
+    const target = Array.from(markdownPreview.querySelectorAll('[data-review-anchor]')).find(function(candidate) {
+      return candidate.dataset.reviewAnchor === anchorKey && !candidate.classList.contains('review-target-button');
+    }) || null;
+    if (!target || !anchor || typeof anchor === 'string') return target;
+    if (anchor.duplicateCount && Number(target.dataset.reviewDuplicateCount) !== Number(anchor.duplicateCount)) return null;
+    if (anchor.context && target.dataset.reviewContext !== anchor.context) return null;
+    return target;
+  }
+
+  function updateReviewCountBadges() {
+    const openCount = getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
+    [reviewCountBadge, mobileReviewCountBadge].forEach(function(badge) {
+      if (!badge) return;
+      badge.textContent = String(openCount);
+      badge.hidden = openCount === 0;
+      badge.setAttribute('aria-label', openCount + ' open review item' + (openCount === 1 ? '' : 's'));
+    });
+  }
+
+  function formatReviewTime(timestamp) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(new Date(timestamp));
+    } catch (_) {
+      return new Date(timestamp).toLocaleString();
+    }
+  }
+
+  function createReviewThreadElement(thread) {
+    const target = findReviewTarget(thread.anchor);
+    const item = document.createElement('article');
+    item.className = 'review-thread' + (thread.resolved ? ' is-resolved' : '') + (!target ? ' is-orphaned' : '');
+    item.dataset.reviewId = thread.id;
+    item.dataset.kind = thread.kind;
+
+    const header = document.createElement('div');
+    header.className = 'review-thread-header';
+    const meta = document.createElement('div');
+    meta.className = 'review-thread-meta';
+    const kind = document.createElement('span');
+    kind.className = 'review-kind-label';
+    const kindIcon = document.createElement('i');
+    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-lightbulb' : 'bi bi-chat-left-text';
+    kindIcon.setAttribute('aria-hidden', 'true');
+    kind.appendChild(kindIcon);
+    kind.appendChild(document.createTextNode(thread.kind === 'suggestion' ? 'Suggestion' : 'Comment'));
+    meta.appendChild(kind);
+    if (thread.resolved) {
+      const status = document.createElement('span');
+      status.className = 'review-status-label';
+      status.textContent = 'Resolved';
+      meta.appendChild(status);
+    }
+    header.appendChild(meta);
+    item.appendChild(header);
+
+    const anchor = document.createElement('button');
+    anchor.type = 'button';
+    anchor.className = 'review-thread-anchor';
+    anchor.dataset.reviewAction = 'focus-anchor';
+    anchor.dataset.reviewId = thread.id;
+    anchor.disabled = !target;
+    anchor.textContent = target
+      ? thread.anchor.label + ': ' + thread.anchor.excerpt
+      : 'Anchor no longer in preview - ' + thread.anchor.label + ': ' + thread.anchor.excerpt;
+    item.appendChild(anchor);
+
+    const body = document.createElement('p');
+    body.className = 'review-thread-body';
+    body.textContent = thread.body;
+    item.appendChild(body);
+
+    const time = document.createElement('time');
+    time.className = 'review-thread-time';
+    time.dateTime = new Date(thread.createdAt).toISOString();
+    time.textContent = formatReviewTime(thread.createdAt);
+    item.appendChild(time);
+
+    const actions = document.createElement('div');
+    actions.className = 'review-thread-actions';
+    const statusButton = document.createElement('button');
+    statusButton.type = 'button';
+    statusButton.className = 'review-thread-action';
+    statusButton.dataset.reviewAction = 'toggle-resolved';
+    statusButton.dataset.reviewId = thread.id;
+    statusButton.textContent = thread.resolved ? 'Reopen' : 'Resolve';
+    actions.appendChild(statusButton);
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'review-thread-action is-danger';
+    deleteButton.dataset.reviewAction = 'delete';
+    deleteButton.dataset.reviewId = thread.id;
+    deleteButton.textContent = 'Delete';
+    actions.appendChild(deleteButton);
+    item.appendChild(actions);
+
+    return item;
+  }
+
+  function renderReviewPanel() {
+    updateReviewCountBadges();
+    if (!reviewPanel || !reviewList || !reviewEmptyState) return;
+    const threads = getActiveReviewThreads();
+    const openCount = threads.filter(function(thread) { return !thread.resolved; }).length;
+    if (reviewPanelSummary) {
+      reviewPanelSummary.textContent = openCount === 0
+        ? (threads.length === 0 ? 'No feedback yet' : 'All feedback resolved')
+        : openCount + ' open item' + (openCount === 1 ? '' : 's') + (threads.length === openCount ? '' : ' - ' + threads.length + ' total');
+    }
+    if (reviewCopySummary) reviewCopySummary.disabled = threads.length === 0;
+
+    const filteredThreads = threads.filter(function(thread) {
+      if (reviewFilter === 'resolved') return thread.resolved;
+      if (reviewFilter === 'all') return true;
+      return !thread.resolved;
+    }).sort(function(a, b) { return b.createdAt - a.createdAt; });
+
+    reviewList.textContent = '';
+    filteredThreads.forEach(function(thread) {
+      reviewList.appendChild(createReviewThreadElement(thread));
+    });
+    reviewList.hidden = filteredThreads.length === 0;
+    reviewEmptyState.hidden = filteredThreads.length > 0;
+    if (filteredThreads.length === 0) {
+      const title = reviewEmptyState.querySelector('h3');
+      const copy = reviewEmptyState.querySelector('p');
+      if (reviewFilter === 'resolved') {
+        title.textContent = 'No resolved feedback';
+        copy.textContent = 'Resolved comments and suggestions will appear here.';
+      } else if (reviewFilter === 'all') {
+        title.textContent = 'No feedback yet';
+        copy.textContent = 'Use the comment pins in the preview to leave feedback without changing the Markdown.';
+      } else {
+        title.textContent = 'No open feedback';
+        copy.textContent = threads.length > 0
+          ? 'Everything has been resolved. Switch to Resolved or All to review earlier feedback.'
+          : 'Use the comment pins in the preview to leave feedback without changing the Markdown.';
+      }
+    }
+  }
+
+  function updateReviewComposerKind(kind) {
+    reviewComposerKind = kind === 'suggestion' ? 'suggestion' : 'comment';
+    document.querySelectorAll('[data-review-kind]').forEach(function(button) {
+      const active = button.dataset.reviewKind === reviewComposerKind;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (reviewFeedbackLabel) {
+      reviewFeedbackLabel.textContent = reviewComposerKind === 'suggestion' ? 'Suggested change' : 'Comment';
+    }
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.placeholder = reviewComposerKind === 'suggestion'
+        ? 'Describe the change you recommend without editing the source...'
+        : 'Leave a focused comment for the author...';
+    }
+    if (reviewFeedbackSubmit) {
+      reviewFeedbackSubmit.textContent = reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment';
+    }
+  }
+
+  function focusReviewPin(anchor) {
+    const target = findReviewTarget(anchor);
+    if (!target || !reviewPinsLayer) return false;
+    const button = Array.from(reviewPinsLayer.querySelectorAll('.review-target-button')).find(function(candidate) {
+      return candidate.dataset.reviewAnchor === target.dataset.reviewAnchor &&
+        candidate.dataset.reviewContext === target.dataset.reviewContext;
+    }) || null;
+    if (!button) return false;
+    button.focus({ preventScroll: true });
+    return true;
+  }
+
+  function closeReviewComposer(options) {
+    options = options || {};
+    const returnAnchor = activeReviewAnchor;
+    if (activeReviewAnchor) {
+      const previousTarget = findReviewTarget(activeReviewAnchor);
+      if (previousTarget) previousTarget.classList.remove('is-review-target-active');
+    }
+    activeReviewAnchor = null;
+    if (reviewComposer) reviewComposer.hidden = true;
+    if (reviewFeedbackInput) reviewFeedbackInput.value = '';
+    if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
+    if (options.restoreFocus && reviewModeActive && !focusReviewPin(returnAnchor) && reviewPanelClose) {
+      reviewPanelClose.focus();
+    }
+  }
+
+  function openReviewComposer(target) {
+    if (!target) return;
+    const descriptor = getReviewAnchorDescriptor(target);
+    if (!descriptor) return;
+    closeReviewComposer();
+    activeReviewAnchor = descriptor;
+    target.classList.add('is-review-target-active');
+    if (reviewComposerAnchor) {
+      reviewComposerAnchor.textContent = descriptor.label + ': ' + descriptor.excerpt;
+    }
+    updateReviewComposerKind(reviewComposerKind);
+    if (reviewComposer) reviewComposer.hidden = false;
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.value = '';
+      reviewFeedbackInput.focus();
+    }
+  }
+
+  function persistReviewThreads(message) {
+    saveTabsToStorage(tabs);
+    decorateReviewTargets();
+    renderReviewPanel();
+    if (message) announceToScreenReader(message);
+  }
+
+  function submitReviewFeedback() {
+    if (!activeReviewAnchor || !reviewFeedbackInput) return;
+    const body = reviewFeedbackInput.value.trim();
+    if (!body) return;
+    const returnAnchor = Object.assign({}, activeReviewAnchor);
+    getActiveReviewThreads().push({
+      id: createReviewId(),
+      anchor: Object.assign({}, activeReviewAnchor),
+      kind: reviewComposerKind,
+      body: body.slice(0, REVIEW_TEXT_LIMIT),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      resolved: false
+    });
+    const label = reviewComposerKind === 'suggestion' ? 'Suggestion added.' : 'Comment added.';
+    closeReviewComposer();
+    persistReviewThreads(label);
+    focusReviewPin(returnAnchor);
+  }
+
+  function focusReviewAnchor(thread) {
+    const target = thread && thread.anchor ? findReviewTarget(thread.anchor) : null;
+    if (!target) return;
+    markdownPreview.querySelectorAll('.is-review-target-active').forEach(function(node) {
+      node.classList.remove('is-review-target-active');
+    });
+    target.classList.add('is-review-target-active');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    focusReviewPin(thread.anchor);
+    clearTimeout(focusReviewAnchor._timeoutId);
+    focusReviewAnchor._timeoutId = setTimeout(function() {
+      if (!activeReviewAnchor || activeReviewAnchor.key !== thread.anchor.key) {
+        target.classList.remove('is-review-target-active');
+      }
+    }, 1800);
+  }
+
+  function buildReviewSummary() {
+    const tab = getActiveReviewTab();
+    const threads = getActiveReviewThreads().slice().sort(function(a, b) { return a.createdAt - b.createdAt; });
+    const lines = ['# Review: ' + (tab && tab.title ? tab.title : 'Markdown document'), ''];
+    threads.forEach(function(thread, index) {
+      const kind = thread.kind === 'suggestion' ? 'Suggestion' : 'Comment';
+      lines.push((index + 1) + '. **' + kind + '** - ' + thread.anchor.label + (thread.resolved ? ' _(resolved)_' : ''));
+      if (thread.anchor.excerpt) lines.push('   > ' + thread.anchor.excerpt.replace(/\n/g, ' '));
+      thread.body.split('\n').forEach(function(line) {
+        lines.push('   ' + line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n').trim();
+  }
+
+  async function copyReviewSummary() {
+    if (getActiveReviewThreads().length === 0) return;
+    try {
+      await copyTextToClipboard(buildReviewSummary());
+      announceToScreenReader('Review summary copied.');
+      if (reviewCopySummary) {
+        const icon = reviewCopySummary.querySelector('i');
+        if (icon) icon.className = 'bi bi-check-lg';
+        clearTimeout(copyReviewSummary._timeoutId);
+        copyReviewSummary._timeoutId = setTimeout(function() {
+          if (icon) icon.className = 'bi bi-clipboard';
+        }, 1400);
+      }
+    } catch (error) {
+      console.error('Review summary copy failed:', error);
+      alert('Failed to copy review summary: ' + error.message);
+    }
+  }
+
+  function updateReviewBackdrop() {
+    if (!reviewPanelBackdrop) return;
+    reviewPanelBackdrop.hidden = true;
+  }
+
+  function setReviewMode(enabled, options) {
+    options = options || {};
+    const nextState = Boolean(enabled);
+    const wasActive = reviewModeActive;
+    if (nextState && !wasActive) {
+      reviewPreviousViewModes.set(activeTabId, currentViewMode || 'split');
+    }
+    reviewModeActive = nextState;
+    if (reviewModeActive && currentViewMode !== 'preview') {
+      setViewMode('preview');
+    }
+    if (reviewPanel) reviewPanel.hidden = !reviewModeActive;
+    if (reviewPinsLayer) reviewPinsLayer.hidden = !reviewModeActive;
+    if (contentContainer) contentContainer.classList.toggle('is-reviewing', reviewModeActive);
+    [reviewToggle, mobileReviewToggle].forEach(function(button) {
+      if (!button) return;
+      button.classList.toggle('is-active', reviewModeActive);
+      button.setAttribute('aria-expanded', reviewModeActive ? 'true' : 'false');
+      button.setAttribute('aria-pressed', reviewModeActive ? 'true' : 'false');
+    });
+    updateReviewBackdrop();
+    updateLiveEditorAccess();
+    if (reviewModeActive) {
+      decorateReviewTargets();
+      renderReviewPanel();
+      if (options.focusPanel && reviewPanelClose) reviewPanelClose.focus();
+    } else {
+      closeReviewComposer();
+      clearReviewDecorations();
+      const restoreMode = reviewPreviousViewModes.get(activeTabId);
+      reviewPreviousViewModes.clear();
+      if (restoreMode && restoreMode !== currentViewMode) {
+        setViewMode(restoreMode);
+        saveCurrentTabState();
+      }
+      if (options.restoreFocus) {
+        const returnTarget = window.innerWidth < 768 ? mobileMenuToggle : reviewToggle;
+        if (returnTarget) returnTarget.focus();
+      }
+    }
+  }
+
+  function initReviewMode() {
+    tabs.forEach(function(tab) {
+      tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+    });
+    updateReviewCountBadges();
+    renderReviewPanel();
+
+    if (reviewToggle) {
+      reviewToggle.addEventListener('click', function() {
+        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (mobileReviewToggle) {
+      mobileReviewToggle.addEventListener('click', function() {
+        closeMobileMenu();
+        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (reviewPanelClose) {
+      reviewPanelClose.addEventListener('click', function() {
+        setReviewMode(false, { restoreFocus: true });
+      });
+    }
+    if (reviewPanelBackdrop) {
+      reviewPanelBackdrop.addEventListener('click', function() {
+        setReviewMode(false, { restoreFocus: true });
+      });
+    }
+    if (reviewComposerCancel) {
+      reviewComposerCancel.addEventListener('click', function() {
+        closeReviewComposer({ restoreFocus: true });
+      });
+    }
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.addEventListener('input', function() {
+        const length = reviewFeedbackInput.value.length;
+        if (reviewFeedbackCount) reviewFeedbackCount.textContent = length + ' / ' + REVIEW_TEXT_LIMIT;
+        if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = reviewFeedbackInput.value.trim().length === 0;
+      });
+      reviewFeedbackInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          submitReviewFeedback();
+        }
+      });
+    }
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.addEventListener('click', submitReviewFeedback);
+    if (reviewCopySummary) reviewCopySummary.addEventListener('click', copyReviewSummary);
+
+    document.querySelectorAll('[data-review-kind]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        updateReviewComposerKind(button.dataset.reviewKind);
+        if (reviewFeedbackInput) reviewFeedbackInput.focus();
+      });
+    });
+    document.querySelectorAll('[data-review-filter]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        reviewFilter = button.dataset.reviewFilter;
+        document.querySelectorAll('[data-review-filter]').forEach(function(filterButton) {
+          const active = filterButton === button;
+          filterButton.classList.toggle('is-active', active);
+          filterButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        renderReviewPanel();
+      });
+    });
+
+    if (reviewPinsLayer) {
+      reviewPinsLayer.addEventListener('click', function(event) {
+        const button = event.target.closest('.review-target-button');
+        if (!button || !reviewModeActive) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const target = findReviewTarget({
+          key: button.dataset.reviewAnchor,
+          duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
+          context: button.dataset.reviewContext || null
+        });
+        openReviewComposer(target);
+      });
+    }
+
+    if (previewPaneElement) {
+      previewPaneElement.addEventListener('scroll', scheduleReviewPinsLayout, { passive: true });
+    }
+
+    if (reviewList) {
+      reviewList.addEventListener('click', function(event) {
+        const actionButton = event.target.closest('[data-review-action]');
+        if (!actionButton) return;
+        const thread = getActiveReviewThreads().find(function(item) {
+          return item.id === actionButton.dataset.reviewId;
+        });
+        if (!thread) return;
+        const action = actionButton.dataset.reviewAction;
+        if (action === 'focus-anchor') {
+          focusReviewAnchor(thread);
+          return;
+        }
+        if (action === 'toggle-resolved') {
+          thread.resolved = !thread.resolved;
+          thread.updatedAt = Date.now();
+          persistReviewThreads(thread.resolved ? 'Review item resolved.' : 'Review item reopened.');
+          return;
+        }
+        if (action === 'delete' && confirm('Delete this review item?')) {
+          const index = getActiveReviewThreads().indexOf(thread);
+          if (index >= 0) getActiveReviewThreads().splice(index, 1);
+          persistReviewThreads('Review item deleted.');
+        }
+      });
+    }
+
+    window.addEventListener('resize', updateReviewBackdrop);
+    document.addEventListener('keydown', function(event) {
+      if (event.key !== 'Escape' || !reviewModeActive || activeModal) return;
+      if (reviewComposer && !reviewComposer.hidden) {
+        event.preventDefault();
+        closeReviewComposer({ restoreFocus: true });
+      } else {
+        event.preventDefault();
+        setReviewMode(false, { restoreFocus: true });
+      }
+    });
+  }
+
   function refreshLiveEditorUi() {
     if (!liveShareUiReady) return;
     updateLiveAccessDisplay();
@@ -2409,7 +3269,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function loadTabsFromStorage() {
     try {
-      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
+      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
+        tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+        return tab;
+      });
     } catch (e) {
       return [];
     }
@@ -2495,6 +3358,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       content: content,
       scrollPos: 0,
       viewMode: viewMode,
+      reviewThreads: [],
       createdAt: Date.now()
     };
   }
@@ -2882,7 +3746,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!tab) return;
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
-    tab.viewMode = currentViewMode || 'split';
+    tab.viewMode = reviewModeActive && reviewPreviousViewModes.has(activeTabId)
+      ? reviewPreviousViewModes.get(activeTabId)
+      : (currentViewMode || 'split');
     if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
       return;
     }
@@ -2890,6 +3756,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function restoreViewMode(mode) {
+    if (reviewModeActive && activeTabId && !reviewPreviousViewModes.has(activeTabId)) {
+      reviewPreviousViewModes.set(activeTabId, mode || 'split');
+    }
     currentViewMode = null;
     setViewMode(mode || 'split');
   }
@@ -2897,6 +3766,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   function switchTab(tabId) {
     if (tabId === activeTabId) return;
     saveCurrentTabState();
+    closeReviewComposer();
+    clearReviewDecorations();
     
     // Clear typing timeout and reset tracking for the new tab
     if (typingTimeout) {
@@ -2920,6 +3791,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     restoreViewMode(tab.viewMode);
     refreshLiveEditorUi();
     renderMarkdown();
+    renderReviewPanel();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
       updateLiveCursorPosition();
@@ -2953,6 +3825,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
+    if (activeTabId === tabId) {
+      closeReviewComposer();
+      clearReviewDecorations();
+    }
     shareSnapshotViewOnlyTabIds.delete(tabId);
     
     // Clean up history of the closed tab
@@ -2986,6 +3862,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     saveTabsToStorage(tabs);
     renderTabBar(tabs, activeTabId);
+    closeReviewComposer();
+    renderReviewPanel();
   }
 
   function deleteTab(tabId) {
@@ -3120,6 +3998,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     function doReset() {
       closeAppModal(modal);
       cleanup();
+      closeReviewComposer();
+      clearReviewDecorations();
       disconnectLiveCollaboration({ restoreOriginal: false, silent: true });
       applyShareSnapshotAccessMode('edit');
       resetShareSnapshotLink();
@@ -3136,6 +4016,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       refreshLiveEditorUi();
       renderMarkdown();
       renderTabBar(tabs, activeTabId);
+      closeReviewComposer();
+      renderReviewPanel();
     }
 
     function doCancel() {
@@ -3465,6 +4347,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const patchResult = patchPreviewDom(markdownPreview, sanitizedHtml, {
       reusePreviewBlocks: context.previewEngineMode === 'segmented' && !context.force,
     });
+    invalidateReviewTargetSourceSnapshots(
+      patchResult && patchResult.fullReplace ? [markdownPreview] : ((patchResult && patchResult.updatedNodes) || [])
+    );
     applyReferencePreviewLinks(markdownPreview, referenceData.definitions);
     enhanceGitHubAlerts(markdownPreview);
 
@@ -4817,6 +5702,7 @@ ${selector} .arrowheadPath {
     const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
     if (hasMath) {
       const mathTargets = getMathJaxTypesetTargets(roots);
+      snapshotMathReviewTargetSources(mathTargets);
       if (mathTargets.length > 0) {
         ensureMathJaxReady().then(function() {
           if (context.renderId !== previewRenderGeneration) return;
@@ -4827,6 +5713,7 @@ ${selector} .arrowheadPath {
       }
     }
 
+    decorateReviewTargets();
     updateDocumentStats();
     updateFindHighlights();
     cleanupImageObjectUrls();
@@ -5684,6 +6571,10 @@ ${selector} .arrowheadPath {
     if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
       mode = 'preview';
       announceToScreenReader(getEditorReadOnlyMessage());
+    }
+    if (reviewModeActive && mode !== 'preview') {
+      mode = 'preview';
+      announceToScreenReader('Review mode uses the read-only preview.');
     }
     if (mode === currentViewMode) return;
 
@@ -10444,6 +11335,7 @@ ${selector} .arrowheadPath {
   }
   
   initTabs();
+  initReviewMode();
   if (loadGlobalState().syncScrollingEnabled === false) toggleSyncScrolling();
   updateMobileStats();
   updateFindHighlights();
@@ -13338,7 +14230,7 @@ ${selector} .arrowheadPath {
   }
 
   function canMutateEditor() {
-    return !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
+    return !reviewModeActive && !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
   }
 
   function isLiveMutatingAction(action) {
@@ -13377,16 +14269,17 @@ ${selector} .arrowheadPath {
     const liveShareDocumentActive = isLiveShareDocumentActive();
     const liveShareGuestDocumentActive = liveShareDocumentActive && !isLiveShareHostDocumentActive();
     const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
+    const sourceReadOnly = viewOnly || reviewModeActive;
     if (markdownEditor) {
-      markdownEditor.readOnly = viewOnly;
-      markdownEditor.setAttribute('aria-readonly', viewOnly ? 'true' : 'false');
-      markdownEditor.classList.toggle('live-share-readonly-editor', viewOnly);
-      markdownEditor.title = viewOnly ? getEditorReadOnlyMessage() : '';
+      markdownEditor.readOnly = sourceReadOnly;
+      markdownEditor.setAttribute('aria-readonly', sourceReadOnly ? 'true' : 'false');
+      markdownEditor.classList.toggle('live-share-readonly-editor', sourceReadOnly);
+      markdownEditor.title = sourceReadOnly ? getEditorReadOnlyMessage() : '';
     }
 
     viewModeButtons.forEach(function(button) {
       const mode = button.getAttribute('data-view-mode');
-      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      const shouldDisable = (snapshotViewOnly || reviewModeActive) && mode !== 'preview';
       if (shouldDisable) {
         button.dataset.shareSnapshotDisabled = 'true';
         button.disabled = true;
@@ -13400,7 +14293,7 @@ ${selector} .arrowheadPath {
 
     mobileViewModeButtons.forEach(function(button) {
       const mode = button.getAttribute('data-mode');
-      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      const shouldDisable = (snapshotViewOnly || reviewModeActive) && mode !== 'preview';
       if (shouldDisable) {
         button.dataset.shareSnapshotDisabled = 'true';
         button.disabled = true;
@@ -13491,10 +14384,10 @@ ${selector} .arrowheadPath {
     });
 
     if (markdownFormatToolbar) {
-      markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
+      markdownFormatToolbar.classList.toggle('is-live-view-only', sourceReadOnly);
       markdownFormatToolbar.querySelectorAll('[data-md-action]').forEach(function(button) {
         const action = button.getAttribute('data-md-action');
-        const shouldDisable = viewOnly && isLiveMutatingAction(action);
+        const shouldDisable = sourceReadOnly && isLiveMutatingAction(action);
         if (shouldDisable) {
           button.dataset.liveViewOnlyDisabled = 'true';
           button.disabled = true;
@@ -13507,7 +14400,7 @@ ${selector} .arrowheadPath {
           button.setAttribute('aria-disabled', 'false');
         }
       });
-      if (!viewOnly) {
+      if (!sourceReadOnly) {
         updateUndoRedoButtons();
       }
     }

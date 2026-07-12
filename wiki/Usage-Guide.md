@@ -43,6 +43,20 @@ The toolbar can:
 
 The editor also supports list continuation on Enter, two-space indent on Tab, outdent on Shift+Tab, and custom undo/redo. View-only shared tabs block editing actions and keep reading, find, help, and fullscreen available.
 
+## Comments and Suggestions
+
+Use Review when you want to leave structured feedback without editing the Markdown source.
+
+1. Click **Review** in the desktop header or mobile menu. The app switches to a read-only preview workspace and remembers your previous view layout.
+2. Select the comment pin on a rendered heading, paragraph, code block, or diagram.
+3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
+4. Enter the feedback and add it to the document review.
+5. Use **Resolve** or **Reopen** to manage a thread. Use the clipboard button in the review panel to copy a Markdown summary of all feedback.
+
+Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
+
+Review data is local-only. Share Snapshot links and Live Share rooms currently transfer Markdown, not review threads. Feedback created on a temporary shared or live tab lasts only for that tab's current session. Copy the review summary when you need to send feedback to an author. Private mode prevents review threads from being persisted along with the rest of the document workspace.
+
 ## Find and Replace
 
 Open Find and Replace with the toolbar, `Ctrl+F`, or `Cmd+F`. Open replacement focus with `Ctrl+H` or `Cmd+H`.

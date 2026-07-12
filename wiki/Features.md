@@ -29,7 +29,7 @@ Users can work with multiple documents at once.
 - New tabs can be created from the tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
 - The app enforces a practical tab limit of 20 tabs. Shared snapshots refuse to open when this limit has been reached.
-- Each normal tab stores a title, content, scroll position, view mode, and creation time.
+- Each normal tab stores a title, content, scroll position, view mode, local review threads, and creation time.
 - The active tab id and untitled-document counter are stored separately.
 - Temporary Share Snapshot and Live Share tabs are deliberately excluded from persistent tab storage.
 - The Reset button clears the current saved workspace and returns the app to a clean starting state.
@@ -38,7 +38,7 @@ Storage keys used by the current implementation include:
 
 | Key | What It Stores |
 | :--- | :--- |
-| `markdownViewerTabs` | Normal saved document tabs. Temporary shared/live tabs are stripped before saving. |
+| `markdownViewerTabs` | Normal saved document tabs, including local comments and suggestions. Temporary shared/live tabs are stripped before saving. |
 | `markdownViewerActiveTab` | The active tab id. |
 | `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
 | `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |
@@ -51,6 +51,32 @@ The About dialog includes two storage controls:
 
 - **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
 - **Clear local data** removes saved document tabs, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+
+## Comments and Suggestion Mode
+
+Review mode provides a local feedback layer over the rendered document without inserting or changing Markdown.
+
+- The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
+- Review pins are attached to rendered headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
+- A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
+- Threads can be resolved, reopened, deleted, filtered by status, and copied together as a Markdown review summary.
+- Open-thread counts appear in the desktop header and mobile menu.
+- Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, desktop side-by-side review, and a mobile partial-height panel.
+
+Anchoring and lifecycle:
+
+- Each thread stores a deterministic block signature, duplicate occurrence and count, neighboring block context for repeated blocks, block type, label, and source excerpt rather than relying on transient rendered element ids.
+- The app reapplies review anchors after both main-thread and worker preview renders.
+- If a reviewed block changes enough that its signature no longer matches, the thread stays visible as unanchored feedback instead of attaching to the wrong block.
+- Review threads are stored per normal tab inside `markdownViewerTabs`. Duplicating a document starts the copy with no review threads.
+- Private mode and Clear local data cover review threads because they use the same document storage as the Markdown tab.
+- Review pins, outlines, the review panel, and thread content are excluded from Markdown, HTML, PDF, PNG, and browser-print output.
+
+Sharing limits:
+
+- Review threads are local-only and are not encoded into Share Snapshot URLs, stored snapshot payloads, or Live Share Yjs updates.
+- Review feedback added to a temporary Share Snapshot or Live Share tab is kept only for that tab's current session.
+- Use Copy review summary to transfer feedback outside the local workspace.
 
 ## Editing and Formatting Tools
 
@@ -478,6 +504,7 @@ Security limitations:
 | :--- | :--- | :--- | :--- |
 | Typing and local preview | No | Browser memory and saved tabs | Sanitized before preview insertion. |
 | Normal tab autosave | No | `localStorage` or desktop storage mirror | Cleared with site/app data or Reset. |
+| Comments and suggestions | No | Inside normal saved tabs | Local-only review data; excluded from document exports and not synced by Share Snapshot or Live Share. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |

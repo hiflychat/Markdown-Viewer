@@ -202,6 +202,11 @@
                         <i class="bi bi-broadcast"></i> <span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
+
+                    <button id="review-toggle" class="tool-button review-toggle" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
+                        <i class="bi bi-chat-square-text"></i> <span class="btn-text">Review</span>
+                        <span id="review-count-badge" class="review-count-badge" aria-label="0 open review items" hidden>0</span>
+                    </button>
                     
                     <div class="dropdown me-1">
                         <button class="tool-button dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
@@ -328,6 +333,11 @@
                             <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
                                 <span class="mobile-menu-item-label"><i class="bi bi-broadcast me-2"></i><span id="mobile-live-share-label">Live Share</span></span>
                                 <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
+                            </button>
+
+                            <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
+                                <span><i class="bi bi-chat-square-text me-2"></i>Review</span>
+                                <span id="mobile-review-count-badge" class="review-count-badge" aria-label="0 open review items" hidden>0</span>
                             </button>
                             
                             <div class="mobile-menu-item dropdown w-100 p-0 border-0">
@@ -631,6 +641,7 @@
                 <ul class="modal-list">
                   <li>Use the view buttons in the toolbar to switch between Editor, Split, and Preview modes.</li>
                   <li>Sync scrolling is available in Split view to keep the editor and preview aligned.</li>
+                  <li>Review opens a read-only preview where you can comment on or suggest changes to headings, paragraphs, code blocks, and diagrams.</li>
                   <li>Import, Export, Copy, Share, and Theme toggle actions are always available in the header toolbar.</li>
                 </ul>
               </div>
@@ -1162,7 +1173,66 @@
                         <div class="skeleton-placeholder skeleton-line skeleton-w45"></div>
                     </div>
                 </div>
+                <div id="review-pins-layer" class="review-pins-layer" role="group" aria-label="Review pins" hidden></div>
             </div>
+            <button id="review-panel-backdrop" class="review-panel-backdrop" type="button" aria-label="Close comments and suggestions" hidden></button>
+            <aside id="review-panel" class="review-panel" aria-labelledby="review-panel-title" hidden>
+                <div class="review-panel-header">
+                    <div>
+                        <p class="review-panel-eyebrow">Review mode</p>
+                        <h2 id="review-panel-title">Comments &amp; suggestions</h2>
+                        <p id="review-panel-summary" class="review-panel-summary">No open feedback</p>
+                    </div>
+                    <button id="review-panel-close" class="review-icon-btn" type="button" aria-label="Close comments and suggestions" title="Close review mode">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="review-panel-toolbar">
+                    <div class="review-filter-group" role="group" aria-label="Filter review items">
+                        <button class="review-filter-btn is-active" type="button" data-review-filter="open" aria-pressed="true">Open</button>
+                        <button class="review-filter-btn" type="button" data-review-filter="resolved" aria-pressed="false">Resolved</button>
+                        <button class="review-filter-btn" type="button" data-review-filter="all" aria-pressed="false">All</button>
+                    </div>
+                    <button id="review-copy-summary" class="review-icon-btn" type="button" aria-label="Copy review summary" title="Copy review summary" disabled>
+                        <i class="bi bi-clipboard" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <section id="review-composer" class="review-composer" aria-labelledby="review-composer-title" hidden>
+                    <div class="review-composer-heading">
+                        <div>
+                            <p class="review-panel-eyebrow">Selected block</p>
+                            <h3 id="review-composer-title">Add feedback</h3>
+                        </div>
+                        <button id="review-composer-cancel" class="review-icon-btn" type="button" aria-label="Cancel feedback" title="Cancel">
+                            <i class="bi bi-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <p id="review-composer-anchor" class="review-anchor-preview"></p>
+                    <div class="review-kind-group" role="group" aria-label="Feedback type">
+                        <button class="review-kind-btn is-active" type="button" data-review-kind="comment" aria-pressed="true">
+                            <i class="bi bi-chat-left-text" aria-hidden="true"></i> Comment
+                        </button>
+                        <button class="review-kind-btn" type="button" data-review-kind="suggestion" aria-pressed="false">
+                            <i class="bi bi-lightbulb" aria-hidden="true"></i> Suggestion
+                        </button>
+                    </div>
+                    <label id="review-feedback-label" class="review-feedback-label" for="review-feedback-input">Comment</label>
+                    <textarea id="review-feedback-input" class="review-feedback-input" rows="4" maxlength="2000" placeholder="Leave a focused comment for the author..."></textarea>
+                    <div class="review-composer-footer">
+                        <span id="review-feedback-count" class="review-feedback-count">0 / 2000</span>
+                        <button id="review-feedback-submit" class="review-primary-btn" type="button" disabled>Add comment</button>
+                    </div>
+                </section>
+
+                <div id="review-list" class="review-list" aria-live="polite"></div>
+                <div id="review-empty-state" class="review-empty-state">
+                    <i class="bi bi-chat-square-dots" aria-hidden="true"></i>
+                    <h3>No open feedback</h3>
+                    <p>Use the comment pins in the preview to leave feedback without changing the Markdown.</p>
+                </div>
+            </aside>
         </main>
     </div>
 
