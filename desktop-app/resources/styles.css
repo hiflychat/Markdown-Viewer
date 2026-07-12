@@ -6567,8 +6567,13 @@ html[data-theme="dark"] .mermaid svg {
   }
 
   .review-panel-toolbar {
+    flex-wrap: wrap;
     gap: 8px;
     padding-inline: 10px;
+  }
+
+  .review-panel-actions {
+    margin-inline-start: auto;
   }
 
   .review-panel-actions .review-icon-btn {
