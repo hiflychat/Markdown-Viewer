@@ -23,9 +23,6 @@
   /* Code block background for light mode */
   --skeleton-bg: #e2e8f0;
   --skeleton-glow: rgba(255, 255, 255, 0.65);
-  --review-accent: #8250df;
-  --review-accent-strong: #6639ba;
-  --review-accent-soft: #f3effb;
   --review-suggestion: #9a6700;
   --review-suggestion-soft: #fff8c5;
   --review-panel-shadow: -12px 0 32px rgba(31, 35, 40, 0.16);
@@ -69,9 +66,6 @@
   /* Code block background for dark mode */
   --skeleton-bg: #2d3139;
   --skeleton-glow: rgba(255, 255, 255, 0.08);
-  --review-accent: #a371f7;
-  --review-accent-strong: #bc8cff;
-  --review-accent-soft: rgba(163, 113, 247, 0.15);
   --review-suggestion: #d29922;
   --review-suggestion-soft: rgba(187, 128, 9, 0.16);
   --review-panel-shadow: -12px 0 32px rgba(0, 0, 0, 0.45);
@@ -5999,16 +5993,6 @@ html[data-theme="dark"] .mermaid svg {
 /* ========================================
    COMMENTS & SUGGESTIONS
    ======================================== */
-.review-toggle {
-  position: relative;
-}
-
-.review-toggle.is-active {
-  color: var(--review-accent-strong);
-  background: var(--review-accent-soft);
-  border-color: var(--review-accent);
-}
-
 .review-count-badge {
   min-width: 18px;
   height: 18px;
@@ -6017,8 +6001,8 @@ html[data-theme="dark"] .mermaid svg {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  background: var(--review-accent);
+  color: var(--bg-color);
+  background: var(--accent-color);
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
@@ -6075,7 +6059,7 @@ html[data-theme="dark"] .mermaid svg {
 
 .review-panel-eyebrow {
   margin: 0 0 3px;
-  color: var(--review-accent-strong);
+  color: var(--accent-color);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -6161,7 +6145,7 @@ html[data-theme="dark"] .mermaid svg {
 
 .review-filter-btn.is-active,
 .review-kind-btn.is-active {
-  color: var(--review-accent-strong);
+  color: var(--accent-color);
   background: var(--bg-color);
   box-shadow: 0 1px 3px rgba(31, 35, 40, 0.12);
 }
@@ -6169,8 +6153,8 @@ html[data-theme="dark"] .mermaid svg {
 .review-composer {
   margin: 14px 14px 4px;
   padding: 14px;
-  background: var(--review-accent-soft);
-  border: 1px solid color-mix(in srgb, var(--review-accent) 45%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 45%, var(--border-color));
   border-radius: 10px;
 }
 
@@ -6235,8 +6219,8 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-feedback-input:focus {
-  border-color: var(--review-accent);
-  outline: 2px solid color-mix(in srgb, var(--review-accent) 24%, transparent);
+  border-color: var(--accent-color);
+  outline: 2px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
   outline-offset: 0;
 }
 
@@ -6256,9 +6240,9 @@ html[data-theme="dark"] .mermaid svg {
 .review-primary-btn {
   min-height: 32px;
   padding: 6px 12px;
-  color: #ffffff;
-  background: var(--review-accent);
-  border: 1px solid var(--review-accent-strong);
+  color: var(--bg-color);
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.76rem;
@@ -6266,7 +6250,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-primary-btn:hover:not(:disabled) {
-  background: var(--review-accent-strong);
+  background: color-mix(in srgb, var(--accent-color) 84%, #000000);
 }
 
 .review-primary-btn:disabled {
@@ -6285,7 +6269,7 @@ html[data-theme="dark"] .mermaid svg {
   padding: 12px;
   background: var(--bg-color);
   border: 1px solid var(--border-color);
-  border-inline-start: 3px solid var(--review-accent);
+  border-inline-start: 3px solid var(--accent-color);
   border-radius: 8px;
 }
 
@@ -6331,8 +6315,8 @@ html[data-theme="dark"] .mermaid svg {
 
 .review-kind-label {
   padding: 5px 7px;
-  color: var(--review-accent-strong);
-  background: var(--review-accent-soft);
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
 }
 
 .review-thread[data-kind="suggestion"] .review-kind-label {
@@ -6361,7 +6345,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-thread-anchor:hover:not(:disabled) {
-  color: var(--review-accent-strong);
+  color: var(--accent-color);
   text-decoration: underline;
 }
 
@@ -6424,7 +6408,7 @@ html[data-theme="dark"] .mermaid svg {
 .review-empty-state i {
   display: block;
   margin-bottom: 10px;
-  color: var(--review-accent);
+  color: var(--accent-color);
   font-size: 1.7rem;
 }
 
@@ -6452,16 +6436,16 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 #markdown-preview .review-target.is-review-target-active {
-  outline: 2px solid var(--review-accent);
+  outline: 2px solid var(--accent-color);
   outline-offset: 4px;
 }
 
 #markdown-preview .review-target.has-review-thread {
-  box-shadow: inset 3px 0 0 var(--review-accent);
+  box-shadow: inset 3px 0 0 var(--accent-color);
 }
 
 [dir="rtl"] #markdown-preview .review-target.has-review-thread {
-  box-shadow: inset -3px 0 0 var(--review-accent);
+  box-shadow: inset -3px 0 0 var(--accent-color);
 }
 
 .review-pins-layer {
@@ -6486,9 +6470,9 @@ html[data-theme="dark"] .mermaid svg {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  color: #ffffff;
-  background: var(--review-accent);
-  border: 1px solid var(--review-accent-strong);
+  color: var(--bg-color);
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
   border-radius: 999px;
   box-shadow: 0 2px 8px rgba(31, 35, 40, 0.22);
   cursor: pointer;
@@ -6504,7 +6488,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-target-button:hover {
-  background: var(--review-accent-strong);
+  background: color-mix(in srgb, var(--accent-color) 84%, #000000);
 }
 
 .review-filter-btn:focus-visible,
@@ -6514,7 +6498,7 @@ html[data-theme="dark"] .mermaid svg {
 .review-thread-action:focus-visible,
 .review-thread-anchor:focus-visible,
 .review-target-button:focus-visible {
-  outline: 2px solid var(--review-accent);
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
 
