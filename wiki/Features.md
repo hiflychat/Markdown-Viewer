@@ -59,7 +59,7 @@ Review mode provides a local feedback layer over the rendered document without i
 - The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
 - Review pins are attached to rendered headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
 - A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
-- Threads can be resolved, reopened, deleted, filtered by status, and copied together as a Markdown review summary.
+- Threads can be resolved, reopened, or deleted individually and filtered by status. The panel also provides Copy summary, Resolve all, and confirmation-protected Delete all actions.
 - Open-thread counts appear in the desktop header and mobile menu.
 - Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, desktop side-by-side review, and a mobile partial-height panel.
 

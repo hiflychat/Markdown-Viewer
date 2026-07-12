@@ -270,6 +270,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let reviewFilter = 'open';
   let reviewComposerKind = 'comment';
   let activeReviewAnchor = null;
+  let pendingReviewDelete = null;
   let reviewPinsResizeObserver = null;
   let reviewPinsLayoutFrame = null;
   let reviewTargetSourceSnapshots = new WeakMap();
@@ -338,6 +339,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   const reviewPanelClose = document.getElementById('review-panel-close');
   const reviewPanelSummary = document.getElementById('review-panel-summary');
   const reviewCopySummary = document.getElementById('review-copy-summary');
+  const reviewResolveAll = document.getElementById('review-resolve-all');
+  const reviewDeleteAll = document.getElementById('review-delete-all');
+  const reviewDeleteModal = document.getElementById('review-delete-modal');
+  const reviewDeleteTitle = document.getElementById('review-delete-title');
+  const reviewDeleteDescription = document.getElementById('review-delete-description');
+  const reviewDeleteClose = document.getElementById('review-delete-close');
+  const reviewDeleteCancel = document.getElementById('review-delete-cancel');
+  const reviewDeleteConfirm = document.getElementById('review-delete-confirm');
   const reviewComposer = document.getElementById('review-composer');
   const reviewComposerAnchor = document.getElementById('review-composer-anchor');
   const reviewComposerCancel = document.getElementById('review-composer-cancel');
@@ -2790,8 +2799,17 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!badge) return;
       badge.textContent = String(openCount);
       badge.hidden = openCount === 0;
-      badge.setAttribute('aria-label', openCount + ' open review item' + (openCount === 1 ? '' : 's'));
+      const countLabel = openCount + ' open review item' + (openCount === 1 ? '' : 's');
+      if (badge === reviewCountBadge) {
+        badge.setAttribute('aria-label', countLabel + '; open review panel');
+      }
+      badge.title = countLabel;
     });
+    if (mobileReviewToggle) {
+      mobileReviewToggle.setAttribute('aria-label', openCount > 0
+        ? 'Open comments and suggestions. ' + openCount + ' open review item' + (openCount === 1 ? '' : 's') + '.'
+        : 'Open comments and suggestions');
+    }
   }
 
   function formatReviewTime(timestamp) {
@@ -2887,6 +2905,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         : openCount + ' open item' + (openCount === 1 ? '' : 's') + (threads.length === openCount ? '' : ' - ' + threads.length + ' total');
     }
     if (reviewCopySummary) reviewCopySummary.disabled = threads.length === 0;
+    if (reviewResolveAll) reviewResolveAll.disabled = openCount === 0;
+    if (reviewDeleteAll) reviewDeleteAll.disabled = threads.length === 0;
 
     const filteredThreads = threads.filter(function(thread) {
       if (reviewFilter === 'resolved') return thread.resolved;
@@ -3064,6 +3084,93 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  function resolveAllReviewThreads() {
+    const openThreads = getActiveReviewThreads().filter(function(thread) { return !thread.resolved; });
+    if (openThreads.length === 0) return;
+    const updatedAt = Date.now();
+    openThreads.forEach(function(thread) {
+      thread.resolved = true;
+      thread.updatedAt = updatedAt;
+    });
+    persistReviewThreads(openThreads.length + ' review item' + (openThreads.length === 1 ? '' : 's') + ' resolved.');
+    requestAnimationFrame(function() {
+      if (reviewPanelClose) reviewPanelClose.focus();
+    });
+  }
+
+  function cancelReviewDeleteConfirmation() {
+    pendingReviewDelete = null;
+    if (reviewDeleteModal && reviewDeleteModal.getAttribute('aria-hidden') === 'false') {
+      closeAppModal(reviewDeleteModal);
+    }
+  }
+
+  function requestReviewDeleteConfirmation(reviewId) {
+    if (!reviewDeleteModal || !reviewDeleteCancel || !reviewDeleteConfirm) return;
+    const threads = getActiveReviewThreads();
+    const thread = reviewId
+      ? threads.find(function(item) { return item.id === reviewId; })
+      : null;
+    if ((reviewId && !thread) || (!reviewId && threads.length === 0)) return;
+
+    pendingReviewDelete = {
+      tabId: activeTabId,
+      reviewId: reviewId || null
+    };
+    if (reviewDeleteTitle) {
+      reviewDeleteTitle.textContent = reviewId ? 'Delete review item?' : 'Delete all review items?';
+    }
+    if (reviewDeleteDescription) {
+      reviewDeleteDescription.textContent = reviewId
+        ? 'This ' + (thread.kind === 'suggestion' ? 'suggestion' : 'comment') + ' will be permanently deleted. This cannot be undone.'
+        : 'All ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' in this document will be permanently deleted. This cannot be undone.';
+    }
+    reviewDeleteConfirm.textContent = reviewId ? 'Delete item' : 'Delete all';
+    openAppModal(reviewDeleteModal, {
+      focusTarget: reviewDeleteCancel,
+      onClose: cancelReviewDeleteConfirmation
+    });
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (reviewDeleteCancel) reviewDeleteCancel.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  function confirmReviewDeletion() {
+    const pending = pendingReviewDelete;
+    pendingReviewDelete = null;
+    if (!pending || !reviewDeleteModal) return;
+
+    const tab = tabs.find(function(item) { return item.id === pending.tabId; });
+    if (!tab || tab.id !== activeTabId || !Array.isArray(tab.reviewThreads)) {
+      closeAppModal(reviewDeleteModal);
+      announceToScreenReader('Review deletion cancelled because the active document changed.');
+      return;
+    }
+
+    let deletedCount = 0;
+    if (pending.reviewId) {
+      const index = tab.reviewThreads.findIndex(function(thread) { return thread.id === pending.reviewId; });
+      if (index >= 0) {
+        tab.reviewThreads.splice(index, 1);
+        deletedCount = 1;
+      }
+    } else {
+      deletedCount = tab.reviewThreads.length;
+      tab.reviewThreads.splice(0, tab.reviewThreads.length);
+      closeReviewComposer();
+    }
+
+    closeAppModal(reviewDeleteModal);
+    if (deletedCount > 0) {
+      persistReviewThreads(deletedCount === 1 ? 'Review item deleted.' : deletedCount + ' review items deleted.');
+    }
+    requestAnimationFrame(function() {
+      if (reviewPanelClose) reviewPanelClose.focus();
+    });
+  }
+
   function updateReviewBackdrop() {
     if (!reviewPanelBackdrop) return;
     reviewPanelBackdrop.hidden = true;
@@ -3096,6 +3203,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       renderReviewPanel();
       if (options.focusPanel && reviewPanelClose) reviewPanelClose.focus();
     } else {
+      cancelReviewDeleteConfirmation();
       closeReviewComposer();
       clearReviewDecorations();
       const restoreMode = reviewPreviousViewModes.get(activeTabId);
@@ -3121,6 +3229,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewToggle) {
       reviewToggle.addEventListener('click', function() {
         setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (reviewCountBadge) {
+      reviewCountBadge.addEventListener('click', function() {
+        if (!reviewModeActive) {
+          setReviewMode(true, { focusPanel: true });
+        } else if (reviewPanelClose) {
+          reviewPanelClose.focus();
+        }
       });
     }
     if (mobileReviewToggle) {
@@ -3159,6 +3276,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (reviewFeedbackSubmit) reviewFeedbackSubmit.addEventListener('click', submitReviewFeedback);
     if (reviewCopySummary) reviewCopySummary.addEventListener('click', copyReviewSummary);
+    if (reviewResolveAll) reviewResolveAll.addEventListener('click', resolveAllReviewThreads);
+    if (reviewDeleteAll) {
+      reviewDeleteAll.addEventListener('click', function() {
+        requestReviewDeleteConfirmation(null);
+      });
+    }
+    if (reviewDeleteClose) reviewDeleteClose.addEventListener('click', cancelReviewDeleteConfirmation);
+    if (reviewDeleteCancel) reviewDeleteCancel.addEventListener('click', cancelReviewDeleteConfirmation);
+    if (reviewDeleteConfirm) reviewDeleteConfirm.addEventListener('click', confirmReviewDeletion);
 
     document.querySelectorAll('[data-review-kind]').forEach(function(button) {
       button.addEventListener('click', function() {
@@ -3216,17 +3342,15 @@ document.addEventListener("DOMContentLoaded", async function () {
           persistReviewThreads(thread.resolved ? 'Review item resolved.' : 'Review item reopened.');
           return;
         }
-        if (action === 'delete' && confirm('Delete this review item?')) {
-          const index = getActiveReviewThreads().indexOf(thread);
-          if (index >= 0) getActiveReviewThreads().splice(index, 1);
-          persistReviewThreads('Review item deleted.');
+        if (action === 'delete') {
+          requestReviewDeleteConfirmation(thread.id);
         }
       });
     }
 
     window.addEventListener('resize', updateReviewBackdrop);
     document.addEventListener('keydown', function(event) {
-      if (event.key !== 'Escape' || !reviewModeActive || activeModal) return;
+      if (event.defaultPrevented || event.key !== 'Escape' || !reviewModeActive || activeModal) return;
       if (reviewComposer && !reviewComposer.hidden) {
         event.preventDefault();
         closeReviewComposer({ restoreFocus: true });
@@ -3765,6 +3889,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function switchTab(tabId) {
     if (tabId === activeTabId) return;
+    cancelReviewDeleteConfirmation();
     saveCurrentTabState();
     closeReviewComposer();
     clearReviewDecorations();
@@ -3814,6 +3939,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function closeTab(tabId) {
+    if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) {
+      cancelReviewDeleteConfirmation();
+    }
     if (liveCollaboration && liveCollaboration.tabId === tabId) {
       if (liveCollaboration.isHost) {
         endLiveSessionForEveryone();
@@ -3990,6 +4118,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function resetAllTabs() {
+    cancelReviewDeleteConfirmation();
     const modal = document.getElementById('reset-confirm-modal');
     const confirmBtn = document.getElementById('reset-modal-confirm');
     const cancelBtn = document.getElementById('reset-modal-cancel');

@@ -51,7 +51,7 @@ Use Review when you want to leave structured feedback without editing the Markdo
 2. Select the comment pin on a rendered heading, paragraph, code block, or diagram.
 3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
 4. Enter the feedback and add it to the document review.
-5. Use **Resolve** or **Reopen** to manage a thread. Use the clipboard button in the review panel to copy a Markdown summary of all feedback.
+5. Use **Resolve** or **Reopen** to manage a thread. The panel toolbar can copy a Markdown summary, resolve every open item, or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
 
 Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
 
