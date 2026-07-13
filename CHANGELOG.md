@@ -5,7 +5,7 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## Unreleased
 
-- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. Review target buttons now match the main toolbar controls, align in a straight column at the preview's right edge, show a plus before feedback exists, and switch to the review icon and count after feedback is added. YAML frontmatter tables are reviewable, reviewed text has clear spacing from its side marker, and clicking reviewed content or its count opens the attached feedback instead of a blank composer. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
+- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. Review target buttons now match the main toolbar controls, align in a straight column at the preview's right edge, show a plus before feedback exists, and switch to the review icon and count after feedback is added. YAML frontmatter tables are reviewable, reviewed text has clear spacing from its side marker, and clicking reviewed content or its count opens the attached feedback together with the composer so more items can be added to the same block. Existing comments and suggestions can now be edited in place. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
 
 ---
 

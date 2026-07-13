@@ -270,6 +270,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let reviewFilter = 'open';
   let reviewComposerKind = 'comment';
   let activeReviewAnchor = null;
+  let activeReviewEditId = null;
   let pendingReviewDelete = null;
   let reviewPinsResizeObserver = null;
   let reviewPinsLayoutFrame = null;
@@ -2560,6 +2561,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     tab.reviewThreads = getLiveReviewMapThreads(liveCollaboration.reviewMap);
     saveTabsToStorage(tabs);
     if (tab.id === activeTabId) {
+      if (activeReviewEditId && !tab.reviewThreads.some(function(thread) { return thread.id === activeReviewEditId; })) {
+        closeReviewComposer();
+      }
       decorateReviewTargets();
       renderReviewPanel();
     }
@@ -2861,9 +2865,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       button.dataset.reviewDuplicateCount = String(duplicateCount);
       button.dataset.reviewContext = context;
       button.dataset.html2canvasIgnore = 'true';
-      button.title = targetThreads.length > 0 ? 'View feedback for this block' : 'Comment on this block';
+      button.title = targetThreads.length > 0 ? 'View feedback or add another item' : 'Comment on this block';
       button.setAttribute('aria-label', targetThreads.length > 0
-        ? 'View feedback for ' + label + '. ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' attached.'
+        ? 'View ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' for ' + label + ' or add more feedback.'
         : 'Add feedback to ' + label);
 
       const icon = document.createElement('i');
@@ -2926,6 +2930,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const target = findReviewTarget(thread.anchor);
     const item = document.createElement('article');
     item.className = 'review-thread' + (thread.resolved ? ' is-resolved' : '') + (!target ? ' is-orphaned' : '');
+    if (thread.id === activeReviewEditId) item.classList.add('is-review-thread-active');
     item.dataset.reviewId = thread.id;
     item.dataset.kind = thread.kind;
 
@@ -2974,6 +2979,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const actions = document.createElement('div');
     actions.className = 'review-thread-actions';
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'review-thread-action';
+    editButton.dataset.reviewAction = 'edit';
+    editButton.dataset.reviewId = thread.id;
+    editButton.textContent = 'Edit';
+    editButton.setAttribute('aria-label', 'Edit ' + (thread.kind === 'suggestion' ? 'suggestion' : 'comment'));
+    actions.appendChild(editButton);
     const statusButton = document.createElement('button');
     statusButton.type = 'button';
     statusButton.className = 'review-thread-action';
@@ -3063,8 +3076,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     if (threads.length === 0) return false;
 
-    closeReviewComposer();
     setReviewFilter('all');
+    const target = findReviewTarget(anchor);
+    if (target) openReviewComposer(target, { focusInput: false });
 
     const matchingIds = new Set(threads.map(function(thread) { return thread.id; }));
     const matchingItems = Array.from(reviewList.querySelectorAll('.review-thread')).filter(function(item) {
@@ -3085,7 +3099,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         item.classList.remove('is-review-thread-active');
       });
     }, 1800);
-    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block.');
+    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block. The composer is open for more feedback.');
     return true;
   }
 
@@ -3100,7 +3114,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       reviewFeedbackLabel.textContent = reviewComposerKind === 'suggestion' ? 'Suggested change' : 'Comment';
     }
     if (reviewComposerTitle) {
-      reviewComposerTitle.textContent = reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment';
+      reviewComposerTitle.textContent = activeReviewEditId
+        ? (reviewComposerKind === 'suggestion' ? 'Edit suggestion' : 'Edit comment')
+        : (reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment');
     }
     if (reviewFeedbackInput) {
       reviewFeedbackInput.placeholder = reviewComposerKind === 'suggestion'
@@ -3108,7 +3124,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         : 'Leave a focused comment for the author...';
     }
     if (reviewFeedbackSubmit) {
-      reviewFeedbackSubmit.textContent = reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment';
+      reviewFeedbackSubmit.textContent = activeReviewEditId
+        ? 'Save changes'
+        : (reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment');
     }
   }
 
@@ -3127,25 +3145,43 @@ document.addEventListener("DOMContentLoaded", async function () {
   function closeReviewComposer(options) {
     options = options || {};
     const returnAnchor = activeReviewAnchor;
+    const returnReviewId = activeReviewEditId;
     if (activeReviewAnchor) {
       const previousTarget = findReviewTarget(activeReviewAnchor);
       if (previousTarget) previousTarget.classList.remove('is-review-target-active');
     }
     activeReviewAnchor = null;
+    activeReviewEditId = null;
     if (reviewComposer) reviewComposer.hidden = true;
     if (reviewFeedbackInput) reviewFeedbackInput.value = '';
     if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
     if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
-    if (options.restoreFocus && reviewModeActive && !focusReviewPin(returnAnchor) && reviewPanelClose) {
-      reviewPanelClose.focus();
+    if (reviewList) {
+      reviewList.querySelectorAll('.is-review-thread-active').forEach(function(item) {
+        item.classList.remove('is-review-thread-active');
+      });
+    }
+    if (options.restoreFocus && reviewModeActive) {
+      const editButton = returnReviewId && reviewList
+        ? Array.from(reviewList.querySelectorAll('[data-review-action="edit"]')).find(function(button) {
+          return button.dataset.reviewId === returnReviewId;
+        })
+        : null;
+      if (editButton) {
+        editButton.focus();
+      } else if (!focusReviewPin(returnAnchor) && reviewPanelClose) {
+        reviewPanelClose.focus();
+      }
     }
   }
 
-  function openReviewComposer(target) {
+  function openReviewComposer(target, options) {
+    options = options || {};
     if (!target) return;
     const descriptor = getReviewAnchorDescriptor(target);
     if (!descriptor) return;
     closeReviewComposer();
+    activeReviewEditId = null;
     activeReviewAnchor = descriptor;
     target.classList.add('is-review-target-active');
     if (reviewComposerAnchor) {
@@ -3155,8 +3191,31 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewComposer) reviewComposer.hidden = false;
     if (reviewFeedbackInput) {
       reviewFeedbackInput.value = '';
-      reviewFeedbackInput.focus();
+      if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
+      if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
+      if (options.focusInput !== false) reviewFeedbackInput.focus();
     }
+  }
+
+  function openReviewEditor(thread) {
+    if (!thread || !reviewComposer || !reviewFeedbackInput) return;
+    closeReviewComposer();
+    activeReviewEditId = thread.id;
+    activeReviewAnchor = Object.assign({}, thread.anchor);
+    const target = findReviewTarget(thread.anchor);
+    if (target) target.classList.add('is-review-target-active');
+    if (reviewComposerAnchor) {
+      reviewComposerAnchor.textContent = thread.anchor.label + ': ' + thread.anchor.excerpt;
+    }
+    updateReviewComposerKind(thread.kind);
+    reviewComposer.hidden = false;
+    reviewFeedbackInput.value = thread.body;
+    if (reviewFeedbackCount) reviewFeedbackCount.textContent = reviewFeedbackInput.value.length + ' / ' + REVIEW_TEXT_LIMIT;
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = false;
+    renderReviewPanel();
+    reviewFeedbackInput.focus();
+    reviewFeedbackInput.setSelectionRange(reviewFeedbackInput.value.length, reviewFeedbackInput.value.length);
+    announceToScreenReader('Editing ' + (thread.kind === 'suggestion' ? 'suggestion.' : 'comment.'));
   }
 
   function persistReviewThreads(message) {
@@ -3172,6 +3231,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     const body = reviewFeedbackInput.value.trim();
     if (!body) return;
     const returnAnchor = Object.assign({}, activeReviewAnchor);
+    if (activeReviewEditId) {
+      const reviewId = activeReviewEditId;
+      const thread = getActiveReviewThreads().find(function(item) { return item.id === reviewId; });
+      if (!thread) {
+        closeReviewComposer();
+        announceToScreenReader('This review item is no longer available.');
+        return;
+      }
+      thread.kind = reviewComposerKind;
+      thread.body = body.slice(0, REVIEW_TEXT_LIMIT);
+      thread.updatedAt = Date.now();
+      closeReviewComposer();
+      persistReviewThreads('Review item updated.');
+      requestAnimationFrame(function() {
+        const editButton = reviewList
+          ? Array.from(reviewList.querySelectorAll('[data-review-action="edit"]')).find(function(button) {
+            return button.dataset.reviewId === reviewId;
+          })
+          : null;
+        if (editButton) editButton.focus();
+      });
+      return;
+    }
     getActiveReviewThreads().push({
       id: createReviewId(),
       anchor: Object.assign({}, activeReviewAnchor),
@@ -3308,6 +3390,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (pending.reviewId) {
       const index = tab.reviewThreads.findIndex(function(thread) { return thread.id === pending.reviewId; });
       if (index >= 0) {
+        if (activeReviewEditId === pending.reviewId) closeReviewComposer();
         tab.reviewThreads.splice(index, 1);
         deletedCount = 1;
       }
@@ -3497,6 +3580,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         const action = actionButton.dataset.reviewAction;
         if (action === 'focus-anchor') {
           focusReviewAnchor(thread);
+          return;
+        }
+        if (action === 'edit') {
+          openReviewEditor(thread);
           return;
         }
         if (action === 'toggle-resolved') {
