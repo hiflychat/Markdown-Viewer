@@ -61,7 +61,8 @@ Review mode provides a local feedback layer over the rendered document without i
 - A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
 - Threads can be resolved, reopened, or deleted individually and filtered by status. The panel also provides Copy summary, Resolve all, and confirmation-protected Delete all actions.
 - Open-thread counts appear in the desktop header and mobile menu.
-- Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, desktop side-by-side review, and a mobile partial-height panel.
+- Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, a compact desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet.
+- Comments and suggestions use the existing app accent, button surfaces, borders, hover states, disabled states, and Bootstrap Icons; the feature does not introduce a separate color palette.
 
 Anchoring and lifecycle:
 

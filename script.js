@@ -348,6 +348,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const reviewDeleteCancel = document.getElementById('review-delete-cancel');
   const reviewDeleteConfirm = document.getElementById('review-delete-confirm');
   const reviewComposer = document.getElementById('review-composer');
+  const reviewComposerTitle = document.getElementById('review-composer-title');
   const reviewComposerAnchor = document.getElementById('review-composer-anchor');
   const reviewComposerCancel = document.getElementById('review-composer-cancel');
   const reviewFeedbackLabel = document.getElementById('review-feedback-label');
@@ -2848,6 +2849,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'review-target-button';
+      button.classList.toggle('has-review-items', targetThreads.length > 0);
       button.dataset.reviewAnchor = anchorKey;
       button.dataset.reviewDuplicateCount = String(duplicateCount);
       button.dataset.reviewContext = context;
@@ -2927,7 +2929,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const kind = document.createElement('span');
     kind.className = 'review-kind-label';
     const kindIcon = document.createElement('i');
-    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-lightbulb' : 'bi bi-chat-left-text';
+    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-pencil-square' : 'bi bi-chat-left-text';
     kindIcon.setAttribute('aria-hidden', 'true');
     kind.appendChild(kindIcon);
     kind.appendChild(document.createTextNode(thread.kind === 'suggestion' ? 'Suggestion' : 'Comment'));
@@ -3018,12 +3020,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         copy.textContent = 'Resolved comments and suggestions will appear here.';
       } else if (reviewFilter === 'all') {
         title.textContent = 'No feedback yet';
-        copy.textContent = 'Use the comment pins in the preview to leave feedback without changing the Markdown.';
+        copy.textContent = 'Select a comment pin in the preview to add feedback.';
       } else {
         title.textContent = 'No open feedback';
         copy.textContent = threads.length > 0
           ? 'Everything has been resolved. Switch to Resolved or All to review earlier feedback.'
-          : 'Use the comment pins in the preview to leave feedback without changing the Markdown.';
+          : 'Select a comment pin in the preview to add feedback.';
       }
     }
   }
@@ -3037,6 +3039,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     if (reviewFeedbackLabel) {
       reviewFeedbackLabel.textContent = reviewComposerKind === 'suggestion' ? 'Suggested change' : 'Comment';
+    }
+    if (reviewComposerTitle) {
+      reviewComposerTitle.textContent = reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment';
     }
     if (reviewFeedbackInput) {
       reviewFeedbackInput.placeholder = reviewComposerKind === 'suggestion'

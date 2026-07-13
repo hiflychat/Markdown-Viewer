@@ -3,6 +3,12 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## Unreleased
+
+- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
+
+---
+
 ## v3.9.1
 
 - **Description:** Improved export reliability, file workflows, diagram insertion, shared-document safety, and browser compatibility.

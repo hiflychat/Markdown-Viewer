@@ -53,6 +53,8 @@ Use Review when you want to leave structured feedback without editing the Markdo
 4. Enter the feedback and add it to the document review.
 5. Use **Resolve** or **Reopen** to manage a thread. The panel toolbar can copy a Markdown summary, resolve every open item, or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
 
+On desktop, Review opens as a compact side panel beside the preview. Tablet layouts use a side drawer, while phones use a taller bottom sheet with larger filter, composer, thread, and pin controls for touch. Light and dark themes use the same existing app colors, borders, hover states, and icons.
+
 Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
 
 Share Snapshot links transfer Markdown without review threads. Live Share rooms synchronize comments, suggestions, resolve/reopen state, and deletions through a separate Review channel. View-only participants can review without receiving Markdown edit permission. A participant's temporary live tab is removed when they leave, while synchronized feedback remains in the host's normal document tab. Private mode prevents review threads from being persisted with the local workspace.

@@ -94,7 +94,7 @@ Markdown Viewer handles the usual Markdown basics, but its real value is helping
    - **STL 3D Model Renderer**: inspect 3D model previews alongside technical notes.
    - **ABC Music Player & Sheet Music Viewer**: render sheet music and play notation in the browser.
 
-3. **Comments & Suggestions**: open a read-only Review workspace and attach feedback to rendered headings, paragraphs, code blocks, and diagrams without changing the Markdown source. Resolve threads or copy a review summary when the feedback is ready to share.
+3. **Comments & Suggestions**: open a read-only Review workspace and attach feedback to rendered headings, paragraphs, code blocks, and diagrams without changing the Markdown source. The responsive side panel uses the same controls and theme as the rest of the app.
 4. **Live Share Temporary Rooms**: collaborate in real time for quick editing sessions, reviews, or pair-writing, with server-checked host, editable, and view-only capabilities.
 5. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly. Large stored snapshots expire after 90 days.
 6. **LaTeX Math Notation**: render inline and display formulas with MathJax, useful for math-heavy notes, papers, and technical explanations.
@@ -129,7 +129,7 @@ Markdown Viewer works well as a Markdown diagram editor for technical notes, doc
 
 ## Sharing, Collaboration, and Export
 
-- **Comments & Suggestions** provides a local, per-document review layer. Review pins attach comments or suggestions to rendered headings, paragraphs, code blocks, and diagrams while the Markdown stays read-only. Threads can be resolved, reopened, deleted, or copied as a Markdown summary. Review data stays in the local tab workspace and is not automatically included in Share Snapshot or Live Share.
+- **Comments & Suggestions** provides a per-document review layer. Review pins attach comments or suggestions to rendered headings, paragraphs, code blocks, and diagrams while the Markdown stays read-only. Threads can be resolved, reopened, deleted, or copied as a Markdown summary. The interface uses a desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet. Review data stays with the local tab workspace, is excluded from Share Snapshot, and is relayed only while an existing Live Share room is active.
 - **Share Snapshot** creates quick links for point-in-time Markdown sharing. Small documents can stay in the URL hash; larger snapshots use temporary Cloudflare KV storage for up to 90 days when that backend is configured. Snapshot links are bearer links: anyone who has the link can open it.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />
