@@ -342,7 +342,7 @@ Implementation:
 
 - The client uses Yjs for the shared document state.
 - Browser clients connect with WebSocket to `/live-room/<room-id>?secret=<secret>`.
-- The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, `null`, and localhost development origins are allowed.
+- The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, HTTPS `*.markdownviewer.pages.dev` previews, `null`, and localhost development origins are allowed.
 - The host connection establishes separate host, edit, and view capabilities. The Durable Object stores these capabilities and authenticates each joining role server-side.
 - Cloudflare Pages routes the WebSocket to a Durable Object named `LIVE_ROOMS`.
 - The Durable Object relays only known message types and filters them by role: viewers cannot send updates or session-end messages, editors can send document sync messages, and only the host can send every supported type.

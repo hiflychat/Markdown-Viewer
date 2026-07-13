@@ -26,7 +26,7 @@ There are two checked-in Cloudflare entry points:
 The Pages Function:
 
 - Requires a WebSocket upgrade request.
-- Allows only the production app, `null`, and localhost/127.0.0.1 development `Origin` values.
+- Allows the production app, HTTPS `*.markdownviewer.pages.dev` preview deployments, `null`, and localhost/127.0.0.1 development `Origin` values.
 - Requires a `LIVE_ROOMS` Durable Object binding.
 - Rejects room names over 160 characters.
 - Rejects secrets over 256 characters.
