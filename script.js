@@ -348,6 +348,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const reviewDeleteClose = document.getElementById('review-delete-close');
   const reviewDeleteCancel = document.getElementById('review-delete-cancel');
   const reviewDeleteConfirm = document.getElementById('review-delete-confirm');
+  const reviewPanelBody = document.querySelector('.review-panel-body');
   const reviewComposer = document.getElementById('review-composer');
   const reviewComposerTitle = document.getElementById('review-composer-title');
   const reviewComposerAnchor = document.getElementById('review-composer-anchor');
@@ -3142,6 +3143,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     return true;
   }
 
+  function focusReviewComposerInput() {
+    if (!reviewFeedbackInput) return;
+    reviewFeedbackInput.focus();
+    requestAnimationFrame(function() {
+      if (reviewComposer && !reviewComposer.hidden && reviewPanelBody) {
+        reviewPanelBody.scrollTop = reviewPanelBody.scrollHeight;
+      }
+    });
+  }
+
   function closeReviewComposer(options) {
     options = options || {};
     const returnAnchor = activeReviewAnchor;
@@ -3193,7 +3204,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       reviewFeedbackInput.value = '';
       if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
       if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
-      if (options.focusInput !== false) reviewFeedbackInput.focus();
+      if (options.focusInput !== false) focusReviewComposerInput();
     }
   }
 
@@ -3213,7 +3224,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewFeedbackCount) reviewFeedbackCount.textContent = reviewFeedbackInput.value.length + ' / ' + REVIEW_TEXT_LIMIT;
     if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = false;
     renderReviewPanel();
-    reviewFeedbackInput.focus();
+    focusReviewComposerInput();
     reviewFeedbackInput.setSelectionRange(reviewFeedbackInput.value.length, reviewFeedbackInput.value.length);
     announceToScreenReader('Editing ' + (thread.kind === 'suggestion' ? 'suggestion.' : 'comment.'));
   }

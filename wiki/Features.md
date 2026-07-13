@@ -58,7 +58,7 @@ Review mode provides a local feedback layer over the rendered document without i
 
 - The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
 - Review pins are attached to rendered YAML frontmatter tables, headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
-- Empty targets show a plus that opens the composer. Targets with feedback show the review icon and count; selecting the count or reviewed content opens the existing feedback and a blank composer for adding another item to the same block.
+- Empty targets show a plus that opens and focuses the composer. Targets with feedback show the review icon and count; selecting the count or reviewed content keeps the saved feedback visible before the composer in the panel's shared scroll area.
 - A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
 - Threads can be edited in the existing composer, resolved, reopened, or deleted individually and filtered by status. The panel also provides Copy summary, Resolve all, and confirmation-protected Delete all actions.
 - Open-thread counts appear in the desktop header and mobile menu.

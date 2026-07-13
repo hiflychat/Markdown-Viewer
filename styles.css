@@ -6136,6 +6136,14 @@ html[data-theme="dark"] .mermaid svg {
   gap: 4px;
 }
 
+.review-panel-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
 .review-filter-group,
 .review-kind-group {
   display: inline-flex;
@@ -6169,6 +6177,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-composer {
+  flex: 0 0 auto;
   margin: 14px 14px 4px;
   padding: 14px;
   background: var(--header-bg);
@@ -6272,8 +6281,8 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .review-list {
-  flex: 1;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
   padding: 10px 14px 18px;
 }
 
