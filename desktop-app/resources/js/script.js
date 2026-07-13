@@ -2752,7 +2752,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     reviewPinsLayoutFrame = null;
     if (!reviewModeActive || !reviewPinsLayer || !previewPaneElement) return;
     const paneRect = previewPaneElement.getBoundingClientRect();
-    const isRtl = markdownPreview && markdownPreview.getAttribute('dir') === 'rtl';
+    const previewRect = markdownPreview.getBoundingClientRect();
+    const pinRight = previewRect.right - 4;
     reviewPinsLayer.querySelectorAll('.review-target-button').forEach(function(button) {
       const anchor = {
         key: button.dataset.reviewAnchor,
@@ -2768,10 +2769,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       const targetRect = target.getBoundingClientRect();
       const isDiagram = target.dataset.reviewType === 'diagram';
       const top = isDiagram ? targetRect.bottom - 40 : targetRect.top + 4;
-      const left = isRtl ? targetRect.left + 4 : targetRect.right - 4;
       button.style.top = (top - paneRect.top + previewPaneElement.scrollTop) + 'px';
-      button.style.left = (left - paneRect.left + previewPaneElement.scrollLeft) + 'px';
-      button.style.transform = isRtl ? 'none' : 'translateX(-100%)';
+      button.style.left = (pinRight - paneRect.left + previewPaneElement.scrollLeft) + 'px';
+      button.style.transform = 'translateX(-100%)';
     });
   }
 
@@ -2848,8 +2848,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'review-target-button';
-      button.classList.toggle('has-review-items', targetThreads.length > 0);
+      button.className = 'tool-button review-target-button';
+      button.classList.toggle('is-active', targetThreads.length > 0);
       button.dataset.reviewAnchor = anchorKey;
       button.dataset.reviewDuplicateCount = String(duplicateCount);
       button.dataset.reviewContext = context;

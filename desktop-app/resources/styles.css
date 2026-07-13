@@ -6468,39 +6468,13 @@ html[data-theme="dark"] .mermaid svg {
 .review-target-button {
   position: absolute;
   z-index: 8;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: var(--accent-color);
-  background: var(--button-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(31, 35, 40, 0.22);
-  cursor: pointer;
-  font-size: 0.68rem;
-  font-weight: 700;
-  opacity: 1;
+  min-width: 28px;
+  height: 28px;
   pointer-events: auto;
-  transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
 .review-target-button[data-review-count]::after {
   content: attr(data-review-count);
-}
-
-.review-target-button:hover {
-  color: var(--accent-color);
-  background: var(--button-hover);
-  border-color: var(--accent-color);
-}
-
-.review-target-button.has-review-items {
-  background: color-mix(in srgb, var(--accent-color) 8%, var(--button-bg));
-  border-color: var(--accent-color);
 }
 
 .review-filter-btn:focus-visible,
