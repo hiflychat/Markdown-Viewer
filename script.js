@@ -4213,7 +4213,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modal = document.getElementById('reset-confirm-modal');
     const confirmBtn = document.getElementById('reset-modal-confirm');
     const cancelBtn = document.getElementById('reset-modal-cancel');
-    if (!modal) return;
+    const closeBtn = document.getElementById('reset-modal-close');
+    const description = document.getElementById('reset-modal-description');
+    if (!modal || !confirmBtn || !cancelBtn) return;
+
+    const fileCount = tabs.length;
+    const reviewCount = tabs.reduce(function(total, tab) {
+      return total + (Array.isArray(tab.reviewThreads) ? tab.reviewThreads.length : 0);
+    }, 0);
+    if (description) {
+      const fileSummary = fileCount + ' open file' + (fileCount === 1 ? '' : 's');
+      const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
+      const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
+      description.textContent = 'Reset will remove ' + fileSummary + ' from Markdown Viewer and permanently clear their locally stored content' + reviewDetails + '. Files saved or exported to your device will not be deleted. Any active Live Share session will end, and a fresh Welcome to Markdown file will be created. Export unsaved work before continuing.';
+    }
 
     function doReset() {
       closeAppModal(modal);
@@ -4248,15 +4261,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     function cleanup() {
       confirmBtn.removeEventListener('click', doReset);
       cancelBtn.removeEventListener('click', doCancel);
+      if (closeBtn) closeBtn.removeEventListener('click', doCancel);
     }
 
     confirmBtn.addEventListener('click', doReset);
     cancelBtn.addEventListener('click', doCancel);
+    if (closeBtn) closeBtn.addEventListener('click', doCancel);
 
     openAppModal(modal, {
-      focusTarget: confirmBtn,
+      focusTarget: cancelBtn,
       onClose: doCancel
     });
+    window.setTimeout(function() {
+      cancelBtn.focus();
+    }, 0);
   }
 
   function initTabs() {

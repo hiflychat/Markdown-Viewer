@@ -441,12 +441,18 @@
         </div>
 
         <!-- Reset Confirmation Modal -->
-        <div id="reset-confirm-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="reset-modal-title" class="reset-modal-message">Are you sure you want to delete all files?</p>
+        <div id="reset-confirm-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title" aria-describedby="reset-modal-description" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box modal-box">
+            <div class="modal-header">
+              <p id="reset-modal-title" class="reset-modal-message">Reset all files?</p>
+              <button type="button" class="modal-close-btn" id="reset-modal-close" aria-label="Close reset confirmation dialog">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p id="reset-modal-description" class="modal-subtext">Open files, locally stored content, and review items will be removed from Markdown Viewer. Files saved or exported to your device will not be deleted.</p>
             <div class="reset-modal-actions">
-              <button class="reset-modal-btn reset-modal-cancel" id="reset-modal-cancel">Cancel</button>
-              <button class="reset-modal-btn reset-modal-confirm" id="reset-modal-confirm">Delete All</button>
+              <button type="button" class="reset-modal-btn reset-modal-cancel" id="reset-modal-cancel">Cancel</button>
+              <button type="button" class="reset-modal-btn reset-modal-confirm" id="reset-modal-confirm">Reset all</button>
             </div>
           </div>
         </div>
