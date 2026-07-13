@@ -2418,6 +2418,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   let liveCollaborationModulesPromise = null;
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
+  const LIVE_REVIEW_EDIT_ORIGIN = Symbol("markdown-viewer-live-review-local-edit");
+  const LIVE_REVIEW_RELAY_ORIGIN = Symbol("markdown-viewer-live-review-relay");
 
   // ========================================
   // COMMENTS & SUGGESTIONS
@@ -2472,6 +2474,94 @@ document.addEventListener("DOMContentLoaded", async function () {
       tab.reviewThreads = [];
     }
     return tab.reviewThreads;
+  }
+
+  function cloneReviewThreadForLiveShare(thread) {
+    return {
+      id: thread.id,
+      anchor: Object.assign({}, thread.anchor),
+      kind: thread.kind,
+      body: thread.body,
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt,
+      resolved: thread.resolved === true
+    };
+  }
+
+  function liveReviewThreadsMatch(left, right) {
+    if (!left || !right) return false;
+    const leftAnchor = left.anchor || {};
+    const rightAnchor = right.anchor || {};
+    return left.id === right.id &&
+      left.kind === right.kind &&
+      left.body === right.body &&
+      left.createdAt === right.createdAt &&
+      left.updatedAt === right.updatedAt &&
+      left.resolved === right.resolved &&
+      leftAnchor.key === rightAnchor.key &&
+      leftAnchor.type === rightAnchor.type &&
+      leftAnchor.label === rightAnchor.label &&
+      leftAnchor.excerpt === rightAnchor.excerpt &&
+      leftAnchor.duplicateCount === rightAnchor.duplicateCount &&
+      leftAnchor.context === rightAnchor.context;
+  }
+
+  function replaceLiveReviewMapThreads(reviewDoc, reviewMap, rawThreads, origin) {
+    if (!reviewDoc || !reviewMap) return;
+    const threads = normalizeReviewThreads(rawThreads);
+    const nextIds = new Set(threads.map(function(thread) { return thread.id; }));
+    const staleIds = [];
+    reviewMap.forEach(function(_, id) {
+      if (!nextIds.has(id)) staleIds.push(id);
+    });
+
+    reviewDoc.transact(function() {
+      staleIds.forEach(function(id) { reviewMap.delete(id); });
+      threads.forEach(function(thread) {
+        const nextThread = cloneReviewThreadForLiveShare(thread);
+        if (!liveReviewThreadsMatch(reviewMap.get(thread.id), nextThread)) {
+          reviewMap.set(thread.id, nextThread);
+        }
+      });
+    }, origin);
+  }
+
+  function getLiveReviewMapThreads(reviewMap) {
+    const rawThreads = [];
+    if (!reviewMap) return rawThreads;
+    reviewMap.forEach(function(thread, id) {
+      if (!thread || typeof thread !== 'object') return;
+      rawThreads.push(Object.assign({}, thread, { id: String(id || thread.id || '') }));
+    });
+    return normalizeReviewThreads(rawThreads).sort(function(a, b) {
+      if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
+  function syncLiveReviewThreadsFromTab() {
+    if (!liveCollaboration || !liveCollaboration.reviewDoc || !liveCollaboration.reviewMap) return;
+    const tab = tabs.find(function(item) { return item.id === liveCollaboration.tabId; });
+    if (!tab || tab.id !== activeTabId) return;
+    replaceLiveReviewMapThreads(
+      liveCollaboration.reviewDoc,
+      liveCollaboration.reviewMap,
+      tab.reviewThreads,
+      LIVE_REVIEW_EDIT_ORIGIN
+    );
+  }
+
+  function applyLiveReviewThreadsFromMap() {
+    if (!liveCollaboration || !liveCollaboration.reviewMap || !liveCollaboration.tabId) return;
+    const tab = tabs.find(function(item) { return item.id === liveCollaboration.tabId; });
+    if (!tab) return;
+
+    tab.reviewThreads = getLiveReviewMapThreads(liveCollaboration.reviewMap);
+    saveTabsToStorage(tabs);
+    if (tab.id === activeTabId) {
+      decorateReviewTargets();
+      renderReviewPanel();
+    }
   }
 
   function decodeReviewSource(value) {
@@ -3006,6 +3096,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function persistReviewThreads(message) {
+    syncLiveReviewThreadsFromTab();
     saveTabsToStorage(tabs);
     decorateReviewTargets();
     renderReviewPanel();
@@ -14647,6 +14738,20 @@ ${selector} .arrowheadPath {
       }
     }
 
+    function publishReviewState() {
+      if (!options.reviewDoc || (typeof options.canPublishReviewState === 'function' && !options.canPublishReviewState())) {
+        return;
+      }
+      try {
+        send({
+          type: 'review-sync-state',
+          update: encodeLiveBytes(options.Y.encodeStateAsUpdate(options.reviewDoc))
+        });
+      } catch (error) {
+        console.warn('Live Share review state publish failed:', error);
+      }
+    }
+
     function publishPresence(cursor) {
       send({
         type: 'presence',
@@ -14666,6 +14771,7 @@ ${selector} .arrowheadPath {
       if (!message || message.sender === options.participantId) return;
       options.onMessage(message, {
         publishCurrentState,
+        publishReviewState,
         publishPresence
       });
     }
@@ -14679,6 +14785,18 @@ ${selector} .arrowheadPath {
       });
     };
     options.ydoc.on('update', updateHandler);
+
+    const reviewUpdateHandler = function(update, origin) {
+      if (destroyed || origin === LIVE_REVIEW_RELAY_ORIGIN) return;
+      if (typeof options.canSendReviewUpdate === 'function' && !options.canSendReviewUpdate()) return;
+      send({
+        type: 'review-update',
+        update: encodeLiveBytes(update)
+      });
+    };
+    if (options.reviewDoc) {
+      options.reviewDoc.on('update', reviewUpdateHandler);
+    }
 
     try {
       socket = new WebSocket(socketUrl);
@@ -14696,8 +14814,10 @@ ${selector} .arrowheadPath {
         participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() })
       });
       send({ type: 'sync-request' });
+      send({ type: 'review-sync-request' });
       flushPendingMessages();
       setTimeout(publishCurrentState, 100);
+      setTimeout(publishReviewState, 125);
       setTimeout(function() { publishPresence(options.getCursor()); }, 150);
     });
 
@@ -14715,11 +14835,15 @@ ${selector} .arrowheadPath {
     return {
       send,
       publishCurrentState,
+      publishReviewState,
       publishPresence,
       destroy() {
         destroyed = true;
         try {
           options.ydoc.off('update', updateHandler);
+        } catch (_) {}
+        try {
+          if (options.reviewDoc) options.reviewDoc.off('update', reviewUpdateHandler);
         } catch (_) {}
         try {
           if (socket && socket.readyState === WebSocket.OPEN) {
@@ -14989,6 +15113,7 @@ ${selector} .arrowheadPath {
     applyLiveSessionTitle(liveCollaboration.roomTitle);
     updateLiveAccessDisplay();
     updateLiveEditorAccess();
+    applyLiveReviewThreadsFromMap();
     return true;
   }
 
@@ -15561,6 +15686,11 @@ ${selector} .arrowheadPath {
       return;
     }
 
+    if (message.type === 'review-sync-request') {
+      if (liveCollaboration.isHost) transport.publishReviewState();
+      return;
+    }
+
     if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
       const hostParticipantId = liveCollaboration.sessionMap ? liveCollaboration.sessionMap.get('hostId') : null;
       if (getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW && hostParticipantId && sender !== hostParticipantId) {
@@ -15571,6 +15701,19 @@ ${selector} .arrowheadPath {
         markLiveJoinSynced(liveCollaboration.yText ? liveCollaboration.yText.toString() : '');
       } catch (error) {
         console.warn('Live Share update failed:', error);
+      }
+      return;
+    }
+
+    if ((message.type === 'review-update' || message.type === 'review-sync-state') && message.update) {
+      try {
+        liveCollaboration.Y.applyUpdate(
+          liveCollaboration.reviewDoc,
+          decodeLiveBytes(message.update),
+          LIVE_REVIEW_RELAY_ORIGIN
+        );
+      } catch (error) {
+        console.warn('Live Share review update failed:', error);
       }
       return;
     }
@@ -15634,11 +15777,17 @@ ${selector} .arrowheadPath {
       if (liveCollaboration.sessionMap && liveCollaboration.sessionObserver) {
         liveCollaboration.sessionMap.unobserve(liveCollaboration.sessionObserver);
       }
+      if (liveCollaboration.reviewMap && liveCollaboration.reviewObserver) {
+        liveCollaboration.reviewMap.unobserve(liveCollaboration.reviewObserver);
+      }
       if (liveCollaboration.connection && typeof liveCollaboration.connection.destroy === 'function') {
         liveCollaboration.connection.destroy();
       }
       if (liveCollaboration.ydoc && typeof liveCollaboration.ydoc.destroy === 'function') {
         liveCollaboration.ydoc.destroy();
+      }
+      if (liveCollaboration.reviewDoc && typeof liveCollaboration.reviewDoc.destroy === 'function') {
+        liveCollaboration.reviewDoc.destroy();
       }
     } catch (error) {
       console.warn('Failed to fully close live session:', error);
@@ -15709,7 +15858,17 @@ ${selector} .arrowheadPath {
     const ydoc = new modules.Y.Doc();
     const yText = ydoc.getText('markdown');
     const sessionMap = ydoc.getMap('session');
+    const reviewDoc = new modules.Y.Doc();
+    const reviewMap = reviewDoc.getMap('reviewThreads');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (isHost && hostActiveTab) {
+      replaceLiveReviewMapThreads(
+        reviewDoc,
+        reviewMap,
+        hostActiveTab.reviewThreads,
+        LIVE_REVIEW_EDIT_ORIGIN
+      );
+    }
     const requestedTitle = options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share';
     const hostTitle = getSafeLiveTitle(requestedTitle);
     if (!isHost && options.initialUpdate) {
@@ -15794,6 +15953,8 @@ ${selector} .arrowheadPath {
       Y: modules.Y,
       yText,
       sessionMap,
+      reviewDoc,
+      reviewMap,
       tabId: liveTabId,
       originalTabSnapshot,
       returnTabId,
@@ -15811,6 +15972,7 @@ ${selector} .arrowheadPath {
       lastMarkdown: shouldDeferParticipantTab ? '' : markdownEditor.value,
       observer: null,
       sessionObserver: null,
+      reviewObserver: null,
       participantHeartbeatId: null,
       connection: null,
       participants,
@@ -15857,6 +16019,15 @@ ${selector} .arrowheadPath {
     };
     sessionMap.observe(liveCollaboration.sessionObserver);
 
+    liveCollaboration.reviewObserver = function(event, transaction) {
+      const origin = transaction
+        ? transaction.origin
+        : (event && event.transaction ? event.transaction.origin : null);
+      if (origin === LIVE_REVIEW_EDIT_ORIGIN) return;
+      applyLiveReviewThreadsFromMap();
+    };
+    reviewMap.observe(liveCollaboration.reviewObserver);
+
     if (!isHost && yText.length > 0) {
       const seededMarkdown = yText.toString();
       applyLiveJoinSeedMarkdown(seededMarkdown);
@@ -15885,6 +16056,7 @@ ${selector} .arrowheadPath {
       capability: liveCollaboration.socketCapability,
       capabilities: liveCollaboration.isHost ? liveCollaboration.capabilities : null,
       ydoc,
+      reviewDoc,
       Y: modules.Y,
       participantId: liveCollaboration.localParticipantId,
       getParticipant: function() { return liveCollaboration.localParticipant; },
@@ -15902,6 +16074,19 @@ ${selector} .arrowheadPath {
           liveCollaboration &&
           liveCollaboration.ydoc === ydoc &&
           (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT)
+        );
+      },
+      canPublishReviewState: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.reviewDoc === reviewDoc &&
+          liveCollaboration.isHost
+        );
+      },
+      canSendReviewUpdate: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.reviewDoc === reviewDoc
         );
       },
       onStatus: setLiveShareStatus,

@@ -55,7 +55,7 @@ Use Review when you want to leave structured feedback without editing the Markdo
 
 Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
 
-Review data is local-only. Share Snapshot links and Live Share rooms currently transfer Markdown, not review threads. Feedback created on a temporary shared or live tab lasts only for that tab's current session. Copy the review summary when you need to send feedback to an author. Private mode prevents review threads from being persisted along with the rest of the document workspace.
+Share Snapshot links transfer Markdown without review threads. Live Share rooms synchronize comments, suggestions, resolve/reopen state, and deletions through a separate Review channel. View-only participants can review without receiving Markdown edit permission. A participant's temporary live tab is removed when they leave, while synchronized feedback remains in the host's normal document tab. Private mode prevents review threads from being persisted with the local workspace.
 
 ## Find and Replace
 
@@ -139,7 +139,7 @@ Use Live Share when you want a temporary real-time room.
 4. Start the session.
 5. Copy the invite link after the room starts.
 
-Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role.
+Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role. Markdown and Review data use separate Yjs documents, so view-only participants can synchronize comments and suggestions without being allowed to edit Markdown.
 
 Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
 

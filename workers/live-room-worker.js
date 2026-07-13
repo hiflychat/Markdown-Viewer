@@ -69,6 +69,8 @@ function canSendMessageType(role, type) {
       "sync-request",
       "sync-state",
       "y-update",
+      "review-sync-request",
+      "review-update",
       "leave"
     ]).has(type);
   }
@@ -76,6 +78,8 @@ function canSendMessageType(role, type) {
     "hello",
     "presence",
     "sync-request",
+    "review-sync-request",
+    "review-update",
     "leave"
   ]).has(type);
 }
@@ -94,6 +98,9 @@ function normalizeOutboundMessage(message, fallbackSender, roomId, role) {
     "sync-request",
     "sync-state",
     "y-update",
+    "review-sync-request",
+    "review-sync-state",
+    "review-update",
     "leave",
     "session-end"
   ]);

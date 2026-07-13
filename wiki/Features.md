@@ -72,11 +72,12 @@ Anchoring and lifecycle:
 - Private mode and Clear local data cover review threads because they use the same document storage as the Markdown tab.
 - Review pins, outlines, the review panel, and thread content are excluded from Markdown, HTML, PDF, PNG, and browser-print output.
 
-Sharing limits:
+Sharing behavior:
 
-- Review threads are local-only and are not encoded into Share Snapshot URLs, stored snapshot payloads, or Live Share Yjs updates.
-- Review feedback added to a temporary Share Snapshot or Live Share tab is kept only for that tab's current session.
-- Use Copy review summary to transfer feedback outside the local workspace.
+- Review threads are not encoded into Share Snapshot URLs or stored snapshot payloads.
+- Live Share synchronizes review creation, resolve/reopen state, and deletion through a separate Yjs document. View-only participants can send Review updates without permission to edit Markdown.
+- A participant's temporary live tab is removed on leave; synchronized feedback remains in the host's normal tab and in the active room state.
+- Use Copy review summary to transfer feedback outside the app or after a Live Share session.
 
 ## Editing and Formatting Tools
 
@@ -340,12 +341,12 @@ User flow:
 
 Implementation:
 
-- The client uses Yjs for the shared document state.
+- The client uses separate Yjs documents for Markdown/session state and Review threads.
 - Browser clients connect with WebSocket to `/live-room/<room-id>?secret=<secret>`.
 - The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, HTTPS `*.markdownviewer.pages.dev` previews, `null`, and localhost development origins are allowed.
 - The host connection establishes separate host, edit, and view capabilities. The Durable Object stores these capabilities and authenticates each joining role server-side.
 - Cloudflare Pages routes the WebSocket to a Durable Object named `LIVE_ROOMS`.
-- The Durable Object relays only known message types and filters them by role: viewers cannot send updates or session-end messages, editors can send document sync messages, and only the host can send every supported type.
+- The Durable Object relays only known message types and filters them by role: viewers cannot send Markdown updates or session-end messages, but they can request and send Review updates; editors can send Markdown and Review updates; only the host can publish full Review state or send every supported type.
 - The Durable Object does not write document state to KV or a database.
 - Room identity is derived from room id plus secret.
 
@@ -504,7 +505,7 @@ Security limitations:
 | :--- | :--- | :--- | :--- |
 | Typing and local preview | No | Browser memory and saved tabs | Sanitized before preview insertion. |
 | Normal tab autosave | No | `localStorage` or desktop storage mirror | Cleared with site/app data or Reset. |
-| Comments and suggestions | No | Inside normal saved tabs | Local-only review data; excluded from document exports and not synced by Share Snapshot or Live Share. |
+| Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
