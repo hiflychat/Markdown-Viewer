@@ -12,6 +12,11 @@ const ALLOWED_ORIGINS = new Set([
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.has(origin)) return true;
+
+  if (/^https:\/\/[a-z0-9-]+\.markdownviewer\.pages\.dev$/i.test(origin)) {
+    return true;
+  }
+
   return /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin);
 }
 
