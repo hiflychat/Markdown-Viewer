@@ -5,7 +5,7 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## Unreleased
 
-- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. Review target buttons now match the main toolbar controls and align in a straight column at the preview's right edge. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
+- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. Review target buttons now match the main toolbar controls, align in a straight column at the preview's right edge, show a plus before feedback exists, and switch to the review icon and count after feedback is added. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
 
 ---
 

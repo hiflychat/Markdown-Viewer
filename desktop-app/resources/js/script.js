@@ -2860,7 +2860,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         : 'Add feedback to ' + label);
 
       const icon = document.createElement('i');
-      icon.className = 'bi bi-chat-square-text';
+      icon.className = targetThreads.length > 0 ? 'bi bi-chat-square-text' : 'bi bi-plus-lg';
       icon.setAttribute('aria-hidden', 'true');
       button.appendChild(icon);
       if (targetThreads.length > 0) {
