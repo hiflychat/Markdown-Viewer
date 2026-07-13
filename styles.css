@@ -6383,9 +6383,14 @@ html[data-theme="dark"] .mermaid svg {
   white-space: pre-wrap;
 }
 
-.review-thread-time {
-  display: block;
+.review-thread-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   margin-top: 9px;
+}
+
+.review-thread-time {
   color: var(--text-secondary);
   font-size: 0.67rem;
 }

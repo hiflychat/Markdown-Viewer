@@ -52,7 +52,10 @@ Use Review when you want to leave structured feedback without editing the Markdo
 3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
 4. Enter the feedback and add it to the document review.
 5. After feedback is attached, use the review icon and count—or select the reviewed content—to read the saved items. Use the separate plus beside the count to open the composer and add another item to the same block.
-6. Select **Edit** to update an existing comment or suggestion, then select **Save changes**. Use **Resolve** or **Reopen** to manage a thread. The panel toolbar can copy a Markdown summary, resolve every open item, or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
+6. Select **Edit** to update an existing comment or suggestion, then select **Save changes**. Each thread shows when it was opened and, after resolution, when it was closed. Reopening clears the closing time until the item is resolved again.
+7. The panel toolbar can copy a detailed Markdown summary with generated, opened, and closed date/time plus open/resolved counts; resolve every open item; or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
+
+Opening a new tab closes Review mode automatically before switching to the new document.
 
 On desktop, Review opens as a compact side panel beside the preview. Tablet layouts use a side drawer, while phones use a taller bottom sheet with larger filter, composer, thread, and pin controls for touch. Light and dark themes use the same existing app colors, borders, hover states, and icons.
 

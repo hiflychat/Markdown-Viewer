@@ -2438,6 +2438,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!body) return null;
       const createdAt = Number.isFinite(Number(thread.createdAt)) ? Number(thread.createdAt) : Date.now();
       const updatedAt = Number.isFinite(Number(thread.updatedAt)) ? Number(thread.updatedAt) : createdAt;
+      const resolved = thread.resolved === true;
+      const resolvedAt = resolved && Number.isFinite(Number(thread.resolvedAt))
+        ? Number(thread.resolvedAt)
+        : null;
       return {
         id: typeof thread.id === 'string' && thread.id ? thread.id.slice(0, 120) : createReviewId(),
         anchor: {
@@ -2454,7 +2458,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         body: body,
         createdAt: createdAt,
         updatedAt: updatedAt,
-        resolved: thread.resolved === true
+        resolved: resolved,
+        resolvedAt: resolvedAt
       };
     }).filter(Boolean);
   }
@@ -2487,7 +2492,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       body: thread.body,
       createdAt: thread.createdAt,
       updatedAt: thread.updatedAt,
-      resolved: thread.resolved === true
+      resolved: thread.resolved === true,
+      resolvedAt: Number.isFinite(Number(thread.resolvedAt)) ? Number(thread.resolvedAt) : null
     };
   }
 
@@ -2501,6 +2507,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       left.createdAt === right.createdAt &&
       left.updatedAt === right.updatedAt &&
       left.resolved === right.resolved &&
+      left.resolvedAt === right.resolvedAt &&
       leftAnchor.key === rightAnchor.key &&
       leftAnchor.type === rightAnchor.type &&
       leftAnchor.label === rightAnchor.label &&
@@ -3016,11 +3023,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     body.textContent = thread.body;
     item.appendChild(body);
 
-    const time = document.createElement('time');
-    time.className = 'review-thread-time';
-    time.dateTime = new Date(thread.createdAt).toISOString();
-    time.textContent = formatReviewTime(thread.createdAt);
-    item.appendChild(time);
+    const dates = document.createElement('div');
+    dates.className = 'review-thread-dates';
+    const openedTime = document.createElement('time');
+    openedTime.className = 'review-thread-time';
+    openedTime.dateTime = new Date(thread.createdAt).toISOString();
+    openedTime.textContent = 'Opened: ' + formatReviewTime(thread.createdAt);
+    dates.appendChild(openedTime);
+    if (thread.resolvedAt) {
+      const closedTime = document.createElement('time');
+      closedTime.className = 'review-thread-time';
+      closedTime.dateTime = new Date(thread.resolvedAt).toISOString();
+      closedTime.textContent = 'Closed: ' + formatReviewTime(thread.resolvedAt);
+      dates.appendChild(closedTime);
+    } else {
+      const closedTime = document.createElement('span');
+      closedTime.className = 'review-thread-time';
+      closedTime.textContent = thread.resolved ? 'Closed: Unavailable' : 'Closed: Not closed';
+      dates.appendChild(closedTime);
+    }
+    item.appendChild(dates);
 
     const actions = document.createElement('div');
     actions.className = 'review-thread-actions';
@@ -3318,7 +3340,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       body: body.slice(0, REVIEW_TEXT_LIMIT),
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      resolved: false
+      resolved: false,
+      resolvedAt: null
     });
     const label = reviewComposerKind === 'suggestion' ? 'Suggestion added.' : 'Comment added.';
     closeReviewComposer();
@@ -3346,10 +3369,25 @@ document.addEventListener("DOMContentLoaded", async function () {
   function buildReviewSummary() {
     const tab = getActiveReviewTab();
     const threads = getActiveReviewThreads().slice().sort(function(a, b) { return a.createdAt - b.createdAt; });
-    const lines = ['# Review: ' + (tab && tab.title ? tab.title : 'Markdown document'), ''];
+    const resolvedCount = threads.filter(function(thread) { return thread.resolved; }).length;
+    const lines = [
+      '# Review: ' + (tab && tab.title ? tab.title : 'Markdown document'),
+      '',
+      '- Generated: ' + formatReviewTime(Date.now()),
+      '- Total items: ' + threads.length,
+      '- Open items: ' + (threads.length - resolvedCount),
+      '- Resolved items: ' + resolvedCount,
+      ''
+    ];
     threads.forEach(function(thread, index) {
       const kind = thread.kind === 'suggestion' ? 'Suggestion' : 'Comment';
-      lines.push((index + 1) + '. **' + kind + '** - ' + thread.anchor.label + (thread.resolved ? ' _(resolved)_' : ''));
+      const closedAt = thread.resolved
+        ? (thread.resolvedAt ? formatReviewTime(thread.resolvedAt) : 'Unavailable')
+        : 'Not closed';
+      lines.push((index + 1) + '. **' + kind + '** - ' + thread.anchor.label);
+      lines.push('   - Status: ' + (thread.resolved ? 'Resolved' : 'Open'));
+      lines.push('   - Opened: ' + formatReviewTime(thread.createdAt));
+      lines.push('   - Closed: ' + closedAt);
       if (thread.anchor.excerpt) lines.push('   > ' + thread.anchor.excerpt.replace(/\n/g, ' '));
       thread.body.split('\n').forEach(function(line) {
         lines.push('   ' + line);
@@ -3385,6 +3423,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     openThreads.forEach(function(thread) {
       thread.resolved = true;
       thread.updatedAt = updatedAt;
+      thread.resolvedAt = updatedAt;
     });
     persistReviewThreads(openThreads.length + ' review item' + (openThreads.length === 1 ? '' : 's') + ' resolved.');
     requestAnimationFrame(function() {
@@ -3639,7 +3678,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
         if (action === 'toggle-resolved') {
           thread.resolved = !thread.resolved;
-          thread.updatedAt = Date.now();
+          const changedAt = Date.now();
+          thread.updatedAt = changedAt;
+          thread.resolvedAt = thread.resolved ? changedAt : null;
           persistReviewThreads(thread.resolved ? 'Review item resolved.' : 'Review item reopened.');
           return;
         }
@@ -4232,6 +4273,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
       return;
     }
+    if (reviewModeActive) setReviewMode(false);
     if (!title) title = nextUntitledTitle();
     const tab = createTab(content, title);
     tabs.push(tab);
