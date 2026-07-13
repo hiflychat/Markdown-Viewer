@@ -2766,24 +2766,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     const paneRect = previewPaneElement.getBoundingClientRect();
     const previewRect = markdownPreview.getBoundingClientRect();
     const pinRight = previewRect.right - 4;
-    reviewPinsLayer.querySelectorAll('.review-target-button').forEach(function(button) {
+    reviewPinsLayer.querySelectorAll('.review-target-actions').forEach(function(actions) {
       const anchor = {
-        key: button.dataset.reviewAnchor,
-        duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
-        context: button.dataset.reviewContext || null
+        key: actions.dataset.reviewAnchor,
+        duplicateCount: Number(actions.dataset.reviewDuplicateCount) || null,
+        context: actions.dataset.reviewContext || null
       };
       const target = findReviewTarget(anchor);
       if (!target) {
-        button.hidden = true;
+        actions.hidden = true;
         return;
       }
-      button.hidden = false;
+      actions.hidden = false;
       const targetRect = target.getBoundingClientRect();
       const isDiagram = target.dataset.reviewType === 'diagram';
       const top = isDiagram ? targetRect.bottom - 40 : targetRect.top + 4;
-      button.style.top = (top - paneRect.top + previewPaneElement.scrollTop) + 'px';
-      button.style.left = (pinRight - paneRect.left + previewPaneElement.scrollLeft) + 'px';
-      button.style.transform = 'translateX(-100%)';
+      actions.style.top = (top - paneRect.top + previewPaneElement.scrollTop) + 'px';
+      actions.style.left = (pinRight - paneRect.left + previewPaneElement.scrollLeft) + 'px';
+      actions.style.transform = 'translateX(-100%)';
     });
   }
 
@@ -2858,27 +2858,54 @@ document.addEventListener("DOMContentLoaded", async function () {
       target.classList.add('review-target', 'review-target--' + type);
       target.classList.toggle('has-review-thread', targetThreads.length > 0);
 
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'tool-button review-target-button';
-      button.classList.toggle('is-active', targetThreads.length > 0);
-      button.dataset.reviewAnchor = anchorKey;
-      button.dataset.reviewDuplicateCount = String(duplicateCount);
-      button.dataset.reviewContext = context;
-      button.dataset.html2canvasIgnore = 'true';
-      button.title = targetThreads.length > 0 ? 'View feedback or add another item' : 'Comment on this block';
-      button.setAttribute('aria-label', targetThreads.length > 0
-        ? 'View ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' for ' + label + ' or add more feedback.'
-        : 'Add feedback to ' + label);
+      const actions = document.createElement('div');
+      actions.className = 'review-target-actions';
+      actions.dataset.reviewAnchor = anchorKey;
+      actions.dataset.reviewDuplicateCount = String(duplicateCount);
+      actions.dataset.reviewContext = context;
+      actions.dataset.html2canvasIgnore = 'true';
+      actions.setAttribute('role', 'group');
+      actions.setAttribute('aria-label', 'Review actions for ' + label);
 
-      const icon = document.createElement('i');
-      icon.className = targetThreads.length > 0 ? 'bi bi-chat-square-text' : 'bi bi-plus-lg';
-      icon.setAttribute('aria-hidden', 'true');
-      button.appendChild(icon);
-      if (targetThreads.length > 0) {
-        button.dataset.reviewCount = String(targetThreads.length);
+      function createTargetButton(command, iconClass, title, ariaLabel) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tool-button review-target-button';
+        button.dataset.reviewCommand = command;
+        button.dataset.reviewAnchor = anchorKey;
+        button.dataset.reviewDuplicateCount = String(duplicateCount);
+        button.dataset.reviewContext = context;
+        button.dataset.html2canvasIgnore = 'true';
+        button.title = title;
+        button.setAttribute('aria-label', ariaLabel);
+        button.setAttribute('aria-controls', command === 'read' ? 'review-list' : 'review-composer');
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+        return button;
       }
-      if (reviewPinsLayer) reviewPinsLayer.appendChild(button);
+
+      if (targetThreads.length > 0) {
+        const reviewLabel = targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's');
+        const readButton = createTargetButton(
+          'read',
+          'bi bi-chat-square-text',
+          'Read ' + reviewLabel,
+          'Read ' + reviewLabel + ' for ' + label
+        );
+        readButton.classList.add('is-active');
+        readButton.dataset.reviewCount = String(targetThreads.length);
+        actions.appendChild(readButton);
+      }
+
+      actions.appendChild(createTargetButton(
+        'add',
+        'bi bi-plus-lg',
+        targetThreads.length > 0 ? 'Add another review item' : 'Add feedback',
+        'Add feedback to ' + label
+      ));
+      if (reviewPinsLayer) reviewPinsLayer.appendChild(actions);
     });
 
     observeReviewPinLayout();
@@ -3077,9 +3104,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     if (threads.length === 0) return false;
 
+    closeReviewComposer();
     setReviewFilter('all');
-    const target = findReviewTarget(anchor);
-    if (target) openReviewComposer(target, { focusInput: false });
 
     const matchingIds = new Set(threads.map(function(thread) { return thread.id; }));
     const matchingItems = Array.from(reviewList.querySelectorAll('.review-thread')).filter(function(item) {
@@ -3100,7 +3126,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         item.classList.remove('is-review-thread-active');
       });
     }, 1800);
-    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block. The composer is open for more feedback.');
+    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block.');
     return true;
   }
 
@@ -3134,10 +3160,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   function focusReviewPin(anchor) {
     const target = findReviewTarget(anchor);
     if (!target || !reviewPinsLayer) return false;
-    const button = Array.from(reviewPinsLayer.querySelectorAll('.review-target-button')).find(function(candidate) {
+    const matchingButtons = Array.from(reviewPinsLayer.querySelectorAll('.review-target-button')).filter(function(candidate) {
       return candidate.dataset.reviewAnchor === target.dataset.reviewAnchor &&
         candidate.dataset.reviewContext === target.dataset.reviewContext;
-    }) || null;
+    });
+    const button = matchingButtons.find(function(candidate) {
+      return candidate.dataset.reviewCommand === 'read';
+    }) || matchingButtons[0] || null;
     if (!button) return false;
     button.focus({ preventScroll: true });
     return true;
@@ -3558,7 +3587,10 @@ document.addEventListener("DOMContentLoaded", async function () {
           duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
           context: button.dataset.reviewContext || null
         };
-        if (showReviewThreadsForAnchor(anchor)) return;
+        if (button.dataset.reviewCommand === 'read') {
+          showReviewThreadsForAnchor(anchor);
+          return;
+        }
         const target = findReviewTarget(anchor);
         openReviewComposer(target);
       });

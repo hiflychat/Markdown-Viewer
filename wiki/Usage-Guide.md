@@ -51,7 +51,7 @@ Use Review when you want to leave structured feedback without editing the Markdo
 2. Select the plus pin on a rendered YAML frontmatter table, heading, paragraph, code block, or diagram.
 3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
 4. Enter the feedback and add it to the document review.
-5. After feedback is attached, select its review icon and count—or the reviewed content itself—to show the saved item first. The composer follows it in the same scrollable panel area for adding more feedback to the block.
+5. After feedback is attached, use the review icon and count—or select the reviewed content—to read the saved items. Use the separate plus beside the count to open the composer and add another item to the same block.
 6. Select **Edit** to update an existing comment or suggestion, then select **Save changes**. Use **Resolve** or **Reopen** to manage a thread. The panel toolbar can copy a Markdown summary, resolve every open item, or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
 
 On desktop, Review opens as a compact side panel beside the preview. Tablet layouts use a side drawer, while phones use a taller bottom sheet with larger filter, composer, thread, and pin controls for touch. Light and dark themes use the same existing app colors, borders, hover states, and icons.

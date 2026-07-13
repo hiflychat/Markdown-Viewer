@@ -6453,6 +6453,14 @@ html[data-theme="dark"] .mermaid svg {
   padding-block-end: 44px;
 }
 
+#markdown-preview .review-target.has-review-thread:not(.review-target--diagram):not(.review-target--table) {
+  padding-inline-end: 76px;
+}
+
+#markdown-preview .review-target--table.has-review-thread {
+  max-width: calc(100% - 76px);
+}
+
 #markdown-preview .review-target.is-review-target-active {
   outline: none;
 }
@@ -6490,11 +6498,24 @@ html[data-theme="dark"] .mermaid svg {
   display: none !important;
 }
 
-.review-target-button {
+.review-target-actions {
   position: absolute;
   z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.review-target-actions[hidden] {
+  display: none !important;
+}
+
+.review-target-button {
+  position: relative;
   min-width: 28px;
   height: 28px;
+  flex: 0 0 auto;
   pointer-events: auto;
 }
 
@@ -6542,6 +6563,14 @@ html[data-theme="dark"] .mermaid svg {
     min-width: 40px;
     width: 40px;
     height: 40px;
+  }
+
+  #markdown-preview .review-target.has-review-thread:not(.review-target--diagram):not(.review-target--table) {
+    padding-inline-end: 96px;
+  }
+
+  #markdown-preview .review-target--table.has-review-thread {
+    max-width: calc(100% - 96px);
   }
 
   .review-filter-btn,
@@ -6622,6 +6651,14 @@ html[data-theme="dark"] .mermaid svg {
   #markdown-preview .review-target--diagram {
     padding-block-end: 56px;
   }
+
+  #markdown-preview .review-target.has-review-thread:not(.review-target--diagram):not(.review-target--table) {
+    padding-inline-end: 104px;
+  }
+
+  #markdown-preview .review-target--table.has-review-thread {
+    max-width: calc(100% - 104px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6661,6 +6698,7 @@ html[data-theme="dark"] .mermaid svg {
   .review-panel,
   .review-panel-backdrop,
   .review-pins-layer,
+  .review-target-actions,
   .review-target-button {
     display: none !important;
   }
