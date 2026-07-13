@@ -204,9 +204,8 @@
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
 
                     <button id="review-toggle" class="tool-button" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-                        <i class="bi bi-chat-square-text"></i> <span class="btn-text">Review</span>
+                        <i class="bi bi-chat-square-text"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span><span class="btn-text">Review</span>
                     </button>
-                    <button id="review-count-badge" class="live-share-avatar live-share-avatar-overflow review-count-badge" type="button" aria-label="0 open review items" title="Open review feedback" hidden>0</button>
                     
                     <div class="dropdown me-1">
                         <button class="tool-button dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
@@ -337,7 +336,7 @@
 
                             <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
                                 <span><i class="bi bi-chat-square-text me-2"></i>Review</span>
-                                <span id="mobile-review-count-badge" class="review-count-badge" aria-hidden="true" hidden>0</span>
+                                <span id="mobile-review-count-badge" class="mobile-review-count-badge" aria-hidden="true" hidden>0</span>
                             </button>
                             
                             <div class="mobile-menu-item dropdown w-100 p-0 border-0">

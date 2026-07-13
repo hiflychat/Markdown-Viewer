@@ -61,7 +61,7 @@ Review mode provides a local feedback layer over the rendered document without i
 - Empty targets show a plus that opens and focuses the composer. Targets with feedback show two controls: the review icon and count opens saved feedback, while the adjacent plus opens the composer for another item. Selecting reviewed content also opens its saved feedback without opening the composer.
 - A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
 - Threads can be edited in the existing composer, resolved, reopened, or deleted individually and filtered by status. The panel also provides Copy summary, Resolve all, and confirmation-protected Delete all actions.
-- Open-thread counts appear in the desktop header and mobile menu.
+- Open-thread counts appear inline in the desktop Review button and in the mobile menu.
 - Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, a compact desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet.
 - Comments and suggestions use the existing app accent, button surfaces, borders, hover states, disabled states, and Bootstrap Icons; the feature does not introduce a separate color palette.
 

@@ -333,7 +333,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const charCountElement = document.getElementById("char-count");
   const reviewToggle = document.getElementById('review-toggle');
   const mobileReviewToggle = document.getElementById('mobile-review-toggle');
-  const reviewCountBadge = document.getElementById('review-count-badge');
+  const reviewToolbarCount = document.getElementById('review-toolbar-count');
   const mobileReviewCountBadge = document.getElementById('mobile-review-count-badge');
   const reviewPanel = document.getElementById('review-panel');
   const reviewPanelBackdrop = document.getElementById('review-panel-backdrop');
@@ -2924,23 +2924,40 @@ document.addEventListener("DOMContentLoaded", async function () {
     return target;
   }
 
+  function updateReviewToggleActiveState(openCount) {
+    const count = typeof openCount === 'number'
+      ? openCount
+      : getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
+    if (reviewToggle) reviewToggle.classList.toggle('is-active', reviewModeActive || count > 0);
+    if (mobileReviewToggle) mobileReviewToggle.classList.toggle('is-active', reviewModeActive);
+  }
+
   function updateReviewCountBadges() {
     const openCount = getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
-    [reviewCountBadge, mobileReviewCountBadge].forEach(function(badge) {
-      if (!badge) return;
-      badge.textContent = String(openCount);
-      badge.hidden = openCount === 0;
-      const countLabel = openCount + ' open review item' + (openCount === 1 ? '' : 's');
-      if (badge === reviewCountBadge) {
-        badge.setAttribute('aria-label', countLabel + '; open review panel');
-      }
-      badge.title = countLabel;
-    });
+    const countLabel = openCount + ' open review item' + (openCount === 1 ? '' : 's');
+    if (reviewToolbarCount) {
+      reviewToolbarCount.textContent = String(openCount);
+      reviewToolbarCount.hidden = openCount === 0;
+    }
+    if (mobileReviewCountBadge) {
+      mobileReviewCountBadge.textContent = String(openCount);
+      mobileReviewCountBadge.hidden = openCount === 0;
+      mobileReviewCountBadge.title = countLabel;
+    }
+    if (reviewToggle) {
+      reviewToggle.setAttribute('aria-label', openCount > 0
+        ? 'Open comments and suggestions. ' + countLabel + '.'
+        : 'Open comments and suggestions');
+      reviewToggle.title = openCount > 0
+        ? 'Open comments and suggestions (' + countLabel + ')'
+        : 'Open comments and suggestions';
+    }
     if (mobileReviewToggle) {
       mobileReviewToggle.setAttribute('aria-label', openCount > 0
         ? 'Open comments and suggestions. ' + openCount + ' open review item' + (openCount === 1 ? '' : 's') + '.'
         : 'Open comments and suggestions');
     }
+    updateReviewToggleActiveState(openCount);
   }
 
   function formatReviewTime(timestamp) {
@@ -3470,10 +3487,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (contentContainer) contentContainer.classList.toggle('is-reviewing', reviewModeActive);
     [reviewToggle, mobileReviewToggle].forEach(function(button) {
       if (!button) return;
-      button.classList.toggle('is-active', reviewModeActive);
       button.setAttribute('aria-expanded', reviewModeActive ? 'true' : 'false');
       button.setAttribute('aria-pressed', reviewModeActive ? 'true' : 'false');
     });
+    updateReviewToggleActiveState();
     updateReviewBackdrop();
     updateLiveEditorAccess();
     if (reviewModeActive) {
@@ -3507,15 +3524,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewToggle) {
       reviewToggle.addEventListener('click', function() {
         setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
-      });
-    }
-    if (reviewCountBadge) {
-      reviewCountBadge.addEventListener('click', function() {
-        if (!reviewModeActive) {
-          setReviewMode(true, { focusPanel: true });
-        } else if (reviewPanelClose) {
-          reviewPanelClose.focus();
-        }
       });
     }
     if (mobileReviewToggle) {
