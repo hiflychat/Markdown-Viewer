@@ -29,7 +29,7 @@ Users can work with multiple documents at once.
 - New tabs can be created from the tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
 - The app enforces a practical tab limit of 20 tabs. Shared snapshots refuse to open when this limit has been reached.
-- Each normal tab stores a title, content, scroll position, view mode, and creation time.
+- Each normal tab stores a title, content, scroll position, view mode, local review threads, and creation time.
 - The active tab id and untitled-document counter are stored separately.
 - Temporary Share Snapshot and Live Share tabs are deliberately excluded from persistent tab storage.
 - The Reset button clears the current saved workspace and returns the app to a clean starting state.
@@ -38,7 +38,7 @@ Storage keys used by the current implementation include:
 
 | Key | What It Stores |
 | :--- | :--- |
-| `markdownViewerTabs` | Normal saved document tabs. Temporary shared/live tabs are stripped before saving. |
+| `markdownViewerTabs` | Normal saved document tabs, including local comments and suggestions. Temporary shared/live tabs are stripped before saving. |
 | `markdownViewerActiveTab` | The active tab id. |
 | `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
 | `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |
@@ -51,6 +51,36 @@ The About dialog includes two storage controls:
 
 - **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
 - **Clear local data** removes saved document tabs, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+
+## Comments and Suggestion Mode
+
+Review mode provides a local feedback layer over the rendered document without inserting or changing Markdown.
+
+- The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
+- Review pins are attached to rendered YAML frontmatter tables, headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
+- Empty targets show a plus that opens and focuses the composer. Targets with feedback show two controls: the review icon and count opens saved feedback, while the adjacent plus opens the composer for another item. Selecting reviewed content also opens its saved feedback without opening the composer.
+- A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
+- Threads show their opened and closed date/time and can be edited in the existing composer, resolved, reopened, or deleted individually and filtered by status. The panel also provides a detailed Markdown summary with lifecycle dates and counts, Resolve all, and confirmation-protected Delete all actions.
+- Open-thread counts appear inline in the desktop Review button and in the mobile menu.
+- Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, a compact desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet.
+- Opening a new document tab closes Review mode and restores the prior document view before switching tabs.
+- Comments and suggestions use the existing app accent, button surfaces, borders, hover states, disabled states, and Bootstrap Icons; the feature does not introduce a separate color palette.
+
+Anchoring and lifecycle:
+
+- Each thread stores a deterministic block signature, duplicate occurrence and count, neighboring block context for repeated blocks, block type, label, and source excerpt rather than relying on transient rendered element ids.
+- The app reapplies review anchors after both main-thread and worker preview renders.
+- If a reviewed block changes enough that its signature no longer matches, the thread stays visible as unanchored feedback instead of attaching to the wrong block.
+- Review threads are stored per normal tab inside `markdownViewerTabs`. Duplicating a document starts the copy with no review threads.
+- Private mode and Clear local data cover review threads because they use the same document storage as the Markdown tab.
+- Review pins, outlines, the review panel, and thread content are excluded from Markdown, HTML, PDF, PNG, and browser-print output.
+
+Sharing behavior:
+
+- Review threads are not encoded into Share Snapshot URLs or stored snapshot payloads.
+- Live Share synchronizes review creation, resolve/reopen state, and deletion through a separate Yjs document. View-only participants can send Review updates without permission to edit Markdown.
+- A participant's temporary live tab is removed on leave; synchronized feedback remains in the host's normal tab and in the active room state.
+- Use Copy review summary to transfer feedback outside the app or after a Live Share session.
 
 ## Editing and Formatting Tools
 
@@ -314,12 +344,12 @@ User flow:
 
 Implementation:
 
-- The client uses Yjs for the shared document state.
+- The client uses separate Yjs documents for Markdown/session state and Review threads.
 - Browser clients connect with WebSocket to `/live-room/<room-id>?secret=<secret>`.
-- The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, `null`, and localhost development origins are allowed.
+- The Pages Function and Durable Object reject unsupported WebSocket `Origin` values. The production app, HTTPS `*.markdownviewer.pages.dev` previews, `null`, and localhost development origins are allowed.
 - The host connection establishes separate host, edit, and view capabilities. The Durable Object stores these capabilities and authenticates each joining role server-side.
 - Cloudflare Pages routes the WebSocket to a Durable Object named `LIVE_ROOMS`.
-- The Durable Object relays only known message types and filters them by role: viewers cannot send updates or session-end messages, editors can send document sync messages, and only the host can send every supported type.
+- The Durable Object relays only known message types and filters them by role: viewers cannot send Markdown updates or session-end messages, but they can request and send Review updates; editors can send Markdown and Review updates; only the host can publish full Review state or send every supported type.
 - The Durable Object does not write document state to KV or a database.
 - Room identity is derived from room id plus secret.
 
@@ -478,6 +508,7 @@ Security limitations:
 | :--- | :--- | :--- | :--- |
 | Typing and local preview | No | Browser memory and saved tabs | Sanitized before preview insertion. |
 | Normal tab autosave | No | `localStorage` or desktop storage mirror | Cleared with site/app data or Reset. |
+| Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |

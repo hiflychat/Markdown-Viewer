@@ -263,6 +263,18 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareSnapshotViewOnlyTabIds = new Set();
   const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
   const APP_VERSION = '3.9.1';
+  const REVIEW_TARGET_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, pre, .frontmatter-table, .diagram-viewer, .geojson-container, .topojson-container, .stl-container';
+  const REVIEW_TEXT_LIMIT = 2000;
+  let reviewModeActive = false;
+  const reviewPreviousViewModes = new Map();
+  let reviewFilter = 'open';
+  let reviewComposerKind = 'comment';
+  let activeReviewAnchor = null;
+  let activeReviewEditId = null;
+  let pendingReviewDelete = null;
+  let reviewPinsResizeObserver = null;
+  let reviewPinsLayoutFrame = null;
+  let reviewTargetSourceSnapshots = new WeakMap();
   let activeModal = null;
   let lastFocusedElement = null;
   let isFindModalOpen = false;
@@ -292,6 +304,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   const markdownEditor = document.getElementById("markdown-editor");
   const markdownPreview = document.getElementById("markdown-preview");
+  const reviewPinsLayer = document.getElementById('review-pins-layer');
   const markdownFormatToolbar = document.getElementById("markdown-format-toolbar");
   const themeToggle = document.getElementById("theme-toggle");
   const directionToggle = document.getElementById("direction-toggle");
@@ -318,6 +331,34 @@ document.addEventListener("DOMContentLoaded", async function () {
   const readingTimeElement = document.getElementById("reading-time");
   const wordCountElement = document.getElementById("word-count");
   const charCountElement = document.getElementById("char-count");
+  const reviewToggle = document.getElementById('review-toggle');
+  const mobileReviewToggle = document.getElementById('mobile-review-toggle');
+  const reviewToolbarCount = document.getElementById('review-toolbar-count');
+  const mobileReviewCountBadge = document.getElementById('mobile-review-count-badge');
+  const reviewPanel = document.getElementById('review-panel');
+  const reviewPanelBackdrop = document.getElementById('review-panel-backdrop');
+  const reviewPanelClose = document.getElementById('review-panel-close');
+  const reviewPanelSummary = document.getElementById('review-panel-summary');
+  const reviewCopySummary = document.getElementById('review-copy-summary');
+  const reviewResolveAll = document.getElementById('review-resolve-all');
+  const reviewDeleteAll = document.getElementById('review-delete-all');
+  const reviewDeleteModal = document.getElementById('review-delete-modal');
+  const reviewDeleteTitle = document.getElementById('review-delete-title');
+  const reviewDeleteDescription = document.getElementById('review-delete-description');
+  const reviewDeleteClose = document.getElementById('review-delete-close');
+  const reviewDeleteCancel = document.getElementById('review-delete-cancel');
+  const reviewDeleteConfirm = document.getElementById('review-delete-confirm');
+  const reviewPanelBody = document.querySelector('.review-panel-body');
+  const reviewComposer = document.getElementById('review-composer');
+  const reviewComposerTitle = document.getElementById('review-composer-title');
+  const reviewComposerAnchor = document.getElementById('review-composer-anchor');
+  const reviewComposerCancel = document.getElementById('review-composer-cancel');
+  const reviewFeedbackLabel = document.getElementById('review-feedback-label');
+  const reviewFeedbackInput = document.getElementById('review-feedback-input');
+  const reviewFeedbackCount = document.getElementById('review-feedback-count');
+  const reviewFeedbackSubmit = document.getElementById('review-feedback-submit');
+  const reviewList = document.getElementById('review-list');
+  const reviewEmptyState = document.getElementById('review-empty-state');
 
   // View Mode Elements - Story 1.1
   const contentContainer = document.querySelector(".content-container");
@@ -395,6 +436,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getEditorReadOnlyMessage() {
+    if (reviewModeActive) {
+      return 'Review mode keeps the Markdown source read only.';
+    }
     if (isShareSnapshotViewOnlyActive()) {
       return 'This shared snapshot is view only.';
     }
@@ -662,6 +706,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function applyDirectionToContent(direction) {
     if (markdownEditor) markdownEditor.setAttribute("dir", direction);
     if (markdownPreview) markdownPreview.setAttribute("dir", direction);
+    scheduleReviewPinsLayout();
   }
   applyDirectionToContent(initialDirection);
   updateDirectionToggleUI(initialDirection);
@@ -2376,6 +2421,1287 @@ document.addEventListener("DOMContentLoaded", async function () {
   let liveCollaborationModulesPromise = null;
   const LIVE_EDIT_ORIGIN = Symbol("markdown-viewer-live-local-edit");
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
+  const LIVE_REVIEW_EDIT_ORIGIN = Symbol("markdown-viewer-live-review-local-edit");
+  const LIVE_REVIEW_RELAY_ORIGIN = Symbol("markdown-viewer-live-review-relay");
+
+  // ========================================
+  // COMMENTS & SUGGESTIONS
+  // ========================================
+
+  function normalizeReviewThreads(rawThreads) {
+    if (!Array.isArray(rawThreads)) return [];
+    return rawThreads.slice(-500).map(function(thread) {
+      if (!thread || typeof thread !== 'object' || !thread.anchor || typeof thread.anchor.key !== 'string') {
+        return null;
+      }
+      const body = typeof thread.body === 'string' ? thread.body.trim().slice(0, REVIEW_TEXT_LIMIT) : '';
+      if (!body) return null;
+      const createdAt = Number.isFinite(Number(thread.createdAt)) ? Number(thread.createdAt) : Date.now();
+      const updatedAt = Number.isFinite(Number(thread.updatedAt)) ? Number(thread.updatedAt) : createdAt;
+      const resolved = thread.resolved === true;
+      const resolvedAt = resolved && Number.isFinite(Number(thread.resolvedAt))
+        ? Number(thread.resolvedAt)
+        : null;
+      return {
+        id: typeof thread.id === 'string' && thread.id ? thread.id.slice(0, 120) : createReviewId(),
+        anchor: {
+          key: thread.anchor.key.slice(0, 240),
+          type: typeof thread.anchor.type === 'string' ? thread.anchor.type.slice(0, 40) : 'block',
+          label: typeof thread.anchor.label === 'string' ? thread.anchor.label.slice(0, 120) : 'Document block',
+          excerpt: typeof thread.anchor.excerpt === 'string' ? thread.anchor.excerpt.slice(0, 240) : '',
+          duplicateCount: Number.isFinite(Number(thread.anchor.duplicateCount))
+            ? Math.max(1, Number(thread.anchor.duplicateCount))
+            : null,
+          context: typeof thread.anchor.context === 'string' ? thread.anchor.context.slice(0, 80) : null
+        },
+        kind: thread.kind === 'suggestion' ? 'suggestion' : 'comment',
+        body: body,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        resolved: resolved,
+        resolvedAt: resolvedAt
+      };
+    }).filter(Boolean);
+  }
+
+  function createReviewId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return 'review_' + window.crypto.randomUUID();
+    }
+    return 'review_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function getActiveReviewTab() {
+    return tabs.find(function(tab) { return tab.id === activeTabId; }) || null;
+  }
+
+  function getActiveReviewThreads() {
+    const tab = getActiveReviewTab();
+    if (!tab) return [];
+    if (!Array.isArray(tab.reviewThreads)) {
+      tab.reviewThreads = [];
+    }
+    return tab.reviewThreads;
+  }
+
+  function cloneReviewThreadForLiveShare(thread) {
+    return {
+      id: thread.id,
+      anchor: Object.assign({}, thread.anchor),
+      kind: thread.kind,
+      body: thread.body,
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt,
+      resolved: thread.resolved === true,
+      resolvedAt: Number.isFinite(Number(thread.resolvedAt)) ? Number(thread.resolvedAt) : null
+    };
+  }
+
+  function liveReviewThreadsMatch(left, right) {
+    if (!left || !right) return false;
+    const leftAnchor = left.anchor || {};
+    const rightAnchor = right.anchor || {};
+    return left.id === right.id &&
+      left.kind === right.kind &&
+      left.body === right.body &&
+      left.createdAt === right.createdAt &&
+      left.updatedAt === right.updatedAt &&
+      left.resolved === right.resolved &&
+      left.resolvedAt === right.resolvedAt &&
+      leftAnchor.key === rightAnchor.key &&
+      leftAnchor.type === rightAnchor.type &&
+      leftAnchor.label === rightAnchor.label &&
+      leftAnchor.excerpt === rightAnchor.excerpt &&
+      leftAnchor.duplicateCount === rightAnchor.duplicateCount &&
+      leftAnchor.context === rightAnchor.context;
+  }
+
+  function replaceLiveReviewMapThreads(reviewDoc, reviewMap, rawThreads, origin) {
+    if (!reviewDoc || !reviewMap) return;
+    const threads = normalizeReviewThreads(rawThreads);
+    const nextIds = new Set(threads.map(function(thread) { return thread.id; }));
+    const staleIds = [];
+    reviewMap.forEach(function(_, id) {
+      if (!nextIds.has(id)) staleIds.push(id);
+    });
+
+    reviewDoc.transact(function() {
+      staleIds.forEach(function(id) { reviewMap.delete(id); });
+      threads.forEach(function(thread) {
+        const nextThread = cloneReviewThreadForLiveShare(thread);
+        if (!liveReviewThreadsMatch(reviewMap.get(thread.id), nextThread)) {
+          reviewMap.set(thread.id, nextThread);
+        }
+      });
+    }, origin);
+  }
+
+  function getLiveReviewMapThreads(reviewMap) {
+    const rawThreads = [];
+    if (!reviewMap) return rawThreads;
+    reviewMap.forEach(function(thread, id) {
+      if (!thread || typeof thread !== 'object') return;
+      rawThreads.push(Object.assign({}, thread, { id: String(id || thread.id || '') }));
+    });
+    return normalizeReviewThreads(rawThreads).sort(function(a, b) {
+      if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
+  function syncLiveReviewThreadsFromTab() {
+    if (!liveCollaboration || !liveCollaboration.reviewDoc || !liveCollaboration.reviewMap) return;
+    const tab = tabs.find(function(item) { return item.id === liveCollaboration.tabId; });
+    if (!tab || tab.id !== activeTabId) return;
+    replaceLiveReviewMapThreads(
+      liveCollaboration.reviewDoc,
+      liveCollaboration.reviewMap,
+      tab.reviewThreads,
+      LIVE_REVIEW_EDIT_ORIGIN
+    );
+  }
+
+  function applyLiveReviewThreadsFromMap() {
+    if (!liveCollaboration || !liveCollaboration.reviewMap || !liveCollaboration.tabId) return;
+    const tab = tabs.find(function(item) { return item.id === liveCollaboration.tabId; });
+    if (!tab) return;
+
+    tab.reviewThreads = getLiveReviewMapThreads(liveCollaboration.reviewMap);
+    saveTabsToStorage(tabs);
+    if (tab.id === activeTabId) {
+      if (activeReviewEditId && !tab.reviewThreads.some(function(thread) { return thread.id === activeReviewEditId; })) {
+        closeReviewComposer();
+      }
+      decorateReviewTargets();
+      renderReviewPanel();
+    }
+  }
+
+  function decodeReviewSource(value) {
+    if (!value) return '';
+    try {
+      return decodeURIComponent(value);
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  function getReviewTargetType(target) {
+    if (!target) return 'block';
+    if (target.matches('.diagram-viewer, .geojson-container, .topojson-container, .stl-container')) return 'diagram';
+    if (target.matches('.frontmatter-table')) return 'table';
+    if (target.tagName === 'PRE') return 'code';
+    if (/^H[1-6]$/.test(target.tagName)) return 'heading';
+    if (target.tagName === 'P') return 'paragraph';
+    return 'block';
+  }
+
+  function normalizeReviewSource(source, preserveLines) {
+    const normalized = String(source || '').replace(/\r\n?/g, '\n');
+    if (!preserveLines) {
+      return normalized.replace(/\s+/g, ' ').trim();
+    }
+    return normalized.split('\n').map(function(line) {
+      return line.replace(/[ \t]+$/g, '');
+    }).join('\n').trim();
+  }
+
+  function computeReviewTargetSource(target, type) {
+    if (!target) return '';
+    if (type === 'diagram') {
+      const sourceNode = target.hasAttribute('data-original-code')
+        ? target
+        : target.querySelector('[data-original-code]');
+      return normalizeReviewSource(sourceNode ? decodeReviewSource(sourceNode.getAttribute('data-original-code')) : '', true);
+    }
+    if (type === 'code') {
+      const code = target.querySelector('code');
+      return normalizeReviewSource(code ? code.textContent : target.textContent, true);
+    }
+
+    const clone = target.cloneNode(true);
+    clone.querySelectorAll('.review-target-button, .footnote-backref').forEach(function(node) {
+      node.remove();
+    });
+    clone.querySelectorAll('img').forEach(function(image) {
+      image.replaceWith(document.createTextNode(image.getAttribute('alt') || ''));
+    });
+    return normalizeReviewSource(clone.textContent, false);
+  }
+
+  function getReviewTargetSource(target, type) {
+    const snapshot = target ? reviewTargetSourceSnapshots.get(target) : null;
+    if (snapshot && snapshot.type === type) return snapshot.source;
+    return computeReviewTargetSource(target, type);
+  }
+
+  function snapshotMathReviewTargetSources(mathTargets) {
+    if (!Array.isArray(mathTargets) || mathTargets.length === 0) return;
+    getReviewTargets().forEach(function(target) {
+      if (reviewTargetSourceSnapshots.has(target)) return;
+      const containsMathTarget = mathTargets.some(function(mathTarget) {
+        return mathTarget === target || mathTarget.contains(target) || target.contains(mathTarget);
+      });
+      if (!containsMathTarget) return;
+      const type = getReviewTargetType(target);
+      reviewTargetSourceSnapshots.set(target, {
+        type: type,
+        source: computeReviewTargetSource(target, type)
+      });
+    });
+  }
+
+  function invalidateReviewTargetSourceSnapshots(roots) {
+    (roots || []).forEach(function(root) {
+      const element = root && root.nodeType === Node.ELEMENT_NODE ? root : (root && root.parentElement);
+      if (!element) return;
+      const ancestorTarget = element.closest && element.closest(REVIEW_TARGET_SELECTOR);
+      if (ancestorTarget && markdownPreview.contains(ancestorTarget)) {
+        reviewTargetSourceSnapshots.delete(ancestorTarget);
+      }
+      if (element.matches && element.matches(REVIEW_TARGET_SELECTOR)) {
+        reviewTargetSourceSnapshots.delete(element);
+      }
+      element.querySelectorAll(REVIEW_TARGET_SELECTOR).forEach(function(target) {
+        reviewTargetSourceSnapshots.delete(target);
+      });
+    });
+  }
+
+  function hashReviewSource(value) {
+    let hash = 2166136261;
+    const text = String(value || '');
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function getReviewTargetLabel(target, type) {
+    if (type === 'heading') return 'Heading ' + target.tagName;
+    if (type === 'paragraph') return 'Paragraph';
+    if (type === 'table') return 'YAML frontmatter';
+    if (type === 'code') {
+      const code = target.querySelector('code');
+      const languageClass = code ? Array.from(code.classList).find(function(className) {
+        return className !== 'hljs' && className !== 'language-plaintext' && className !== 'plaintext';
+      }) : '';
+      const language = languageClass ? languageClass.replace(/^language-/, '') : '';
+      return language ? language + ' code block' : 'Code block';
+    }
+    if (type === 'diagram') {
+      let engine = target.getAttribute('data-diagram-engine');
+      if (!engine && target.matches('.geojson-container')) engine = 'geojson';
+      if (!engine && target.matches('.topojson-container')) engine = 'topojson';
+      if (!engine && target.matches('.stl-container')) engine = 'stl';
+      const specialLabels = {
+        geojson: 'GeoJSON map',
+        topojson: 'TopoJSON map',
+        stl: 'STL model'
+      };
+      if (specialLabels[engine]) return specialLabels[engine];
+      const engineLabel = engine ? getDiagramEngineLabel(engine) : 'Diagram';
+      return engineLabel === 'Diagram' ? engineLabel : engineLabel + ' diagram';
+    }
+    return 'Document block';
+  }
+
+  function getReviewAnchorDescriptor(target) {
+    if (!target || !target.dataset.reviewAnchor) return null;
+    const type = target.dataset.reviewType || getReviewTargetType(target);
+    const source = getReviewTargetSource(target, type);
+    const excerpt = source.length > 180 ? source.slice(0, 177) + '...' : source;
+    return {
+      key: target.dataset.reviewAnchor,
+      type: type,
+      label: target.dataset.reviewLabel || getReviewTargetLabel(target, type),
+      excerpt: excerpt || 'Empty rendered block',
+      duplicateCount: Math.max(1, Number(target.dataset.reviewDuplicateCount) || 1),
+      context: target.dataset.reviewContext || null
+    };
+  }
+
+  function getReviewTargets() {
+    if (!markdownPreview) return [];
+    return Array.from(markdownPreview.querySelectorAll(REVIEW_TARGET_SELECTOR)).filter(function(target) {
+      const diagramContainer = target.closest('.diagram-viewer, .geojson-container, .topojson-container, .stl-container');
+      if (diagramContainer && diagramContainer !== target) {
+        return false;
+      }
+      const frontmatterTable = target.closest('.frontmatter-table');
+      if (frontmatterTable && frontmatterTable !== target) {
+        return false;
+      }
+      return !target.closest('.review-target-button');
+    });
+  }
+
+  function clearReviewDecorations() {
+    if (!markdownPreview) return;
+    if (reviewPinsLayer) reviewPinsLayer.textContent = '';
+    if (reviewPinsResizeObserver) {
+      reviewPinsResizeObserver.disconnect();
+      reviewPinsResizeObserver = null;
+    }
+    if (reviewPinsLayoutFrame) {
+      cancelAnimationFrame(reviewPinsLayoutFrame);
+      reviewPinsLayoutFrame = null;
+    }
+    markdownPreview.querySelectorAll('[data-review-anchor]').forEach(function(target) {
+      target.classList.remove(
+        'review-target',
+        'review-target--heading',
+        'review-target--paragraph',
+        'review-target--code',
+        'review-target--table',
+        'review-target--diagram',
+        'has-review-thread',
+        'is-review-target-active'
+      );
+      delete target.dataset.reviewAnchor;
+      delete target.dataset.reviewType;
+      delete target.dataset.reviewLabel;
+      delete target.dataset.reviewDuplicateCount;
+      delete target.dataset.reviewContext;
+    });
+  }
+
+  function positionReviewPins() {
+    reviewPinsLayoutFrame = null;
+    if (!reviewModeActive || !reviewPinsLayer || !previewPaneElement) return;
+    const paneRect = previewPaneElement.getBoundingClientRect();
+    const previewRect = markdownPreview.getBoundingClientRect();
+    const pinRight = previewRect.right - 4;
+    reviewPinsLayer.querySelectorAll('.review-target-actions').forEach(function(actions) {
+      const anchor = {
+        key: actions.dataset.reviewAnchor,
+        duplicateCount: Number(actions.dataset.reviewDuplicateCount) || null,
+        context: actions.dataset.reviewContext || null
+      };
+      const target = findReviewTarget(anchor);
+      if (!target) {
+        actions.hidden = true;
+        return;
+      }
+      actions.hidden = false;
+      const targetRect = target.getBoundingClientRect();
+      const isDiagram = target.dataset.reviewType === 'diagram';
+      const top = isDiagram ? targetRect.bottom - 40 : targetRect.top + 4;
+      actions.style.top = (top - paneRect.top + previewPaneElement.scrollTop) + 'px';
+      actions.style.left = (pinRight - paneRect.left + previewPaneElement.scrollLeft) + 'px';
+      actions.style.transform = 'translateX(-100%)';
+    });
+  }
+
+  function scheduleReviewPinsLayout() {
+    if (!reviewModeActive || reviewPinsLayoutFrame) return;
+    reviewPinsLayoutFrame = requestAnimationFrame(positionReviewPins);
+  }
+
+  function observeReviewPinLayout() {
+    if (typeof ResizeObserver === 'undefined') {
+      scheduleReviewPinsLayout();
+      return;
+    }
+    reviewPinsResizeObserver = new ResizeObserver(scheduleReviewPinsLayout);
+    reviewPinsResizeObserver.observe(markdownPreview);
+    if (previewPaneElement) reviewPinsResizeObserver.observe(previewPaneElement);
+    scheduleReviewPinsLayout();
+  }
+
+  function decorateReviewTargets() {
+    clearReviewDecorations();
+    if (!reviewModeActive || !markdownPreview || previewContainsSkeleton()) return;
+
+    const threads = getActiveReviewThreads();
+    const threadsByAnchor = new Map();
+    threads.forEach(function(thread) {
+      const key = thread.anchor && thread.anchor.key;
+      if (!key) return;
+      if (!threadsByAnchor.has(key)) threadsByAnchor.set(key, []);
+      threadsByAnchor.get(key).push(thread);
+    });
+
+    const targetEntries = getReviewTargets().map(function(target) {
+      const type = getReviewTargetType(target);
+      const source = getReviewTargetSource(target, type);
+      const signature = type + '\u241f' + source;
+      return { target: target, type: type, source: source, signature: signature };
+    });
+    targetEntries.forEach(function(entry, index) {
+      const before = index > 0 ? targetEntries[index - 1].signature : 'review-start';
+      const after = index < targetEntries.length - 1 ? targetEntries[index + 1].signature : 'review-end';
+      entry.context = hashReviewSource(before) + ':' + hashReviewSource(after);
+    });
+    const signatureCounts = new Map();
+    targetEntries.forEach(function(entry) {
+      signatureCounts.set(entry.signature, (signatureCounts.get(entry.signature) || 0) + 1);
+    });
+
+    const occurrences = new Map();
+    targetEntries.forEach(function(entry) {
+      const target = entry.target;
+      const type = entry.type;
+      const source = entry.source;
+      const signature = entry.signature;
+      const duplicateContext = entry.context;
+      const occurrence = occurrences.get(signature) || 0;
+      occurrences.set(signature, occurrence + 1);
+      const duplicateCount = signatureCounts.get(signature) || 1;
+      const context = duplicateCount > 1 ? duplicateContext : '';
+      const anchorKey = type + ':' + hashReviewSource(signature) + ':' + occurrence;
+      const label = getReviewTargetLabel(target, type);
+      const targetThreads = (threadsByAnchor.get(anchorKey) || []).filter(function(thread) {
+        return (!thread.anchor.duplicateCount || thread.anchor.duplicateCount === duplicateCount) &&
+          (!thread.anchor.context || thread.anchor.context === context);
+      });
+
+      target.dataset.reviewAnchor = anchorKey;
+      target.dataset.reviewType = type;
+      target.dataset.reviewLabel = label;
+      target.dataset.reviewDuplicateCount = String(duplicateCount);
+      target.dataset.reviewContext = context;
+      target.classList.add('review-target', 'review-target--' + type);
+      target.classList.toggle('has-review-thread', targetThreads.length > 0);
+
+      const actions = document.createElement('div');
+      actions.className = 'review-target-actions';
+      actions.dataset.reviewAnchor = anchorKey;
+      actions.dataset.reviewDuplicateCount = String(duplicateCount);
+      actions.dataset.reviewContext = context;
+      actions.dataset.html2canvasIgnore = 'true';
+      actions.setAttribute('role', 'group');
+      actions.setAttribute('aria-label', 'Review actions for ' + label);
+
+      function createTargetButton(command, iconClass, title, ariaLabel) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tool-button review-target-button';
+        button.dataset.reviewCommand = command;
+        button.dataset.reviewAnchor = anchorKey;
+        button.dataset.reviewDuplicateCount = String(duplicateCount);
+        button.dataset.reviewContext = context;
+        button.dataset.html2canvasIgnore = 'true';
+        button.title = title;
+        button.setAttribute('aria-label', ariaLabel);
+        button.setAttribute('aria-controls', command === 'read' ? 'review-list' : 'review-composer');
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+        return button;
+      }
+
+      if (targetThreads.length > 0) {
+        const reviewLabel = targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's');
+        const readButton = createTargetButton(
+          'read',
+          'bi bi-chat-square-text',
+          'Read ' + reviewLabel,
+          'Read ' + reviewLabel + ' for ' + label
+        );
+        readButton.classList.add('is-active');
+        readButton.dataset.reviewCount = String(targetThreads.length);
+        actions.appendChild(readButton);
+      }
+
+      actions.appendChild(createTargetButton(
+        'add',
+        'bi bi-plus-lg',
+        targetThreads.length > 0 ? 'Add another review item' : 'Add feedback',
+        'Add feedback to ' + label
+      ));
+      if (reviewPinsLayer) reviewPinsLayer.appendChild(actions);
+    });
+
+    observeReviewPinLayout();
+    renderReviewPanel();
+  }
+
+  function findReviewTarget(anchor) {
+    const anchorKey = typeof anchor === 'string' ? anchor : (anchor && anchor.key);
+    if (!markdownPreview || !anchorKey) return null;
+    const target = Array.from(markdownPreview.querySelectorAll('[data-review-anchor]')).find(function(candidate) {
+      return candidate.dataset.reviewAnchor === anchorKey && !candidate.classList.contains('review-target-button');
+    }) || null;
+    if (!target || !anchor || typeof anchor === 'string') return target;
+    if (anchor.duplicateCount && Number(target.dataset.reviewDuplicateCount) !== Number(anchor.duplicateCount)) return null;
+    if (anchor.context && target.dataset.reviewContext !== anchor.context) return null;
+    return target;
+  }
+
+  function updateReviewToggleActiveState(openCount) {
+    const count = typeof openCount === 'number'
+      ? openCount
+      : getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
+    if (reviewToggle) reviewToggle.classList.toggle('is-active', reviewModeActive || count > 0);
+    if (mobileReviewToggle) mobileReviewToggle.classList.toggle('is-active', reviewModeActive);
+  }
+
+  function updateReviewCountBadges() {
+    const openCount = getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
+    const countLabel = openCount + ' open review item' + (openCount === 1 ? '' : 's');
+    if (reviewToolbarCount) {
+      reviewToolbarCount.textContent = String(openCount);
+      reviewToolbarCount.hidden = openCount === 0;
+    }
+    if (mobileReviewCountBadge) {
+      mobileReviewCountBadge.textContent = String(openCount);
+      mobileReviewCountBadge.hidden = openCount === 0;
+      mobileReviewCountBadge.title = countLabel;
+    }
+    if (reviewToggle) {
+      reviewToggle.setAttribute('aria-label', openCount > 0
+        ? 'Open comments and suggestions. ' + countLabel + '.'
+        : 'Open comments and suggestions');
+      reviewToggle.title = openCount > 0
+        ? 'Open comments and suggestions (' + countLabel + ')'
+        : 'Open comments and suggestions';
+    }
+    if (mobileReviewToggle) {
+      mobileReviewToggle.setAttribute('aria-label', openCount > 0
+        ? 'Open comments and suggestions. ' + openCount + ' open review item' + (openCount === 1 ? '' : 's') + '.'
+        : 'Open comments and suggestions');
+    }
+    updateReviewToggleActiveState(openCount);
+  }
+
+  function formatReviewTime(timestamp) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(new Date(timestamp));
+    } catch (_) {
+      return new Date(timestamp).toLocaleString();
+    }
+  }
+
+  function createReviewThreadElement(thread) {
+    const target = findReviewTarget(thread.anchor);
+    const item = document.createElement('article');
+    item.className = 'review-thread' + (thread.resolved ? ' is-resolved' : '') + (!target ? ' is-orphaned' : '');
+    if (thread.id === activeReviewEditId) item.classList.add('is-review-thread-active');
+    item.dataset.reviewId = thread.id;
+    item.dataset.kind = thread.kind;
+
+    const header = document.createElement('div');
+    header.className = 'review-thread-header';
+    const meta = document.createElement('div');
+    meta.className = 'review-thread-meta';
+    const kind = document.createElement('span');
+    kind.className = 'review-kind-label';
+    const kindIcon = document.createElement('i');
+    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-pencil-square' : 'bi bi-chat-left-text';
+    kindIcon.setAttribute('aria-hidden', 'true');
+    kind.appendChild(kindIcon);
+    kind.appendChild(document.createTextNode(thread.kind === 'suggestion' ? 'Suggestion' : 'Comment'));
+    meta.appendChild(kind);
+    if (thread.resolved) {
+      const status = document.createElement('span');
+      status.className = 'review-status-label';
+      status.textContent = 'Resolved';
+      meta.appendChild(status);
+    }
+    header.appendChild(meta);
+    item.appendChild(header);
+
+    const anchor = document.createElement('button');
+    anchor.type = 'button';
+    anchor.className = 'review-thread-anchor';
+    anchor.dataset.reviewAction = 'focus-anchor';
+    anchor.dataset.reviewId = thread.id;
+    anchor.disabled = !target;
+    anchor.textContent = target
+      ? thread.anchor.label + ': ' + thread.anchor.excerpt
+      : 'Anchor no longer in preview - ' + thread.anchor.label + ': ' + thread.anchor.excerpt;
+    item.appendChild(anchor);
+
+    const body = document.createElement('p');
+    body.className = 'review-thread-body';
+    body.textContent = thread.body;
+    item.appendChild(body);
+
+    const dates = document.createElement('div');
+    dates.className = 'review-thread-dates';
+    const openedTime = document.createElement('time');
+    openedTime.className = 'review-thread-time';
+    openedTime.dateTime = new Date(thread.createdAt).toISOString();
+    openedTime.textContent = 'Opened: ' + formatReviewTime(thread.createdAt);
+    dates.appendChild(openedTime);
+    if (thread.resolvedAt) {
+      const closedTime = document.createElement('time');
+      closedTime.className = 'review-thread-time';
+      closedTime.dateTime = new Date(thread.resolvedAt).toISOString();
+      closedTime.textContent = 'Closed: ' + formatReviewTime(thread.resolvedAt);
+      dates.appendChild(closedTime);
+    } else {
+      const closedTime = document.createElement('span');
+      closedTime.className = 'review-thread-time';
+      closedTime.textContent = thread.resolved ? 'Closed: Unavailable' : 'Closed: Not closed';
+      dates.appendChild(closedTime);
+    }
+    item.appendChild(dates);
+
+    const actions = document.createElement('div');
+    actions.className = 'review-thread-actions';
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'review-thread-action';
+    editButton.dataset.reviewAction = 'edit';
+    editButton.dataset.reviewId = thread.id;
+    editButton.textContent = 'Edit';
+    editButton.setAttribute('aria-label', 'Edit ' + (thread.kind === 'suggestion' ? 'suggestion' : 'comment'));
+    actions.appendChild(editButton);
+    const statusButton = document.createElement('button');
+    statusButton.type = 'button';
+    statusButton.className = 'review-thread-action';
+    statusButton.dataset.reviewAction = 'toggle-resolved';
+    statusButton.dataset.reviewId = thread.id;
+    statusButton.textContent = thread.resolved ? 'Reopen' : 'Resolve';
+    actions.appendChild(statusButton);
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'review-thread-action is-danger';
+    deleteButton.dataset.reviewAction = 'delete';
+    deleteButton.dataset.reviewId = thread.id;
+    deleteButton.textContent = 'Delete';
+    actions.appendChild(deleteButton);
+    item.appendChild(actions);
+
+    return item;
+  }
+
+  function renderReviewPanel() {
+    updateReviewCountBadges();
+    if (!reviewPanel || !reviewList || !reviewEmptyState) return;
+    const threads = getActiveReviewThreads();
+    const openCount = threads.filter(function(thread) { return !thread.resolved; }).length;
+    if (reviewPanelSummary) {
+      reviewPanelSummary.textContent = openCount === 0
+        ? (threads.length === 0 ? 'No feedback yet' : 'All feedback resolved')
+        : openCount + ' open item' + (openCount === 1 ? '' : 's') + (threads.length === openCount ? '' : ' - ' + threads.length + ' total');
+    }
+    if (reviewCopySummary) reviewCopySummary.disabled = threads.length === 0;
+    if (reviewResolveAll) reviewResolveAll.disabled = openCount === 0;
+    if (reviewDeleteAll) reviewDeleteAll.disabled = threads.length === 0;
+
+    const filteredThreads = threads.filter(function(thread) {
+      if (reviewFilter === 'resolved') return thread.resolved;
+      if (reviewFilter === 'all') return true;
+      return !thread.resolved;
+    }).sort(function(a, b) { return b.createdAt - a.createdAt; });
+
+    reviewList.textContent = '';
+    filteredThreads.forEach(function(thread) {
+      reviewList.appendChild(createReviewThreadElement(thread));
+    });
+    reviewList.hidden = filteredThreads.length === 0;
+    reviewEmptyState.hidden = filteredThreads.length > 0;
+    if (filteredThreads.length === 0) {
+      const title = reviewEmptyState.querySelector('h3');
+      const copy = reviewEmptyState.querySelector('p');
+      if (reviewFilter === 'resolved') {
+        title.textContent = 'No resolved feedback';
+        copy.textContent = 'Resolved comments and suggestions will appear here.';
+      } else if (reviewFilter === 'all') {
+        title.textContent = 'No feedback yet';
+        copy.textContent = 'Select a comment pin in the preview to add feedback.';
+      } else {
+        title.textContent = 'No open feedback';
+        copy.textContent = threads.length > 0
+          ? 'Everything has been resolved. Switch to Resolved or All to review earlier feedback.'
+          : 'Select a comment pin in the preview to add feedback.';
+      }
+    }
+  }
+
+  function setReviewFilter(nextFilter) {
+    reviewFilter = ['open', 'resolved', 'all'].includes(nextFilter) ? nextFilter : 'open';
+    document.querySelectorAll('[data-review-filter]').forEach(function(button) {
+      const active = button.dataset.reviewFilter === reviewFilter;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    renderReviewPanel();
+  }
+
+  function getReviewThreadsForAnchor(anchor) {
+    if (!anchor || !anchor.key) return [];
+    return getActiveReviewThreads().filter(function(thread) {
+      if (!thread.anchor || thread.anchor.key !== anchor.key) return false;
+      if (anchor.duplicateCount && thread.anchor.duplicateCount && Number(thread.anchor.duplicateCount) !== Number(anchor.duplicateCount)) return false;
+      if (anchor.context && thread.anchor.context && thread.anchor.context !== anchor.context) return false;
+      return true;
+    });
+  }
+
+  function showReviewThreadsForAnchor(anchor) {
+    const threads = getReviewThreadsForAnchor(anchor).sort(function(a, b) {
+      return b.createdAt - a.createdAt;
+    });
+    if (threads.length === 0) return false;
+
+    closeReviewComposer();
+    setReviewFilter('all');
+
+    const matchingIds = new Set(threads.map(function(thread) { return thread.id; }));
+    const matchingItems = Array.from(reviewList.querySelectorAll('.review-thread')).filter(function(item) {
+      return matchingIds.has(item.dataset.reviewId);
+    });
+    matchingItems.forEach(function(item) {
+      item.classList.add('is-review-thread-active');
+    });
+    if (matchingItems[0]) {
+      matchingItems[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const anchorButton = matchingItems[0].querySelector('.review-thread-anchor');
+      if (anchorButton) anchorButton.focus({ preventScroll: true });
+    }
+
+    clearTimeout(showReviewThreadsForAnchor._timeoutId);
+    showReviewThreadsForAnchor._timeoutId = setTimeout(function() {
+      matchingItems.forEach(function(item) {
+        item.classList.remove('is-review-thread-active');
+      });
+    }, 1800);
+    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block.');
+    return true;
+  }
+
+  function updateReviewComposerKind(kind) {
+    reviewComposerKind = kind === 'suggestion' ? 'suggestion' : 'comment';
+    document.querySelectorAll('[data-review-kind]').forEach(function(button) {
+      const active = button.dataset.reviewKind === reviewComposerKind;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (reviewFeedbackLabel) {
+      reviewFeedbackLabel.textContent = reviewComposerKind === 'suggestion' ? 'Suggested change' : 'Comment';
+    }
+    if (reviewComposerTitle) {
+      reviewComposerTitle.textContent = activeReviewEditId
+        ? (reviewComposerKind === 'suggestion' ? 'Edit suggestion' : 'Edit comment')
+        : (reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment');
+    }
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.placeholder = reviewComposerKind === 'suggestion'
+        ? 'Describe the change you recommend without editing the source...'
+        : 'Leave a focused comment for the author...';
+    }
+    if (reviewFeedbackSubmit) {
+      reviewFeedbackSubmit.textContent = activeReviewEditId
+        ? 'Save changes'
+        : (reviewComposerKind === 'suggestion' ? 'Add suggestion' : 'Add comment');
+    }
+  }
+
+  function focusReviewPin(anchor) {
+    const target = findReviewTarget(anchor);
+    if (!target || !reviewPinsLayer) return false;
+    const matchingButtons = Array.from(reviewPinsLayer.querySelectorAll('.review-target-button')).filter(function(candidate) {
+      return candidate.dataset.reviewAnchor === target.dataset.reviewAnchor &&
+        candidate.dataset.reviewContext === target.dataset.reviewContext;
+    });
+    const button = matchingButtons.find(function(candidate) {
+      return candidate.dataset.reviewCommand === 'read';
+    }) || matchingButtons[0] || null;
+    if (!button) return false;
+    button.focus({ preventScroll: true });
+    return true;
+  }
+
+  function focusReviewComposerInput() {
+    if (!reviewFeedbackInput) return;
+    reviewFeedbackInput.focus();
+    requestAnimationFrame(function() {
+      if (reviewComposer && !reviewComposer.hidden && reviewPanelBody) {
+        reviewPanelBody.scrollTop = reviewPanelBody.scrollHeight;
+      }
+    });
+  }
+
+  function closeReviewComposer(options) {
+    options = options || {};
+    const returnAnchor = activeReviewAnchor;
+    const returnReviewId = activeReviewEditId;
+    if (activeReviewAnchor) {
+      const previousTarget = findReviewTarget(activeReviewAnchor);
+      if (previousTarget) previousTarget.classList.remove('is-review-target-active');
+    }
+    activeReviewAnchor = null;
+    activeReviewEditId = null;
+    if (reviewComposer) reviewComposer.hidden = true;
+    if (reviewFeedbackInput) reviewFeedbackInput.value = '';
+    if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
+    if (reviewList) {
+      reviewList.querySelectorAll('.is-review-thread-active').forEach(function(item) {
+        item.classList.remove('is-review-thread-active');
+      });
+    }
+    if (options.restoreFocus && reviewModeActive) {
+      const editButton = returnReviewId && reviewList
+        ? Array.from(reviewList.querySelectorAll('[data-review-action="edit"]')).find(function(button) {
+          return button.dataset.reviewId === returnReviewId;
+        })
+        : null;
+      if (editButton) {
+        editButton.focus();
+      } else if (!focusReviewPin(returnAnchor) && reviewPanelClose) {
+        reviewPanelClose.focus();
+      }
+    }
+  }
+
+  function openReviewComposer(target, options) {
+    options = options || {};
+    if (!target) return;
+    const descriptor = getReviewAnchorDescriptor(target);
+    if (!descriptor) return;
+    closeReviewComposer();
+    activeReviewEditId = null;
+    activeReviewAnchor = descriptor;
+    target.classList.add('is-review-target-active');
+    if (reviewComposerAnchor) {
+      reviewComposerAnchor.textContent = descriptor.label + ': ' + descriptor.excerpt;
+    }
+    updateReviewComposerKind(reviewComposerKind);
+    if (reviewComposer) reviewComposer.hidden = false;
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.value = '';
+      if (reviewFeedbackCount) reviewFeedbackCount.textContent = '0 / ' + REVIEW_TEXT_LIMIT;
+      if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = true;
+      if (options.focusInput !== false) focusReviewComposerInput();
+    }
+  }
+
+  function openReviewEditor(thread) {
+    if (!thread || !reviewComposer || !reviewFeedbackInput) return;
+    closeReviewComposer();
+    activeReviewEditId = thread.id;
+    activeReviewAnchor = Object.assign({}, thread.anchor);
+    const target = findReviewTarget(thread.anchor);
+    if (target) target.classList.add('is-review-target-active');
+    if (reviewComposerAnchor) {
+      reviewComposerAnchor.textContent = thread.anchor.label + ': ' + thread.anchor.excerpt;
+    }
+    updateReviewComposerKind(thread.kind);
+    reviewComposer.hidden = false;
+    reviewFeedbackInput.value = thread.body;
+    if (reviewFeedbackCount) reviewFeedbackCount.textContent = reviewFeedbackInput.value.length + ' / ' + REVIEW_TEXT_LIMIT;
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = false;
+    renderReviewPanel();
+    focusReviewComposerInput();
+    reviewFeedbackInput.setSelectionRange(reviewFeedbackInput.value.length, reviewFeedbackInput.value.length);
+    announceToScreenReader('Editing ' + (thread.kind === 'suggestion' ? 'suggestion.' : 'comment.'));
+  }
+
+  function persistReviewThreads(message) {
+    syncLiveReviewThreadsFromTab();
+    saveTabsToStorage(tabs);
+    decorateReviewTargets();
+    renderReviewPanel();
+    if (message) announceToScreenReader(message);
+  }
+
+  function submitReviewFeedback() {
+    if (!activeReviewAnchor || !reviewFeedbackInput) return;
+    const body = reviewFeedbackInput.value.trim();
+    if (!body) return;
+    const returnAnchor = Object.assign({}, activeReviewAnchor);
+    if (activeReviewEditId) {
+      const reviewId = activeReviewEditId;
+      const thread = getActiveReviewThreads().find(function(item) { return item.id === reviewId; });
+      if (!thread) {
+        closeReviewComposer();
+        announceToScreenReader('This review item is no longer available.');
+        return;
+      }
+      thread.kind = reviewComposerKind;
+      thread.body = body.slice(0, REVIEW_TEXT_LIMIT);
+      thread.updatedAt = Date.now();
+      closeReviewComposer();
+      persistReviewThreads('Review item updated.');
+      requestAnimationFrame(function() {
+        const editButton = reviewList
+          ? Array.from(reviewList.querySelectorAll('[data-review-action="edit"]')).find(function(button) {
+            return button.dataset.reviewId === reviewId;
+          })
+          : null;
+        if (editButton) editButton.focus();
+      });
+      return;
+    }
+    getActiveReviewThreads().push({
+      id: createReviewId(),
+      anchor: Object.assign({}, activeReviewAnchor),
+      kind: reviewComposerKind,
+      body: body.slice(0, REVIEW_TEXT_LIMIT),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      resolved: false,
+      resolvedAt: null
+    });
+    const label = reviewComposerKind === 'suggestion' ? 'Suggestion added.' : 'Comment added.';
+    closeReviewComposer();
+    persistReviewThreads(label);
+    focusReviewPin(returnAnchor);
+  }
+
+  function focusReviewAnchor(thread) {
+    const target = thread && thread.anchor ? findReviewTarget(thread.anchor) : null;
+    if (!target) return;
+    markdownPreview.querySelectorAll('.is-review-target-active').forEach(function(node) {
+      node.classList.remove('is-review-target-active');
+    });
+    target.classList.add('is-review-target-active');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    focusReviewPin(thread.anchor);
+    clearTimeout(focusReviewAnchor._timeoutId);
+    focusReviewAnchor._timeoutId = setTimeout(function() {
+      if (!activeReviewAnchor || activeReviewAnchor.key !== thread.anchor.key) {
+        target.classList.remove('is-review-target-active');
+      }
+    }, 1800);
+  }
+
+  function buildReviewSummary() {
+    const tab = getActiveReviewTab();
+    const threads = getActiveReviewThreads().slice().sort(function(a, b) { return a.createdAt - b.createdAt; });
+    const resolvedCount = threads.filter(function(thread) { return thread.resolved; }).length;
+    const lines = [
+      '# Review: ' + (tab && tab.title ? tab.title : 'Markdown document'),
+      '',
+      '- Generated: ' + formatReviewTime(Date.now()),
+      '- Total items: ' + threads.length,
+      '- Open items: ' + (threads.length - resolvedCount),
+      '- Resolved items: ' + resolvedCount,
+      ''
+    ];
+    threads.forEach(function(thread, index) {
+      const kind = thread.kind === 'suggestion' ? 'Suggestion' : 'Comment';
+      const closedAt = thread.resolved
+        ? (thread.resolvedAt ? formatReviewTime(thread.resolvedAt) : 'Unavailable')
+        : 'Not closed';
+      lines.push((index + 1) + '. **' + kind + '** - ' + thread.anchor.label);
+      lines.push('   - Status: ' + (thread.resolved ? 'Resolved' : 'Open'));
+      lines.push('   - Opened: ' + formatReviewTime(thread.createdAt));
+      lines.push('   - Closed: ' + closedAt);
+      if (thread.anchor.excerpt) lines.push('   > ' + thread.anchor.excerpt.replace(/\n/g, ' '));
+      thread.body.split('\n').forEach(function(line) {
+        lines.push('   ' + line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n').trim();
+  }
+
+  async function copyReviewSummary() {
+    if (getActiveReviewThreads().length === 0) return;
+    try {
+      await copyTextToClipboard(buildReviewSummary());
+      announceToScreenReader('Review summary copied.');
+      if (reviewCopySummary) {
+        const icon = reviewCopySummary.querySelector('i');
+        if (icon) icon.className = 'bi bi-check-lg';
+        clearTimeout(copyReviewSummary._timeoutId);
+        copyReviewSummary._timeoutId = setTimeout(function() {
+          if (icon) icon.className = 'bi bi-clipboard';
+        }, 1400);
+      }
+    } catch (error) {
+      console.error('Review summary copy failed:', error);
+      alert('Failed to copy review summary: ' + error.message);
+    }
+  }
+
+  function resolveAllReviewThreads() {
+    const openThreads = getActiveReviewThreads().filter(function(thread) { return !thread.resolved; });
+    if (openThreads.length === 0) return;
+    const updatedAt = Date.now();
+    openThreads.forEach(function(thread) {
+      thread.resolved = true;
+      thread.updatedAt = updatedAt;
+      thread.resolvedAt = updatedAt;
+    });
+    persistReviewThreads(openThreads.length + ' review item' + (openThreads.length === 1 ? '' : 's') + ' resolved.');
+    requestAnimationFrame(function() {
+      if (reviewPanelClose) reviewPanelClose.focus();
+    });
+  }
+
+  function cancelReviewDeleteConfirmation() {
+    pendingReviewDelete = null;
+    if (reviewDeleteModal && reviewDeleteModal.getAttribute('aria-hidden') === 'false') {
+      closeAppModal(reviewDeleteModal);
+    }
+  }
+
+  function requestReviewDeleteConfirmation(reviewId) {
+    if (!reviewDeleteModal || !reviewDeleteCancel || !reviewDeleteConfirm) return;
+    const threads = getActiveReviewThreads();
+    const thread = reviewId
+      ? threads.find(function(item) { return item.id === reviewId; })
+      : null;
+    if ((reviewId && !thread) || (!reviewId && threads.length === 0)) return;
+
+    pendingReviewDelete = {
+      tabId: activeTabId,
+      reviewId: reviewId || null
+    };
+    if (reviewDeleteTitle) {
+      reviewDeleteTitle.textContent = reviewId ? 'Delete review item?' : 'Delete all review items?';
+    }
+    if (reviewDeleteDescription) {
+      reviewDeleteDescription.textContent = reviewId
+        ? 'This ' + (thread.kind === 'suggestion' ? 'suggestion' : 'comment') + ' will be permanently deleted. This cannot be undone.'
+        : 'All ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' in this document will be permanently deleted. This cannot be undone.';
+    }
+    reviewDeleteConfirm.textContent = reviewId ? 'Delete item' : 'Delete all';
+    openAppModal(reviewDeleteModal, {
+      focusTarget: reviewDeleteCancel,
+      onClose: cancelReviewDeleteConfirmation
+    });
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (reviewDeleteCancel) reviewDeleteCancel.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  function confirmReviewDeletion() {
+    const pending = pendingReviewDelete;
+    pendingReviewDelete = null;
+    if (!pending || !reviewDeleteModal) return;
+
+    const tab = tabs.find(function(item) { return item.id === pending.tabId; });
+    if (!tab || tab.id !== activeTabId || !Array.isArray(tab.reviewThreads)) {
+      closeAppModal(reviewDeleteModal);
+      announceToScreenReader('Review deletion cancelled because the active document changed.');
+      return;
+    }
+
+    let deletedCount = 0;
+    if (pending.reviewId) {
+      const index = tab.reviewThreads.findIndex(function(thread) { return thread.id === pending.reviewId; });
+      if (index >= 0) {
+        if (activeReviewEditId === pending.reviewId) closeReviewComposer();
+        tab.reviewThreads.splice(index, 1);
+        deletedCount = 1;
+      }
+    } else {
+      deletedCount = tab.reviewThreads.length;
+      tab.reviewThreads.splice(0, tab.reviewThreads.length);
+      closeReviewComposer();
+    }
+
+    closeAppModal(reviewDeleteModal);
+    if (deletedCount > 0) {
+      persistReviewThreads(deletedCount === 1 ? 'Review item deleted.' : deletedCount + ' review items deleted.');
+    }
+    requestAnimationFrame(function() {
+      if (reviewPanelClose) reviewPanelClose.focus();
+    });
+  }
+
+  function updateReviewBackdrop() {
+    if (!reviewPanelBackdrop) return;
+    reviewPanelBackdrop.hidden = true;
+  }
+
+  function setReviewMode(enabled, options) {
+    options = options || {};
+    const nextState = Boolean(enabled);
+    const wasActive = reviewModeActive;
+    if (nextState && !wasActive) {
+      reviewPreviousViewModes.set(activeTabId, currentViewMode || 'split');
+    }
+    reviewModeActive = nextState;
+    if (reviewModeActive && currentViewMode !== 'preview') {
+      setViewMode('preview');
+    }
+    if (reviewPanel) reviewPanel.hidden = !reviewModeActive;
+    if (reviewPinsLayer) reviewPinsLayer.hidden = !reviewModeActive;
+    if (contentContainer) contentContainer.classList.toggle('is-reviewing', reviewModeActive);
+    [reviewToggle, mobileReviewToggle].forEach(function(button) {
+      if (!button) return;
+      button.setAttribute('aria-expanded', reviewModeActive ? 'true' : 'false');
+      button.setAttribute('aria-pressed', reviewModeActive ? 'true' : 'false');
+    });
+    updateReviewToggleActiveState();
+    updateReviewBackdrop();
+    updateLiveEditorAccess();
+    if (reviewModeActive) {
+      decorateReviewTargets();
+      renderReviewPanel();
+      if (options.focusPanel && reviewPanelClose) reviewPanelClose.focus();
+    } else {
+      cancelReviewDeleteConfirmation();
+      closeReviewComposer();
+      clearReviewDecorations();
+      const restoreMode = reviewPreviousViewModes.get(activeTabId);
+      reviewPreviousViewModes.clear();
+      if (restoreMode && restoreMode !== currentViewMode) {
+        setViewMode(restoreMode);
+        saveCurrentTabState();
+      }
+      if (options.restoreFocus) {
+        const returnTarget = window.innerWidth < 768 ? mobileMenuToggle : reviewToggle;
+        if (returnTarget) returnTarget.focus();
+      }
+    }
+  }
+
+  function initReviewMode() {
+    tabs.forEach(function(tab) {
+      tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+    });
+    updateReviewCountBadges();
+    renderReviewPanel();
+
+    if (reviewToggle) {
+      reviewToggle.addEventListener('click', function() {
+        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (mobileReviewToggle) {
+      mobileReviewToggle.addEventListener('click', function() {
+        closeMobileMenu();
+        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (reviewPanelClose) {
+      reviewPanelClose.addEventListener('click', function() {
+        setReviewMode(false, { restoreFocus: true });
+      });
+    }
+    if (reviewPanelBackdrop) {
+      reviewPanelBackdrop.addEventListener('click', function() {
+        setReviewMode(false, { restoreFocus: true });
+      });
+    }
+    if (reviewComposerCancel) {
+      reviewComposerCancel.addEventListener('click', function() {
+        closeReviewComposer({ restoreFocus: true });
+      });
+    }
+    if (reviewFeedbackInput) {
+      reviewFeedbackInput.addEventListener('input', function() {
+        const length = reviewFeedbackInput.value.length;
+        if (reviewFeedbackCount) reviewFeedbackCount.textContent = length + ' / ' + REVIEW_TEXT_LIMIT;
+        if (reviewFeedbackSubmit) reviewFeedbackSubmit.disabled = reviewFeedbackInput.value.trim().length === 0;
+      });
+      reviewFeedbackInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          submitReviewFeedback();
+        }
+      });
+    }
+    if (reviewFeedbackSubmit) reviewFeedbackSubmit.addEventListener('click', submitReviewFeedback);
+    if (reviewCopySummary) reviewCopySummary.addEventListener('click', copyReviewSummary);
+    if (reviewResolveAll) reviewResolveAll.addEventListener('click', resolveAllReviewThreads);
+    if (reviewDeleteAll) {
+      reviewDeleteAll.addEventListener('click', function() {
+        requestReviewDeleteConfirmation(null);
+      });
+    }
+    if (reviewDeleteClose) reviewDeleteClose.addEventListener('click', cancelReviewDeleteConfirmation);
+    if (reviewDeleteCancel) reviewDeleteCancel.addEventListener('click', cancelReviewDeleteConfirmation);
+    if (reviewDeleteConfirm) reviewDeleteConfirm.addEventListener('click', confirmReviewDeletion);
+
+    document.querySelectorAll('[data-review-kind]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        updateReviewComposerKind(button.dataset.reviewKind);
+        if (reviewFeedbackInput) reviewFeedbackInput.focus();
+      });
+    });
+    document.querySelectorAll('[data-review-filter]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        setReviewFilter(button.dataset.reviewFilter);
+      });
+    });
+
+    if (reviewPinsLayer) {
+      reviewPinsLayer.addEventListener('click', function(event) {
+        const button = event.target.closest('.review-target-button');
+        if (!button || !reviewModeActive) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const anchor = {
+          key: button.dataset.reviewAnchor,
+          duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
+          context: button.dataset.reviewContext || null
+        };
+        if (button.dataset.reviewCommand === 'read') {
+          showReviewThreadsForAnchor(anchor);
+          return;
+        }
+        const target = findReviewTarget(anchor);
+        openReviewComposer(target);
+      });
+    }
+
+    if (markdownPreview) {
+      markdownPreview.addEventListener('click', function(event) {
+        if (!reviewModeActive || event.target.closest('a, button, input, select, textarea, summary, [role="button"]')) return;
+        const target = event.target.closest('.review-target.has-review-thread');
+        if (!target || !markdownPreview.contains(target)) return;
+        const anchor = getReviewAnchorDescriptor(target);
+        if (!anchor) return;
+        event.preventDefault();
+        showReviewThreadsForAnchor(anchor);
+      });
+    }
+
+    if (previewPaneElement) {
+      previewPaneElement.addEventListener('scroll', scheduleReviewPinsLayout, { passive: true });
+    }
+
+    if (reviewList) {
+      reviewList.addEventListener('click', function(event) {
+        const actionButton = event.target.closest('[data-review-action]');
+        if (!actionButton) return;
+        const thread = getActiveReviewThreads().find(function(item) {
+          return item.id === actionButton.dataset.reviewId;
+        });
+        if (!thread) return;
+        const action = actionButton.dataset.reviewAction;
+        if (action === 'focus-anchor') {
+          focusReviewAnchor(thread);
+          return;
+        }
+        if (action === 'edit') {
+          openReviewEditor(thread);
+          return;
+        }
+        if (action === 'toggle-resolved') {
+          thread.resolved = !thread.resolved;
+          const changedAt = Date.now();
+          thread.updatedAt = changedAt;
+          thread.resolvedAt = thread.resolved ? changedAt : null;
+          persistReviewThreads(thread.resolved ? 'Review item resolved.' : 'Review item reopened.');
+          return;
+        }
+        if (action === 'delete') {
+          requestReviewDeleteConfirmation(thread.id);
+        }
+      });
+    }
+
+    window.addEventListener('resize', updateReviewBackdrop);
+    document.addEventListener('keydown', function(event) {
+      if (event.defaultPrevented || event.key !== 'Escape' || !reviewModeActive || activeModal) return;
+      if (reviewComposer && !reviewComposer.hidden) {
+        event.preventDefault();
+        closeReviewComposer({ restoreFocus: true });
+      } else {
+        event.preventDefault();
+        setReviewMode(false, { restoreFocus: true });
+      }
+    });
+  }
 
   function refreshLiveEditorUi() {
     if (!liveShareUiReady) return;
@@ -2409,7 +3735,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function loadTabsFromStorage() {
     try {
-      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
+      return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
+        tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+        return tab;
+      });
     } catch (e) {
       return [];
     }
@@ -2495,6 +3824,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       content: content,
       scrollPos: 0,
       viewMode: viewMode,
+      reviewThreads: [],
       createdAt: Date.now()
     };
   }
@@ -2882,7 +4212,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!tab) return;
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
-    tab.viewMode = currentViewMode || 'split';
+    tab.viewMode = reviewModeActive && reviewPreviousViewModes.has(activeTabId)
+      ? reviewPreviousViewModes.get(activeTabId)
+      : (currentViewMode || 'split');
     if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
       return;
     }
@@ -2890,13 +4222,19 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function restoreViewMode(mode) {
+    if (reviewModeActive && activeTabId && !reviewPreviousViewModes.has(activeTabId)) {
+      reviewPreviousViewModes.set(activeTabId, mode || 'split');
+    }
     currentViewMode = null;
     setViewMode(mode || 'split');
   }
 
   function switchTab(tabId) {
     if (tabId === activeTabId) return;
+    cancelReviewDeleteConfirmation();
     saveCurrentTabState();
+    closeReviewComposer();
+    clearReviewDecorations();
     
     // Clear typing timeout and reset tracking for the new tab
     if (typingTimeout) {
@@ -2920,6 +4258,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     restoreViewMode(tab.viewMode);
     refreshLiveEditorUi();
     renderMarkdown();
+    renderReviewPanel();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
       updateLiveCursorPosition();
@@ -2934,6 +4273,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
       return;
     }
+    if (reviewModeActive) setReviewMode(false);
     if (!title) title = nextUntitledTitle();
     const tab = createTab(content, title);
     tabs.push(tab);
@@ -2942,6 +4282,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function closeTab(tabId) {
+    if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) {
+      cancelReviewDeleteConfirmation();
+    }
     if (liveCollaboration && liveCollaboration.tabId === tabId) {
       if (liveCollaboration.isHost) {
         endLiveSessionForEveryone();
@@ -2953,6 +4296,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
+    if (activeTabId === tabId) {
+      closeReviewComposer();
+      clearReviewDecorations();
+    }
     shareSnapshotViewOnlyTabIds.delete(tabId);
     
     // Clean up history of the closed tab
@@ -2986,6 +4333,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     saveTabsToStorage(tabs);
     renderTabBar(tabs, activeTabId);
+    closeReviewComposer();
+    renderReviewPanel();
   }
 
   function deleteTab(tabId) {
@@ -3112,14 +4461,30 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function resetAllTabs() {
+    cancelReviewDeleteConfirmation();
     const modal = document.getElementById('reset-confirm-modal');
     const confirmBtn = document.getElementById('reset-modal-confirm');
     const cancelBtn = document.getElementById('reset-modal-cancel');
-    if (!modal) return;
+    const closeBtn = document.getElementById('reset-modal-close');
+    const description = document.getElementById('reset-modal-description');
+    if (!modal || !confirmBtn || !cancelBtn) return;
+
+    const fileCount = tabs.length;
+    const reviewCount = tabs.reduce(function(total, tab) {
+      return total + (Array.isArray(tab.reviewThreads) ? tab.reviewThreads.length : 0);
+    }, 0);
+    if (description) {
+      const fileSummary = fileCount + ' open file' + (fileCount === 1 ? '' : 's');
+      const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
+      const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
+      description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
+    }
 
     function doReset() {
       closeAppModal(modal);
       cleanup();
+      closeReviewComposer();
+      clearReviewDecorations();
       disconnectLiveCollaboration({ restoreOriginal: false, silent: true });
       applyShareSnapshotAccessMode('edit');
       resetShareSnapshotLink();
@@ -3136,6 +4501,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       refreshLiveEditorUi();
       renderMarkdown();
       renderTabBar(tabs, activeTabId);
+      closeReviewComposer();
+      renderReviewPanel();
     }
 
     function doCancel() {
@@ -3146,15 +4513,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     function cleanup() {
       confirmBtn.removeEventListener('click', doReset);
       cancelBtn.removeEventListener('click', doCancel);
+      if (closeBtn) closeBtn.removeEventListener('click', doCancel);
     }
 
     confirmBtn.addEventListener('click', doReset);
     cancelBtn.addEventListener('click', doCancel);
+    if (closeBtn) closeBtn.addEventListener('click', doCancel);
 
     openAppModal(modal, {
-      focusTarget: confirmBtn,
+      focusTarget: cancelBtn,
       onClose: doCancel
     });
+    window.setTimeout(function() {
+      cancelBtn.focus();
+    }, 0);
   }
 
   function initTabs() {
@@ -3465,6 +4837,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const patchResult = patchPreviewDom(markdownPreview, sanitizedHtml, {
       reusePreviewBlocks: context.previewEngineMode === 'segmented' && !context.force,
     });
+    invalidateReviewTargetSourceSnapshots(
+      patchResult && patchResult.fullReplace ? [markdownPreview] : ((patchResult && patchResult.updatedNodes) || [])
+    );
     applyReferencePreviewLinks(markdownPreview, referenceData.definitions);
     enhanceGitHubAlerts(markdownPreview);
 
@@ -4817,6 +6192,7 @@ ${selector} .arrowheadPath {
     const hasMath = /\$\$|\$[^$]|\\\(|\\\[/.test(rawVal || '') || /```math\b/.test(rawVal || '');
     if (hasMath) {
       const mathTargets = getMathJaxTypesetTargets(roots);
+      snapshotMathReviewTargetSources(mathTargets);
       if (mathTargets.length > 0) {
         ensureMathJaxReady().then(function() {
           if (context.renderId !== previewRenderGeneration) return;
@@ -4827,6 +6203,7 @@ ${selector} .arrowheadPath {
       }
     }
 
+    decorateReviewTargets();
     updateDocumentStats();
     updateFindHighlights();
     cleanupImageObjectUrls();
@@ -5684,6 +7061,10 @@ ${selector} .arrowheadPath {
     if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
       mode = 'preview';
       announceToScreenReader(getEditorReadOnlyMessage());
+    }
+    if (reviewModeActive && mode !== 'preview') {
+      mode = 'preview';
+      announceToScreenReader('Review mode uses the read-only preview.');
     }
     if (mode === currentViewMode) return;
 
@@ -10444,6 +11825,7 @@ ${selector} .arrowheadPath {
   }
   
   initTabs();
+  initReviewMode();
   if (loadGlobalState().syncScrollingEnabled === false) toggleSyncScrolling();
   updateMobileStats();
   updateFindHighlights();
@@ -13338,7 +14720,7 @@ ${selector} .arrowheadPath {
   }
 
   function canMutateEditor() {
-    return !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
+    return !reviewModeActive && !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
   }
 
   function isLiveMutatingAction(action) {
@@ -13377,16 +14759,17 @@ ${selector} .arrowheadPath {
     const liveShareDocumentActive = isLiveShareDocumentActive();
     const liveShareGuestDocumentActive = liveShareDocumentActive && !isLiveShareHostDocumentActive();
     const viewOnly = isLiveViewOnlyParticipant() || snapshotViewOnly;
+    const sourceReadOnly = viewOnly || reviewModeActive;
     if (markdownEditor) {
-      markdownEditor.readOnly = viewOnly;
-      markdownEditor.setAttribute('aria-readonly', viewOnly ? 'true' : 'false');
-      markdownEditor.classList.toggle('live-share-readonly-editor', viewOnly);
-      markdownEditor.title = viewOnly ? getEditorReadOnlyMessage() : '';
+      markdownEditor.readOnly = sourceReadOnly;
+      markdownEditor.setAttribute('aria-readonly', sourceReadOnly ? 'true' : 'false');
+      markdownEditor.classList.toggle('live-share-readonly-editor', sourceReadOnly);
+      markdownEditor.title = sourceReadOnly ? getEditorReadOnlyMessage() : '';
     }
 
     viewModeButtons.forEach(function(button) {
       const mode = button.getAttribute('data-view-mode');
-      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      const shouldDisable = (snapshotViewOnly || reviewModeActive) && mode !== 'preview';
       if (shouldDisable) {
         button.dataset.shareSnapshotDisabled = 'true';
         button.disabled = true;
@@ -13400,7 +14783,7 @@ ${selector} .arrowheadPath {
 
     mobileViewModeButtons.forEach(function(button) {
       const mode = button.getAttribute('data-mode');
-      const shouldDisable = snapshotViewOnly && mode !== 'preview';
+      const shouldDisable = (snapshotViewOnly || reviewModeActive) && mode !== 'preview';
       if (shouldDisable) {
         button.dataset.shareSnapshotDisabled = 'true';
         button.disabled = true;
@@ -13491,10 +14874,10 @@ ${selector} .arrowheadPath {
     });
 
     if (markdownFormatToolbar) {
-      markdownFormatToolbar.classList.toggle('is-live-view-only', viewOnly);
+      markdownFormatToolbar.classList.toggle('is-live-view-only', sourceReadOnly);
       markdownFormatToolbar.querySelectorAll('[data-md-action]').forEach(function(button) {
         const action = button.getAttribute('data-md-action');
-        const shouldDisable = viewOnly && isLiveMutatingAction(action);
+        const shouldDisable = sourceReadOnly && isLiveMutatingAction(action);
         if (shouldDisable) {
           button.dataset.liveViewOnlyDisabled = 'true';
           button.disabled = true;
@@ -13507,7 +14890,7 @@ ${selector} .arrowheadPath {
           button.setAttribute('aria-disabled', 'false');
         }
       });
-      if (!viewOnly) {
+      if (!sourceReadOnly) {
         updateUndoRedoButtons();
       }
     }
@@ -13625,6 +15008,20 @@ ${selector} .arrowheadPath {
       }
     }
 
+    function publishReviewState() {
+      if (!options.reviewDoc || (typeof options.canPublishReviewState === 'function' && !options.canPublishReviewState())) {
+        return;
+      }
+      try {
+        send({
+          type: 'review-sync-state',
+          update: encodeLiveBytes(options.Y.encodeStateAsUpdate(options.reviewDoc))
+        });
+      } catch (error) {
+        console.warn('Live Share review state publish failed:', error);
+      }
+    }
+
     function publishPresence(cursor) {
       send({
         type: 'presence',
@@ -13644,6 +15041,7 @@ ${selector} .arrowheadPath {
       if (!message || message.sender === options.participantId) return;
       options.onMessage(message, {
         publishCurrentState,
+        publishReviewState,
         publishPresence
       });
     }
@@ -13657,6 +15055,18 @@ ${selector} .arrowheadPath {
       });
     };
     options.ydoc.on('update', updateHandler);
+
+    const reviewUpdateHandler = function(update, origin) {
+      if (destroyed || origin === LIVE_REVIEW_RELAY_ORIGIN) return;
+      if (typeof options.canSendReviewUpdate === 'function' && !options.canSendReviewUpdate()) return;
+      send({
+        type: 'review-update',
+        update: encodeLiveBytes(update)
+      });
+    };
+    if (options.reviewDoc) {
+      options.reviewDoc.on('update', reviewUpdateHandler);
+    }
 
     try {
       socket = new WebSocket(socketUrl);
@@ -13674,8 +15084,10 @@ ${selector} .arrowheadPath {
         participant: Object.assign({}, options.getParticipant(), { lastSeen: Date.now() })
       });
       send({ type: 'sync-request' });
+      send({ type: 'review-sync-request' });
       flushPendingMessages();
       setTimeout(publishCurrentState, 100);
+      setTimeout(publishReviewState, 125);
       setTimeout(function() { publishPresence(options.getCursor()); }, 150);
     });
 
@@ -13693,11 +15105,15 @@ ${selector} .arrowheadPath {
     return {
       send,
       publishCurrentState,
+      publishReviewState,
       publishPresence,
       destroy() {
         destroyed = true;
         try {
           options.ydoc.off('update', updateHandler);
+        } catch (_) {}
+        try {
+          if (options.reviewDoc) options.reviewDoc.off('update', reviewUpdateHandler);
         } catch (_) {}
         try {
           if (socket && socket.readyState === WebSocket.OPEN) {
@@ -13967,6 +15383,7 @@ ${selector} .arrowheadPath {
     applyLiveSessionTitle(liveCollaboration.roomTitle);
     updateLiveAccessDisplay();
     updateLiveEditorAccess();
+    applyLiveReviewThreadsFromMap();
     return true;
   }
 
@@ -14539,6 +15956,11 @@ ${selector} .arrowheadPath {
       return;
     }
 
+    if (message.type === 'review-sync-request') {
+      if (liveCollaboration.isHost) transport.publishReviewState();
+      return;
+    }
+
     if ((message.type === 'y-update' || message.type === 'sync-state') && message.update) {
       const hostParticipantId = liveCollaboration.sessionMap ? liveCollaboration.sessionMap.get('hostId') : null;
       if (getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_VIEW && hostParticipantId && sender !== hostParticipantId) {
@@ -14549,6 +15971,19 @@ ${selector} .arrowheadPath {
         markLiveJoinSynced(liveCollaboration.yText ? liveCollaboration.yText.toString() : '');
       } catch (error) {
         console.warn('Live Share update failed:', error);
+      }
+      return;
+    }
+
+    if ((message.type === 'review-update' || message.type === 'review-sync-state') && message.update) {
+      try {
+        liveCollaboration.Y.applyUpdate(
+          liveCollaboration.reviewDoc,
+          decodeLiveBytes(message.update),
+          LIVE_REVIEW_RELAY_ORIGIN
+        );
+      } catch (error) {
+        console.warn('Live Share review update failed:', error);
       }
       return;
     }
@@ -14612,11 +16047,17 @@ ${selector} .arrowheadPath {
       if (liveCollaboration.sessionMap && liveCollaboration.sessionObserver) {
         liveCollaboration.sessionMap.unobserve(liveCollaboration.sessionObserver);
       }
+      if (liveCollaboration.reviewMap && liveCollaboration.reviewObserver) {
+        liveCollaboration.reviewMap.unobserve(liveCollaboration.reviewObserver);
+      }
       if (liveCollaboration.connection && typeof liveCollaboration.connection.destroy === 'function') {
         liveCollaboration.connection.destroy();
       }
       if (liveCollaboration.ydoc && typeof liveCollaboration.ydoc.destroy === 'function') {
         liveCollaboration.ydoc.destroy();
+      }
+      if (liveCollaboration.reviewDoc && typeof liveCollaboration.reviewDoc.destroy === 'function') {
+        liveCollaboration.reviewDoc.destroy();
       }
     } catch (error) {
       console.warn('Failed to fully close live session:', error);
@@ -14687,7 +16128,17 @@ ${selector} .arrowheadPath {
     const ydoc = new modules.Y.Doc();
     const yText = ydoc.getText('markdown');
     const sessionMap = ydoc.getMap('session');
+    const reviewDoc = new modules.Y.Doc();
+    const reviewMap = reviewDoc.getMap('reviewThreads');
     const hostActiveTab = tabs.find(function(t) { return t.id === activeTabId; });
+    if (isHost && hostActiveTab) {
+      replaceLiveReviewMapThreads(
+        reviewDoc,
+        reviewMap,
+        hostActiveTab.reviewThreads,
+        LIVE_REVIEW_EDIT_ORIGIN
+      );
+    }
     const requestedTitle = options.title || (hostActiveTab && hostActiveTab.title) || 'Live Share';
     const hostTitle = getSafeLiveTitle(requestedTitle);
     if (!isHost && options.initialUpdate) {
@@ -14772,6 +16223,8 @@ ${selector} .arrowheadPath {
       Y: modules.Y,
       yText,
       sessionMap,
+      reviewDoc,
+      reviewMap,
       tabId: liveTabId,
       originalTabSnapshot,
       returnTabId,
@@ -14789,6 +16242,7 @@ ${selector} .arrowheadPath {
       lastMarkdown: shouldDeferParticipantTab ? '' : markdownEditor.value,
       observer: null,
       sessionObserver: null,
+      reviewObserver: null,
       participantHeartbeatId: null,
       connection: null,
       participants,
@@ -14835,6 +16289,15 @@ ${selector} .arrowheadPath {
     };
     sessionMap.observe(liveCollaboration.sessionObserver);
 
+    liveCollaboration.reviewObserver = function(event, transaction) {
+      const origin = transaction
+        ? transaction.origin
+        : (event && event.transaction ? event.transaction.origin : null);
+      if (origin === LIVE_REVIEW_EDIT_ORIGIN) return;
+      applyLiveReviewThreadsFromMap();
+    };
+    reviewMap.observe(liveCollaboration.reviewObserver);
+
     if (!isHost && yText.length > 0) {
       const seededMarkdown = yText.toString();
       applyLiveJoinSeedMarkdown(seededMarkdown);
@@ -14863,6 +16326,7 @@ ${selector} .arrowheadPath {
       capability: liveCollaboration.socketCapability,
       capabilities: liveCollaboration.isHost ? liveCollaboration.capabilities : null,
       ydoc,
+      reviewDoc,
       Y: modules.Y,
       participantId: liveCollaboration.localParticipantId,
       getParticipant: function() { return liveCollaboration.localParticipant; },
@@ -14880,6 +16344,19 @@ ${selector} .arrowheadPath {
           liveCollaboration &&
           liveCollaboration.ydoc === ydoc &&
           (liveCollaboration.isHost || getCurrentLiveAccessMode() === LIVE_SHARE_ACCESS_EDIT)
+        );
+      },
+      canPublishReviewState: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.reviewDoc === reviewDoc &&
+          liveCollaboration.isHost
+        );
+      },
+      canSendReviewUpdate: function() {
+        return Boolean(
+          liveCollaboration &&
+          liveCollaboration.reviewDoc === reviewDoc
         );
       },
       onStatus: setLiveShareStatus,

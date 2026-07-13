@@ -3,6 +3,12 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## Unreleased
+
+- **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. The main toolbar Review button shows its open-item count inline beside the existing icon instead of using a separate count button. Review target buttons match the main toolbar controls, align in a straight column at the preview's right edge, and show a plus before feedback exists. Reviewed targets provide separate controls for reading saved feedback and adding another item, so opening the review count no longer opens the composer. Threads now record and display opened/closed date and time, and copied summaries include lifecycle dates plus open/resolved totals. Opening a new tab closes Review mode automatically. YAML frontmatter tables are reviewable, reviewed text has clear spacing from its side marker, and existing comments and suggestions can be edited in place. Saved feedback appears before the composer in one shared scroll area, keeping previous reviews visible in short panels while new and edited feedback scrolls into view. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
+
+---
+
 ## v3.9.1
 
 - **Description:** Improved export reliability, file workflows, diagram insertion, shared-document safety, and browser compatibility.

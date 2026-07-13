@@ -43,6 +43,26 @@ The toolbar can:
 
 The editor also supports list continuation on Enter, two-space indent on Tab, outdent on Shift+Tab, and custom undo/redo. View-only shared tabs block editing actions and keep reading, find, help, and fullscreen available.
 
+## Comments and Suggestions
+
+Use Review when you want to leave structured feedback without editing the Markdown source.
+
+1. Click **Review** in the desktop header or mobile menu. The app switches to a read-only preview workspace and remembers your previous view layout.
+2. Select the plus pin on a rendered YAML frontmatter table, heading, paragraph, code block, or diagram.
+3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
+4. Enter the feedback and add it to the document review.
+5. After feedback is attached, use the review icon and count—or select the reviewed content—to read the saved items. Use the separate plus beside the count to open the composer and add another item to the same block.
+6. Select **Edit** to update an existing comment or suggestion, then select **Save changes**. Each thread shows when it was opened and, after resolution, when it was closed. Reopening clears the closing time until the item is resolved again.
+7. The panel toolbar can copy a detailed Markdown summary with generated, opened, and closed date/time plus open/resolved counts; resolve every open item; or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
+
+Opening a new tab closes Review mode automatically before switching to the new document.
+
+On desktop, Review opens as a compact side panel beside the preview. Tablet layouts use a side drawer, while phones use a taller bottom sheet with larger filter, composer, thread, and pin controls for touch. Light and dark themes use the same existing app colors, borders, hover states, and icons.
+
+Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
+
+Share Snapshot links transfer Markdown without review threads. Live Share rooms synchronize comments, suggestions, resolve/reopen state, and deletions through a separate Review channel. View-only participants can review without receiving Markdown edit permission. A participant's temporary live tab is removed when they leave, while synchronized feedback remains in the host's normal document tab. Private mode prevents review threads from being persisted with the local workspace.
+
 ## Find and Replace
 
 Open Find and Replace with the toolbar, `Ctrl+F`, or `Cmd+F`. Open replacement focus with `Ctrl+H` or `Cmd+H`.
@@ -125,7 +145,7 @@ Use Live Share when you want a temporary real-time room.
 4. Start the session.
 5. Copy the invite link after the room starts.
 
-Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role.
+Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role. Markdown and Review data use separate Yjs documents, so view-only participants can synchronize comments and suggestions without being allowed to edit Markdown.
 
 Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
 

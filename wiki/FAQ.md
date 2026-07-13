@@ -50,7 +50,7 @@ Small snapshots keep compressed content inside the URL hash. Large snapshots use
 
 ### Is Live Share saved permanently?
 
-No. Live Share uses a temporary Cloudflare Durable Object room as a relay. It does not write the live document to KV or a database. While active, the room relays document updates, display names, presence, cursors, sync messages, leave messages, and session-end messages.
+No. Live Share uses a temporary Cloudflare Durable Object room as a relay. It does not write the live document to KV or a database. While active, the room relays document updates, review comments and suggestions, display names, presence, cursors, sync messages, leave messages, and session-end messages.
 
 ### Is Live Share end-to-end encrypted?
 

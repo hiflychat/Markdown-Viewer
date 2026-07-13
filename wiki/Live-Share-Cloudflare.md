@@ -8,7 +8,7 @@ Live Share is the temporary Markdown collaboration feature in Markdown Viewer. I
 2. The host enters or accepts a display name.
 3. The host chooses Can edit or View only.
 4. The app creates a random room id and a random room secret.
-5. The app creates a Yjs document for the active tab.
+5. The app creates separate Yjs documents for Markdown/session state and Review threads.
 6. The host opens a WebSocket to `/live-room/<room-id>?secret=<secret>`.
 7. The host connection establishes separate host, edit, and view capabilities before the invite link is shown.
 8. The invite link includes the selected role and capability for the recipient. Participants open it, join a temporary live tab, request the current Yjs state, and render participant avatars/cursors.
@@ -26,7 +26,7 @@ There are two checked-in Cloudflare entry points:
 The Pages Function:
 
 - Requires a WebSocket upgrade request.
-- Allows only the production app, `null`, and localhost/127.0.0.1 development `Origin` values.
+- Allows the production app, HTTPS `*.markdownviewer.pages.dev` preview deployments, `null`, and localhost/127.0.0.1 development `Origin` values.
 - Requires a `LIVE_ROOMS` Durable Object binding.
 - Rejects room names over 160 characters.
 - Rejects secrets over 256 characters.
@@ -38,8 +38,8 @@ The Durable Object:
 - Accepts the WebSocket pair.
 - Authenticates the host capability when the room is first created and checks edit/view capabilities against the stored room credentials for later connections.
 - Assigns a temporary socket participant id.
-- Relays only known message types: `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `leave`, and `session-end`.
-- Filters messages by role: viewers can send presence/sync requests but not document updates or session-end; editors can send document sync messages; only the host can send every supported message type.
+- Relays only known message types: `hello`, `presence`, `sync-request`, `sync-state`, `y-update`, `review-sync-request`, `review-sync-state`, `review-update`, `leave`, and `session-end`.
+- Filters messages by role: viewers can send presence, sync requests, and Review updates but not Markdown updates or session-end; editors can send Markdown and Review updates; only the host can publish full Review state and every supported message type.
 - Adds `roomId` and `sentAt` to normalized messages.
 - Broadcasts messages to other sockets in the same room.
 - Broadcasts `leave` when a socket closes or errors.

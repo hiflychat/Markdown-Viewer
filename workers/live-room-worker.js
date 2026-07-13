@@ -47,6 +47,9 @@ function isAllowedLiveOrigin(origin) {
   if (origin === "https://markdownviewer.pages.dev" || origin === "null") {
     return true;
   }
+  if (/^https:\/\/[a-z0-9-]+\.markdownviewer\.pages\.dev$/i.test(origin || "")) {
+    return true;
+  }
   if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin || "")) {
     return true;
   }
@@ -66,6 +69,8 @@ function canSendMessageType(role, type) {
       "sync-request",
       "sync-state",
       "y-update",
+      "review-sync-request",
+      "review-update",
       "leave"
     ]).has(type);
   }
@@ -73,6 +78,8 @@ function canSendMessageType(role, type) {
     "hello",
     "presence",
     "sync-request",
+    "review-sync-request",
+    "review-update",
     "leave"
   ]).has(type);
 }
@@ -91,6 +98,9 @@ function normalizeOutboundMessage(message, fallbackSender, roomId, role) {
     "sync-request",
     "sync-state",
     "y-update",
+    "review-sync-request",
+    "review-sync-state",
+    "review-update",
     "leave",
     "session-end"
   ]);
