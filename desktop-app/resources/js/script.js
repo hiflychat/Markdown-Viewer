@@ -4225,7 +4225,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const fileSummary = fileCount + ' open file' + (fileCount === 1 ? '' : 's');
       const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
       const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
-      description.textContent = 'Reset will remove ' + fileSummary + ' from Markdown Viewer and permanently clear their locally stored content' + reviewDetails + '. Files saved or exported to your device will not be deleted. Any active Live Share session will end, and a fresh Welcome to Markdown file will be created. Export unsaved work before continuing.';
+      description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
     }
 
     function doReset() {
