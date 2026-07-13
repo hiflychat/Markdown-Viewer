@@ -57,7 +57,8 @@ The About dialog includes two storage controls:
 Review mode provides a local feedback layer over the rendered document without inserting or changing Markdown.
 
 - The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
-- Review pins are attached to rendered headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
+- Review pins are attached to rendered YAML frontmatter tables, headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
+- Empty targets show a plus that opens the composer. Targets with feedback show the review icon and count; selecting the count or reviewed content opens the existing feedback in the panel.
 - A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
 - Threads can be resolved, reopened, or deleted individually and filtered by status. The panel also provides Copy summary, Resolve all, and confirmation-protected Delete all actions.
 - Open-thread counts appear in the desktop header and mobile menu.

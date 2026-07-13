@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const shareSnapshotViewOnlyTabIds = new Set();
   const SHARE_SNAPSHOT_TAB_KIND = 'share-snapshot';
   const APP_VERSION = '3.9.1';
-  const REVIEW_TARGET_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, pre, .diagram-viewer, .geojson-container, .topojson-container, .stl-container';
+  const REVIEW_TARGET_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, pre, .frontmatter-table, .diagram-viewer, .geojson-container, .topojson-container, .stl-container';
   const REVIEW_TEXT_LIMIT = 2000;
   let reviewModeActive = false;
   const reviewPreviousViewModes = new Map();
@@ -2577,6 +2577,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getReviewTargetType(target) {
     if (!target) return 'block';
     if (target.matches('.diagram-viewer, .geojson-container, .topojson-container, .stl-container')) return 'diagram';
+    if (target.matches('.frontmatter-table')) return 'table';
     if (target.tagName === 'PRE') return 'code';
     if (/^H[1-6]$/.test(target.tagName)) return 'heading';
     if (target.tagName === 'P') return 'paragraph';
@@ -2668,6 +2669,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getReviewTargetLabel(target, type) {
     if (type === 'heading') return 'Heading ' + target.tagName;
     if (type === 'paragraph') return 'Paragraph';
+    if (type === 'table') return 'YAML frontmatter';
     if (type === 'code') {
       const code = target.querySelector('code');
       const languageClass = code ? Array.from(code.classList).find(function(className) {
@@ -2715,6 +2717,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (diagramContainer && diagramContainer !== target) {
         return false;
       }
+      const frontmatterTable = target.closest('.frontmatter-table');
+      if (frontmatterTable && frontmatterTable !== target) {
+        return false;
+      }
       return !target.closest('.review-target-button');
     });
   }
@@ -2736,6 +2742,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         'review-target--heading',
         'review-target--paragraph',
         'review-target--code',
+        'review-target--table',
         'review-target--diagram',
         'has-review-thread',
         'is-review-target-active'
@@ -2854,9 +2861,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       button.dataset.reviewDuplicateCount = String(duplicateCount);
       button.dataset.reviewContext = context;
       button.dataset.html2canvasIgnore = 'true';
-      button.title = targetThreads.length > 0 ? 'Add feedback to this block' : 'Comment on this block';
+      button.title = targetThreads.length > 0 ? 'View feedback for this block' : 'Comment on this block';
       button.setAttribute('aria-label', targetThreads.length > 0
-        ? 'Add feedback to ' + label + '. ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' attached.'
+        ? 'View feedback for ' + label + '. ' + targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's') + ' attached.'
         : 'Add feedback to ' + label);
 
       const icon = document.createElement('i');
@@ -3028,6 +3035,58 @@ document.addEventListener("DOMContentLoaded", async function () {
           : 'Select a comment pin in the preview to add feedback.';
       }
     }
+  }
+
+  function setReviewFilter(nextFilter) {
+    reviewFilter = ['open', 'resolved', 'all'].includes(nextFilter) ? nextFilter : 'open';
+    document.querySelectorAll('[data-review-filter]').forEach(function(button) {
+      const active = button.dataset.reviewFilter === reviewFilter;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    renderReviewPanel();
+  }
+
+  function getReviewThreadsForAnchor(anchor) {
+    if (!anchor || !anchor.key) return [];
+    return getActiveReviewThreads().filter(function(thread) {
+      if (!thread.anchor || thread.anchor.key !== anchor.key) return false;
+      if (anchor.duplicateCount && thread.anchor.duplicateCount && Number(thread.anchor.duplicateCount) !== Number(anchor.duplicateCount)) return false;
+      if (anchor.context && thread.anchor.context && thread.anchor.context !== anchor.context) return false;
+      return true;
+    });
+  }
+
+  function showReviewThreadsForAnchor(anchor) {
+    const threads = getReviewThreadsForAnchor(anchor).sort(function(a, b) {
+      return b.createdAt - a.createdAt;
+    });
+    if (threads.length === 0) return false;
+
+    closeReviewComposer();
+    setReviewFilter('all');
+
+    const matchingIds = new Set(threads.map(function(thread) { return thread.id; }));
+    const matchingItems = Array.from(reviewList.querySelectorAll('.review-thread')).filter(function(item) {
+      return matchingIds.has(item.dataset.reviewId);
+    });
+    matchingItems.forEach(function(item) {
+      item.classList.add('is-review-thread-active');
+    });
+    if (matchingItems[0]) {
+      matchingItems[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const anchorButton = matchingItems[0].querySelector('.review-thread-anchor');
+      if (anchorButton) anchorButton.focus({ preventScroll: true });
+    }
+
+    clearTimeout(showReviewThreadsForAnchor._timeoutId);
+    showReviewThreadsForAnchor._timeoutId = setTimeout(function() {
+      matchingItems.forEach(function(item) {
+        item.classList.remove('is-review-thread-active');
+      });
+    }, 1800);
+    announceToScreenReader('Showing ' + threads.length + ' review item' + (threads.length === 1 ? '' : 's') + ' for this block.');
+    return true;
   }
 
   function updateReviewComposerKind(kind) {
@@ -3390,13 +3449,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     document.querySelectorAll('[data-review-filter]').forEach(function(button) {
       button.addEventListener('click', function() {
-        reviewFilter = button.dataset.reviewFilter;
-        document.querySelectorAll('[data-review-filter]').forEach(function(filterButton) {
-          const active = filterButton === button;
-          filterButton.classList.toggle('is-active', active);
-          filterButton.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
-        renderReviewPanel();
+        setReviewFilter(button.dataset.reviewFilter);
       });
     });
 
@@ -3406,12 +3459,26 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (!button || !reviewModeActive) return;
         event.preventDefault();
         event.stopPropagation();
-        const target = findReviewTarget({
+        const anchor = {
           key: button.dataset.reviewAnchor,
           duplicateCount: Number(button.dataset.reviewDuplicateCount) || null,
           context: button.dataset.reviewContext || null
-        });
+        };
+        if (showReviewThreadsForAnchor(anchor)) return;
+        const target = findReviewTarget(anchor);
         openReviewComposer(target);
+      });
+    }
+
+    if (markdownPreview) {
+      markdownPreview.addEventListener('click', function(event) {
+        if (!reviewModeActive || event.target.closest('a, button, input, select, textarea, summary, [role="button"]')) return;
+        const target = event.target.closest('.review-target.has-review-thread');
+        if (!target || !markdownPreview.contains(target)) return;
+        const anchor = getReviewAnchorDescriptor(target);
+        if (!anchor) return;
+        event.preventDefault();
+        showReviewThreadsForAnchor(anchor);
       });
     }
 

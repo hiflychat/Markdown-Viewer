@@ -6432,8 +6432,12 @@ html[data-theme="dark"] .mermaid svg {
   border-radius: 5px;
 }
 
-#markdown-preview .review-target:not(.review-target--diagram) {
+#markdown-preview .review-target:not(.review-target--diagram):not(.review-target--table) {
   padding-inline-end: 44px;
+}
+
+#markdown-preview .review-target--table {
+  max-width: calc(100% - 44px);
 }
 
 #markdown-preview .review-target--diagram {
@@ -6441,16 +6445,28 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 #markdown-preview .review-target.is-review-target-active {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 4px;
+  outline: none;
 }
 
-#markdown-preview .review-target.has-review-thread {
+#markdown-preview .review-target.has-review-thread,
+#markdown-preview .review-target.is-review-target-active {
   box-shadow: inset 3px 0 0 var(--accent-color);
 }
 
-[dir="rtl"] #markdown-preview .review-target.has-review-thread {
+[dir="rtl"] #markdown-preview .review-target.has-review-thread,
+[dir="rtl"] #markdown-preview .review-target.is-review-target-active {
   box-shadow: inset -3px 0 0 var(--accent-color);
+}
+
+#markdown-preview .review-target--heading.has-review-thread,
+#markdown-preview .review-target--heading.is-review-target-active,
+#markdown-preview .review-target--paragraph.has-review-thread,
+#markdown-preview .review-target--paragraph.is-review-target-active {
+  padding-inline-start: 10px;
+}
+
+#markdown-preview .review-target.has-review-thread {
+  cursor: pointer;
 }
 
 .review-pins-layer {
@@ -6475,6 +6491,10 @@ html[data-theme="dark"] .mermaid svg {
 
 .review-target-button[data-review-count]::after {
   content: attr(data-review-count);
+}
+
+.review-thread.is-review-thread-active {
+  border-color: var(--accent-color);
 }
 
 .review-filter-btn:focus-visible,
@@ -6582,8 +6602,12 @@ html[data-theme="dark"] .mermaid svg {
     height: 44px;
   }
 
-  #markdown-preview .review-target:not(.review-target--diagram) {
+  #markdown-preview .review-target:not(.review-target--diagram):not(.review-target--table) {
     padding-inline-end: 56px;
+  }
+
+  #markdown-preview .review-target--table {
+    max-width: calc(100% - 56px);
   }
 
   #markdown-preview .review-target--diagram {
@@ -6634,11 +6658,14 @@ html[data-theme="dark"] .mermaid svg {
 
   #markdown-preview .review-target,
   #markdown-preview .review-target.has-review-thread,
+  #markdown-preview .review-target.is-review-target-active,
   [dir="rtl"] #markdown-preview .review-target.has-review-thread {
     outline: none !important;
     box-shadow: none !important;
     padding-inline-end: 0 !important;
+    padding-inline-start: 0 !important;
     padding-block-end: 0 !important;
+    max-width: 100% !important;
   }
 
   .content-container.is-reviewing .preview-pane {
