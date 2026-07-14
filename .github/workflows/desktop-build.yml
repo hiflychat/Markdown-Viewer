@@ -41,30 +41,23 @@ jobs:
       - name: Stage release assets
         working-directory: desktop-app
         run: |
-          VERSION="${GITHUB_REF_NAME}"
           STAGING="release-assets"
           mkdir -p "$STAGING"
 
-          # Windows executable from the portable Neutralino bundle
-          WIN_EXE="dist/markdown-viewer/markdown-viewer-win_x64.exe"
-          if [ -f "$WIN_EXE" ]; then
-            cp "$WIN_EXE" "$STAGING/markdown-viewer-win_x64.exe"
-          fi
-
-          # Portable bundle directory from neu build --release
-          (cd dist && zip -r "../$STAGING/markdown-viewer-${VERSION}-portable.zip" markdown-viewer)
-
-          # Source archive
-          cd ..
-          tar -czf "desktop-app/$STAGING/source.tar.gz" \
-            --exclude='desktop-app/dist' \
-            --exclude='desktop-app/bin' \
-            --exclude='desktop-app/node_modules' \
-            --exclude='desktop-app/output' \
-            --exclude="desktop-app/$STAGING" \
-            --exclude='.git' \
-            desktop-app/
-          cd desktop-app
+          # Publish every platform as a separate self-contained download.
+          EXPECTED_BINARIES=(
+            markdown-viewer-linux_arm64
+            markdown-viewer-linux_armhf
+            markdown-viewer-linux_x64
+            markdown-viewer-mac_arm64
+            markdown-viewer-mac_universal
+            markdown-viewer-mac_x64
+            markdown-viewer-win_x64.exe
+          )
+          for filename in "${EXPECTED_BINARIES[@]}"; do
+            test -f "dist/markdown-viewer/$filename"
+            cp "dist/markdown-viewer/$filename" "$STAGING/$filename"
+          done
 
           # SHA256 checksums
           cd "$STAGING"
