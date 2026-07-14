@@ -3,9 +3,16 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
-## Unreleased
+## v3.9.2
 
+- **Description:** Added a complete comments-and-suggestions review workflow with responsive controls, lifecycle tracking, and Live Share synchronization.
 - **Comments & Suggestions UI:** Simplified the Review panel, composer, suggestion cards, and preview pins using the app's existing accent, button, border, hover, disabled, and theme tokens. The main toolbar Review button shows its open-item count inline beside the existing icon instead of using a separate count button. Review target buttons match the main toolbar controls, align in a straight column at the preview's right edge, and show a plus before feedback exists. Reviewed targets provide separate controls for reading saved feedback and adding another item, so opening the review count no longer opens the composer. Threads now record and display opened/closed date and time, and copied summaries include lifecycle dates plus open/resolved totals. Opening a new tab closes Review mode automatically. YAML frontmatter tables are reviewable, reviewed text has clear spacing from its side marker, and existing comments and suggestions can be edited in place. Saved feedback appears before the composer in one shared scroll area, keeping previous reviews visible in short panels while new and edited feedback scrolls into view. Refined the layout into a compact desktop side panel, tablet drawer, and touch-friendly mobile bottom sheet without introducing a separate color palette.
+- **Review Management:** Added follow-up feedback, in-place editing, clearer navigation between reviewed targets, separate read/add controls, lifecycle timestamps, and improved visibility for saved feedback.
+- **Live Share:** Synchronized comments and suggestions during active Live Share rooms and allowed configured Cloudflare preview origins for snapshot and collaboration endpoints.
+- **Reset & Documentation:** Improved the all-files reset confirmation and aligned the main, localized, desktop, configuration, FAQ, feature, collaboration, and usage documentation with the review workflow.
+- **Date:** 2026-07-14
+- **Commits:** `a36bd928150614b902f020305149cc7484b324af` through `75a64f562c8b7af05bb26f081ebabf44bfc7cec6`
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.2
 
 ---
 
