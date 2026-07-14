@@ -9,7 +9,7 @@
     "predev": "npm run setup",
     "dev": "npx -y @neutralinojs/neu@11.7.0 run",
     "prebuild": "npm run setup",
-    "build": "npx -y @neutralinojs/neu@11.7.0 build --release --clean && node -e \"const fs = require('fs'); if (fs.existsSync('dist/markdown-viewer-release.zip')) fs.unlinkSync('dist/markdown-viewer-release.zip');\""
+    "build": "node build-standalone.js"
   },
   "dependencies": {}
 }

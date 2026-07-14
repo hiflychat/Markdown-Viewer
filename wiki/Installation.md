@@ -106,11 +106,15 @@ npm run setup
 npm run dev
 ```
 
-Build release resources and binaries with:
+Build the seven self-contained platform binaries with:
 
 ```bash
 npm run build
 ```
+
+The results are written to `desktop-app/dist/markdown-viewer/`. Each Windows,
+Linux, and macOS binary embeds the application resources, so users can download
+only the file matching their operating system and architecture.
 
 What setup does:
 

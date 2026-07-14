@@ -54,7 +54,11 @@ npm run dev
 npm run build
 ```
 
-The current package script runs Neutralino release build with `--clean` and removes `dist/markdown-viewer-release.zip` if it exists. Generated files appear under `desktop-app/dist/`.
+The build generates seven platform-specific executables under
+`desktop-app/dist/markdown-viewer/`. Each executable is built separately with
+`--embed-resources`, so every download is self-contained and does not require a
+neighboring `resources.neu` file. Release publishing uploads the seven binaries
+individually rather than creating a portable application ZIP.
 
 ## Runtime Configuration
 
