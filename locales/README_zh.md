@@ -71,7 +71,7 @@
 
 1. 打开 [在线 Markdown 编辑器](https://markdownviewer.pages.dev/)。
 2. 拖入 `.md` 或 `.markdown` 文件，或直接开始编写。
-3. 根据需要使用实时预览、**Insert Diagram & More**、导出菜单、Share Snapshot 或 Live Share。
+3. 根据需要使用实时预览、**Review**、**Insert Diagram & More**、导出菜单、Share Snapshot 或 Live Share。
 
 更多说明请查看 Wiki 中的 [功能](../wiki/Features.md#product-summary)、[隐私](../wiki/Home.md#privacy-at-a-glance)、[分享](../wiki/Features.md#share-markdown-with-snapshot-links)、[导出](../wiki/Features.md#export-markdown-to-pdf-html-png-and-md) 和 [桌面版](../wiki/Features.md#desktop-app) 部分。
 
@@ -93,10 +93,11 @@ Markdown Viewer 覆盖常见 Markdown 基础能力，同时帮助用户在不离
    - **STL 3D Model Renderer**：在技术笔记旁预览 3D 模型。
    - **ABC Music Player & Sheet Music Viewer**：乐谱渲染和浏览器播放。
 
-3. **Live Share Temporary Rooms**：通过可编辑或仅查看访问模式进行实时协作，适合快速编辑会话、审阅或结对写作。
-4. **Share Snapshot Links**：在需要快速发送文档状态时，创建只读或可编辑的时间点快照链接。
-5. **LaTeX Math Notation**：使用 MathJax 渲染行内和块级公式，适合数学笔记、论文和技术说明。
-6. **Markdown to PDF, HTML & PNG Export**：导出 Markdown、HTML、PNG、浏览器打印/另存为 PDF，或 Legacy Raster PDF，适合需要分享、打印或归档的文档。
+3. **Comments & Suggestions**：无需更改 Markdown 源码，即可在渲染后的文档块上添加、管理和解决反馈。
+4. **Live Share Temporary Rooms**：通过可编辑或仅查看访问模式进行实时协作，适合快速编辑会话、审阅或结对写作。
+5. **Share Snapshot Links**：在需要快速发送文档状态时，创建只读或可编辑的时间点快照链接。
+6. **LaTeX Math Notation**：使用 MathJax 渲染行内和块级公式，适合数学笔记、论文和技术说明。
+7. **Markdown to PDF, HTML & PNG Export**：导出 Markdown、HTML、PNG、浏览器打印/另存为 PDF，或 Legacy Raster PDF，适合需要分享、打印或归档的文档。
 
 完整细节、限制和隐私说明请查看 [功能参考](../wiki/Features.md#product-summary)。
 
@@ -126,6 +127,7 @@ Markdown Viewer 也适合作为技术笔记、文档、硬件说明、音乐片�
 
 ## 分享、协作与导出
 
+- **Comments & Suggestions** 可在不更改 Markdown 的情况下，为表格、标题、段落、代码块和图表添加审阅反馈。反馈保存在普通标签中，并且只在活跃的 Live Share 房间内同步。
 - **Share Snapshot** 创建用于时间点 Markdown 分享的快速链接。小文档可以保留在 URL hash 中；较大的快照会在配置该后端时使用临时 Cloudflare KV 存储。
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />

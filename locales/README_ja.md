@@ -71,7 +71,7 @@
 
 1. [オンライン Markdown エディター](https://markdownviewer.pages.dev/) を開きます。
 2. `.md` または `.markdown` ファイルをドラッグするか、そのまま書き始めます。
-3. 必要に応じてライブプレビュー、**Insert Diagram & More**、エクスポート、Share Snapshot、Live Share を使います。
+3. 必要に応じてライブプレビュー、**Review**、**Insert Diagram & More**、エクスポート、Share Snapshot、Live Share を使います。
 
 詳しくは Wiki の [機能](../wiki/Features.md#product-summary)、[プライバシー](../wiki/Home.md#privacy-at-a-glance)、[共有](../wiki/Features.md#share-markdown-with-snapshot-links)、[エクスポート](../wiki/Features.md#export-markdown-to-pdf-html-png-and-md)、[デスクトップ](../wiki/Features.md#desktop-app) を参照してください。
 
@@ -93,10 +93,11 @@ Markdown Viewer は基本的な Markdown 機能に加え、技術文書をより
    - **STL 3D Model Renderer**: 技術メモと一緒に 3D モデルをプレビュー。
    - **ABC Music Player & Sheet Music Viewer**: 楽譜レンダリングとブラウザー再生。
 
-3. **Live Share Temporary Rooms**: 編集可能または閲覧専用のアクセスモードを使って、短時間の編集セッション、レビュー、ペアライティングをリアルタイムに行えます。
-4. **Share Snapshot Links**: 文書の状態をすばやく送る必要があるときに、読み取り専用または編集可能な時点リンクを作成できます。
-5. **LaTeX Math Notation**: MathJax でインライン数式と表示数式をレンダリングでき、数式の多いメモ、論文、技術説明に便利です。
-6. **Markdown to PDF, HTML & PNG Export**: 共有、印刷、アーカイブが必要な文書向けに、Markdown、HTML、PNG、Browser Print / Save as PDF、Legacy Raster PDF をエクスポートできます。
+3. **Comments & Suggestions**: Markdown ソースを変更せずに、レンダリング済みの文書ブロックへフィードバックを追加し、管理、解決できます。
+4. **Live Share Temporary Rooms**: 編集可能または閲覧専用のアクセスモードを使って、短時間の編集セッション、レビュー、ペアライティングをリアルタイムに行えます。
+5. **Share Snapshot Links**: 文書の状態をすばやく送る必要があるときに、読み取り専用または編集可能な時点リンクを作成できます。
+6. **LaTeX Math Notation**: MathJax でインライン数式と表示数式をレンダリングでき、数式の多いメモ、論文、技術説明に便利です。
+7. **Markdown to PDF, HTML & PNG Export**: 共有、印刷、アーカイブが必要な文書向けに、Markdown、HTML、PNG、Browser Print / Save as PDF、Legacy Raster PDF をエクスポートできます。
 
 詳細、制限、プライバシーについては [機能リファレンス](../wiki/Features.md#product-summary) を参照してください。
 
@@ -126,6 +127,7 @@ Markdown Viewer は、技術メモ、ドキュメント、ハードウェア記�
 
 ## 共有、共同編集、エクスポート
 
+- **Comments & Suggestions** は、Markdown を変更せずに表、見出し、段落、コードブロック、図へレビュー用フィードバックを追加します。通常のタブに保存され、アクティブな Live Share ルームでのみ同期されます。
 - **Share Snapshot** は、時点 Markdown 共有用のすばやいリンクを作成します。小さな文書は URL hash に保持でき、より大きなスナップショットは、そのバックエンドが構成されている場合に一時的な Cloudflare KV ストレージを使用します。
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />

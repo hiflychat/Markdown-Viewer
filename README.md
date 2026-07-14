@@ -94,7 +94,7 @@ Markdown Viewer handles the usual Markdown basics, but its real value is helping
    - **STL 3D Model Renderer**: inspect 3D model previews alongside technical notes.
    - **ABC Music Player & Sheet Music Viewer**: render sheet music and play notation in the browser.
 
-3. **Comments & Suggestions**: open a read-only Review workspace and attach feedback to rendered YAML frontmatter tables, headings, paragraphs, code blocks, and diagrams without changing the Markdown source. The responsive side panel uses the same controls and theme as the rest of the app.
+3. **Comments & Suggestions**: add, manage, and resolve feedback on rendered document blocks without changing the Markdown source.
 4. **Live Share Temporary Rooms**: collaborate in real time for quick editing sessions, reviews, or pair-writing, with server-checked host, editable, and view-only capabilities.
 5. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly. Large stored snapshots expire after 90 days.
 6. **LaTeX Math Notation**: render inline and display formulas with MathJax, useful for math-heavy notes, papers, and technical explanations.
@@ -129,7 +129,7 @@ Markdown Viewer works well as a Markdown diagram editor for technical notes, doc
 
 ## Sharing, Collaboration, and Export
 
-- **Comments & Suggestions** provides a per-document review layer. Review pins attach comments or suggestions to rendered YAML frontmatter tables, headings, paragraphs, code blocks, and diagrams while the Markdown stays read-only. Empty targets show a plus. Reviewed targets show two separate controls: the review count opens saved feedback, and the adjacent plus opens the composer for another item. Threads show their opened and closed date/time, can be edited, resolved, reopened, deleted, or copied in a detailed Markdown summary. Opening a new tab closes Review mode automatically. The interface uses a desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet. Review data stays with the local tab workspace, is excluded from Share Snapshot, and is relayed only while an existing Live Share room is active.
+- **Comments & Suggestions** adds a review layer to rendered YAML, headings, paragraphs, code blocks, and diagrams without changing Markdown. Feedback can be added, edited, resolved, reopened, deleted, or copied; it stays with normal tabs and synchronizes only during an active Live Share room.
 - **Share Snapshot** creates quick links for point-in-time Markdown sharing. Small documents can stay in the URL hash; larger snapshots use temporary Cloudflare KV storage for up to 90 days when that backend is configured. Snapshot links are bearer links: anyone who has the link can open it.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />

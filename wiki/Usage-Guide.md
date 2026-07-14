@@ -47,21 +47,15 @@ The editor also supports list continuation on Enter, two-space indent on Tab, ou
 
 Use Review when you want to leave structured feedback without editing the Markdown source.
 
-1. Click **Review** in the desktop header or mobile menu. The app switches to a read-only preview workspace and remembers your previous view layout.
+1. Click **Review** in the desktop header or mobile menu.
 2. Select the plus pin on a rendered YAML frontmatter table, heading, paragraph, code block, or diagram.
 3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
-4. Enter the feedback and add it to the document review.
-5. After feedback is attached, use the review icon and count—or select the reviewed content—to read the saved items. Use the separate plus beside the count to open the composer and add another item to the same block.
-6. Select **Edit** to update an existing comment or suggestion, then select **Save changes**. Each thread shows when it was opened and, after resolution, when it was closed. Reopening clears the closing time until the item is resolved again.
-7. The panel toolbar can copy a detailed Markdown summary with generated, opened, and closed date/time plus open/resolved counts; resolve every open item; or delete all feedback after confirmation. Deleting an individual item also uses an in-app confirmation dialog.
+4. Enter the feedback, then select **Add comment** or **Add suggestion**.
+5. Use the review count to read saved feedback and the separate plus to add another item to the same block. Threads can be edited, resolved, reopened, or deleted.
 
-Opening a new tab closes Review mode automatically before switching to the new document.
+The panel toolbar can copy a Markdown summary, resolve all open items, or delete all feedback after confirmation. Review uses a side panel on desktop, a drawer on tablet, and a bottom sheet on mobile. Opening a new tab closes Review automatically.
 
-On desktop, Review opens as a compact side panel beside the preview. Tablet layouts use a side drawer, while phones use a taller bottom sheet with larger filter, composer, thread, and pin controls for touch. Light and dark themes use the same existing app colors, borders, hover states, and icons.
-
-Review threads are stored with the normal local document tab and survive reloads. They are not inserted into Markdown and are excluded from Markdown, HTML, PDF, PNG, and print output. If the reviewed source block changes, its thread remains in the panel as an unanchored item instead of moving to a different block. Duplicating a tab starts the copy without review threads.
-
-Share Snapshot links transfer Markdown without review threads. Live Share rooms synchronize comments, suggestions, resolve/reopen state, and deletions through a separate Review channel. View-only participants can review without receiving Markdown edit permission. A participant's temporary live tab is removed when they leave, while synchronized feedback remains in the host's normal document tab. Private mode prevents review threads from being persisted with the local workspace.
+Review threads stay with normal local tabs and are excluded from document exports, duplicated tabs, and Share Snapshot links. Live Share synchronizes them while the room is active, including for view-only participants; Private mode and Clear local data prevent or remove local persistence.
 
 ## Find and Replace
 

@@ -40,7 +40,11 @@ No analytics, telemetry, ads, tracking pixels, or app-specific cookies are imple
 
 ### What does the app store locally?
 
-The app stores normal tabs, active tab id, untitled-tab counter, theme/direction/view settings, language selection, scroll sync state, and Find and Replace dock preference. Web storage uses browser `localStorage`; the desktop app mirrors selected values into Neutralino storage. Private mode clears document/workspace state and prevents those document-state keys from being written until it is turned off.
+The app stores normal tabs and their review threads, active tab id, untitled-tab counter, theme/direction/view settings, language selection, scroll sync state, and Find and Replace dock preference. Web storage uses browser `localStorage`; the desktop app mirrors selected values into Neutralino storage. Private mode clears document/workspace state and prevents those document-state keys from being written until it is turned off.
+
+### Are comments and suggestions added to my Markdown?
+
+No. Review threads are a separate feedback layer attached to rendered blocks. They are excluded from Markdown and document exports. Share Snapshot does not include them; an active Live Share room synchronizes them through its separate Review channel.
 
 ### Are Share Snapshot links private?
 

@@ -62,6 +62,7 @@ If the room is full, the Durable Object returns HTTP 429. If credentials or bind
 Live Share relays:
 
 - Yjs document updates.
+- Review comments, suggestions, and thread status updates through a separate Yjs document.
 - Initial sync state.
 - Display names.
 - Participant presence.

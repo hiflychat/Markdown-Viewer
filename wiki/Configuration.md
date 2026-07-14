@@ -6,7 +6,7 @@ This page documents the runtime, storage, dependency, Docker, Cloudflare, and de
 
 | Key | Location | Purpose |
 | :--- | :--- | :--- |
-| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal saved tabs. Temporary share/live tabs are excluded. |
+| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal saved tabs, including local review threads. Temporary share/live tabs are excluded. |
 | `markdownViewerActiveTab` | `localStorage`, mirrored in desktop | Active tab id. |
 | `markdownViewerUntitledCounter` | `localStorage`, mirrored in desktop | Next Untitled document number. |
 | `markdownViewerGlobalState` | `localStorage`, mirrored in desktop | Theme, direction, view mode, scroll sync, and other global UI preferences. |

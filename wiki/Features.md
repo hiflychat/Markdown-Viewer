@@ -54,33 +54,23 @@ The About dialog includes two storage controls:
 
 ## Comments and Suggestion Mode
 
-Review mode provides a local feedback layer over the rendered document without inserting or changing Markdown.
+Review mode adds structured feedback to the rendered document without inserting or changing Markdown.
 
-- The Review button opens a dedicated read-only preview workspace and restores the previous Editor, Split, or Preview layout when closed.
-- Review pins are attached to rendered YAML frontmatter tables, headings, paragraphs, fenced code blocks, and supported diagram containers, including Mermaid and the other diagram engines.
-- Empty targets show a plus that opens and focuses the composer. Targets with feedback show two controls: the review icon and count opens saved feedback, while the adjacent plus opens the composer for another item. Selecting reviewed content also opens its saved feedback without opening the composer.
-- A reviewer can add either a comment or a suggestion. Both are feedback records; suggestions do not apply source changes automatically.
-- Threads show their opened and closed date/time and can be edited in the existing composer, resolved, reopened, or deleted individually and filtered by status. The panel also provides a detailed Markdown summary with lifecycle dates and counts, Resolve all, and confirmation-protected Delete all actions.
-- Open-thread counts appear inline in the desktop Review button and in the mobile menu.
-- Review controls support keyboard focus, screen-reader labels, dark mode, RTL layout, a compact desktop side panel, a tablet drawer, and a touch-friendly mobile bottom sheet.
-- Opening a new document tab closes Review mode and restores the prior document view before switching tabs.
-- Comments and suggestions use the existing app accent, button surfaces, borders, hover states, disabled states, and Bootstrap Icons; the feature does not introduce a separate color palette.
+User flow:
 
-Anchoring and lifecycle:
+- Open **Review** from the desktop header or mobile menu.
+- Select the plus beside a rendered YAML table, heading, paragraph, code block, or diagram.
+- Add a comment or suggestion. Reviewed blocks show one control for reading existing feedback and a separate plus for adding another item.
+- Edit, resolve, reopen, or delete individual threads. The panel can also copy a Markdown summary, resolve all open items, or delete all feedback after confirmation.
+- Close Review to restore the previous Editor, Split, or Preview layout. Opening a new tab closes Review automatically.
 
-- Each thread stores a deterministic block signature, duplicate occurrence and count, neighboring block context for repeated blocks, block type, label, and source excerpt rather than relying on transient rendered element ids.
-- The app reapplies review anchors after both main-thread and worker preview renders.
-- If a reviewed block changes enough that its signature no longer matches, the thread stays visible as unanchored feedback instead of attaching to the wrong block.
-- Review threads are stored per normal tab inside `markdownViewerTabs`. Duplicating a document starts the copy with no review threads.
-- Private mode and Clear local data cover review threads because they use the same document storage as the Markdown tab.
-- Review pins, outlines, the review panel, and thread content are excluded from Markdown, HTML, PDF, PNG, and browser-print output.
+Storage and sharing:
 
-Sharing behavior:
-
-- Review threads are not encoded into Share Snapshot URLs or stored snapshot payloads.
-- Live Share synchronizes review creation, resolve/reopen state, and deletion through a separate Yjs document. View-only participants can send Review updates without permission to edit Markdown.
-- A participant's temporary live tab is removed on leave; synchronized feedback remains in the host's normal tab and in the active room state.
-- Use Copy review summary to transfer feedback outside the app or after a Live Share session.
+- Review threads stay with normal local tabs and survive reloads. Private mode, Clear local data, and Reset cover the same stored data.
+- Feedback is excluded from Markdown, HTML, PDF, PNG, print, duplicated tabs, and Share Snapshot links.
+- If the related source block changes, the thread remains visible as unanchored feedback instead of moving to the wrong block.
+- Live Share synchronizes Review threads through a separate Yjs document. View-only participants can review without receiving Markdown edit permission.
+- The panel is a side panel on desktop, a drawer on tablet, and a touch-friendly bottom sheet on mobile, using the app's existing colors, controls, themes, and accessibility patterns.
 
 ## Editing and Formatting Tools
 

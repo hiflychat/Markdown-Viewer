@@ -1,6 +1,6 @@
 # Markdown Viewer Wiki: Online Markdown Editor, Live Preview, Diagrams, and Export
 
-Welcome to the documentation for Markdown Viewer. Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a split-screen live Markdown preview with sync scrolling. It includes document tabs, GitHub-Flavored Markdown, rich visual renderers, Markdown-to-PDF/HTML/PNG exports, Share Snapshot links, Live Share rooms, a PWA-capable web build, Docker deployment, and a lightweight Neutralinojs desktop build.
+Welcome to the documentation for Markdown Viewer. Markdown Viewer is a browser-based Markdown editor, viewer, reader, and previewer for opening `.md` and `.markdown` files, writing plain Markdown, and reading a split-screen live Markdown preview with sync scrolling. It includes document tabs, GitHub-Flavored Markdown, comments and suggestions, rich visual renderers, Markdown-to-PDF/HTML/PNG exports, Share Snapshot links, Live Share rooms, a PWA-capable web build, Docker deployment, and a lightweight Neutralinojs desktop build.
 
 Most editing and rendering happens on your own device. The important exceptions are documented clearly: GitHub import contacts GitHub, remote diagram fallbacks contact third-party renderers, large Share Snapshot links use temporary Cloudflare KV storage, and Live Share relays temporary collaboration updates through Cloudflare Durable Objects. The web deployment also applies CSP and security headers, while the desktop build uses a restricted native API allowlist.
 
@@ -10,6 +10,7 @@ Most editing and rendering happens on your own device. The important exceptions 
 | :--- | :--- |
 | Learn every feature, limitation, and data-handling detail | [Features](Features) |
 | Use the editor day to day | [Usage Guide](Usage-Guide) |
+| Add and manage comments or suggestions | [Usage Guide: Comments and Suggestions](Usage-Guide#comments-and-suggestions) |
 | Write supported Markdown, math, diagrams, maps, STL, and ABC notation | [Markdown Reference](Markdown-Reference) |
 | Install locally, in Docker, or as a desktop app | [Installation](Installation) |
 | Tune deployment and runtime settings | [Configuration](Configuration) |
@@ -47,6 +48,7 @@ Run local web builds through `localhost` or another HTTP(S) server. Opening `ind
 
 - No accounts, cookies, analytics, ads, or telemetry are implemented.
 - Normal documents and settings are stored in browser localStorage or local desktop storage.
+- Comments and suggestions stay with normal local tabs, are excluded from exports and Share Snapshot, and synchronize only during an active Live Share room.
 - Private mode clears document state and prevents normal document-state persistence until it is turned off; the About dialog also provides Clear local data.
 - Small Share Snapshot links keep compressed content in the URL hash.
 - Large Share Snapshot links upload the snapshot to Cloudflare KV for up to 90 days and remain bearer links for anyone who has the URL.

@@ -71,7 +71,7 @@
 
 1. [온라인 Markdown 에디터](https://markdownviewer.pages.dev/)를 엽니다.
 2. `.md` 또는 `.markdown` 파일을 끌어오거나 바로 작성합니다.
-3. 필요에 따라 실시간 미리보기, **Insert Diagram & More**, 내보내기 메뉴, Share Snapshot, Live Share를 사용합니다.
+3. 필요에 따라 실시간 미리보기, **Review**, **Insert Diagram & More**, 내보내기 메뉴, Share Snapshot, Live Share를 사용합니다.
 
 자세한 내용은 Wiki의 [기능](../wiki/Features.md#product-summary), [개인정보](../wiki/Home.md#privacy-at-a-glance), [공유](../wiki/Features.md#share-markdown-with-snapshot-links), [내보내기](../wiki/Features.md#export-markdown-to-pdf-html-png-and-md), [데스크톱](../wiki/Features.md#desktop-app) 섹션을 참고하세요.
 
@@ -93,10 +93,11 @@ Markdown Viewer는 기본 Markdown 기능을 지원하면서, 더 풍부한 기�
    - **STL 3D Model Renderer**: 기술 노트 옆에서 3D 모델 미리보기.
    - **ABC Music Player & Sheet Music Viewer**: 악보 렌더링과 브라우저 재생.
 
-3. **Live Share Temporary Rooms**: 편집 가능 또는 보기 전용 접근 모드로 빠른 편집 세션, 리뷰, 페어 작성에 사용할 수 있는 실시간 협업 공간입니다.
-4. **Share Snapshot Links**: 문서 상태를 빠르게 보내야 할 때 읽기 전용 또는 편집 가능한 특정 시점 링크를 만들 수 있습니다.
-5. **LaTeX Math Notation**: MathJax로 인라인 및 표시 수식을 렌더링하며, 수식이 많은 노트, 논문, 기술 설명에 유용합니다.
-6. **Markdown to PDF, HTML & PNG Export**: 공유, 인쇄, 보관이 필요한 문서를 위해 Markdown, HTML, PNG, Browser Print / Save as PDF, Legacy Raster PDF를 내보낼 수 있습니다.
+3. **Comments & Suggestions**: Markdown 소스를 변경하지 않고 렌더링된 문서 블록에 피드백을 추가하고 관리하며 해결할 수 있습니다.
+4. **Live Share Temporary Rooms**: 편집 가능 또는 보기 전용 접근 모드로 빠른 편집 세션, 리뷰, 페어 작성에 사용할 수 있는 실시간 협업 공간입니다.
+5. **Share Snapshot Links**: 문서 상태를 빠르게 보내야 할 때 읽기 전용 또는 편집 가능한 특정 시점 링크를 만들 수 있습니다.
+6. **LaTeX Math Notation**: MathJax로 인라인 및 표시 수식을 렌더링하며, 수식이 많은 노트, 논문, 기술 설명에 유용합니다.
+7. **Markdown to PDF, HTML & PNG Export**: 공유, 인쇄, 보관이 필요한 문서를 위해 Markdown, HTML, PNG, Browser Print / Save as PDF, Legacy Raster PDF를 내보낼 수 있습니다.
 
 자세한 기능, 제한, 개인정보 관련 사항은 [기능 참고](../wiki/Features.md#product-summary)를 확인하세요.
 
@@ -126,6 +127,7 @@ Markdown Viewer는 기술 노트, 문서, 하드웨어 글, 음악 스니펫, �
 
 ## 공유, 협업, 내보내기
 
+- **Comments & Suggestions**는 Markdown을 변경하지 않고 표, 제목, 문단, 코드 블록, 다이어그램에 리뷰 피드백을 추가합니다. 일반 탭에 저장되며 활성 Live Share 공간에서만 동기화됩니다.
 - **Share Snapshot**은 특정 시점의 Markdown 공유를 위한 빠른 링크를 만듭니다. 작은 문서는 URL hash에 남길 수 있고, 더 큰 스냅샷은 해당 백엔드가 구성된 경우 임시 Cloudflare KV 저장소를 사용합니다.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e62ca1a0-011a-4b01-90f9-e72638b9a6d5" alt="Share Snapshot" width="90%" />

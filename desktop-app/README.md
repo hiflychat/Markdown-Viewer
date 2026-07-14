@@ -26,6 +26,7 @@ Desktop-only files:
 ## Desktop Behavior
 
 - Local editing, preview, document tabs, exports, and settings stay on the local machine.
+- Comments and suggestions stay with normal local tabs and are excluded from document exports and Share Snapshot links.
 - Normal app state is stored in localStorage and mirrored to Neutralino storage.
 - Native Markdown/HTML save and Markdown open flows use Neutralino dialogs and filesystem APIs.
 - A Markdown file passed as a launch argument is loaded into the editor.
