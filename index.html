@@ -133,9 +133,6 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Logo, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
-                    <button id="document-sidebar-open" class="tool-button document-sidebar-open" type="button" title="Open files" aria-label="Open file sidebar" aria-controls="document-sidebar" aria-expanded="false">
-                        <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
-                    </button>
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
                         <i class="bi bi-github"></i>
@@ -378,21 +375,24 @@
           <button id="document-sidebar-backdrop" class="document-sidebar-backdrop" type="button" aria-label="Close document sidebar" hidden></button>
           <aside id="document-sidebar" class="document-sidebar" aria-labelledby="document-sidebar-title">
             <div class="document-sidebar-header">
-              <h2 id="document-sidebar-title">Files</h2>
-              <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-close" type="button" aria-label="Close file sidebar" title="Close file sidebar">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-              </button>
-            </div>
-
-            <div class="document-sidebar-create-row">
-              <button id="sidebar-new-document" class="document-sidebar-primary-btn" type="button">
-                <i class="bi bi-filetype-md" aria-hidden="true"></i>
-                <span>New file</span>
-              </button>
-              <button id="sidebar-new-folder" class="document-sidebar-secondary-btn" type="button">
-                <i class="bi bi-folder-plus" aria-hidden="true"></i>
-                <span>New folder</span>
-              </button>
+              <div class="document-sidebar-heading">
+                <i class="bi bi-files" aria-hidden="true"></i>
+                <h2 id="document-sidebar-title">Files</h2>
+              </div>
+              <div class="document-sidebar-actions" role="toolbar" aria-label="File actions">
+                <button id="sidebar-new-document" class="document-sidebar-icon-btn" type="button" aria-label="Create a Markdown file" title="New Markdown file">
+                  <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                </button>
+                <button id="sidebar-new-folder" class="document-sidebar-icon-btn" type="button" aria-label="Create a folder" title="New folder">
+                  <i class="bi bi-folder-plus" aria-hidden="true"></i>
+                </button>
+                <button id="document-sidebar-collapse-all" class="document-sidebar-icon-btn" type="button" aria-label="Collapse all folders" title="Collapse all">
+                  <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+                </button>
+                <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-close" type="button" aria-label="Close file sidebar" title="Close file sidebar">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
 
             <label class="visually-hidden" for="document-sidebar-search">Search files</label>
@@ -417,6 +417,10 @@
             </nav>
 
             <div id="document-sidebar-status" class="document-sidebar-status" role="status" aria-live="polite"></div>
+            <div class="document-tree-heading">
+              <span id="document-tree-heading-label">Workspaces</span>
+              <span id="document-tree-heading-hint">Drag files to move</span>
+            </div>
             <div id="document-tree" class="document-tree" role="tree" aria-label="Workspaces, folders, and Markdown files"></div>
 
             <div class="document-sidebar-footer">
@@ -428,6 +432,10 @@
           <div class="document-editor-area" id="document-editor-area">
             <!-- Tab Bar -->
             <div class="tab-bar" id="tab-bar">
+              <button id="document-sidebar-open" class="tool-button document-sidebar-open is-active" type="button" title="Hide files" aria-label="Hide file sidebar" aria-controls="document-sidebar" aria-expanded="true">
+                <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+              </button>
+              <span class="document-sidebar-tab-divider" aria-hidden="true"></span>
               <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
               <button class="tab-new-btn" id="tab-new-btn" title="New file (Ctrl+T)" aria-label="Create new file">
                 <i class="bi bi-filetype-md"></i> New file

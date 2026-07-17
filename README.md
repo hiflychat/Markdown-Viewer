@@ -106,7 +106,7 @@ For the full feature list, details, limitations, and privacy notes, see the [fea
 ## Markdown Editing and Live Preview
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
-- Organize up to 50 Markdown files in a closable, responsive left sidebar with fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, and drag-and-drop moves. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
+- Organize up to 50 Markdown files in a closable, responsive left sidebar with a persistent tab-strip toggle, fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, single-click opening, and drag-and-drop moves. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 

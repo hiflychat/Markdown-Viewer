@@ -3422,7 +3422,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     button.setAttribute('aria-expanded', 'false');
     button.title = label + ' options';
     const icon = document.createElement('i');
-    icon.className = 'bi bi-three-dots';
+    icon.className = 'bi bi-three-dots-vertical';
     icon.setAttribute('aria-hidden', 'true');
     button.appendChild(icon);
 
@@ -3497,7 +3497,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const actions = [{
       id: 'open', icon: 'bi-box-arrow-up-right', label: 'Open', run: function() { openSidebarDocument(tab.id); }
     }, {
-      id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameTab(tab.id); }
+      id: 'rename', icon: 'bi-pencil-square', label: 'Rename', run: function() { renameTab(tab.id); }
     }];
     if (!isTemporaryDocument(tab)) {
       actions.push({ id: 'duplicate', icon: 'bi-files', label: 'Duplicate', run: function() { duplicateTab(tab.id); } });
@@ -3512,7 +3512,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     actions.push({
       id: 'delete',
-      icon: isTemporaryDocument(tab) ? 'bi-x-lg' : 'bi-trash',
+      icon: isTemporaryDocument(tab) ? 'bi-x-lg' : 'bi-trash3',
       label: isTemporaryDocument(tab) ? 'Close' : 'Delete',
       danger: true,
       run: function() { deleteTab(tab.id); }
@@ -3542,8 +3542,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getFolderMenuActions(folder) {
     return [
       { id: 'new-document', icon: 'bi-filetype-md', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
-      { id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameFolder(folder.id); } },
-      { id: 'delete', icon: 'bi-trash', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
+      { id: 'rename', icon: 'bi-pencil-square', label: 'Rename', run: function() { renameFolder(folder.id); } },
+      { id: 'delete', icon: 'bi-trash3', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
   }
 
@@ -3773,12 +3773,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       meta: meta || '',
       menuActions: getDocumentMenuActions(tab),
       onActivate: function() {
-        selectSidebarDocument(tab.id);
-        const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-        if (coarsePointer || window.innerWidth < 768) openSidebarDocument(tab.id);
-      },
-      onDoubleClick: function(event) {
-        event.preventDefault();
         openSidebarDocument(tab.id);
       }
     });
@@ -3946,6 +3940,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const filter = documentOrganization.ui.filter || 'all';
     let renderedCount = filter === 'all' ? renderWorkspaceTree(tree) : renderFlatDocumentView(tree, filter);
 
+    const treeHeading = document.getElementById('document-tree-heading-label');
+    const treeHint = document.getElementById('document-tree-heading-hint');
+    const headingByFilter = { all: 'Workspaces', recent: 'Recent files', favorites: 'Favorites' };
+    if (treeHeading) treeHeading.textContent = headingByFilter[filter] || 'Files';
+    if (treeHint) treeHint.hidden = filter !== 'all';
+    tree.setAttribute('aria-label', filter === 'all'
+      ? 'Workspaces, folders, and Markdown files'
+      : (headingByFilter[filter] || 'Files'));
+
     if (!renderedCount && !tree.querySelector('.document-tree-row')) {
       const empty = document.createElement('div');
       empty.className = 'document-tree-empty';
@@ -3967,6 +3970,29 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (active) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
+
+    const preferredLocation = getPreferredDocumentLocation();
+    const preferredWorkspace = getWorkspaceById(preferredLocation.workspaceId);
+    const preferredFolder = getFolderById(preferredLocation.folderId);
+    const preferredLocationLabel = preferredFolder
+      ? (preferredWorkspace.name + ' / ' + preferredFolder.name)
+      : (preferredWorkspace ? preferredWorkspace.name : 'Default Workspace');
+    const newDocumentButton = document.getElementById('sidebar-new-document');
+    const newFolderButton = document.getElementById('sidebar-new-folder');
+    const collapseAllButton = document.getElementById('document-sidebar-collapse-all');
+    if (newDocumentButton) {
+      newDocumentButton.title = 'New Markdown file in ' + preferredLocationLabel;
+      newDocumentButton.setAttribute('aria-label', newDocumentButton.title);
+    }
+    if (newFolderButton) {
+      newFolderButton.title = 'New folder in ' + (preferredWorkspace ? preferredWorkspace.name : 'Default Workspace');
+      newFolderButton.setAttribute('aria-label', newFolderButton.title);
+    }
+    if (collapseAllButton) {
+      const canCollapse = filter === 'all' && !documentSidebarSearch;
+      collapseAllButton.disabled = !canCollapse;
+      collapseAllButton.title = canCollapse ? 'Collapse all' : 'Collapse all is available in All files';
+    }
     const firstRow = tree.querySelector('.document-tree-row');
     if (firstRow && !tree.querySelector('.document-tree-row[tabindex="0"]')) firstRow.setAttribute('tabindex', '0');
   }
@@ -3990,7 +4016,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     document.body.classList.toggle('document-sidebar-collapsed', documentOrganization.ui.collapsed === true);
     const mobileOpen = document.body.classList.contains('document-sidebar-mobile-open');
-    if (openButton) openButton.setAttribute('aria-expanded', mobileOpen || !documentOrganization.ui.collapsed ? 'true' : 'false');
+    const sidebarOpen = isDocumentSidebarMobile() ? mobileOpen : !documentOrganization.ui.collapsed;
+    if (openButton) {
+      openButton.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
+      openButton.classList.toggle('is-active', sidebarOpen);
+      openButton.title = sidebarOpen ? 'Hide files' : 'Show files';
+      openButton.setAttribute('aria-label', sidebarOpen ? 'Hide file sidebar' : 'Show file sidebar');
+    }
     if (backdrop) backdrop.hidden = !mobileOpen;
   }
 
@@ -4030,6 +4062,24 @@ document.addEventListener("DOMContentLoaded", async function () {
       const openButton = document.getElementById('document-sidebar-open');
       if (openButton) openButton.focus();
     }
+  }
+
+  function toggleDocumentSidebarFromTabBar() {
+    if (isDocumentSidebarMobile()) {
+      if (document.body.classList.contains('document-sidebar-mobile-open')) closeDocumentSidebarOnMobile();
+      else openDocumentSidebar();
+      return;
+    }
+    toggleDocumentSidebarCollapsed();
+  }
+
+  function collapseDocumentTree() {
+    if (!documentOrganization) return;
+    documentOrganization.workspaces.forEach(function(workspace) { workspace.expanded = false; });
+    documentOrganization.folders.forEach(function(folder) { folder.expanded = false; });
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+    announceToScreenReader('All workspace folders collapsed.');
   }
 
   function handleDocumentTreeKeydown(event) {
@@ -4096,6 +4146,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const openButton = document.getElementById('document-sidebar-open');
     const closeButton = document.getElementById('document-sidebar-close');
     const backdrop = document.getElementById('document-sidebar-backdrop');
+    const collapseAllButton = document.getElementById('document-sidebar-collapse-all');
     const newDocumentButton = document.getElementById('sidebar-new-document');
     const newFolderButton = document.getElementById('sidebar-new-folder');
     const search = document.getElementById('document-sidebar-search');
@@ -4104,9 +4155,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const resizer = document.getElementById('document-sidebar-resizer');
     const sidebar = document.getElementById('document-sidebar');
 
-    if (openButton) openButton.addEventListener('click', openDocumentSidebar);
+    if (openButton) openButton.addEventListener('click', toggleDocumentSidebarFromTabBar);
     if (closeButton) closeButton.addEventListener('click', toggleDocumentSidebarCollapsed);
     if (backdrop) backdrop.addEventListener('click', closeDocumentSidebarOnMobile);
+    if (collapseAllButton) collapseAllButton.addEventListener('click', collapseDocumentTree);
     if (newDocumentButton) newDocumentButton.addEventListener('click', function() {
       const location = getPreferredDocumentLocation();
       newTab('', null, location);
@@ -4173,12 +4225,26 @@ document.addEventListener("DOMContentLoaded", async function () {
         saveDocumentOrganization();
       });
       resizer.addEventListener('keydown', function(event) {
-        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
         event.preventDefault();
+        if (event.key === 'Home') {
+          documentOrganization.ui.width = 288;
+          sidebar.style.setProperty('--document-sidebar-width', '288px');
+          resizer.setAttribute('aria-valuenow', '288');
+          saveDocumentOrganization();
+          return;
+        }
         const direction = event.key === 'ArrowRight' ? 1 : -1;
-        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, documentOrganization.ui.width + direction * 10));
+        const step = event.shiftKey ? 25 : 10;
+        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, documentOrganization.ui.width + direction * step));
         sidebar.style.setProperty('--document-sidebar-width', documentOrganization.ui.width + 'px');
         resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+        saveDocumentOrganization();
+      });
+      resizer.addEventListener('dblclick', function() {
+        documentOrganization.ui.width = 288;
+        sidebar.style.setProperty('--document-sidebar-width', '288px');
+        resizer.setAttribute('aria-valuenow', '288');
         saveDocumentOrganization();
       });
       resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
