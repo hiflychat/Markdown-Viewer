@@ -493,6 +493,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileExportPng     = document.getElementById("mobile-export-png");
   const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
+  const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
+  const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
+  const mobileAboutButton = document.getElementById("mobile-about-button");
   const shareButton         = document.getElementById("share-button");
   const mobileShareButton   = document.getElementById("mobile-share-button");
   const liveShareButton     = document.getElementById("live-share-button");
@@ -533,7 +536,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const aboutModalCloseIcon = document.getElementById("about-modal-close-icon");
   const aboutVersion = document.getElementById("about-version");
   const privateModeToggle = document.getElementById("private-mode-toggle");
-  const clearLocalDataBtn = document.getElementById("clear-local-data-btn");
   if (aboutVersion) {
     aboutVersion.textContent = APP_VERSION;
   }
@@ -636,8 +638,22 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updatePrivateModeButton() {
     if (!privateModeToggle) return;
     const enabled = isPrivateStorageMode();
-    privateModeToggle.textContent = enabled ? 'Private mode on' : 'Private mode off';
-    privateModeToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    privateModeToggle.classList.toggle('is-active', enabled);
+    privateModeToggle.setAttribute('aria-pressed', String(enabled));
+    privateModeToggle.setAttribute('aria-label', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    privateModeToggle.setAttribute('title', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    const description = document.getElementById('private-mode-description');
+    if (description) {
+      description.textContent = enabled
+        ? 'On — files and review feedback stay in this session'
+        : 'Off — save files and review feedback on this device';
+    }
+    if (mobilePrivateModeToggle) {
+      mobilePrivateModeToggle.setAttribute('aria-pressed', String(enabled));
+      mobilePrivateModeToggle.setAttribute('aria-label', enabled ? 'Turn private mode off' : 'Turn private mode on');
+      mobilePrivateModeToggle.setAttribute('title', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    }
+    if (mobilePrivateModeStatus) mobilePrivateModeStatus.textContent = enabled ? 'On' : 'Off';
   }
 
   async function clearDocumentStorage() {
@@ -682,18 +698,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
     });
   }
-  if (clearLocalDataBtn) {
-    clearLocalDataBtn.addEventListener('click', function() {
-      if (!confirm('Clear saved Markdown tabs and document state from this device?')) return;
-      clearDocumentStorage().then(function() {
-        resetAllTabs();
-        updatePrivateModeButton();
-      }).catch(function(error) {
-        console.warn('Failed to clear local data:', error);
-      });
-    });
-  }
-
   // Check dark mode preference first for proper initialization
   const prefersDarkMode =
     window.matchMedia &&
@@ -706,7 +710,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateThemeToggleUI(theme) {
     const useLightAppearance = theme === "dark";
     if (themeToggle) {
-      themeToggle.innerHTML = '<i class="bi bi-' + (useLightAppearance ? 'sun' : 'moon') + '" aria-hidden="true"></i><span>Toggle appearance</span>';
+      const icon = themeToggle.querySelector('i');
+      const description = document.getElementById('theme-toggle-description');
+      if (icon) icon.className = 'bi bi-' + (useLightAppearance ? 'sun' : 'moon');
+      if (description) description.textContent = useLightAppearance ? 'Switch to light appearance' : 'Switch to dark appearance';
       themeToggle.setAttribute('aria-label', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
       themeToggle.setAttribute('title', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
     }
@@ -6501,6 +6508,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     });
   }
+  if (mobilePrivateModeToggle) {
+    mobilePrivateModeToggle.addEventListener('click', function() {
+      setPrivateStorageMode(!isPrivateStorageMode()).catch(function(error) {
+        console.warn('Failed to update private mode:', error);
+      });
+    });
+  }
 
   function closeDocumentSplitView(options) {
     const settings = options || {};
@@ -9727,13 +9741,14 @@ ${selector} .arrowheadPath {
 
   function toggleSyncScrolling() {
     syncScrollingEnabled = !syncScrollingEnabled;
+    const syncLabel = toggleSyncButton ? toggleSyncButton.querySelector('.btn-text') : null;
     if (syncScrollingEnabled) {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync Off</span>';
+      if (syncLabel) syncLabel.textContent = 'Sync Off';
       toggleSyncButton.classList.add("sync-disabled");
       toggleSyncButton.classList.remove("sync-enabled");
       toggleSyncButton.classList.add("sync-active");
     } else {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync On</span>';
+      if (syncLabel) syncLabel.textContent = 'Sync On';
       toggleSyncButton.classList.add("sync-enabled");
       toggleSyncButton.classList.remove("sync-disabled");
       toggleSyncButton.classList.remove("sync-active");
@@ -14409,6 +14424,52 @@ ${selector} .arrowheadPath {
     markdownFormatToolbar.addEventListener('scroll', function() { closeToolbarMenus(); });
   }
 
+  function initToolbarDropdownPortals() {
+    if (!window.bootstrap || !window.bootstrap.Dropdown) return;
+
+    document.querySelectorAll('.document-export-dropdown, .document-actions-dropdown').forEach(function(dropdown) {
+      const toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+      const menu = dropdown.querySelector('.dropdown-menu');
+      if (!toggle || !menu || menu.dataset.portalReady === 'true') return;
+
+      menu.dataset.portalReady = 'true';
+      const marker = document.createComment('toolbar dropdown location');
+      dropdown.insertBefore(marker, menu);
+      const instance = window.bootstrap.Dropdown.getOrCreateInstance(toggle, {
+        boundary: 'viewport',
+        popperConfig: function(defaultConfig) {
+          return { ...defaultConfig, strategy: 'fixed' };
+        }
+      });
+
+      dropdown.addEventListener('show.bs.dropdown', function() {
+        document.body.appendChild(menu);
+        menu.classList.add('toolbar-portal-menu');
+      });
+
+      dropdown.addEventListener('hidden.bs.dropdown', function() {
+        if (marker.parentNode) marker.parentNode.insertBefore(menu, marker.nextSibling);
+        menu.classList.remove('toolbar-portal-menu');
+        menu.style.position = '';
+        menu.style.inset = '';
+        menu.style.transform = '';
+        menu.removeAttribute('data-popper-placement');
+      });
+
+      menu.querySelectorAll('[data-md-action]').forEach(function(button) {
+        button.addEventListener('mousedown', function(event) {
+          event.preventDefault();
+        });
+        button.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          runMarkdownTool(button.getAttribute('data-md-action'), button);
+          instance.hide();
+        });
+      });
+    });
+  }
+
   // Story 1.3: Resize Divider Functions
   function initResizer() {
     if (!resizeDivider) return;
@@ -14588,6 +14649,12 @@ ${selector} .arrowheadPath {
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
   });
+  if (mobileAboutButton) {
+    mobileAboutButton.addEventListener('click', function() {
+      closeMobileMenu();
+      openAboutModal();
+    });
+  }
 
   const mobileNewTabBtn = document.getElementById("mobile-new-tab-btn");
   if (mobileNewTabBtn) {
@@ -14725,6 +14792,7 @@ ${selector} .arrowheadPath {
   });
 
   initMarkdownFormatToolbar();
+  initToolbarDropdownPortals();
   initFindReplaceModal();
   initAppModals();
   const headerAboutButton = document.getElementById('header-about-button');
@@ -21391,6 +21459,14 @@ ${selector} .arrowheadPath {
     document.documentElement.setAttribute('lang', lang === 'zh' ? 'zh-Hans' : (lang === 'tw' ? 'zh-Hant' : lang));
     const dict = I18N_DICTS[lang] || I18N_DICTS.en;
 
+    function updateMenuLabel(element, text) {
+      if (!element) return false;
+      const label = element.querySelector('.app-menu-label');
+      if (!label) return false;
+      label.textContent = text;
+      return true;
+    }
+
     // Update main logo and header elements
     const logoEl = document.querySelector('.app-header h1');
     if (logoEl) logoEl.textContent = dict.title;
@@ -21457,9 +21533,9 @@ ${selector} .arrowheadPath {
       if (importText) importText.textContent = dict.import;
     }
     const importFileEl = document.getElementById('import-from-file');
-    if (importFileEl) importFileEl.innerHTML = `<i class="bi bi-upload me-2"></i>${dict.importFile}`;
+    if (importFileEl) updateMenuLabel(importFileEl, dict.importFile);
     const importGithubEl = document.getElementById('import-from-github');
-    if (importGithubEl) importGithubEl.innerHTML = `<i class="bi bi-github me-2"></i>${dict.importGithub}`;
+    if (importGithubEl) updateMenuLabel(importGithubEl, dict.importGithub);
 
     const mImportFileEl = document.getElementById('mobile-import-button');
     if (mImportFileEl) mImportFileEl.innerHTML = `<i class="bi bi-upload me-2"></i>${dict.importFile}`;
@@ -21473,13 +21549,13 @@ ${selector} .arrowheadPath {
       if (exportText) exportText.textContent = dict.export;
     }
     const exportMdEl = document.getElementById('export-md');
-    if (exportMdEl) exportMdEl.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${dict.exportMd}`;
+    if (exportMdEl) updateMenuLabel(exportMdEl, dict.exportMd);
     const exportHtmlEl = document.getElementById('export-html');
-    if (exportHtmlEl) exportHtmlEl.innerHTML = `<i class="bi bi-file-earmark-code me-2"></i>${dict.exportHtml}`;
+    if (exportHtmlEl) updateMenuLabel(exportHtmlEl, dict.exportHtml);
     const exportPdfEl = document.getElementById('export-pdf');
-    if (exportPdfEl) exportPdfEl.innerHTML = `<i class="bi bi-file-earmark-pdf me-2"></i>${dict.exportPdf}`;
+    if (exportPdfEl) updateMenuLabel(exportPdfEl, dict.exportPdf);
     const exportPngEl = document.getElementById('export-png');
-    if (exportPngEl) exportPngEl.innerHTML = `<i class="bi bi-file-earmark-image me-2"></i>${dict.exportPng}`;
+    if (exportPngEl) updateMenuLabel(exportPngEl, dict.exportPng);
 
     const mExportMdEl = document.getElementById('mobile-export-md');
     if (mExportMdEl) mExportMdEl.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${dict.exportMd}`;
@@ -21520,7 +21596,7 @@ ${selector} .arrowheadPath {
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
-    if (tabResetBtn) tabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>${dict.reset} workspace</span>`;
+    if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
     const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
     if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset} all files`;
 

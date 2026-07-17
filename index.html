@@ -160,11 +160,15 @@
                         <button class="tool-button header-command-caret dropdown-toggle dropdown-toggle-split" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="More new document options" aria-label="Open new document menu">
                             <span class="visually-hidden">Open new document menu</span>
                         </button>
-                        <ul class="dropdown-menu" aria-labelledby="importDropdown">
-                            <li><a class="dropdown-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus me-2"></i>New document</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="import-from-file"><i class="bi bi-upload me-2"></i>From files</a></li>
-                            <li><a class="dropdown-item" href="#" id="import-from-github"><i class="bi bi-github me-2"></i>From GitHub</a></li>
+                        <ul class="dropdown-menu app-command-menu header-new-menu" aria-labelledby="importDropdown">
+                            <li class="settings-menu-header">
+                                <strong>New</strong>
+                                <span>Start blank or import Markdown</span>
+                            </li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">New document</span><span class="app-menu-description">Create a blank Markdown file</span></span></a></li>
+                            <li><div class="settings-menu-divider" role="separator"></div></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="bi bi-upload" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">From files</span><span class="app-menu-description">Import one or more .md files</span></span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="bi bi-github" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">From GitHub</span><span class="app-menu-description">Choose Markdown from a repository</span></span><i class="bi bi-chevron-right app-menu-trailing" aria-hidden="true"></i></a></li>
                         </ul>
                     </div>
                     <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown" multiple>
@@ -173,7 +177,7 @@
                         <i class="bi bi-people" aria-hidden="true"></i><span class="btn-text">Share</span>
                     </button>
 
-                    <button id="live-share-button" class="tool-button header-command-btn header-command-btn--accent" title="Live Share">
+                    <button id="live-share-button" class="tool-button header-command-btn" title="Live Share">
                         <i class="bi bi-broadcast-pin" aria-hidden="true"></i><span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
@@ -194,12 +198,12 @@
                                 <strong>Workspace settings</strong>
                                 <span>Appearance and preferences</span>
                             </div>
-                            <button id="theme-toggle" class="settings-menu-item" type="button" title="Toggle appearance">
-                                <i class="bi bi-moon" aria-hidden="true"></i><span>Toggle appearance</span>
+                            <button id="theme-toggle" class="settings-menu-item app-menu-item" type="button" title="Toggle appearance">
+                                <i class="bi bi-moon" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Appearance</span><span id="theme-toggle-description" class="app-menu-description">Switch to dark appearance</span></span>
                             </button>
                             <div class="dropdown dropstart settings-language-dropdown">
-                                <button class="settings-menu-item dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Switch language">
-                                    <i class="bi bi-translate" aria-hidden="true"></i><span id="current-lang-label">English</span>
+                                <button class="settings-menu-item app-menu-item dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Switch language">
+                                    <i class="bi bi-translate" aria-hidden="true"></i><span class="app-menu-copy"><span id="current-lang-label" class="app-menu-label">English</span><span class="app-menu-description">Application language</span></span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">🇺🇸 English</a></li>
@@ -219,8 +223,12 @@
                                 </ul>
                             </div>
                             <div class="settings-menu-divider" role="separator"></div>
-                            <button class="settings-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
-                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Reset workspace</span>
+                            <button id="private-mode-toggle" class="settings-menu-item app-menu-item settings-menu-item--toggle" type="button" aria-pressed="false" title="Toggle private mode">
+                                <i class="bi bi-incognito" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Save files and review feedback on this device</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
+                            </button>
+                            <div class="settings-menu-divider" role="separator"></div>
+                            <button class="settings-menu-item app-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
+                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Reset workspace</span><span class="app-menu-description">Remove all files and review data</span></span>
                             </button>
                         </div>
                     </div>
@@ -354,6 +362,12 @@
                             </div>
                             <button id="mobile-theme-toggle" class="mobile-menu-item" title="Toggle Dark Mode">
                                 <i class="bi bi-moon me-2"></i> Dark Mode
+                            </button>
+                            <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
+                                <span class="mobile-menu-item-label"><i class="bi bi-incognito me-2" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
+                            </button>
+                            <button id="mobile-about-button" class="mobile-menu-item" type="button" title="About Markdown Viewer">
+                                <i class="bi bi-info-circle me-2" aria-hidden="true"></i>About Markdown Viewer
                             </button>
                         </div>
                     </div>
@@ -508,35 +522,37 @@
           </div>
           <div class="markdown-toolbar-group markdown-toolbar-group--document markdown-toolbar-group--utilities" role="group" aria-label="Document actions and view">
             <div class="dropdown document-export-dropdown">
-              <button class="tool-button document-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Export Markdown" aria-label="Export Markdown">
+              <button class="tool-button document-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="Export Markdown" aria-label="Export Markdown">
                 <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span class="btn-text">Export</span>
               </button>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
-                <li><a class="dropdown-item" href="#" id="export-md"><i class="bi bi-file-earmark-text me-2"></i>Markdown (.md)</a></li>
-                <li><a class="dropdown-item" href="#" id="export-html"><i class="bi bi-file-earmark-code me-2"></i>HTML</a></li>
-                <li><a class="dropdown-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf me-2"></i>PDF</a></li>
-                <li><a class="dropdown-item" href="#" id="export-png"><i class="bi bi-file-earmark-image me-2"></i>Image (.png)</a></li>
+              <ul class="dropdown-menu dropdown-menu-end app-command-menu toolbar-command-menu" aria-labelledby="exportDropdown">
+                <li class="settings-menu-header"><strong>Export document</strong><span>Choose a file format</span></li>
+                <li><a class="dropdown-item app-menu-item" href="#" id="export-md"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Markdown (.md)</span><span class="app-menu-description">Editable Markdown source</span></span></a></li>
+                <li><a class="dropdown-item app-menu-item" href="#" id="export-html"><i class="bi bi-file-earmark-code" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">HTML</span><span class="app-menu-description">Rendered standalone webpage</span></span></a></li>
+                <li><a class="dropdown-item app-menu-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">PDF</span><span class="app-menu-description">Printable document</span></span><i class="bi bi-chevron-right app-menu-trailing" aria-hidden="true"></i></a></li>
+                <li><a class="dropdown-item app-menu-item" href="#" id="export-png"><i class="bi bi-file-earmark-image" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Image (.png)</span><span class="app-menu-description">Rendered document image</span></span></a></li>
               </ul>
             </div>
             <button id="review-toggle" class="tool-button document-command-btn" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
               <i class="bi bi-chat-square-text" aria-hidden="true"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span>
             </button>
             <div class="dropdown document-actions-dropdown">
-              <button class="tool-button document-command-btn" type="button" id="documentActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="More document actions" aria-label="More document actions">
+              <button class="tool-button document-command-btn" type="button" id="documentActionsDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="More document actions" aria-label="More document actions">
                 <i class="bi bi-three-dots" aria-hidden="true"></i>
               </button>
-              <div class="dropdown-menu dropdown-menu-end document-actions-menu" aria-labelledby="documentActionsDropdown">
-                <button id="toggle-sync" class="dropdown-item document-action-item sync-enabled sync-active" type="button" title="Toggle Sync Scrolling">
-                  <i class="bi bi-link" aria-hidden="true"></i><span class="btn-text">Sync Off</span>
+              <div class="dropdown-menu dropdown-menu-end app-command-menu toolbar-command-menu document-actions-menu" aria-labelledby="documentActionsDropdown">
+                <div class="settings-menu-header"><strong>Document actions</strong><span>Editing and workspace tools</span></div>
+                <button id="toggle-sync" class="dropdown-item app-menu-item document-action-item sync-enabled sync-active" type="button" title="Toggle Sync Scrolling">
+                  <i class="bi bi-link" aria-hidden="true"></i><span class="app-menu-copy"><span class="btn-text app-menu-label">Sync Off</span><span class="app-menu-description">Keep editor and preview aligned</span></span>
                 </button>
-                <button id="copy-markdown-button" class="dropdown-item document-action-item" type="button" title="Copy Markdown">
-                  <i class="bi bi-clipboard" aria-hidden="true"></i><span class="btn-text">Copy Markdown</span>
+                <button id="copy-markdown-button" class="dropdown-item app-menu-item document-action-item" type="button" title="Copy Markdown">
+                  <i class="bi bi-clipboard" aria-hidden="true"></i><span class="app-menu-copy"><span class="btn-text app-menu-label">Copy Markdown</span><span class="app-menu-description">Copy the current source</span></span>
                 </button>
-                <button type="button" class="dropdown-item document-action-item" data-md-action="find" title="Find &amp; Replace">
-                  <i class="bi bi-search" aria-hidden="true"></i><span>Find &amp; replace</span>
+                <button type="button" class="dropdown-item app-menu-item document-action-item" data-md-action="find" title="Find &amp; Replace">
+                  <i class="bi bi-search" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Find &amp; replace</span><span class="app-menu-description">Search within this document</span></span>
                 </button>
-                <button type="button" class="dropdown-item document-action-item" data-md-action="fullscreen" title="Fullscreen">
-                  <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i><span>Fullscreen</span>
+                <button type="button" class="dropdown-item app-menu-item document-action-item" data-md-action="fullscreen" title="Fullscreen">
+                  <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Fullscreen</span><span class="app-menu-description">Use the full display</span></span>
                 </button>
               </div>
             </div>
@@ -783,7 +799,7 @@
                   <li>Undo and Redo keep editing history close at hand.</li>
                   <li>Use the Text and Case menus for paragraph styles, H1–H6 headings, and capitalization.</li>
                   <li>Quick formatting covers emphasis, quotes, alignment, and lists; Insert holds the longer list of content tools.</li>
-                  <li>Find and Fullscreen stay visible at the end of the toolbar; About Markdown Viewer opens application details and privacy controls.</li>
+                  <li>Find and Fullscreen are in Document actions; About Markdown Viewer opens product, support, privacy, license, and project links.</li>
                 </ul>
               </div>
               <div class="modal-section">
@@ -812,58 +828,58 @@
 
         <!-- About Markdown Modal -->
         <div id="about-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="about-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--xl modal-box">
+          <div class="reset-modal-box reset-modal-box--about modal-box">
             <div class="modal-header">
               <p id="about-modal-title" class="reset-modal-message">About Markdown Viewer</p>
               <button type="button" class="modal-close-btn" id="about-modal-close-icon" aria-label="Close about dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
               </button>
             </div>
-            <div class="modal-body">
-              <div class="about-header">
-                <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="64" height="64" />
+            <div class="modal-body about-modal-body">
+              <section class="about-app-card" aria-label="Application information">
+                <img src="assets/icon.jpg" alt="" class="about-logo" width="72" height="72" />
                 <div class="about-details">
-                  <h3 class="about-title">Markdown Viewer</h3>
-                  <p class="about-description">A browser-based Markdown editor and viewer with GFM live preview, diagrams, maps, STL previews, ABC notation, sharing, export tools, and a lightweight Neutralinojs desktop build.</p>
-                  <p class="about-meta">Version <span id="about-version"></span> &bull; Apache License 2.0 &bull; Open source</p>
+                  <div class="about-title-row">
+                    <h2 class="about-title">Markdown Viewer</h2>
+                    <span class="about-open-source-badge"><i class="bi bi-code-slash" aria-hidden="true"></i>Open source</span>
+                  </div>
+                  <p class="about-description">A focused Markdown workspace for writing, previewing, reviewing, sharing, and exporting technical documents.</p>
+                  <div class="about-facts" role="list" aria-label="Application details">
+                    <div class="about-fact" role="listitem"><span>Version</span><strong id="about-version"></strong></div>
+                    <div class="about-fact" role="listitem"><span>License</span><strong>Apache 2.0</strong></div>
+                    <div class="about-fact" role="listitem"><span>Platforms</span><strong>Web &amp; desktop</strong></div>
+                  </div>
                 </div>
-              </div>
-              <div class="modal-section">
-                <h3 class="modal-section-title">Open-source links</h3>
-                <ul class="modal-list">
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache License 2.0</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/wiki/Contributing" target="_blank" rel="noopener noreferrer">Contribution Guide</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new/choose" target="_blank" rel="noopener noreferrer">Report an Issue</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/discussions" target="_blank" rel="noopener noreferrer">Community &amp; Support</a></li>
-                </ul>
-                <p class="modal-subtext">For feature requests, open a GitHub issue or start a discussion so the community can weigh in.</p>
-              </div>
-              <div class="modal-section">
-                <h3 class="modal-section-title">Markdown resources</h3>
-                <ul class="modal-list">
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/wiki/Markdown-Reference" target="_blank" rel="noopener noreferrer">Markdown syntax reference</a></li>
-                </ul>
-              </div>
-              <div class="modal-section">
-                <h3 class="modal-section-title">Technology stack</h3>
-                <ul class="modal-list">
-                  <li>HTML, CSS, and JavaScript with Bootstrap 5 for layout and styling.</li>
-                  <li>Marked, DOMPurify, Highlight.js, Mermaid, MathJax, and Emoji Toolkit for rendering.</li>
-                </ul>
-              </div>
-              <div class="modal-section">
-                <h3 class="modal-section-title">Storage privacy</h3>
-                <p class="modal-subtext">By default, document tabs are saved on this device for convenience. Private mode stops saving document content until it is turned off.</p>
-                <div class="modal-action-row">
-                  <button type="button" class="reset-modal-btn reset-modal-cancel" id="private-mode-toggle">Private mode off</button>
-                  <button type="button" class="reset-modal-btn reset-modal-danger" id="clear-local-data-btn">Clear local data</button>
+              </section>
+
+              <section class="about-section" aria-labelledby="about-links-title">
+                <div class="about-section-heading">
+                  <h3 id="about-links-title">Product and support</h3>
+                  <span>Official project resources</span>
                 </div>
-              </div>
-              <div class="modal-section">
-                <h3 class="modal-section-title">Open-source credits</h3>
-                <p class="modal-subtext">Markdown Viewer is built on top of open-source libraries maintained by the community. Thank you to every contributor and maintainer.</p>
-              </div>
+                <div class="about-link-grid">
+                  <a class="about-link-card" href="https://markdownviewer.pages.dev/" target="_blank" rel="noopener noreferrer"><i class="bi bi-globe2" aria-hidden="true"></i><span><strong>Website</strong><small>Open the live application</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a class="about-link-card" href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/wiki/Home.md" target="_blank" rel="noopener noreferrer"><i class="bi bi-book" aria-hidden="true"></i><span><strong>Documentation</strong><small>Guides, features, and usage</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a class="about-link-card" href="https://github.com/ThisIs-Developer/Markdown-Viewer/releases/latest" target="_blank" rel="noopener noreferrer"><i class="bi bi-megaphone" aria-hidden="true"></i><span><strong>Latest release</strong><small>Downloads and release notes</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a class="about-link-card" href="https://github.com/ThisIs-Developer/Markdown-Viewer" target="_blank" rel="noopener noreferrer"><i class="bi bi-github" aria-hidden="true"></i><span><strong>Source code</strong><small>View and contribute on GitHub</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a class="about-link-card" href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new/choose" target="_blank" rel="noopener noreferrer"><i class="bi bi-bug" aria-hidden="true"></i><span><strong>Report a problem</strong><small>File a bug or request a feature</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a class="about-link-card" href="https://github.com/ThisIs-Developer/Markdown-Viewer/discussions" target="_blank" rel="noopener noreferrer"><i class="bi bi-chat-square-dots" aria-hidden="true"></i><span><strong>Community</strong><small>Questions, ideas, and support</small></span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                </div>
+              </section>
+
+              <section class="about-section" aria-labelledby="about-legal-title">
+                <div class="about-section-heading">
+                  <h3 id="about-legal-title">Information</h3>
+                  <span>Privacy, legal, and project details</span>
+                </div>
+                <nav class="about-inline-links" aria-label="Legal and project information">
+                  <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/wiki/Features.md#data-handling-summary" target="_blank" rel="noopener noreferrer">Privacy &amp; data handling<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                  <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/wiki/Contributing.md" target="_blank" rel="noopener noreferrer">Contributing<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                </nav>
+                <p class="about-credits">Built with Bootstrap, Marked, DOMPurify, Highlight.js, Mermaid, MathJax, and other open-source projects. Copyright &copy; 2026 Markdown Viewer contributors.</p>
+              </section>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="about-modal-close">Close</button>

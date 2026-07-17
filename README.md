@@ -99,7 +99,7 @@ Markdown Viewer handles the usual Markdown basics, but its real value is helping
 5. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly. Large stored snapshots expire after 90 days.
 6. **LaTeX Math Notation**: render inline and display formulas with MathJax, useful for math-heavy notes, papers, and technical explanations.
 7. **Markdown to PDF, HTML & PNG Export**: export Markdown, HTML, PNG, Browser Print / Save as PDF, or Legacy Raster PDF for documents that need sharing, printing, or archiving.
-8. **Privacy and Security Controls**: use Private mode to prevent document persistence, clear saved local data, and rely on sanitized previews, hardened export HTML, and restricted desktop native APIs.
+8. **Privacy and Security Controls**: enable Private mode from Workspace settings to keep document and review data session-only, and rely on sanitized previews, hardened export HTML, and restricted desktop native APIs.
 
 For the full feature list, details, limitations, and privacy notes, see the [features reference](wiki/Features.md#product-summary).
 
@@ -271,7 +271,7 @@ Some advanced diagram engines use remote renderers such as PlantUML, Kroki, or m
 
 Markdown Viewer is not a cloud workspace. Normal typing, preview rendering, local file import, tab autosave, theme settings, and most exports happen on your device. No login is required, and the app does not implement analytics, telemetry, ads, or tracking cookies.
 
-Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode stops saving document content and workspace state locally; the About dialog also provides a Clear local data action. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
+Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode in Workspace settings keeps document content, workspace state, and review feedback session-only while editing and review tools remain available. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
 
 ## Security and Privacy Controls
 
