@@ -6047,6 +6047,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('draggable', 'true');
       item.setAttribute('tabindex', tab.id === currentActiveTabId ? '0' : '-1');
+      if (splitPartner) {
+        const primaryTitleLength = (tab.title || 'Untitled').length;
+        const secondaryTitleLength = (splitPartner.title || 'Untitled').length;
+        const preferredWidth = Math.min(360, Math.max(210, 118 + ((primaryTitleLength + secondaryTitleLength) * 5.8)));
+        item.style.setProperty('--split-tab-preferred-width', Math.round(preferredWidth) + 'px');
+      }
 
       const fileIcon = document.createElement('i');
       fileIcon.className = 'bi ' + (splitPartner ? 'bi-layout-split' : 'bi-filetype-md') + ' tab-file-icon';
@@ -6444,6 +6450,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const shouldShow = Boolean(tab && isTabOpen(tab) && tab.id !== activeTabId);
     contentContainer.classList.toggle('document-split-active', shouldShow);
     document.body.classList.toggle('document-split-active', shouldShow);
+    updateDocumentSplitModeControls(shouldShow);
     documentSplitPane.hidden = !shouldShow;
     documentSplitDivider.hidden = !shouldShow;
     if (!shouldShow) {
@@ -6464,6 +6471,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     requestAnimationFrame(function() {
       if (previewMode) documentSplitPreview.scrollTop = tab.splitPreviewScrollPos || 0;
       else documentSplitEditor.scrollTop = tab.splitScrollPos || 0;
+    });
+  }
+
+  function updateDocumentSplitModeControls(disabled) {
+    document.querySelectorAll('[data-view-mode="split"], .mobile-view-mode-btn[data-mode="split"]').forEach(function(button) {
+      if (disabled) {
+        button.dataset.documentSplitDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+        button.setAttribute('title', 'Two documents are already open side by side');
+      } else if (button.dataset.documentSplitDisabled === 'true') {
+        delete button.dataset.documentSplitDisabled;
+        const remainsDisabled = button.dataset.shareSnapshotDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
+        button.setAttribute('title', 'Split editor and live preview');
+      }
     });
   }
 
@@ -17527,8 +17551,9 @@ ${selector} .arrowheadPath {
         button.setAttribute('aria-disabled', 'true');
       } else if (button.dataset.shareSnapshotDisabled === 'true') {
         delete button.dataset.shareSnapshotDisabled;
-        button.disabled = false;
-        button.setAttribute('aria-disabled', 'false');
+        const remainsDisabled = button.dataset.documentSplitDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
       }
     });
 
@@ -17541,8 +17566,9 @@ ${selector} .arrowheadPath {
         button.setAttribute('aria-disabled', 'true');
       } else if (button.dataset.shareSnapshotDisabled === 'true') {
         delete button.dataset.shareSnapshotDisabled;
-        button.disabled = false;
-        button.setAttribute('aria-disabled', 'false');
+        const remainsDisabled = button.dataset.documentSplitDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
       }
     });
 

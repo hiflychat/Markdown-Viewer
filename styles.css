@@ -319,34 +319,45 @@ body {
 
 .document-sidebar-filters {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
-  padding: 0 6px 7px;
-  border-bottom: 1px solid var(--border-color);
+  margin: 0 8px 7px;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--button-bg);
+  box-shadow: inset 0 1px 1px rgba(31, 35, 40, 0.03);
 }
 
 .document-filter-btn {
   display: flex;
   align-items: center;
-  width: 100%;
-  min-height: 30px;
-  gap: 9px;
-  padding: 5px 8px;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  min-height: 24px;
+  gap: 5px;
+  padding: 3px 6px;
+  border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 12px;
-  text-align: start;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .document-filter-btn i {
-  width: 16px;
-  font-size: var(--document-sidebar-icon-size);
+  width: auto;
+  font-size: 11px;
   line-height: 1;
   text-align: center;
 }
 
 .document-filter-btn.is-active {
-  background: var(--button-active);
+  background: var(--bg-color);
   color: var(--text-color);
-  font-weight: 600;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.12);
 }
 
 .document-sidebar-status {
@@ -506,7 +517,6 @@ body {
   text-align: center;
 }
 
-.document-tree-main > .bi-folder,
 .document-tree-main > .bi-folder2-open {
   color: var(--accent-color);
 }
@@ -1030,11 +1040,6 @@ body.document-sidebar-collapsed .document-sidebar {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
-}
-
-body.document-split-active .view-toolbar [data-view-mode="split"],
-body.document-split-active .mobile-view-mode-btn[data-mode="split"] {
-  display: none !important;
 }
 
 .editor-pane,
@@ -1841,7 +1846,6 @@ body.document-split-active .mobile-view-mode-btn[data-mode="split"] {
   inset-inline-end: 0;
   margin-inline-start: auto;
   border-right: 0;
-  border-left: 1px solid var(--border-color);
   background: var(--header-bg);
   box-shadow: -8px 0 12px -12px rgba(31, 35, 40, 0.55);
 }
@@ -2893,6 +2897,12 @@ a:focus {
   background-color: var(--button-hover);
 }
 
+.mobile-view-mode-btn:disabled,
+.mobile-view-mode-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .mobile-view-mode-btn.active {
   background-color: var(--button-bg);
   border-color: var(--accent-color);
@@ -3244,8 +3254,10 @@ a:focus {
 }
 
 .tab-item.is-document-split {
-  min-width: 190px;
-  max-width: 280px;
+  flex: 0 1 var(--split-tab-preferred-width, 260px);
+  width: var(--split-tab-preferred-width, 260px);
+  min-width: 210px;
+  max-width: min(360px, 46vw);
 }
 
 .tab-item.is-document-split .tab-file-icon {
@@ -3416,6 +3428,11 @@ a:focus {
 
   .tab-bar .tab-reset-btn {
     display: none;
+  }
+
+  .tab-item.is-document-split {
+    min-width: 180px;
+    max-width: calc(100vw - 96px);
   }
 }
 
