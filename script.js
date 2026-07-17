@@ -645,8 +645,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const description = document.getElementById('private-mode-description');
     if (description) {
       description.textContent = enabled
-        ? 'On — files and review feedback stay in this session'
-        : 'Off — save files and review feedback on this device';
+        ? 'No data is stored'
+        : 'Data is stored locally';
     }
     if (mobilePrivateModeToggle) {
       mobilePrivateModeToggle.setAttribute('aria-pressed', String(enabled));
@@ -7084,12 +7084,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         newTab();
       };
     }
-    const headerNewFile = document.getElementById('header-new-file');
-    if (headerNewFile) {
-      headerNewFile.onclick = function() {
-        newTab();
-      };
-    }
     const headerNewDocument = document.getElementById('header-new-document');
     if (headerNewDocument) {
       headerNewDocument.onclick = function(event) {
@@ -9753,6 +9747,12 @@ ${selector} .arrowheadPath {
       toggleSyncButton.classList.remove("sync-disabled");
       toggleSyncButton.classList.remove("sync-active");
     }
+    const syncActionLabel = syncScrollingEnabled
+      ? 'Disable synchronized scrolling'
+      : 'Enable synchronized scrolling';
+    toggleSyncButton.setAttribute('aria-pressed', String(syncScrollingEnabled));
+    toggleSyncButton.setAttribute('aria-label', syncActionLabel);
+    toggleSyncButton.setAttribute('title', syncActionLabel);
     saveGlobalState({ syncScrollingEnabled });
   }
 
@@ -17005,11 +17005,22 @@ ${selector} .arrowheadPath {
   }
 
   function showCopiedMessage() {
-    const originalText = copyMarkdownButton.innerHTML;
-    copyMarkdownButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+    const icon = copyMarkdownButton.querySelector('i');
+    const label = copyMarkdownButton.querySelector('.btn-text');
+    const originalIconClass = icon ? icon.className : '';
+    const originalLabel = label ? label.textContent : '';
+    const originalTitle = copyMarkdownButton.getAttribute('title') || 'Copy Markdown';
+    const originalAriaLabel = copyMarkdownButton.getAttribute('aria-label') || 'Copy Markdown';
+    if (icon) icon.className = 'bi bi-check-lg';
+    if (label) label.textContent = 'Copied';
+    copyMarkdownButton.setAttribute('title', 'Copied');
+    copyMarkdownButton.setAttribute('aria-label', 'Copied');
 
     setTimeout(() => {
-      copyMarkdownButton.innerHTML = originalText;
+      if (icon) icon.className = originalIconClass;
+      if (label) label.textContent = originalLabel;
+      copyMarkdownButton.setAttribute('title', originalTitle);
+      copyMarkdownButton.setAttribute('aria-label', originalAriaLabel);
     }, 2000);
   }
 
@@ -21530,7 +21541,7 @@ ${selector} .arrowheadPath {
     const importDropEl = document.getElementById('importDropdown');
     if (importDropEl) {
       const importText = importDropEl.querySelector('.btn-text');
-      if (importText) importText.textContent = dict.import;
+      if (importText) importText.textContent = 'New';
     }
     const importFileEl = document.getElementById('import-from-file');
     if (importFileEl) updateMenuLabel(importFileEl, dict.importFile);

@@ -131,9 +131,8 @@
     <div class="app-container">
         <header class="app-header">
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
-                <!-- Left section: Logo, GitHub, Stats -->
+                <!-- Left section: Title, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
-                    <i class="bi bi-markdown app-brand-logo" aria-hidden="true"></i>
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
                         <i class="bi bi-github"></i>
@@ -153,22 +152,26 @@
 
                 <!-- Right section: Toolbar -->
                 <div class="toolbar d-none d-md-flex header-right">
-                    <div class="btn-group dropdown header-new-dropdown" role="group" aria-label="Create or import a document">
-                        <button id="header-new-file" class="tool-button header-command-btn header-new-file" type="button" title="New Markdown document" aria-label="Create new Markdown document">
+                    <div class="dropdown header-new-dropdown">
+                        <button class="tool-button header-command-btn dropdown-toggle" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Create or import a document" aria-label="Open new document menu">
                             <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="btn-text">New</span>
                         </button>
-                        <button class="tool-button header-command-caret dropdown-toggle dropdown-toggle-split" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="More new document options" aria-label="Open new document menu">
-                            <span class="visually-hidden">Open new document menu</span>
-                        </button>
                         <ul class="dropdown-menu app-command-menu header-new-menu" aria-labelledby="importDropdown">
-                            <li class="settings-menu-header">
-                                <strong>New</strong>
-                                <span>Start blank or import Markdown</span>
-                            </li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">New document</span><span class="app-menu-description">Create a blank Markdown file</span></span></a></li>
-                            <li><div class="settings-menu-divider" role="separator"></div></li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="bi bi-upload" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">From files</span><span class="app-menu-description">Import one or more .md files</span></span></a></li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="bi bi-github" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">From GitHub</span><span class="app-menu-description">Choose Markdown from a repository</span></span><i class="bi bi-chevron-right app-menu-trailing" aria-hidden="true"></i></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span class="app-menu-label">New document</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="bi bi-upload" aria-hidden="true"></i><span class="app-menu-label">From files</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="bi bi-github" aria-hidden="true"></i><span class="app-menu-label">From GitHub</span></a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown document-export-dropdown">
+                        <button class="tool-button header-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="Export document" aria-label="Export document">
+                            <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span class="btn-text">Export</span>
+                        </button>
+                        <ul class="dropdown-menu app-command-menu toolbar-command-menu" aria-labelledby="exportDropdown">
+                            <li class="settings-menu-header"><strong>Export document</strong><span>Choose a file format</span></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-md"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Markdown (.md)</span><span class="app-menu-description">Editable Markdown source</span></span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-html"><i class="bi bi-file-earmark-code" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">HTML</span><span class="app-menu-description">Rendered standalone webpage</span></span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">PDF</span><span class="app-menu-description">Printable document</span></span><i class="bi bi-chevron-right app-menu-trailing" aria-hidden="true"></i></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-png"><i class="bi bi-file-earmark-image" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Image (.png)</span><span class="app-menu-description">Rendered document image</span></span></a></li>
                         </ul>
                     </div>
                     <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown" multiple>
@@ -196,7 +199,6 @@
                         <div class="dropdown-menu dropdown-menu-end settings-menu" aria-labelledby="workspaceSettingsDropdown">
                             <div class="settings-menu-header">
                                 <strong>Workspace settings</strong>
-                                <span>Appearance and preferences</span>
                             </div>
                             <button id="theme-toggle" class="settings-menu-item app-menu-item" type="button" title="Toggle appearance">
                                 <i class="bi bi-moon" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Appearance</span><span id="theme-toggle-description" class="app-menu-description">Switch to dark appearance</span></span>
@@ -224,7 +226,7 @@
                             </div>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button id="private-mode-toggle" class="settings-menu-item app-menu-item settings-menu-item--toggle" type="button" aria-pressed="false" title="Toggle private mode">
-                                <i class="bi bi-incognito" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Save files and review feedback on this device</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
+                                <i class="bi bi-incognito" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Data is stored locally</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
                             </button>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button class="settings-menu-item app-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
@@ -521,33 +523,27 @@
             </div>
           </div>
           <div class="markdown-toolbar-group markdown-toolbar-group--document markdown-toolbar-group--utilities" role="group" aria-label="Document actions and view">
-            <div class="dropdown document-export-dropdown">
-              <button class="tool-button document-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="Export Markdown" aria-label="Export Markdown">
-                <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span class="btn-text">Export</span>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end app-command-menu toolbar-command-menu" aria-labelledby="exportDropdown">
-                <li class="settings-menu-header"><strong>Export document</strong><span>Choose a file format</span></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-md"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Markdown (.md)</span><span class="app-menu-description">Editable Markdown source</span></span></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-html"><i class="bi bi-file-earmark-code" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">HTML</span><span class="app-menu-description">Rendered standalone webpage</span></span></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">PDF</span><span class="app-menu-description">Printable document</span></span><i class="bi bi-chevron-right app-menu-trailing" aria-hidden="true"></i></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-png"><i class="bi bi-file-earmark-image" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Image (.png)</span><span class="app-menu-description">Rendered document image</span></span></a></li>
-              </ul>
-            </div>
+            <button id="toggle-sync" class="tool-button document-command-btn sync-enabled sync-active" type="button" title="Disable synchronized scrolling" aria-label="Disable synchronized scrolling" aria-pressed="true">
+              <i class="bi bi-link" aria-hidden="true"></i><span class="btn-text">Sync Off</span>
+            </button>
+            <button id="copy-markdown-button" class="tool-button document-command-btn" type="button" title="Copy Markdown" aria-label="Copy Markdown">
+              <i class="bi bi-clipboard" aria-hidden="true"></i><span class="btn-text">Copy Markdown</span>
+            </button>
             <button id="review-toggle" class="tool-button document-command-btn" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
               <i class="bi bi-chat-square-text" aria-hidden="true"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span>
             </button>
+            <span class="document-command-divider" aria-hidden="true"></span>
+            <div class="view-toolbar markdown-view-toolbar" role="group" aria-label="View mode">
+              <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only"><i class="bi bi-file-text" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only"><i class="bi bi-eye" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview"><i class="bi bi-layout-split" aria-hidden="true"></i></button>
+            </div>
             <div class="dropdown document-actions-dropdown">
               <button class="tool-button document-command-btn" type="button" id="documentActionsDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="More document actions" aria-label="More document actions">
                 <i class="bi bi-three-dots" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu dropdown-menu-end app-command-menu toolbar-command-menu document-actions-menu" aria-labelledby="documentActionsDropdown">
                 <div class="settings-menu-header"><strong>Document actions</strong><span>Editing and workspace tools</span></div>
-                <button id="toggle-sync" class="dropdown-item app-menu-item document-action-item sync-enabled sync-active" type="button" title="Toggle Sync Scrolling">
-                  <i class="bi bi-link" aria-hidden="true"></i><span class="app-menu-copy"><span class="btn-text app-menu-label">Sync Off</span><span class="app-menu-description">Keep editor and preview aligned</span></span>
-                </button>
-                <button id="copy-markdown-button" class="dropdown-item app-menu-item document-action-item" type="button" title="Copy Markdown">
-                  <i class="bi bi-clipboard" aria-hidden="true"></i><span class="app-menu-copy"><span class="btn-text app-menu-label">Copy Markdown</span><span class="app-menu-description">Copy the current source</span></span>
-                </button>
                 <button type="button" class="dropdown-item app-menu-item document-action-item" data-md-action="find" title="Find &amp; Replace">
                   <i class="bi bi-search" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Find &amp; replace</span><span class="app-menu-description">Search within this document</span></span>
                 </button>
@@ -555,12 +551,6 @@
                   <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Fullscreen</span><span class="app-menu-description">Use the full display</span></span>
                 </button>
               </div>
-            </div>
-            <span class="document-command-divider" aria-hidden="true"></span>
-            <div class="view-toolbar markdown-view-toolbar" role="group" aria-label="View mode">
-              <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only"><i class="bi bi-file-text" aria-hidden="true"></i></button>
-              <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only"><i class="bi bi-eye" aria-hidden="true"></i></button>
-              <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview"><i class="bi bi-layout-split" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
@@ -790,14 +780,15 @@
                   <li>Use the view buttons in the toolbar to switch between Editor, Split, and Preview modes.</li>
                   <li>Sync scrolling is available in Split view to keep the editor and preview aligned.</li>
                   <li>Review opens a read-only preview where you can comment on or suggest changes to headings, paragraphs, code blocks, and diagrams.</li>
-                  <li>Import, Export, Copy, Share, and Theme toggle actions are always available in the header toolbar.</li>
+                  <li>New, Export, Share, Live Share, and Workspace settings are available in the header toolbar.</li>
+                  <li>Sync, Copy, Review, and view-mode controls stay together at the right edge of the document toolbar.</li>
                 </ul>
               </div>
               <div class="modal-section">
                 <h3 class="modal-section-title">Toolbar descriptions</h3>
                 <ul class="modal-list">
                   <li>Undo and Redo keep editing history close at hand.</li>
-                  <li>Use the Text and Case menus for paragraph styles, H1–H6 headings, and capitalization.</li>
+                  <li>Use the Heading and Case menus for H1&ndash;H6 headings and capitalization.</li>
                   <li>Quick formatting covers emphasis, quotes, alignment, and lists; Insert holds the longer list of content tools.</li>
                   <li>Find and Fullscreen are in Document actions; About Markdown Viewer opens product, support, privacy, license, and project links.</li>
                 </ul>
