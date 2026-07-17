@@ -4,16 +4,17 @@ This guide explains how to use Markdown Viewer as a browser-based Markdown edito
 
 ## Workspace Layout for Editing and Previewing Markdown
 
-The app has six main areas:
+The app has seven main areas:
 
 | Area | What It Does |
 | :--- | :--- |
-| Header | Shows app name, stats, view controls, import/export, copy, sharing, language, and theme controls. |
+| Header | Shows the app name and primary New, Export, Share, Live Share, Sync, Copy, About, and Workspace settings actions. |
 | Files sidebar | Organizes up to 50 Markdown files in fixed Default and Secret workspaces, with folders, All files, Recent, Favorites, and search. |
 | Tab bar | Preserves quick switching and drag-to-reorder for open documents. |
-| Formatting toolbar | Inserts Markdown syntax, opens helper modals, starts find/replace, and toggles fullscreen/help/about. |
+| Formatting toolbar | Inserts Markdown syntax, opens helper modals, starts Find and Replace, toggles fullscreen, and switches review/view modes. |
 | Editor pane | Plain-text Markdown textarea with line numbers, custom undo/redo, list continuation, and find highlights. |
 | Preview pane | Sanitized rendered Markdown with math, diagrams, maps, models, music, alerts, and syntax highlighting. |
+| Status bar | Centers reading time, word count, and character count, and shows Saving or All changes saved at the right. |
 
 Use the view buttons to switch between Editor, Split, and Preview. Split view is the main live Markdown preview workflow: type, paste, or open Markdown on one side and read the rendered result on the other. Sync scrolling can keep the source and preview aligned while you write. Drag the divider to change the pane widths. The app prevents either side from becoming too narrow. On small screens, the document sidebar opens as a full-height drawer and the mobile menu exposes the remaining main actions without forcing a cramped split layout.
 
@@ -33,8 +34,8 @@ Use the view buttons to switch between Editor, Split, and Preview. Split view is
 - Normal tabs autosave to local browser storage or desktop storage.
 - The document limit is 50 across creation, duplication, imports, Share Snapshot, and Live Share joins.
 - Temporary Share Snapshot and Live Share tabs are not saved to the recipient's workspace.
-- Use **Private mode** from the About dialog to clear existing document state and prevent normal document-state persistence while it is enabled.
-- Use **Clear local data** from the About dialog to remove saved tabs, the encrypted Secret Workspace, active-tab state, workspace preferences, and desktop storage mirrors.
+- Use **Private mode** from Workspace settings to clear existing document state and prevent normal document-state persistence while it is enabled.
+- Use **Reset workspace** from Workspace settings to remove saved files and review data and return to a clean workspace.
 
 Storage is local unless you explicitly use a network feature such as GitHub import, Share Snapshot storage, or Live Share.
 
@@ -55,7 +56,7 @@ The editor also supports list continuation on Enter, two-space indent on Tab, ou
 
 Use Review when you want to leave structured feedback without editing the Markdown source.
 
-1. Click **Review** in the desktop header or mobile menu.
+1. Click **Review** in the desktop document toolbar or mobile menu.
 2. Select the plus pin on a rendered YAML frontmatter table, heading, paragraph, code block, or diagram.
 3. Choose **Comment** for general feedback or **Suggestion** for a proposed change.
 4. Enter the feedback, then select **Add comment** or **Add suggestion**.
@@ -63,7 +64,7 @@ Use Review when you want to leave structured feedback without editing the Markdo
 
 The panel toolbar can copy a Markdown summary, resolve all open items, or delete all feedback after confirmation. Review uses a side panel on desktop, a drawer on tablet, and a bottom sheet on mobile. Opening a new tab closes Review automatically.
 
-Review threads stay with normal local tabs and are excluded from document exports, duplicated tabs, and Share Snapshot links. Live Share synchronizes them while the room is active, including for view-only participants; Private mode and Clear local data prevent or remove local persistence.
+Review threads stay with normal local tabs and are excluded from document exports, duplicated tabs, and Share Snapshot links. Live Share synchronizes them while the room is active, including for view-only participants; Private mode and Reset workspace prevent or remove local persistence.
 
 ## Find and Replace
 

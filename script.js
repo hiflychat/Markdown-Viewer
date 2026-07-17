@@ -536,6 +536,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const aboutModalCloseIcon = document.getElementById("about-modal-close-icon");
   const aboutVersion = document.getElementById("about-version");
   const privateModeToggle = document.getElementById("private-mode-toggle");
+  const saveStatus = document.getElementById("save-status");
+  const saveStatusIcon = document.getElementById("save-status-icon");
+  const saveStatusText = document.getElementById("save-status-text");
   if (aboutVersion) {
     aboutVersion.textContent = APP_VERSION;
   }
@@ -5616,6 +5619,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     return getSafeDocumentBasename(activeTab ? activeTab.title : "", "document");
   }
 
+  function updateSaveStatus(state) {
+    if (!saveStatus || !saveStatusIcon || !saveStatusText) return;
+    const nextState = state === 'saving' || state === 'error' ? state : 'saved';
+    const presentation = {
+      saving: { icon: 'bi bi-arrow-repeat', text: 'Saving...' },
+      saved: { icon: 'bi bi-check2', text: 'All changes saved' },
+      error: { icon: 'bi bi-exclamation-circle', text: 'Changes not saved' }
+    }[nextState];
+    saveStatus.classList.remove('is-saving', 'is-saved', 'is-error');
+    saveStatus.classList.add('is-' + nextState);
+    saveStatus.dataset.state = nextState;
+    saveStatusIcon.className = presentation.icon;
+    saveStatusText.textContent = presentation.text;
+  }
+
   function loadTabsFromStorage() {
     try {
       return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
@@ -5634,6 +5652,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveTabsToStorage(tabsArr) {
     // PERF-008: Debounce tab saves to reduce main thread blocking from JSON.stringify
     // on large document arrays. Immediate flush happens on visibilitychange/beforeunload.
+    updateSaveStatus('saving');
     clearTimeout(saveTabStateTimeout);
     scheduleSecretWorkspaceSave();
     saveTabStateTimeout = setTimeout(function() {
@@ -5670,9 +5689,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     clearTimeout(saveTabStateTimeout);
     try {
       saveStorageItem(STORAGE_KEY, JSON.stringify(getTabsForStorage(tabsArr)));
+      updateSaveStatus('saved');
       return true;
     } catch (e) {
       console.warn('Failed to save tabs to localStorage:', e);
+      updateSaveStatus('error');
       return false;
     }
   }
@@ -6615,6 +6636,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentSplitEditor.addEventListener('input', function() {
       const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
       if (!tab || documentSplitEditor.readOnly) return;
+      updateSaveStatus('saving');
       tab.content = documentSplitEditor.value;
       if (!isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
       clearTimeout(secondarySplitSaveTimeout);
@@ -14761,6 +14783,7 @@ ${selector} .arrowheadPath {
       announceToScreenReader(getEditorReadOnlyMessage());
       return;
     }
+    updateSaveStatus('saving');
     handleKeystrokeHistory(e);
     if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
       syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
@@ -14795,6 +14818,16 @@ ${selector} .arrowheadPath {
   initToolbarDropdownPortals();
   initFindReplaceModal();
   initAppModals();
+  document.addEventListener('fullscreenchange', function() {
+    const fullscreenButton = markdownFormatToolbar && markdownFormatToolbar.querySelector('[data-md-action="fullscreen"]');
+    if (!fullscreenButton) return;
+    const isFullscreen = Boolean(document.fullscreenElement);
+    const label = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+    const icon = fullscreenButton.querySelector('i');
+    fullscreenButton.setAttribute('title', label);
+    fullscreenButton.setAttribute('aria-label', label);
+    if (icon) icon.className = isFullscreen ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+  });
   const headerAboutButton = document.getElementById('header-about-button');
   if (headerAboutButton) {
     headerAboutButton.addEventListener('click', openAboutModal);

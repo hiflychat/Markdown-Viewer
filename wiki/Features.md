@@ -10,7 +10,7 @@ Most work happens in the browser or desktop webview. Markdown parsing, syntax hi
 
 ## Main Workspace
 
-The app opens with a header, Files sidebar, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
+The app opens with a header, Files sidebar, document tab bar, formatting toolbar, editor pane, resize divider, preview pane, and bottom status bar.
 
 - The left **Files** sidebar organizes Markdown files into fixed Default and Secret workspaces with one-level folders, All files, Recent, Favorites, and search views.
 - The sidebar is resizable and collapsible on desktop, narrower on tablet, and becomes a full-height drawer on mobile.
@@ -21,6 +21,7 @@ The app opens with a header, Files sidebar, document tab bar, formatting toolbar
 - A draggable divider resizes editor and preview in split mode and keeps both panes above 20% width.
 - The divider also supports keyboard adjustment with left and right arrow keys while split view is active.
 - The GitHub link in the header opens the source repository.
+- The bottom status bar centers reading time, word count, and character count, while its right edge reports Saving or All changes saved.
 
 The editor includes line numbers, wrapped-line height handling, a highlight layer for find results, live cursor overlays during Live Share, and skeleton placeholders during initial or heavy rendering. Line-number calculations are cached so large documents do not force a full layout measurement on every keystroke.
 
@@ -56,10 +57,7 @@ Storage keys used by the current implementation include:
 
 On the web, these values live in browser `localStorage`. In the desktop app, the code mirrors selected localStorage values into Neutralino storage, so preferences and workspace state survive desktop restarts.
 
-The About dialog includes two storage controls:
-
-- **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
-- **Clear local data** removes saved document tabs, document organization, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+Workspace settings includes **Private mode**, which removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload. **Reset workspace** removes files and review data and returns the application to a clean workspace. The About dialog describes storage privacy but does not duplicate these controls.
 
 ## Comments and Suggestion Mode
 
@@ -67,7 +65,7 @@ Review mode adds structured feedback to the rendered document without inserting 
 
 User flow:
 
-- Open **Review** from the desktop header or mobile menu.
+- Open **Review** from the desktop document toolbar or mobile menu.
 - Select the plus beside a rendered YAML table, heading, paragraph, code block, or diagram.
 - Add a comment or suggestion. Reviewed blocks show one control for reading existing feedback and a separate plus for adding another item.
 - Edit, resolve, reopen, or delete individual threads. The panel can also copy a Markdown summary, resolve all open items, or delete all feedback after confirmation.
@@ -75,7 +73,7 @@ User flow:
 
 Storage and sharing:
 
-- Review threads stay with normal local tabs and survive reloads. Private mode, Clear local data, and Reset cover the same stored data.
+- Review threads stay with normal local tabs and survive reloads. Private mode and Reset workspace cover the same stored data.
 - Feedback is excluded from Markdown, HTML, PDF, PNG, print, duplicated tabs, and Share Snapshot links.
 - If the related source block changes, the thread remains visible as unanchored feedback instead of moving to the wrong block.
 - Live Share synchronizes Review threads through a separate Yjs document. View-only participants can review without receiving Markdown edit permission.
@@ -97,7 +95,7 @@ The formatting toolbar inserts or transforms Markdown at the current selection. 
 - Link, image, reference, table, emoji, symbol, alert, and diagram buttons open focused modals.
 - Date/time inserts a local timestamp.
 - Fullscreen uses the browser Fullscreen API when available.
-- Help and About buttons open informational modals.
+- Find and Replace and Fullscreen are direct formatting-toolbar actions. About Markdown Viewer opens from the header or mobile menu.
 
 View-only Share Snapshot tabs and view-only Live Share participant tabs block mutating tools and announce that the editor is read-only. Non-mutating actions such as fullscreen, find, help, and info remain available.
 
@@ -488,7 +486,7 @@ Important protections:
 - Canvas exports use `allowTaint: false`.
 - STL rendering validates source size, finite vertex coordinates, and geometry vertex count before creating a WebGL view.
 - The desktop native API allowlist follows least privilege for the app's current features.
-- Private mode and Clear local data provide explicit controls over local document persistence.
+- Private mode and Reset workspace provide explicit controls over local document persistence.
 - Share and live endpoints return no-store responses for dynamic content.
 - The app does not include analytics, telemetry scripts, ad pixels, accounts, cookies, or subscription code.
 

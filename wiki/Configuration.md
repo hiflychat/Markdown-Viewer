@@ -23,7 +23,7 @@ Temporary shared content is intentionally not persisted:
 - Share Snapshot tabs have `kind: "share-snapshot"`.
 - Live Share participant tabs use `kind: "live-share"` plus `temporary: true`; host documents are restored when leaving the session.
 
-Private mode clears the normal document-state keys (`markdownViewerTabs`, `markdownViewerDocumentOrganization`, `markdownViewerActiveTab`, `markdownViewerUntitledCounter`, and `markdownViewerGlobalState`) when enabled and prevents them from being written until the mode is turned off. Use **Clear local data** in the About dialog to clear the same local state without enabling private mode.
+Private mode in Workspace settings clears the normal document-state keys (`markdownViewerTabs`, `markdownViewerDocumentOrganization`, `markdownViewerActiveTab`, `markdownViewerUntitledCounter`, and `markdownViewerGlobalState`) when enabled and prevents them from being written until the mode is turned off. Use **Reset workspace** in Workspace settings to remove files and review data without enabling private mode.
 
 ## Client Libraries
 
