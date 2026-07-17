@@ -643,18 +643,33 @@ body {
 .document-sidebar-resizer {
   position: absolute;
   inset-block: 0;
-  inset-inline-end: -3px;
-  width: 6px;
+  inset-inline-end: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  background-color: transparent;
   cursor: col-resize;
   touch-action: none;
   z-index: 2;
+  transition: background-color 0.2s ease;
 }
 
 .document-sidebar-resizer:hover,
-.document-sidebar-resizer:focus-visible,
-.document-sidebar.is-resizing .document-sidebar-resizer {
-  background: color-mix(in srgb, var(--accent-color) 42%, transparent);
+.document-sidebar-resizer:focus-visible {
+  background-color: var(--button-hover);
   outline: none;
+}
+
+.document-sidebar.is-resizing .document-sidebar-resizer {
+  background-color: var(--accent-color);
+}
+
+.document-sidebar-resizer:hover .resize-divider-handle,
+.document-sidebar-resizer:focus-visible .resize-divider-handle,
+.document-sidebar.is-resizing .document-sidebar-resizer .resize-divider-handle {
+  width: 3px;
+  background-color: var(--accent-color);
 }
 
 .document-sidebar-backdrop {
@@ -2807,8 +2822,10 @@ a:focus {
   transition: background-color 0.2s ease;
 }
 
-.resize-divider:hover {
+.resize-divider:hover,
+.resize-divider:focus-visible {
   background-color: var(--button-hover);
+  outline: none;
 }
 
 .resize-divider.dragging {
@@ -2824,6 +2841,7 @@ a:focus {
 }
 
 .resize-divider:hover .resize-divider-handle,
+.resize-divider:focus-visible .resize-divider-handle,
 .resize-divider.dragging .resize-divider-handle {
   background-color: var(--accent-color);
   width: 3px;
