@@ -447,58 +447,79 @@
 
         <!-- Markdown Formatting Toolbar -->
         <div class="markdown-format-toolbar" id="markdown-format-toolbar" role="toolbar" aria-label="Markdown formatting toolbar for plain-text editing">
-          <div class="markdown-toolbar-group">
+          <div class="markdown-toolbar-group" role="group" aria-label="History">
             <button type="button" class="markdown-tool-btn" data-md-action="undo" title="Undo" aria-label="Undo"><i class="bi bi-arrow-counterclockwise"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="redo" title="Redo" aria-label="Redo"><i class="bi bi-arrow-clockwise"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="clear-formatting" title="Clear document" aria-label="Clear document"><i class="bi bi-eraser"></i></button>
           </div>
-          <div class="markdown-toolbar-group">
+          <div class="markdown-toolbar-group" role="group" aria-label="Text style">
+            <div class="markdown-tool-dropdown">
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--heading" data-toolbar-menu-toggle="heading" aria-haspopup="menu" aria-expanded="false" title="Text style" aria-label="Choose text style">
+                <span class="markdown-tool-select-label">Text</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+              </button>
+              <div class="markdown-tool-menu" data-toolbar-menu="heading" role="menu" aria-label="Text styles">
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="paragraph"><span class="markdown-tool-menu-symbol">¶</span><span>Paragraph</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="1"><span class="markdown-tool-menu-symbol">H1</span><span>Heading 1</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="2"><span class="markdown-tool-menu-symbol">H2</span><span>Heading 2</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="3"><span class="markdown-tool-menu-symbol">H3</span><span>Heading 3</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="4"><span class="markdown-tool-menu-symbol">H4</span><span>Heading 4</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="5"><span class="markdown-tool-menu-symbol">H5</span><span>Heading 5</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="6"><span class="markdown-tool-menu-symbol">H6</span><span>Heading 6</span></button>
+              </div>
+            </div>
             <button type="button" class="markdown-tool-btn" data-md-action="bold" title="Bold" aria-label="Bold"><i class="bi bi-type-bold"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="strike" title="Strikethrough" aria-label="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="italic" title="Italic" aria-label="Italic"><i class="bi bi-type-italic"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="strike" title="Strikethrough" aria-label="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="quote" title="Blockquote" aria-label="Blockquote"><i class="bi bi-quote"></i></button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="title-case" title="Title case" aria-label="Title case">Aa</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="uppercase" title="Uppercase" aria-label="Uppercase">A</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="lowercase" title="Lowercase" aria-label="Lowercase">a</button>
           </div>
-          <div class="markdown-toolbar-group">
-            <button type="button" class="markdown-tool-btn" data-md-action="align-left" title="Align left" aria-label="Align left"><i class="bi bi-text-left"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="align-center" title="Align center" aria-label="Align center"><i class="bi bi-text-center"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="align-right" title="Align right" aria-label="Align right"><i class="bi bi-text-right"></i></button>
-            <button type="button" id="direction-toggle" class="markdown-tool-btn text-tool" title="Switch to RTL" aria-label="Toggle text direction" aria-pressed="false">L</button>
+          <div class="markdown-toolbar-group" role="group" aria-label="Text layout">
+            <div class="markdown-tool-dropdown">
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--compact" data-toolbar-menu-toggle="case" aria-haspopup="menu" aria-expanded="false" title="Change text case" aria-label="Change text case"><span>Aa</span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              <div class="markdown-tool-menu" data-toolbar-menu="case" role="menu" aria-label="Text case">
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="title-case"><span class="markdown-tool-menu-symbol">Aa</span><span>Title case</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="uppercase"><span class="markdown-tool-menu-symbol">AA</span><span>UPPERCASE</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="lowercase"><span class="markdown-tool-menu-symbol">aa</span><span>lowercase</span></button>
+              </div>
+            </div>
+            <div class="markdown-tool-dropdown">
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--icon" data-toolbar-menu-toggle="alignment" aria-haspopup="menu" aria-expanded="false" title="Alignment and direction" aria-label="Alignment and direction"><i class="bi bi-text-left" aria-hidden="true"></i><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              <div class="markdown-tool-menu" data-toolbar-menu="alignment" role="menu" aria-label="Alignment and direction">
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-left"><i class="bi bi-text-left" aria-hidden="true"></i><span>Align left</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-center"><i class="bi bi-text-center" aria-hidden="true"></i><span>Align center</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-right"><i class="bi bi-text-right" aria-hidden="true"></i><span>Align right</span></button>
+                <div class="markdown-tool-menu-separator" role="separator"></div>
+                <button type="button" id="direction-toggle" class="markdown-tool-menu-item" role="menuitem" title="Switch to RTL" aria-label="Switch to RTL" aria-pressed="false"><i class="bi bi-text-paragraph" aria-hidden="true"></i><span>Right-to-left text</span></button>
+              </div>
+            </div>
           </div>
-          <div class="markdown-toolbar-group heading-group">
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="1" title="Heading 1" aria-label="Heading 1">H1</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="2" title="Heading 2" aria-label="Heading 2">H2</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="3" title="Heading 3" aria-label="Heading 3">H3</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="4" title="Heading 4" aria-label="Heading 4">H4</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="5" title="Heading 5" aria-label="Heading 5">H5</button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="heading" data-md-level="6" title="Heading 6" aria-label="Heading 6">H6</button>
-          </div>
-          <div class="markdown-toolbar-group">
+          <div class="markdown-toolbar-group" role="group" aria-label="Lists">
             <button type="button" class="markdown-tool-btn" data-md-action="unordered-list" title="Bulleted list" aria-label="Bulleted list"><i class="bi bi-list-ul"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="ordered-list" title="Numbered list" aria-label="Numbered list"><i class="bi bi-list-ol"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="horizontal-rule" title="Horizontal rule" aria-label="Horizontal rule"><i class="bi bi-dash-lg"></i></button>
           </div>
-          <div class="markdown-toolbar-group">
+          <div class="markdown-toolbar-group" role="group" aria-label="Insert">
             <button type="button" class="markdown-tool-btn" data-md-action="link" title="Link" aria-label="Link"><i class="bi bi-link-45deg"></i></button>
-            <button type="button" class="markdown-tool-btn text-tool" data-md-action="reference" title="Reference" aria-label="Reference"><i></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="image" title="Image" aria-label="Image"><i class="bi bi-card-image"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="inline-code" title="Inline code" aria-label="Inline code"><i class="bi bi-code-slash"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="code-block" title="Code block" aria-label="Code block"><i class="bi bi-file-code"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="terminal-block" title="Terminal block" aria-label="Terminal block"><i class="bi bi-terminal"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="table" title="Table" aria-label="Table"><i class="bi bi-table"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="date-time" title="Date and time" aria-label="Date and time"><i class="bi bi-clock"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="emoji" title="Emoji shortcode" aria-label="Emoji shortcode"><i class="bi bi-emoji-smile"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="symbols" title="Symbols &amp; HTML entities" aria-label="Symbols &amp; HTML entities"><i class="bi bi-c-circle"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="alert" title="Markdown alert" aria-label="Markdown alert"><i class="bi bi-newspaper"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="diagram" title="Insert Diagram &amp; More" aria-label="Insert Diagram &amp; More"><i class="bi bi-diagram-3"></i></button>
+            <div class="markdown-tool-dropdown">
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--insert" data-toolbar-menu-toggle="insert" aria-haspopup="menu" aria-expanded="false" title="More insert options" aria-label="More insert options"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Insert</span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              <div class="markdown-tool-menu markdown-tool-menu--wide" data-toolbar-menu="insert" role="menu" aria-label="More insert options">
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="reference"><span class="markdown-tool-menu-symbol">[ ]</span><span>Reference</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="inline-code"><i class="bi bi-code-slash" aria-hidden="true"></i><span>Inline code</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="code-block"><i class="bi bi-file-code" aria-hidden="true"></i><span>Code block</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="terminal-block"><i class="bi bi-terminal" aria-hidden="true"></i><span>Terminal block</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="horizontal-rule"><i class="bi bi-dash-lg" aria-hidden="true"></i><span>Horizontal rule</span></button>
+                <div class="markdown-tool-menu-separator" role="separator"></div>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="date-time"><i class="bi bi-clock" aria-hidden="true"></i><span>Date and time</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="emoji"><i class="bi bi-emoji-smile" aria-hidden="true"></i><span>Emoji shortcode</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="symbols"><i class="bi bi-braces" aria-hidden="true"></i><span>Symbols &amp; entities</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="alert"><i class="bi bi-exclamation-square" aria-hidden="true"></i><span>Markdown alert</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="diagram"><i class="bi bi-diagram-3" aria-hidden="true"></i><span>Diagram &amp; more</span></button>
+              </div>
+            </div>
           </div>
-          <div class="markdown-toolbar-group">
-            <button type="button" class="markdown-tool-btn" data-md-action="fullscreen" title="Fullscreen" aria-label="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
+          <div class="markdown-toolbar-group markdown-toolbar-group--utilities" role="group" aria-label="Editor tools">
             <button type="button" class="markdown-tool-btn" data-md-action="find" title="Find &amp; Replace" aria-label="Find &amp; Replace"><i class="bi bi-search"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="fullscreen" title="Fullscreen" aria-label="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="help" title="Help" aria-label="Help"><i class="bi bi-question-circle"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="info" title="About Markdown" aria-label="About Markdown"><i class="bi bi-info-circle"></i></button>
           </div>
         </div>
 
@@ -511,7 +532,7 @@
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
               </button>
             </div>
-            <p id="reset-modal-description" class="modal-subtext">This will remove all open files and review items. Unsaved changes cannot be recovered.</p>
+            <p id="reset-modal-description" class="modal-subtext">This will remove all files and review items. Unsaved changes cannot be recovered.</p>
             <div class="reset-modal-actions">
               <button type="button" class="reset-modal-btn reset-modal-cancel" id="reset-modal-cancel">Cancel</button>
               <button type="button" class="reset-modal-btn reset-modal-confirm" id="reset-modal-confirm">Reset all</button>
@@ -733,10 +754,10 @@
               <div class="modal-section">
                 <h3 class="modal-section-title">Toolbar descriptions</h3>
                 <ul class="modal-list">
-                  <li>Undo/Redo and Clear Formatting help you manage editing changes quickly.</li>
-                  <li>Text styling tools cover bold, italic, strikethrough, quotes, headings, and list formatting.</li>
-                  <li>Insert helpers add links, images, code blocks, tables, emojis, symbols, and alerts.</li>
-                  <li>Use Fullscreen, Find &amp; Replace, Help, and About Markdown for focused editing.</li>
+                  <li>Undo and Redo keep editing history close at hand.</li>
+                  <li>Use the Text and Case menus for paragraph styles, H1–H6 headings, and capitalization.</li>
+                  <li>Quick formatting covers emphasis, quotes, alignment, and lists; Insert holds the longer list of content tools.</li>
+                  <li>Use Find, Fullscreen, and Help for focused editing.</li>
                 </ul>
               </div>
               <div class="modal-section">
@@ -1219,6 +1240,12 @@
         </div>
 
         <main class="content-container">
+            <div id="no-open-document" class="no-open-document" role="status" hidden>
+                <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                <p class="no-open-document-title">No file open</p>
+                <p class="no-open-document-copy">Choose a file from the sidebar or create a new Markdown file.</p>
+                <button id="no-open-document-new" class="reset-modal-btn reset-modal-confirm" type="button"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i> New file</button>
+            </div>
             <div class="editor-pane is-loading">
                 <div id="line-numbers" class="line-numbers" aria-hidden="true" inert></div>
                 <div id="editor-highlight-layer" class="editor-highlight-layer" aria-hidden="true" tabindex="-1" inert></div>
@@ -1384,22 +1411,22 @@
           </div>
           <button type="button" class="modal-close-btn" id="secret-workspace-modal-close" aria-label="Close secret workspace dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </div>
-        <p id="secret-workspace-modal-description" class="modal-subtext">Enter the password used to encrypt this workspace on this device.</p>
-        <label class="reset-modal-label" for="secret-workspace-password">Password</label>
+        <p id="secret-workspace-modal-description" class="modal-subtext">Enter the local access key used to encrypt this workspace on this device.</p>
+        <label class="reset-modal-label" for="secret-workspace-key">Access key</label>
         <div class="secret-password-field">
-          <input type="password" id="secret-workspace-password" name="secret-workspace-key" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="secret-workspace-password-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-          <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password" aria-label="Show password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          <input type="text" id="secret-workspace-key" name="local-vault-key" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-describedby="secret-workspace-key-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+          <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key" aria-label="Show access key" title="Show access key"><i class="bi bi-eye" aria-hidden="true"></i></button>
         </div>
         <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
-          <label class="reset-modal-label" for="secret-workspace-password-confirm">Confirm password</label>
+          <label class="reset-modal-label" for="secret-workspace-key-confirm">Confirm access key</label>
           <div class="secret-password-field">
-            <input type="password" id="secret-workspace-password-confirm" name="secret-workspace-key-confirmation" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-            <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password-confirm" aria-label="Show confirmation password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
+            <input type="text" id="secret-workspace-key-confirm" name="local-vault-key-confirmation" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+            <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key-confirm" aria-label="Show confirmation access key" title="Show access key"><i class="bi bi-eye" aria-hidden="true"></i></button>
           </div>
         </div>
-        <p id="secret-workspace-password-guidance" class="secret-password-guidance" hidden>Use 12 or more characters with letters and numbers. Paste is supported.</p>
+        <p id="secret-workspace-key-guidance" class="secret-password-guidance" hidden>Use at least 8 characters.</p>
         <p id="secret-workspace-modal-error" class="document-modal-error" role="alert" hidden></p>
-        <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot password? Reset Secret Workspace</button>
+        <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot access key? Reset Secret Workspace</button>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="secret-workspace-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="secret-workspace-modal-confirm">Unlock</button>

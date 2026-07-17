@@ -545,7 +545,7 @@ body {
 }
 
 .document-tree-row[data-tree-type="workspace"] .document-tree-label {
-  font-weight: 650;
+  font-weight: 400;
 }
 
 .document-tree-meta {
@@ -844,6 +844,10 @@ body.document-sidebar-collapsed .document-sidebar {
   padding-inline-end: 42px;
 }
 
+.secret-access-key-input.is-masked {
+  -webkit-text-security: disc;
+}
+
 .secret-password-toggle {
   position: absolute;
   inset-inline-end: 3px;
@@ -984,6 +988,50 @@ body.document-sidebar-collapsed .document-sidebar {
   display: flex;
   flex: 1;
   overflow: hidden;
+}
+
+.no-open-document {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-color);
+}
+
+.no-open-document[hidden] {
+  display: none;
+}
+
+.no-open-document > i {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 34px;
+}
+
+.no-open-document-title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.no-open-document-copy {
+  max-width: 360px;
+  margin: 6px 0 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+body.document-split-active .view-toolbar [data-view-mode="split"],
+body.document-split-active #toggle-sync,
+body.document-split-active .mobile-view-mode-btn[data-mode="split"] {
+  display: none !important;
 }
 
 .editor-pane,
@@ -1159,7 +1207,6 @@ body.document-sidebar-collapsed .document-sidebar {
   overflow: auto;
 }
 
-.content-container.document-split-active .preview-pane,
 .content-container.document-split-active > .resize-divider {
   display: none;
 }
@@ -1712,7 +1759,7 @@ body.document-sidebar-collapsed .document-sidebar {
 .markdown-format-toolbar {
   display: flex;
   align-items: center;
-  height: 34px;
+  height: 36px;
   padding: 0 6px;
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--border-color);
@@ -1730,11 +1777,15 @@ body.document-sidebar-collapsed .document-sidebar {
 .markdown-toolbar-group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   height: 100%;
-  padding: 0 6px;
+  padding: 0 5px;
   border-right: 1px solid var(--border-color);
   flex-shrink: 0;
+}
+
+.markdown-toolbar-group--utilities {
+  margin-inline-start: auto;
 }
 
 .markdown-toolbar-group:first-child {
@@ -1750,8 +1801,8 @@ body.document-sidebar-collapsed .document-sidebar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
@@ -1785,13 +1836,6 @@ body.document-sidebar-collapsed .document-sidebar {
   font-size: 15px;
 }
 
-.markdown-tool-btn[data-md-action="reference"] i::before {
-  content: "[ ]";
-  font-style: normal;
-  font-size: 12px;
-  letter-spacing: -0.12em;
-}
-
 .markdown-tool-btn.text-tool {
   width: auto;
   min-width: 26px;
@@ -1800,8 +1844,128 @@ body.document-sidebar-collapsed .document-sidebar {
   font-family: Georgia, "Times New Roman", serif;
 }
 
-.heading-group .markdown-tool-btn {
-  min-width: 30px;
+
+.markdown-tool-dropdown {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.markdown-tool-select {
+  width: auto;
+  min-width: 44px;
+  gap: 6px;
+  padding: 0 7px;
+}
+
+.markdown-tool-select > .bi-chevron-down {
+  font-size: 9px;
+  opacity: 0.72;
+}
+
+.markdown-tool-select--heading {
+  min-width: 72px;
+  justify-content: space-between;
+}
+
+.markdown-tool-select--compact {
+  min-width: 48px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+}
+
+.markdown-tool-select--icon {
+  min-width: 46px;
+  gap: 5px;
+}
+
+.markdown-tool-select--insert {
+  min-width: 70px;
+}
+
+.markdown-tool-select-label {
+  overflow: hidden;
+  max-width: 48px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-tool-menu {
+  position: fixed;
+  z-index: 100000;
+  display: none;
+  min-width: 172px;
+  max-height: min(420px, calc(100vh - 24px));
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--header-bg);
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.18);
+}
+
+.markdown-tool-menu.open {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-tool-menu--wide {
+  min-width: 190px;
+}
+
+.markdown-tool-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  gap: 9px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-color);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.markdown-tool-menu-item:hover,
+.markdown-tool-menu-item:focus-visible {
+  color: var(--accent-color);
+  background: var(--button-hover);
+  outline: none;
+}
+
+.markdown-tool-menu-item:disabled,
+.markdown-tool-menu-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.markdown-tool-menu-item > i,
+.markdown-tool-menu-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-align: center;
+}
+
+.markdown-tool-menu-symbol {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.markdown-tool-menu-separator {
+  height: 1px;
+  margin: 4px;
+  background: var(--border-color);
 }
 
 
@@ -2380,6 +2544,19 @@ a:focus {
     font-size: 16px !important;
   }
 
+  .markdown-tool-select {
+    width: auto !important;
+    padding-inline: 8px !important;
+  }
+
+  .markdown-tool-select--heading {
+    min-width: 76px;
+  }
+
+  .markdown-tool-select--insert {
+    min-width: 76px;
+  }
+
   .markdown-format-toolbar {
     height: 44px !important;
   }
@@ -2500,16 +2677,23 @@ a:focus {
   flex: 1;
 }
 
-/* Document-to-document split takes precedence over editor/preview view modes. */
-.content-container.document-split-active .editor-pane {
+/* Document-to-document split uses one primary Edit or Preview pane plus one secondary document. */
+.content-container.document-split-active.view-editor-only .editor-pane,
+.content-container.document-split-active.view-preview-only .preview-pane {
   display: block;
   flex: 1 1 50%;
   min-width: 0;
   border-right: 0;
 }
 
+.content-container.document-split-active.view-editor-only .preview-pane,
+.content-container.document-split-active.view-preview-only .editor-pane {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .content-container.document-split-active .editor-pane,
+  .content-container.document-split-active .preview-pane,
   .content-container.document-split-active .document-split-pane {
     flex: none;
     width: 100%;
@@ -2995,19 +3179,34 @@ a:focus {
   z-index: 2;
 }
 
-.tab-item.is-split-secondary {
-  border-bottom-color: var(--accent-color);
-  opacity: 0.92;
+.tab-item.is-document-split {
+  min-width: 190px;
+  max-width: 280px;
 }
 
-.tab-item.is-split-secondary::before {
-  position: absolute;
-  inset-inline-start: 7px;
-  inset-block: 8px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent-color);
-  content: '';
+.tab-item.is-document-split .tab-file-icon {
+  color: var(--accent-color);
+}
+
+.tab-split-titles {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+}
+
+.tab-split-title {
+  overflow: hidden;
+  flex: 1 1 0;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-split-title-separator {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  opacity: 0.72;
 }
 
 .tab-file-icon {
@@ -3016,8 +3215,7 @@ a:focus {
   font-size: 13px;
 }
 
-.tab-item.active .tab-file-icon,
-.tab-item.is-split-secondary .tab-file-icon {
+.tab-item.active .tab-file-icon {
   color: var(--accent-color);
 }
 

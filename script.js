@@ -372,6 +372,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const documentSplitEditor = document.getElementById('document-split-editor');
   const documentSplitTitle = document.getElementById('document-split-title');
   const documentSplitClose = document.getElementById('document-split-close');
+  const noOpenDocument = document.getElementById('no-open-document');
+  const noOpenDocumentNew = document.getElementById('no-open-document-new');
 
   // Mobile View Mode Elements - Story 1.4
   const mobileViewModeButtons = document.querySelectorAll(".mobile-view-mode-btn");
@@ -705,7 +707,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const isRtl = direction === "rtl";
     const toggleLabel = isRtl ? "Switch to LTR" : "Switch to RTL";
     if (directionToggle) {
-      directionToggle.textContent = isRtl ? "R" : "L";
+      const label = directionToggle.querySelector('span');
+      if (label) label.textContent = isRtl ? 'Left-to-right text' : 'Right-to-left text';
       directionToggle.setAttribute("title", toggleLabel);
       directionToggle.setAttribute("aria-label", toggleLabel);
       directionToggle.setAttribute("aria-pressed", isRtl.toString());
@@ -2827,12 +2830,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentOrganization.ui.lastFolderId = null;
 
     if (secretTabIds.has(activeTabId)) {
-      let nextTab = tabs.find(function(tab) { return !isTemporaryDocument(tab); }) || tabs[0];
-      if (!nextTab) {
-        nextTab = createTab('', nextUntitledTitle(), 'split', { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
-        tabs.push(nextTab);
-      }
-      switchTab(nextTab.id);
+      const nextTab = getOpenTabs().find(function(tab) { return !isTemporaryDocument(tab); }) || getOpenTabs()[0];
+      if (nextTab) switchTab(nextTab.id);
+      else clearActiveDocument();
     } else {
       renderTabBar(tabs, activeTabId);
     }
@@ -2863,12 +2863,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
     documentOrganization.ui.lastFolderId = null;
     if (removedIds.has(activeTabId)) {
-      let nextTab = tabs.find(function(tab) { return !isTemporaryDocument(tab); }) || tabs[0];
-      if (!nextTab) {
-        nextTab = createTab('', nextUntitledTitle(), 'split', { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
-        tabs.push(nextTab);
-      }
-      switchTab(nextTab.id);
+      const nextTab = getOpenTabs().find(function(tab) { return !isTemporaryDocument(tab); }) || getOpenTabs()[0];
+      if (nextTab) switchTab(nextTab.id);
+      else clearActiveDocument();
     }
     _flushTabsToStorage(tabs);
     saveDocumentOrganization();
@@ -2877,11 +2874,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function openSecretWorkspaceDialog(onUnlocked) {
     if (isPrivateStorageMode()) {
-      alert('Secret Workspace needs local storage. Turn off Private mode before setting or unlocking its password.');
+      alert('Secret Workspace needs local storage. Turn off Private mode before setting or unlocking its access key.');
       return;
     }
     if (!getWebCrypto()) {
-      alert('Password encryption is unavailable in this browser or context.');
+      alert('Secret Workspace encryption is unavailable in this browser or context.');
       return;
     }
     if (isSecretWorkspaceUnlocked()) {
@@ -2892,35 +2889,35 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modal = document.getElementById('secret-workspace-modal');
     const title = document.getElementById('secret-workspace-modal-title');
     const description = document.getElementById('secret-workspace-modal-description');
-    const secretInput = document.getElementById('secret-workspace-password');
-    const confirmInput = document.getElementById('secret-workspace-password-confirm');
+    const secretInput = document.getElementById('secret-workspace-key');
+    const confirmInput = document.getElementById('secret-workspace-key-confirm');
     const confirmGroup = document.getElementById('secret-workspace-confirm-group');
     const error = document.getElementById('secret-workspace-modal-error');
     const confirmButton = document.getElementById('secret-workspace-modal-confirm');
     const cancelButton = document.getElementById('secret-workspace-modal-cancel');
     const closeButton = document.getElementById('secret-workspace-modal-close');
     const resetButton = document.getElementById('secret-workspace-reset');
-    const guidance = document.getElementById('secret-workspace-password-guidance');
-    const toggleButtons = Array.from(modal ? modal.querySelectorAll('[data-secret-password-toggle]') : []);
+    const guidance = document.getElementById('secret-workspace-key-guidance');
+    const toggleButtons = Array.from(modal ? modal.querySelectorAll('[data-secret-key-toggle]') : []);
     if (!modal || !secretInput || !confirmInput || !confirmButton || !cancelButton) return;
 
     const setupMode = !isSecretWorkspaceConfigured();
     title.textContent = setupMode ? 'Protect Secret Workspace' : 'Unlock Secret Workspace';
     description.textContent = setupMode
-      ? 'Create a password to encrypt files and folder names stored in this workspace. The password cannot be recovered.'
-      : 'Enter the password used to encrypt this workspace on this device.';
-    confirmButton.textContent = setupMode ? 'Create password' : 'Unlock';
+      ? 'Create a local access key to encrypt files and folder names stored in this workspace. The key cannot be recovered.'
+      : 'Enter the local access key used to encrypt this workspace on this device.';
+    confirmButton.textContent = setupMode ? 'Create access key' : 'Unlock';
     confirmGroup.hidden = !setupMode;
     resetButton.hidden = setupMode;
     if (guidance) guidance.hidden = !setupMode;
     secretInput.value = '';
     confirmInput.value = '';
-    secretInput.type = 'password';
-    confirmInput.type = 'password';
+    secretInput.classList.add('is-masked');
+    confirmInput.classList.add('is-masked');
     secretInput.autocomplete = 'off';
     confirmInput.autocomplete = 'off';
-    secretInput.minLength = setupMode ? 12 : 8;
-    confirmInput.minLength = setupMode ? 12 : 8;
+    secretInput.minLength = 8;
+    confirmInput.minLength = 8;
     error.hidden = true;
     error.textContent = '';
 
@@ -2941,12 +2938,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     function togglePassword(event) {
       const button = event.currentTarget;
-      const input = document.getElementById(button.getAttribute('data-secret-password-toggle'));
+      const input = document.getElementById(button.getAttribute('data-secret-key-toggle'));
       if (!input) return;
-      const showing = input.type === 'text';
-      input.type = showing ? 'password' : 'text';
-      button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-      button.title = showing ? 'Show password' : 'Hide password';
+      const showing = !input.classList.contains('is-masked');
+      input.classList.toggle('is-masked', showing);
+      button.setAttribute('aria-label', showing ? 'Show access key' : 'Hide access key');
+      button.title = showing ? 'Show access key' : 'Hide access key';
       const icon = button.querySelector('i');
       if (icon) icon.className = 'bi ' + (showing ? 'bi-eye' : 'bi-eye-slash');
       input.focus();
@@ -2954,28 +2951,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     async function submit() {
       const password = secretInput.value;
-      if (password.length < (setupMode ? 12 : 8)) {
-        error.textContent = setupMode ? 'Use at least 12 characters.' : 'Use at least 8 characters.';
+      if (password.length < 8) {
+        error.textContent = 'Use at least 8 characters.';
         error.hidden = false;
         secretInput.focus();
-        return;
-      }
-      if (setupMode && (!/[A-Za-z]/.test(password) || !/\d/.test(password))) {
-        error.textContent = 'Include at least one letter and one number.';
-        error.hidden = false;
-        secretInput.focus();
-        return;
-      }
-      const normalizedPassword = password.toLowerCase().replace(/\s+/g, '');
-      const commonPasswords = ['12345678', '123456789', '1234567890', '123456789012', 'password', 'password1', 'password1234', 'qwerty123', 'qwerty123456', 'letmein123'];
-      if (setupMode && commonPasswords.indexOf(normalizedPassword) !== -1) {
-        error.textContent = 'Choose a less common password.';
-        error.hidden = false;
-        secretInput.select();
         return;
       }
       if (setupMode && password !== confirmInput.value) {
-        error.textContent = 'Passwords do not match.';
+        error.textContent = 'Access keys do not match.';
         error.hidden = false;
         confirmInput.focus();
         return;
@@ -3005,12 +2988,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
         error.textContent = setupMode
           ? 'Could not protect this workspace. Try again.'
-          : 'Incorrect password or unreadable Secret Workspace data.';
+          : 'Incorrect access key or unreadable Secret Workspace data.';
         error.hidden = false;
         secretInput.select();
       } finally {
         confirmButton.disabled = false;
-        confirmButton.textContent = setupMode ? 'Create password' : 'Unlock';
+        confirmButton.textContent = setupMode ? 'Create access key' : 'Unlock';
       }
     }
 
@@ -3087,6 +3070,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     tab.lastOpenedAt = Number.isFinite(Number(tab.lastOpenedAt)) ? Number(tab.lastOpenedAt) : tab.createdAt;
     tab.lastEditedAt = Number.isFinite(Number(tab.lastEditedAt)) ? Number(tab.lastEditedAt) : tab.createdAt;
     tab.favorite = tab.favorite === true;
+    tab.isOpen = tab.isOpen !== false;
 
     if (isTemporaryDocument(tab)) {
       delete tab.workspaceId;
@@ -3398,6 +3382,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function openSidebarDocument(tabId, options) {
     const tab = tabs.find(function(item) { return item.id === tabId; });
     if (!tab) return;
+    tab.isOpen = true;
     selectedDocumentId = tabId;
     tab.lastOpenedAt = Date.now();
     if (!isTemporaryDocument(tab)) {
@@ -3409,6 +3394,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (tabId !== activeTabId) {
       switchTab(tabId);
     } else {
+      updateNoOpenDocumentState();
+      renderTabBar(tabs, activeTabId);
       renderDocumentSidebar();
     }
     if (!options || options.closeMobile !== false) closeDocumentSidebarOnMobile();
@@ -5717,6 +5704,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       viewMode: viewMode,
       reviewThreads: [],
       favorite: false,
+      isOpen: true,
       lastOpenedAt: createdAt,
       lastEditedAt: createdAt,
       createdAt: createdAt
@@ -5725,6 +5713,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     tab.workspaceId = target.workspaceId || DEFAULT_WORKSPACE_ID;
     tab.folderId = target.folderId || null;
     return tab;
+  }
+
+  function isTabOpen(tab) {
+    return Boolean(tab && tab.isOpen !== false);
+  }
+
+  function getOpenTabs() {
+    return tabs.filter(isTabOpen);
+  }
+
+  function getTabBarTabs() {
+    return getOpenTabs().filter(function(tab) {
+      return !secondarySplitTabId || tab.id !== secondarySplitTabId;
+    });
+  }
+
+  function updateNoOpenDocumentState() {
+    const activeTab = tabs.find(function(tab) { return tab.id === activeTabId && isTabOpen(tab); });
+    const hasActiveTab = Boolean(activeTab);
+    if (contentContainer) contentContainer.classList.toggle('no-active-document', !hasActiveTab);
+    if (noOpenDocument) noOpenDocument.hidden = hasActiveTab;
+    if (!hasActiveTab) {
+      markdownEditor.value = '';
+      if (secondarySplitTabId) closeDocumentSplitView({ silent: true, renderTabs: false });
+    }
+  }
+
+  function clearActiveDocument() {
+    activeTabId = null;
+    selectedDocumentId = null;
+    removeStorageItem(ACTIVE_TAB_KEY);
+    closeReviewComposer();
+    clearReviewDecorations();
+    updateNoOpenDocumentState();
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    renderReviewPanel();
   }
 
   function closeTabMenus() {
@@ -5781,8 +5806,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (action === 'split') {
       openDocumentSplitPicker(tabId);
       if (isMobileMenu) closeMobileMenu();
-    } else if (action === 'delete') {
-      deleteTab(tabId);
+    } else if (action === 'close') {
+      closeTab(tabId);
     }
   }
 
@@ -5826,7 +5851,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       splitAction +
       downloadAction +
       '<div class="tab-menu-separator" role="separator"></div>' +
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="delete"><i class="bi bi-x-lg"></i> Close</button>';
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="close"><i class="bi bi-x-lg"></i> Close</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -5870,30 +5895,34 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function closeTabsByScope(tabId, scope) {
-    const tabIndex = tabs.findIndex(function(tab) { return tab.id === tabId; });
+    const openTabs = getOpenTabs();
+    const visibleTabs = getTabBarTabs();
+    const tabIndex = visibleTabs.findIndex(function(tab) { return tab.id === tabId; });
     if (tabIndex === -1) return;
     let idsToClose = [];
     if (scope === 'close') {
       idsToClose = [tabId];
     } else if (scope === 'others') {
-      idsToClose = tabs.filter(function(tab) { return tab.id !== tabId; }).map(function(tab) { return tab.id; });
+      idsToClose = openTabs.filter(function(tab) { return tab.id !== tabId; }).map(function(tab) { return tab.id; });
     } else if (scope === 'right') {
-      idsToClose = tabs.slice(tabIndex + 1).map(function(tab) { return tab.id; });
+      idsToClose = visibleTabs.slice(tabIndex + 1).map(function(tab) { return tab.id; });
     } else if (scope === 'left') {
-      idsToClose = tabs.slice(0, tabIndex).map(function(tab) { return tab.id; });
+      idsToClose = visibleTabs.slice(0, tabIndex).map(function(tab) { return tab.id; });
     } else if (scope === 'all') {
-      idsToClose = tabs.map(function(tab) { return tab.id; });
+      idsToClose = openTabs.map(function(tab) { return tab.id; });
     }
     closeTabMenus();
     idsToClose.forEach(function(id) {
-      if (tabs.some(function(tab) { return tab.id === id; })) closeTab(id);
+      if (tabs.some(function(tab) { return tab.id === id && isTabOpen(tab); })) closeTab(id);
     });
   }
 
   function openTabContextMenu(tab, point, focusTab) {
     if (!tab) return;
     closeTabMenus();
-    const tabIndex = tabs.findIndex(function(item) { return item.id === tab.id; });
+    const visibleTabs = getTabBarTabs();
+    const openTabs = getOpenTabs();
+    const tabIndex = visibleTabs.findIndex(function(item) { return item.id === tab.id; });
     const menu = document.createElement('div');
     menu.className = 'tab-menu-dropdown tab-context-menu open';
     menu.setAttribute('data-tab-context-menu', 'true');
@@ -5907,9 +5936,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     }, {
       id: 'close', icon: 'bi-x-lg', label: 'Close'
     }, {
-      id: 'others', icon: 'bi-x-diamond', label: 'Close others', disabled: tabs.length < 2
+      id: 'others', icon: 'bi-x-diamond', label: 'Close others', disabled: openTabs.length < 2
     }, {
-      id: 'right', icon: 'bi-arrow-bar-right', label: 'Close to the right', disabled: tabIndex >= tabs.length - 1
+      id: 'right', icon: 'bi-arrow-bar-right', label: 'Close to the right', disabled: tabIndex >= visibleTabs.length - 1
     }, {
       id: 'left', icon: 'bi-arrow-bar-left', label: 'Close to the left', disabled: tabIndex <= 0
     }, {
@@ -5983,23 +6012,48 @@ document.addEventListener("DOMContentLoaded", async function () {
     removeTabMenuDropdowns();
     // PERF-007: Use textContent instead of innerHTML to clear elements faster
     tabList.textContent = '';
-    tabsArr.forEach(function(tab) {
+    const tabBarTabs = tabsArr.filter(function(tab) {
+      return isTabOpen(tab) && (!secondarySplitTabId || tab.id !== secondarySplitTabId);
+    });
+    tabBarTabs.forEach(function(tab) {
+      const splitPartner = tab.id === currentActiveTabId
+        ? tabs.find(function(item) { return item.id === secondarySplitTabId && isTabOpen(item); })
+        : null;
       const item = document.createElement('div');
-      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (tab.id === secondarySplitTabId ? ' is-split-secondary' : '');
+      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (splitPartner ? ' is-document-split' : '');
       item.setAttribute('data-tab-id', tab.id);
+      if (splitPartner) item.setAttribute('data-split-tab-id', splitPartner.id);
       item.setAttribute('role', 'tab');
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('draggable', 'true');
       item.setAttribute('tabindex', tab.id === currentActiveTabId ? '0' : '-1');
 
       const fileIcon = document.createElement('i');
-      fileIcon.className = 'bi bi-filetype-md tab-file-icon';
+      fileIcon.className = 'bi ' + (splitPartner ? 'bi-layout-split' : 'bi-filetype-md') + ' tab-file-icon';
       fileIcon.setAttribute('aria-hidden', 'true');
 
       const titleSpan = document.createElement('span');
-      titleSpan.className = 'tab-title';
-      titleSpan.textContent = tab.title || 'Untitled';
-      titleSpan.title = tab.title || 'Untitled';
+      titleSpan.className = 'tab-title' + (splitPartner ? ' tab-split-titles' : '');
+      if (splitPartner) {
+        const primaryTitle = document.createElement('span');
+        primaryTitle.className = 'tab-split-title';
+        primaryTitle.textContent = tab.title || 'Untitled';
+        const separator = document.createElement('span');
+        separator.className = 'tab-split-title-separator';
+        separator.textContent = '/';
+        separator.setAttribute('aria-hidden', 'true');
+        const secondaryTitle = document.createElement('span');
+        secondaryTitle.className = 'tab-split-title';
+        secondaryTitle.textContent = splitPartner.title || 'Untitled';
+        titleSpan.appendChild(primaryTitle);
+        titleSpan.appendChild(separator);
+        titleSpan.appendChild(secondaryTitle);
+        titleSpan.title = (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled');
+        item.setAttribute('aria-label', 'Split view: ' + titleSpan.title);
+      } else {
+        titleSpan.textContent = tab.title || 'Untitled';
+        titleSpan.title = tab.title || 'Untitled';
+      }
 
       const tabMenu = createTabActionMenu(tab, { menuIdPrefix: 'desktop-tab-menu' });
 
@@ -6231,17 +6285,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!mobileTabList) return;
     // PERF-007: Clear element content using textContent instead of innerHTML
     mobileTabList.textContent = '';
-    tabsArr.forEach(function(tab) {
+    tabsArr.filter(function(tab) {
+      return isTabOpen(tab) && (!secondarySplitTabId || tab.id !== secondarySplitTabId);
+    }).forEach(function(tab) {
       const item = document.createElement('div');
-      item.className = 'mobile-tab-item' + (tab.id === currentActiveTabId ? ' active' : '');
+      const splitPartner = tab.id === currentActiveTabId
+        ? tabs.find(function(candidate) { return candidate.id === secondarySplitTabId && isTabOpen(candidate); })
+        : null;
+      item.className = 'mobile-tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (splitPartner ? ' is-document-split' : '');
       item.setAttribute('role', 'tab');
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('data-tab-id', tab.id);
 
       const titleSpan = document.createElement('span');
       titleSpan.className = 'mobile-tab-title';
-      titleSpan.textContent = tab.title || 'Untitled';
-      titleSpan.title = tab.title || 'Untitled';
+      titleSpan.textContent = splitPartner
+        ? (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled')
+        : (tab.title || 'Untitled');
+      titleSpan.title = titleSpan.textContent;
 
       const tabMenu = createTabActionMenu(tab, {
         isMobileMenu: true,
@@ -6298,8 +6359,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   function renderDocumentSplitView() {
     if (!contentContainer || !documentSplitPane || !documentSplitDivider || !documentSplitEditor) return;
     const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
-    const shouldShow = Boolean(tab && tab.id !== activeTabId);
+    const shouldShow = Boolean(tab && isTabOpen(tab) && tab.id !== activeTabId);
     contentContainer.classList.toggle('document-split-active', shouldShow);
+    document.body.classList.toggle('document-split-active', shouldShow);
     documentSplitPane.hidden = !shouldShow;
     documentSplitDivider.hidden = !shouldShow;
     if (!shouldShow) return;
@@ -6330,10 +6392,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     const sourceTab = tabs.find(function(item) { return item.id === sourceTabId; });
     const secondTab = tabs.find(function(item) { return item.id === secondTabId; });
     if (!sourceTab || !secondTab || sourceTab.id === secondTab.id) return;
+    sourceTab.isOpen = true;
+    secondTab.isOpen = true;
     if (reviewModeActive) setReviewMode(false);
     if (activeTabId !== sourceTab.id) switchTab(sourceTab.id);
     saveSecondarySplitState();
     secondarySplitTabId = secondTab.id;
+    if (currentViewMode === 'split') setViewMode('editor');
     resetPaneWidths();
     renderDocumentSplitView();
     renderTabBar(tabs, activeTabId);
@@ -6434,6 +6499,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (tabId === activeTabId) return;
     const tab = tabs.find(function(t) { return t.id === tabId; });
     if (!tab) return;
+    tab.isOpen = true;
     const previousActiveTabId = activeTabId;
     const swapSplitPanes = tabId === secondarySplitTabId;
     cancelReviewDeleteConfirmation();
@@ -6453,6 +6519,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     activeTabId = tabId;
     if (swapSplitPanes) secondarySplitTabId = previousActiveTabId;
     saveActiveTabId(activeTabId);
+    updateNoOpenDocumentState();
     selectedDocumentId = tabId;
     tab.lastOpenedAt = Date.now();
     if (!isTemporaryDocument(tab)) saveTabsToStorage(tabs);
@@ -6496,7 +6563,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     return true;
   }
 
-  function closeTab(tabId) {
+  function deleteTab(tabId) {
     if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) {
       cancelReviewDeleteConfirmation();
     }
@@ -6509,17 +6576,18 @@ document.addEventListener("DOMContentLoaded", async function () {
       return;
     }
 
-    if (secondarySplitTabId === tabId) {
-      closeDocumentSplitView({ silent: true, renderTabs: false });
-    } else {
-      saveSecondarySplitState();
-    }
-
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
-    if (activeTabId === tabId) {
+    const wasActive = activeTabId === tabId;
+    const splitPartnerId = wasActive ? secondarySplitTabId : null;
+    if (wasActive) {
+      saveCurrentTabState();
       closeReviewComposer();
       clearReviewDecorations();
+    }
+    saveSecondarySplitState();
+    if (secondarySplitTabId === tabId || splitPartnerId) {
+      closeDocumentSplitView({ silent: true, renderTabs: false });
     }
     shareSnapshotViewOnlyTabIds.delete(tabId);
     
@@ -6529,44 +6597,72 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     
     tabs.splice(idx, 1);
-    if (tabs.length === 0) {
-      // Auto-create new "Untitled" when last tab is deleted
-      const newT = createTab('', nextUntitledTitle());
-      tabs.push(newT);
-      activeTabId = newT.id;
-      selectedDocumentId = newT.id;
-      saveActiveTabId(activeTabId);
-      markdownEditor.value = '';
-      restoreViewMode('split');
-      refreshLiveEditorUi();
-      renderMarkdown();
-    } else if (activeTabId === tabId) {
-      const newIdx = Math.max(0, idx - 1);
-      activeTabId = tabs[newIdx].id;
-      selectedDocumentId = activeTabId;
-      saveActiveTabId(activeTabId);
-      const newActiveTab = tabs[newIdx];
-      markdownEditor.value = newActiveTab.content;
-      restoreViewMode(newActiveTab.viewMode);
-      refreshLiveEditorUi();
-      renderMarkdown();
-      requestAnimationFrame(function() {
-        markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
-      });
-    }
-    if (secondarySplitTabId && secondarySplitTabId === activeTabId) {
-      closeDocumentSplitView({ silent: true, renderTabs: false });
+    saveTabsToStorage(tabs);
+    if (wasActive) {
+      const remainingOpenTabs = getOpenTabs();
+      const nextTab = (splitPartnerId && remainingOpenTabs.find(function(item) { return item.id === splitPartnerId; }))
+        || remainingOpenTabs[Math.min(idx, Math.max(remainingOpenTabs.length - 1, 0))];
+      if (nextTab) {
+        switchTab(nextTab.id);
+      } else {
+        clearActiveDocument();
+      }
+      return;
     }
     if (selectedDocumentId === tabId) selectedDocumentId = activeTabId;
-    saveTabsToStorage(tabs);
     renderDocumentSplitView();
     renderTabBar(tabs, activeTabId);
     closeReviewComposer();
     renderReviewPanel();
+    renderDocumentSidebar();
   }
 
-  function deleteTab(tabId) {
-    closeTab(tabId);
+  function closeTab(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || !isTabOpen(tab)) return;
+    if (isTemporaryDocument(tab)) {
+      deleteTab(tabId);
+      return;
+    }
+    if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) cancelReviewDeleteConfirmation();
+    if (liveCollaboration && liveCollaboration.tabId === tabId) {
+      if (liveCollaboration.isHost) endLiveSessionForEveryone();
+      else leaveLiveSession({ restoreOriginal: true });
+      return;
+    }
+
+    const openTabsBeforeClose = getOpenTabs();
+    const openIndex = openTabsBeforeClose.findIndex(function(item) { return item.id === tabId; });
+    if (activeTabId === tabId) saveCurrentTabState();
+    saveSecondarySplitState();
+    const wasSecondarySplit = secondarySplitTabId === tabId;
+    const wasPrimarySplit = activeTabId === tabId && Boolean(secondarySplitTabId);
+    const splitPartnerId = wasPrimarySplit ? secondarySplitTabId : null;
+    if (wasSecondarySplit || wasPrimarySplit) closeDocumentSplitView({ silent: true, renderTabs: false });
+
+    tab.isOpen = false;
+    saveTabsToStorage(tabs);
+
+    if (activeTabId === tabId) {
+      const remainingOpenTabs = getOpenTabs();
+      let nextTab = splitPartnerId
+        ? remainingOpenTabs.find(function(item) { return item.id === splitPartnerId; })
+        : null;
+      if (!nextTab && remainingOpenTabs.length) {
+        nextTab = remainingOpenTabs[Math.min(Math.max(openIndex - 1, 0), remainingOpenTabs.length - 1)];
+      }
+      if (nextTab) {
+        switchTab(nextTab.id);
+      } else {
+        clearActiveDocument();
+      }
+      return;
+    }
+
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    renderDocumentSidebar();
+    announceToScreenReader((tab.title || 'Untitled') + ' closed. Select it in Files to reopen it.');
   }
 
   function renameTab(tabId) {
@@ -6703,7 +6799,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       return total + (Array.isArray(tab.reviewThreads) ? tab.reviewThreads.length : 0);
     }, 0);
     if (description) {
-      const fileSummary = fileCount + ' open file' + (fileCount === 1 ? '' : 's');
+      const fileSummary = fileCount + ' file' + (fileCount === 1 ? '' : 's');
       const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
       const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
       description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
@@ -6800,25 +6896,33 @@ document.addEventListener("DOMContentLoaded", async function () {
       activeTabId = tab.id;
       saveTabsToStorage(tabs);
       saveActiveTabId(activeTabId);
-    } else if (!tabs.find(function(t) { return t.id === activeTabId; })) {
-      activeTabId = tabs[0].id;
-      saveActiveTabId(activeTabId);
+    } else if (!tabs.find(function(t) { return t.id === activeTabId && isTabOpen(t); })) {
+      const firstOpenTab = getOpenTabs()[0];
+      activeTabId = firstOpenTab ? firstOpenTab.id : null;
+      if (activeTabId) saveActiveTabId(activeTabId);
+      else removeStorageItem(ACTIVE_TAB_KEY);
     }
     migrateDocumentsToOrganization();
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
     selectedDocumentId = activeTabId;
-    markdownEditor.value = activeTab.content;
-    initTabHistory(activeTabId, activeTab.content);
-    updateUndoRedoButtons();
-    restoreViewMode(activeTab.viewMode);
-    refreshLiveEditorUi();
-    renderMarkdown();
+    if (activeTab) {
+      markdownEditor.value = activeTab.content;
+      initTabHistory(activeTabId, activeTab.content);
+      updateUndoRedoButtons();
+      restoreViewMode(activeTab.viewMode);
+      refreshLiveEditorUi();
+      renderMarkdown();
+    } else {
+      markdownEditor.value = '';
+      updateUndoRedoButtons();
+      updateNoOpenDocumentState();
+    }
     const editorPane = document.querySelector('.editor-pane');
     if (editorPane) {
       editorPane.classList.remove('is-loading');
     }
     requestAnimationFrame(function() {
-      markdownEditor.scrollTop = activeTab.scrollPos || 0;
+      if (activeTab) markdownEditor.scrollTop = activeTab.scrollPos || 0;
     });
     renderTabBar(tabs, activeTabId);
     initDocumentSidebar();
@@ -6829,6 +6933,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       staticNewBtn.onclick = function() {
         newTab();
       };
+    }
+    if (noOpenDocumentNew) {
+      noOpenDocumentNew.onclick = function() { newTab(); };
     }
   }
 
@@ -9374,6 +9481,7 @@ ${selector} .arrowheadPath {
 
   // View Mode Functions - Story 1.1 & 1.2
   function setViewMode(mode) {
+    if (secondarySplitTabId && mode === 'split') mode = 'editor';
     if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
       mode = 'preview';
       announceToScreenReader(getEditorReadOnlyMessage());
@@ -13892,6 +14000,9 @@ ${selector} .arrowheadPath {
     else if (action === 'title-case') transformSelectionOrCurrentLine(toTitleCase);
     else if (action === 'uppercase') transformSelectionOrCurrentLine(function(text) { return text.toUpperCase(); });
     else if (action === 'lowercase') transformSelectionOrCurrentLine(function(text) { return text.toLowerCase(); });
+    else if (action === 'paragraph') {
+      transformEditorLines(function(line) { return line.replace(/^#{1,6}\s+/, ''); });
+    }
     else if (action === 'heading') {
       const level = parseInt(button.getAttribute('data-md-level') || '1', 10);
       const marker = '#'.repeat(Math.max(1, Math.min(6, level))) + ' ';
@@ -13932,15 +14043,106 @@ ${selector} .arrowheadPath {
 
   function initMarkdownFormatToolbar() {
     if (!markdownFormatToolbar) return;
+
+    function closeToolbarMenus(options) {
+      const settings = options || {};
+      markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
+        toggle.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      });
+      markdownFormatToolbar.querySelectorAll('[data-toolbar-menu].open').forEach(function(menu) {
+        menu.classList.remove('open');
+      });
+      if (settings.restoreFocus && settings.toggle) settings.toggle.focus();
+    }
+
+    function positionToolbarMenu(toggle, menu) {
+      const rect = toggle.getBoundingClientRect();
+      const margin = 8;
+      const width = menu.offsetWidth || 180;
+      const height = menu.offsetHeight || 240;
+      let left = rect.left;
+      let top = rect.bottom + 5;
+      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+      if (top + height > window.innerHeight - margin) top = Math.max(margin, rect.top - height - 5);
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+    }
+
+    function openToolbarMenu(toggle, menu, focusFirst) {
+      closeToolbarMenus();
+      toggle.classList.add('open');
+      toggle.setAttribute('aria-expanded', 'true');
+      menu.classList.add('open');
+      positionToolbarMenu(toggle, menu);
+      if (focusFirst) {
+        const first = menu.querySelector('.markdown-tool-menu-item:not(:disabled)');
+        if (first) first.focus();
+      }
+    }
+
     markdownFormatToolbar.addEventListener('mousedown', function(e) {
-      if (e.target.closest('[data-md-action]')) e.preventDefault();
+      if (e.target.closest('[data-md-action], [data-toolbar-menu-toggle]')) e.preventDefault();
     });
     markdownFormatToolbar.addEventListener('click', function(e) {
+      const toggle = e.target.closest('[data-toolbar-menu-toggle]');
+      if (toggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        const menu = markdownFormatToolbar.querySelector('[data-toolbar-menu="' + toggle.getAttribute('data-toolbar-menu-toggle') + '"]');
+        if (!menu) return;
+        if (menu.classList.contains('open')) closeToolbarMenus();
+        else openToolbarMenu(toggle, menu, false);
+        return;
+      }
       const button = e.target.closest('[data-md-action]');
       if (!button) return;
       e.preventDefault();
-      runMarkdownTool(button.getAttribute('data-md-action'), button);
+      const action = button.getAttribute('data-md-action');
+      if (action === 'paragraph' || action === 'heading') {
+        const label = markdownFormatToolbar.querySelector('.markdown-tool-select--heading .markdown-tool-select-label');
+        if (label) label.textContent = action === 'paragraph' ? 'Text' : 'H' + (button.getAttribute('data-md-level') || '1');
+      }
+      closeToolbarMenus();
+      runMarkdownTool(action, button);
     });
+
+    markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
+      toggle.addEventListener('keydown', function(event) {
+        if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        const menu = markdownFormatToolbar.querySelector('[data-toolbar-menu="' + toggle.getAttribute('data-toolbar-menu-toggle') + '"]');
+        if (menu) openToolbarMenu(toggle, menu, true);
+      });
+    });
+
+    markdownFormatToolbar.querySelectorAll('[data-toolbar-menu]').forEach(function(menu) {
+      menu.addEventListener('keydown', function(event) {
+        const toggle = markdownFormatToolbar.querySelector('[data-toolbar-menu-toggle="' + menu.getAttribute('data-toolbar-menu') + '"]');
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeToolbarMenus({ restoreFocus: true, toggle: toggle });
+          return;
+        }
+        const items = Array.from(menu.querySelectorAll('.markdown-tool-menu-item:not(:disabled)'));
+        const currentIndex = items.indexOf(document.activeElement);
+        let nextIndex = -1;
+        if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+        if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = items.length - 1;
+        if (nextIndex !== -1) {
+          event.preventDefault();
+          items[nextIndex].focus();
+        }
+      });
+    });
+
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('#markdown-format-toolbar')) closeToolbarMenus();
+    });
+    window.addEventListener('resize', function() { closeToolbarMenus(); });
+    markdownFormatToolbar.addEventListener('scroll', function() { closeToolbarMenus(); });
   }
 
   // Story 1.3: Resize Divider Functions
@@ -14306,6 +14508,13 @@ ${selector} .arrowheadPath {
       applyDirectionToContent(direction);
       saveGlobalState({ direction });
       updateDirectionToggleUI(direction);
+      const directionMenu = directionToggle.closest('[data-toolbar-menu]');
+      if (directionMenu) directionMenu.classList.remove('open');
+      const directionMenuToggle = document.querySelector('[data-toolbar-menu-toggle="alignment"]');
+      if (directionMenuToggle) {
+        directionMenuToggle.classList.remove('open');
+        directionMenuToggle.setAttribute('aria-expanded', 'false');
+      }
     });
   }
   themeToggle.addEventListener("click", function () {
