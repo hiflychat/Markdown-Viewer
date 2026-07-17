@@ -433,7 +433,7 @@
             <!-- Tab Bar -->
             <div class="tab-bar" id="tab-bar">
               <button id="document-sidebar-open" class="tool-button document-sidebar-open is-active" type="button" title="Hide files" aria-label="Hide file sidebar" aria-controls="document-sidebar" aria-expanded="true">
-                <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+                <i class="bi bi-files" aria-hidden="true"></i>
               </button>
               <span class="document-sidebar-tab-divider" aria-hidden="true"></span>
               <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
@@ -1260,6 +1260,19 @@
                 </div>
                 <div id="review-pins-layer" class="review-pins-layer" role="group" aria-label="Review pins" hidden></div>
             </div>
+            <div id="document-split-divider" class="document-split-divider" role="separator" aria-orientation="vertical" aria-label="Split document divider" hidden></div>
+            <section id="document-split-pane" class="document-split-pane" aria-labelledby="document-split-title" hidden>
+                <header class="document-split-header">
+                    <span class="document-split-heading">
+                        <i class="bi bi-filetype-md" aria-hidden="true"></i>
+                        <span id="document-split-title">Document</span>
+                    </span>
+                    <button id="document-split-close" class="document-split-close" type="button" aria-label="Close split document" title="Close split document">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <textarea id="document-split-editor" aria-label="Secondary Markdown document"></textarea>
+            </section>
             <button id="review-panel-backdrop" class="review-panel-backdrop" type="button" aria-label="Close comments and suggestions" hidden></button>
             <aside id="review-panel" class="review-panel" aria-labelledby="review-panel-title" hidden>
                 <div class="review-panel-header">
@@ -1374,21 +1387,41 @@
         <p id="secret-workspace-modal-description" class="modal-subtext">Enter the password used to encrypt this workspace on this device.</p>
         <label class="reset-modal-label" for="secret-workspace-password">Password</label>
         <div class="secret-password-field">
-          <input type="password" id="secret-workspace-password" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="current-password" />
+          <input type="password" id="secret-workspace-password" name="secret-workspace-key" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="secret-workspace-password-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
           <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password" aria-label="Show password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
         </div>
         <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
           <label class="reset-modal-label" for="secret-workspace-password-confirm">Confirm password</label>
           <div class="secret-password-field">
-            <input type="password" id="secret-workspace-password-confirm" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="new-password" />
+            <input type="password" id="secret-workspace-password-confirm" name="secret-workspace-key-confirmation" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
             <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password-confirm" aria-label="Show confirmation password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
           </div>
         </div>
+        <p id="secret-workspace-password-guidance" class="secret-password-guidance" hidden>Use 12 or more characters with letters and numbers. Paste is supported.</p>
         <p id="secret-workspace-modal-error" class="document-modal-error" role="alert" hidden></p>
         <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot password? Reset Secret Workspace</button>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="secret-workspace-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="secret-workspace-modal-confirm">Unlock</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="document-split-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-split-modal-title" aria-describedby="document-split-modal-description" aria-hidden="true" style="display:none;">
+      <div class="reset-modal-box modal-box">
+        <div class="modal-header">
+          <div>
+            <p id="document-split-modal-title" class="reset-modal-message">Open split view</p>
+            <p id="document-split-modal-description" class="modal-subtext">Choose a second document to edit beside the current one.</p>
+          </div>
+          <button type="button" class="modal-close-btn" id="document-split-modal-close" aria-label="Close split view dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <label class="reset-modal-label" for="document-split-destination">Second document</label>
+        <select id="document-split-destination" class="rename-modal-input"></select>
+        <p id="document-split-modal-error" class="document-modal-error" role="alert" hidden></p>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-split-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-split-modal-confirm"><i class="bi bi-layout-split" aria-hidden="true"></i> Open split view</button>
         </div>
       </div>
     </div>

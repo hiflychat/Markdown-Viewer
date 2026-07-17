@@ -367,6 +367,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   // View Mode Elements - Story 1.1
   const contentContainer = document.querySelector(".content-container");
   const viewModeButtons = document.querySelectorAll(".view-toggle-btn");
+  const documentSplitPane = document.getElementById('document-split-pane');
+  const documentSplitDivider = document.getElementById('document-split-divider');
+  const documentSplitEditor = document.getElementById('document-split-editor');
+  const documentSplitTitle = document.getElementById('document-split-title');
+  const documentSplitClose = document.getElementById('document-split-close');
 
   // Mobile View Mode Elements - Story 1.4
   const mobileViewModeButtons = document.querySelectorAll(".mobile-view-mode-btn");
@@ -2429,6 +2434,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const SIDEBAR_MAX_WIDTH = 420;
   let tabs = [];
   let activeTabId = null;
+  let secondarySplitTabId = null;
+  let secondarySplitSaveTimeout = null;
   let draggedTabId = null;
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
@@ -2798,10 +2805,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   async function lockSecretWorkspace() {
     if (!isSecretWorkspaceUnlocked()) return;
     saveCurrentTabState();
+    saveSecondarySplitState();
     await flushSecretWorkspaceToStorage();
     const secretTabIds = new Set(tabs.filter(function(tab) {
       return !isTemporaryDocument(tab) && tab.workspaceId === SECRET_WORKSPACE_ID;
     }).map(function(tab) { return tab.id; }));
+    if (secretTabIds.has(secondarySplitTabId)) closeDocumentSplitView({ silent: true, renderTabs: false });
     tabs = tabs.filter(function(tab) { return !secretTabIds.has(tab.id); });
     secretTabIds.forEach(function(tabId) {
       if (typeof tabHistories !== 'undefined' && tabHistories[tabId]) delete tabHistories[tabId];
@@ -2837,6 +2846,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const removedIds = new Set(tabs.filter(function(tab) {
       return tab.workspaceId === SECRET_WORKSPACE_ID;
     }).map(function(tab) { return tab.id; }));
+    if (removedIds.has(secondarySplitTabId)) closeDocumentSplitView({ silent: true, renderTabs: false });
     tabs = tabs.filter(function(tab) { return !removedIds.has(tab.id); });
     documentOrganization.folders = documentOrganization.folders.filter(function(folder) {
       return folder.workspaceId !== SECRET_WORKSPACE_ID;
@@ -2890,6 +2900,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const cancelButton = document.getElementById('secret-workspace-modal-cancel');
     const closeButton = document.getElementById('secret-workspace-modal-close');
     const resetButton = document.getElementById('secret-workspace-reset');
+    const guidance = document.getElementById('secret-workspace-password-guidance');
     const toggleButtons = Array.from(modal ? modal.querySelectorAll('[data-secret-password-toggle]') : []);
     if (!modal || !secretInput || !confirmInput || !confirmButton || !cancelButton) return;
 
@@ -2901,11 +2912,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     confirmButton.textContent = setupMode ? 'Create password' : 'Unlock';
     confirmGroup.hidden = !setupMode;
     resetButton.hidden = setupMode;
+    if (guidance) guidance.hidden = !setupMode;
     secretInput.value = '';
     confirmInput.value = '';
     secretInput.type = 'password';
     confirmInput.type = 'password';
-    secretInput.autocomplete = setupMode ? 'new-password' : 'current-password';
+    secretInput.autocomplete = 'off';
+    confirmInput.autocomplete = 'off';
+    secretInput.minLength = setupMode ? 12 : 8;
+    confirmInput.minLength = setupMode ? 12 : 8;
     error.hidden = true;
     error.textContent = '';
 
@@ -2939,10 +2954,24 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     async function submit() {
       const password = secretInput.value;
-      if (password.length < 8) {
-        error.textContent = 'Use at least 8 characters.';
+      if (password.length < (setupMode ? 12 : 8)) {
+        error.textContent = setupMode ? 'Use at least 12 characters.' : 'Use at least 8 characters.';
         error.hidden = false;
         secretInput.focus();
+        return;
+      }
+      if (setupMode && (!/[A-Za-z]/.test(password) || !/\d/.test(password))) {
+        error.textContent = 'Include at least one letter and one number.';
+        error.hidden = false;
+        secretInput.focus();
+        return;
+      }
+      const normalizedPassword = password.toLowerCase().replace(/\s+/g, '');
+      const commonPasswords = ['12345678', '123456789', '1234567890', '123456789012', 'password', 'password1', 'password1234', 'qwerty123', 'qwerty123456', 'letmein123'];
+      if (setupMode && commonPasswords.indexOf(normalizedPassword) !== -1) {
+        error.textContent = 'Choose a less common password.';
+        error.hidden = false;
+        secretInput.select();
         return;
       }
       if (setupMode && password !== confirmInput.value) {
@@ -3495,8 +3524,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getDocumentMenuActions(tab) {
     const actions = [{
-      id: 'open', icon: 'bi-box-arrow-up-right', label: 'Open', run: function() { openSidebarDocument(tab.id); }
-    }, {
       id: 'rename', icon: 'bi-pencil-square', label: 'Rename', run: function() { renameTab(tab.id); }
     }];
     if (!isTemporaryDocument(tab)) {
@@ -3507,7 +3534,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: tab.favorite ? 'Remove from Favorites' : 'Add to Favorites',
         run: function() { toggleDocumentFavorite(tab.id); }
       });
-      actions.push({ id: 'move', icon: 'bi-folder-symlink', label: 'Move to…', run: function() { openMoveDocumentDialog(tab.id); } });
+      actions.push({ id: 'split', icon: 'bi-layout-split', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
       actions.push({ id: 'download', icon: 'bi-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
     }
     actions.push({
@@ -5708,6 +5735,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.querySelectorAll('.tab-menu-dropdown.open').forEach(function(dropdown) {
       dropdown.classList.remove('open');
     });
+    document.querySelectorAll('[data-tab-context-menu="true"]').forEach(function(menu) {
+      menu.remove();
+    });
     closeDocumentSidebarMenus();
   }
 
@@ -5745,6 +5775,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (action === 'download') {
       downloadTabMarkdown(tabId);
       if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'favorite') {
+      toggleDocumentFavorite(tabId);
+      if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'split') {
+      openDocumentSplitPicker(tabId);
+      if (isMobileMenu) closeMobileMenu();
     } else if (action === 'delete') {
       deleteTab(tabId);
     }
@@ -5764,8 +5800,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     menuBtn.setAttribute('aria-controls', menuId);
     menuBtn.setAttribute('draggable', 'false');
     menuBtn.title = 'File options';
-    // PERF-007: Replace HTML entity with plain unicode character set via textContent
-    menuBtn.textContent = '⋯';
+    menuBtn.innerHTML = '<i class="bi bi-three-dots" aria-hidden="true"></i>';
 
     const dropdown = document.createElement('div');
     dropdown.id = menuId;
@@ -5778,12 +5813,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     const downloadAction = isShareSnapshotTab(tab)
       ? ''
       : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="bi bi-download"></i> Download Markdown</button>';
-    const closeLabel = isShareSnapshotTab(tab) ? 'Close' : 'Delete';
+    const favoriteAction = isShareSnapshotTab(tab)
+      ? ''
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="favorite"><i class="bi ' + (tab.favorite ? 'bi-star-fill' : 'bi-star') + '"></i> ' + (tab.favorite ? 'Remove from Favorites' : 'Add to Favorites') + '</button>';
+    const splitAction = tabs.length > 1
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split"><i class="bi bi-layout-split"></i> Open in split view</button>'
+      : '';
     dropdown.innerHTML =
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil"></i> Rename</button>' +
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil-square"></i> Rename</button>' +
       duplicateAction +
+      favoriteAction +
+      splitAction +
       downloadAction +
-      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> ' + closeLabel + '</button>';
+      '<div class="tab-menu-separator" role="separator"></div>' +
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="delete"><i class="bi bi-x-lg"></i> Close</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -5826,6 +5869,113 @@ document.addEventListener("DOMContentLoaded", async function () {
     return { button: menuBtn, dropdown: dropdown };
   }
 
+  function closeTabsByScope(tabId, scope) {
+    const tabIndex = tabs.findIndex(function(tab) { return tab.id === tabId; });
+    if (tabIndex === -1) return;
+    let idsToClose = [];
+    if (scope === 'close') {
+      idsToClose = [tabId];
+    } else if (scope === 'others') {
+      idsToClose = tabs.filter(function(tab) { return tab.id !== tabId; }).map(function(tab) { return tab.id; });
+    } else if (scope === 'right') {
+      idsToClose = tabs.slice(tabIndex + 1).map(function(tab) { return tab.id; });
+    } else if (scope === 'left') {
+      idsToClose = tabs.slice(0, tabIndex).map(function(tab) { return tab.id; });
+    } else if (scope === 'all') {
+      idsToClose = tabs.map(function(tab) { return tab.id; });
+    }
+    closeTabMenus();
+    idsToClose.forEach(function(id) {
+      if (tabs.some(function(tab) { return tab.id === id; })) closeTab(id);
+    });
+  }
+
+  function openTabContextMenu(tab, point, focusTab) {
+    if (!tab) return;
+    closeTabMenus();
+    const tabIndex = tabs.findIndex(function(item) { return item.id === tab.id; });
+    const menu = document.createElement('div');
+    menu.className = 'tab-menu-dropdown tab-context-menu open';
+    menu.setAttribute('data-tab-context-menu', 'true');
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Tab actions for ' + (tab.title || 'Untitled'));
+
+    const actions = [{
+      id: 'split', icon: 'bi-layout-split', label: 'Open in split view', disabled: tabs.length < 2
+    }, {
+      separator: true
+    }, {
+      id: 'close', icon: 'bi-x-lg', label: 'Close'
+    }, {
+      id: 'others', icon: 'bi-x-diamond', label: 'Close others', disabled: tabs.length < 2
+    }, {
+      id: 'right', icon: 'bi-arrow-bar-right', label: 'Close to the right', disabled: tabIndex >= tabs.length - 1
+    }, {
+      id: 'left', icon: 'bi-arrow-bar-left', label: 'Close to the left', disabled: tabIndex <= 0
+    }, {
+      id: 'all', icon: 'bi-x-square', label: 'Close all'
+    }];
+
+    actions.forEach(function(action) {
+      if (action.separator) {
+        const separator = document.createElement('div');
+        separator.className = 'tab-menu-separator';
+        separator.setAttribute('role', 'separator');
+        menu.appendChild(separator);
+        return;
+      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tab-menu-item';
+      button.setAttribute('role', 'menuitem');
+      button.disabled = action.disabled === true;
+      button.innerHTML = '<i class="bi ' + action.icon + '" aria-hidden="true"></i> ' + action.label;
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (action.id === 'split') {
+          closeTabMenus();
+          openDocumentSplitPicker(tab.id);
+        } else {
+          closeTabsByScope(tab.id, action.id);
+        }
+      });
+      menu.appendChild(button);
+    });
+
+    menu.addEventListener('click', function(event) { event.stopPropagation(); });
+    menu.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTabMenus();
+        if (focusTab) focusTab.focus();
+        return;
+      }
+      const enabledItems = Array.from(menu.querySelectorAll('.tab-menu-item:not(:disabled)'));
+      const currentIndex = enabledItems.indexOf(document.activeElement);
+      let nextIndex = -1;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % enabledItems.length;
+      if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + enabledItems.length) % enabledItems.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = enabledItems.length - 1;
+      if (nextIndex !== -1) {
+        event.preventDefault();
+        enabledItems[nextIndex].focus();
+      }
+    });
+    document.body.appendChild(menu);
+
+    const margin = 8;
+    const width = menu.offsetWidth || 188;
+    const height = menu.offsetHeight || 230;
+    const left = Math.max(margin, Math.min(point.x, window.innerWidth - width - margin));
+    const top = Math.max(margin, Math.min(point.y, window.innerHeight - height - margin));
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    const firstEnabled = menu.querySelector('.tab-menu-item:not(:disabled)');
+    if (firstEnabled) firstEnabled.focus();
+  }
+
   function renderTabBar(tabsArr, currentActiveTabId) {
     const tabList = document.getElementById('tab-list');
     if (!tabList) return;
@@ -5835,12 +5985,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     tabList.textContent = '';
     tabsArr.forEach(function(tab) {
       const item = document.createElement('div');
-      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '');
+      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (tab.id === secondarySplitTabId ? ' is-split-secondary' : '');
       item.setAttribute('data-tab-id', tab.id);
       item.setAttribute('role', 'tab');
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('draggable', 'true');
       item.setAttribute('tabindex', tab.id === currentActiveTabId ? '0' : '-1');
+
+      const fileIcon = document.createElement('i');
+      fileIcon.className = 'bi bi-filetype-md tab-file-icon';
+      fileIcon.setAttribute('aria-hidden', 'true');
 
       const titleSpan = document.createElement('span');
       titleSpan.className = 'tab-title';
@@ -5849,8 +6003,30 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       const tabMenu = createTabActionMenu(tab, { menuIdPrefix: 'desktop-tab-menu' });
 
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'tab-close-btn';
+      closeButton.setAttribute('aria-label', 'Close ' + (tab.title || 'Untitled'));
+      closeButton.setAttribute('draggable', 'false');
+      closeButton.title = 'Close';
+      closeButton.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+      closeButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTab(tab.id);
+      });
+      closeButton.addEventListener('mousedown', function(event) { event.stopPropagation(); });
+
+      item.appendChild(fileIcon);
       item.appendChild(titleSpan);
       item.appendChild(tabMenu.button);
+      item.appendChild(closeButton);
+
+      item.addEventListener('contextmenu', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openTabContextMenu(tab, { x: event.clientX, y: event.clientY }, item);
+      });
 
       item.addEventListener('dragstart', function() {
         draggedTabId = tab.id;
@@ -5891,8 +6067,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     tabList.onclick = function(e) {
       const tabItem = e.target.closest('.tab-item');
       if (!tabItem) return;
-      // Don't switch tab if clicking the menu button
-      if (e.target.closest('.tab-menu-btn')) return;
+      // Don't switch tab if clicking an action button.
+      if (e.target.closest('.tab-menu-btn, .tab-close-btn')) return;
       const tabId = tabItem.getAttribute('data-tab-id');
       if (tabId) switchTab(tabId);
     };
@@ -5916,6 +6092,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       
       const activeIdx = items.indexOf(focusedItem);
       if (activeIdx === -1) return;
+
+      if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+        e.preventDefault();
+        const tabId = focusedItem.getAttribute('data-tab-id');
+        const tab = tabs.find(function(item) { return item.id === tabId; });
+        const rect = focusedItem.getBoundingClientRect();
+        openTabContextMenu(tab, { x: rect.left + 12, y: rect.bottom - 2 }, focusedItem);
+        return;
+      }
       
       let targetIdx = -1;
       if (e.key === 'ArrowRight') {
@@ -6099,6 +6284,144 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (contentChanged) renderDocumentSidebar();
   }
 
+  function saveSecondarySplitState() {
+    if (!secondarySplitTabId || !documentSplitEditor) return;
+    const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+    if (!tab) return;
+    const contentChanged = tab.content !== documentSplitEditor.value;
+    tab.content = documentSplitEditor.value;
+    tab.splitScrollPos = documentSplitEditor.scrollTop;
+    if (contentChanged && !isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
+    if (contentChanged) saveTabsToStorage(tabs);
+  }
+
+  function renderDocumentSplitView() {
+    if (!contentContainer || !documentSplitPane || !documentSplitDivider || !documentSplitEditor) return;
+    const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+    const shouldShow = Boolean(tab && tab.id !== activeTabId);
+    contentContainer.classList.toggle('document-split-active', shouldShow);
+    documentSplitPane.hidden = !shouldShow;
+    documentSplitDivider.hidden = !shouldShow;
+    if (!shouldShow) return;
+    if (documentSplitTitle) documentSplitTitle.textContent = tab.title || 'Untitled';
+    if (documentSplitEditor.value !== tab.content) documentSplitEditor.value = tab.content || '';
+    documentSplitEditor.readOnly = shareSnapshotViewOnlyTabIds.has(tab.id);
+    documentSplitEditor.setAttribute('aria-label', 'Edit ' + (tab.title || 'Untitled') + ' in split view');
+    requestAnimationFrame(function() {
+      documentSplitEditor.scrollTop = tab.splitScrollPos || 0;
+    });
+  }
+
+  function closeDocumentSplitView(options) {
+    const settings = options || {};
+    saveSecondarySplitState();
+    secondarySplitTabId = null;
+    if (secondarySplitSaveTimeout) {
+      clearTimeout(secondarySplitSaveTimeout);
+      secondarySplitSaveTimeout = null;
+    }
+    renderDocumentSplitView();
+    if (currentViewMode === 'split') applyPaneWidths();
+    if (settings.renderTabs !== false) renderTabBar(tabs, activeTabId);
+    if (!settings.silent) announceToScreenReader('Split view closed.');
+  }
+
+  function openDocumentSplitView(sourceTabId, secondTabId) {
+    const sourceTab = tabs.find(function(item) { return item.id === sourceTabId; });
+    const secondTab = tabs.find(function(item) { return item.id === secondTabId; });
+    if (!sourceTab || !secondTab || sourceTab.id === secondTab.id) return;
+    if (reviewModeActive) setReviewMode(false);
+    if (activeTabId !== sourceTab.id) switchTab(sourceTab.id);
+    saveSecondarySplitState();
+    secondarySplitTabId = secondTab.id;
+    resetPaneWidths();
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    requestAnimationFrame(function() { documentSplitEditor.focus(); });
+    announceToScreenReader((secondTab.title || 'Untitled') + ' opened in split view.');
+  }
+
+  function openDocumentSplitPicker(sourceTabId) {
+    const sourceTab = tabs.find(function(item) { return item.id === sourceTabId; });
+    const candidates = tabs.filter(function(item) { return item.id !== sourceTabId; });
+    if (!sourceTab || candidates.length === 0) {
+      alert('Open or create another document before starting split view.');
+      return;
+    }
+    const modal = document.getElementById('document-split-modal');
+    const description = document.getElementById('document-split-modal-description');
+    const select = document.getElementById('document-split-destination');
+    const error = document.getElementById('document-split-modal-error');
+    const confirmButton = document.getElementById('document-split-modal-confirm');
+    const cancelButton = document.getElementById('document-split-modal-cancel');
+    const closeButton = document.getElementById('document-split-modal-close');
+    if (!modal || !select || !confirmButton || !cancelButton) return;
+
+    description.textContent = 'Choose a document to edit beside “' + (sourceTab.title || 'Untitled') + '”.';
+    select.textContent = '';
+    candidates.forEach(function(candidate) {
+      const option = document.createElement('option');
+      option.value = candidate.id;
+      option.textContent = candidate.title || 'Untitled';
+      select.appendChild(option);
+    });
+    if (secondarySplitTabId && candidates.some(function(item) { return item.id === secondarySplitTabId; })) {
+      select.value = secondarySplitTabId;
+    }
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', confirm);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function confirm() {
+      const secondTabId = select.value;
+      if (!secondTabId || secondTabId === sourceTabId) {
+        error.textContent = 'Choose a different document.';
+        error.hidden = false;
+        return;
+      }
+      cleanup();
+      closeAppModal(modal);
+      openDocumentSplitView(sourceTabId, secondTabId);
+    }
+
+    confirmButton.addEventListener('click', confirm);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: select, onClose: cancel });
+  }
+
+  if (documentSplitClose) {
+    documentSplitClose.addEventListener('click', function() { closeDocumentSplitView(); });
+  }
+
+  if (documentSplitEditor) {
+    documentSplitEditor.addEventListener('input', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (!tab || documentSplitEditor.readOnly) return;
+      tab.content = documentSplitEditor.value;
+      if (!isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
+      clearTimeout(secondarySplitSaveTimeout);
+      secondarySplitSaveTimeout = setTimeout(function() {
+        saveTabsToStorage(tabs);
+        renderDocumentSidebar();
+      }, 500);
+    });
+    documentSplitEditor.addEventListener('scroll', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (tab) tab.splitScrollPos = documentSplitEditor.scrollTop;
+    });
+  }
+
   function restoreViewMode(mode) {
     if (reviewModeActive && activeTabId && !reviewPreviousViewModes.has(activeTabId)) {
       reviewPreviousViewModes.set(activeTabId, mode || 'split');
@@ -6109,8 +6432,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function switchTab(tabId) {
     if (tabId === activeTabId) return;
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    const previousActiveTabId = activeTabId;
+    const swapSplitPanes = tabId === secondarySplitTabId;
     cancelReviewDeleteConfirmation();
     saveCurrentTabState();
+    saveSecondarySplitState();
     closeReviewComposer();
     clearReviewDecorations();
     
@@ -6123,9 +6451,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     pendingState = null;
     
     activeTabId = tabId;
+    if (swapSplitPanes) secondarySplitTabId = previousActiveTabId;
     saveActiveTabId(activeTabId);
-    const tab = tabs.find(function(t) { return t.id === tabId; });
-    if (!tab) return;
     selectedDocumentId = tabId;
     tab.lastOpenedAt = Date.now();
     if (!isTemporaryDocument(tab)) saveTabsToStorage(tabs);
@@ -6140,6 +6467,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     refreshLiveEditorUi();
     renderMarkdown();
     renderReviewPanel();
+    renderDocumentSplitView();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
       updateLiveCursorPosition();
@@ -6181,6 +6509,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       return;
     }
 
+    if (secondarySplitTabId === tabId) {
+      closeDocumentSplitView({ silent: true, renderTabs: false });
+    } else {
+      saveSecondarySplitState();
+    }
+
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
     if (activeTabId === tabId) {
@@ -6220,8 +6554,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
       });
     }
+    if (secondarySplitTabId && secondarySplitTabId === activeTabId) {
+      closeDocumentSplitView({ silent: true, renderTabs: false });
+    }
     if (selectedDocumentId === tabId) selectedDocumentId = activeTabId;
     saveTabsToStorage(tabs);
+    renderDocumentSplitView();
     renderTabBar(tabs, activeTabId);
     closeReviewComposer();
     renderReviewPanel();
@@ -6386,6 +6724,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       secretWorkspaceSalt = null;
       secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
       secretWorkspaceDocumentCount = 0;
+      closeDocumentSplitView({ silent: true, renderTabs: false });
       tabs = [];
       documentOrganization = createDefaultDocumentOrganization();
       documentSidebarSearch = '';
