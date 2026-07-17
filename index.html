@@ -133,6 +133,7 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Logo, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
+                    <i class="bi bi-markdown app-brand-logo" aria-hidden="true"></i>
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
                         <i class="bi bi-github"></i>
@@ -152,86 +153,77 @@
 
                 <!-- Right section: Toolbar -->
                 <div class="toolbar d-none d-md-flex header-right">
-                    <div class="toolbar-group view-toolbar" role="group" aria-label="View mode">
-                        <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only">
-                            <i class="bi bi-file-text"></i>
+                    <div class="btn-group dropdown header-new-dropdown" role="group" aria-label="Create or import a document">
+                        <button id="header-new-file" class="tool-button header-command-btn header-new-file" type="button" title="New Markdown document" aria-label="Create new Markdown document">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="btn-text">New</span>
                         </button>
-                        <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview">
-                            <i class="bi bi-layout-split"></i>
-                        </button>
-                        <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </div>
-                    <span class="toolbar-divider" aria-hidden="true"></span>
-                    <button id="toggle-sync" class="tool-button sync-enabled sync-active" title="Toggle Sync Scrolling">
-                        <i class="bi bi-link"></i> <span class="btn-text">Sync Off</span>
-                    </button>
-                    <div class="dropdown">
-                        <button class="tool-button dropdown-toggle" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Import Markdown">
-                            <i class="bi bi-upload"></i> <span class="btn-text">Import</span>
+                        <button class="tool-button header-command-caret dropdown-toggle dropdown-toggle-split" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="More new document options" aria-label="Open new document menu">
+                            <span class="visually-hidden">Open new document menu</span>
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="importDropdown">
+                            <li><a class="dropdown-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus me-2"></i>New document</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" id="import-from-file"><i class="bi bi-upload me-2"></i>From files</a></li>
                             <li><a class="dropdown-item" href="#" id="import-from-github"><i class="bi bi-github me-2"></i>From GitHub</a></li>
                         </ul>
                     </div>
                     <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown" multiple>
-                    
-                    <div class="dropdown">
-                        <button class="tool-button dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Export Markdown">
-                            <i class="bi bi-download"></i> <span class="btn-text">Export</span>
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                            <li><a class="dropdown-item" href="#" id="export-md"><i class="bi bi-file-earmark-text me-2"></i>Markdown (.md)</a></li>
-                            <li><a class="dropdown-item" href="#" id="export-html"><i class="bi bi-file-earmark-code me-2"></i>HTML</a></li>
-                            <li><a class="dropdown-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf me-2"></i>PDF</a></li>
-                            <li><a class="dropdown-item" href="#" id="export-png"><i class="bi bi-file-earmark-image me-2"></i>Image (.png)</a></li>
-                        </ul>
-                    </div>
-                    
-                    <button id="copy-markdown-button" class="tool-button" title="Copy Markdown">
-                        <i class="bi bi-clipboard"></i> <span class="btn-text">Copy</span>
-                    </button>
-                    
-                    <button id="share-button" class="tool-button" title="Share Snapshot">
-                        <i class="bi bi-share"></i> <span class="btn-text">Share Snapshot</span>
+
+                    <button id="share-button" class="tool-button header-command-btn" title="Share Snapshot" aria-label="Share snapshot">
+                        <i class="bi bi-people" aria-hidden="true"></i><span class="btn-text">Share</span>
                     </button>
 
-                    <button id="live-share-button" class="tool-button" title="Live Share">
-                        <i class="bi bi-broadcast"></i> <span class="btn-text">Live Share</span>
+                    <button id="live-share-button" class="tool-button header-command-btn header-command-btn--accent" title="Live Share">
+                        <i class="bi bi-broadcast-pin" aria-hidden="true"></i><span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
 
-                    <button id="review-toggle" class="tool-button" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-                        <i class="bi bi-chat-square-text"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span><span class="btn-text">Review</span>
+                    <a class="header-icon-command" href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new" target="_blank" rel="noopener noreferrer" title="Report an issue" aria-label="Report an issue">
+                        <i class="bi bi-bug" aria-hidden="true"></i>
+                    </a>
+                    <button id="header-about-button" class="header-icon-command" type="button" data-md-action="info" title="About Markdown Viewer" aria-label="About Markdown Viewer">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i>
                     </button>
-                    
-                    <div class="dropdown me-1">
-                        <button class="tool-button dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
-                            <i class="bi bi-translate"></i> <span id="current-lang-label" class="btn-text">English</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-                            <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">🇺🇸 English</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="zh">🇨🇳 简体中文</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="ja">🇯🇵 日本語</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="ko">🇰🇷 한국어</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="pt">🇧🇷 Português (Brasil)</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="es">🇪🇸 Español</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="fr">🇫🇷 Français</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="de">🇩🇪 Deutsch</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="ru">🇷🇺 Русский</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="it">🇮🇹 Italiano</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="tr">🇹🇷 Türkçe</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="pl">🇵🇱 Polski</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="tw">🇹🇼 繁體中文</a></li>
-                            <li><a class="dropdown-item lang-select-item" href="#" data-lang="uk">🇺🇦 Українська</a></li>
-                        </ul>
-                    </div>
 
-                    <button id="theme-toggle" class="tool-button" title="Toggle Dark Mode">
-                        <i class="bi bi-moon"></i>
-                    </button>
+                    <div class="dropdown settings-dropdown">
+                        <button class="header-icon-command" type="button" id="workspaceSettingsDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Workspace settings" aria-label="Open workspace settings">
+                            <i class="bi bi-gear" aria-hidden="true"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end settings-menu" aria-labelledby="workspaceSettingsDropdown">
+                            <div class="settings-menu-header">
+                                <strong>Workspace settings</strong>
+                                <span>Appearance and preferences</span>
+                            </div>
+                            <button id="theme-toggle" class="settings-menu-item" type="button" title="Toggle appearance">
+                                <i class="bi bi-moon" aria-hidden="true"></i><span>Toggle appearance</span>
+                            </button>
+                            <div class="dropdown dropstart settings-language-dropdown">
+                                <button class="settings-menu-item dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Switch language">
+                                    <i class="bi bi-translate" aria-hidden="true"></i><span id="current-lang-label">English</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                                    <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">🇺🇸 English</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="zh">🇨🇳 简体中文</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="ja">🇯🇵 日本語</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="ko">🇰🇷 한국어</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="pt">🇧🇷 Português (Brasil)</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="es">🇪🇸 Español</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="fr">🇫🇷 Français</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="de">🇩🇪 Deutsch</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="ru">🇷🇺 Русский</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="it">🇮🇹 Italiano</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="tr">🇹🇷 Türkçe</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="pl">🇵🇱 Polski</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="tw">🇹🇼 繁體中文</a></li>
+                                    <li><a class="dropdown-item lang-select-item" href="#" data-lang="uk">🇺🇦 Українська</a></li>
+                                </ul>
+                            </div>
+                            <div class="settings-menu-divider" role="separator"></div>
+                            <button class="settings-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
+                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Reset workspace</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Hamburger menu for mobile -->
@@ -440,10 +432,7 @@
               <span class="document-sidebar-tab-divider" aria-hidden="true"></span>
               <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
               <button class="tab-new-btn" id="tab-new-btn" title="New file (Ctrl+T)" aria-label="Create new file">
-                <i class="bi bi-filetype-md"></i> New file
-              </button>
-              <button class="tab-reset-btn" id="tab-reset-btn" title="Reset all files" aria-label="Reset all files">
-                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
               </button>
             </div>
 
@@ -456,10 +445,9 @@
           <div class="markdown-toolbar-group" role="group" aria-label="Text style">
             <div class="markdown-tool-dropdown">
               <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--heading" data-toolbar-menu-toggle="heading" aria-haspopup="menu" aria-expanded="false" title="Text style" aria-label="Choose text style">
-                <span class="markdown-tool-select-label">Text</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+                <span class="markdown-tool-select-label">H</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
               </button>
-              <div class="markdown-tool-menu" data-toolbar-menu="heading" role="menu" aria-label="Text styles">
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="paragraph"><span class="markdown-tool-menu-symbol">¶</span><span>Paragraph</span></button>
+              <div class="markdown-tool-menu markdown-tool-menu--heading" data-toolbar-menu="heading" role="menu" aria-label="Heading levels">
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="1"><span class="markdown-tool-menu-symbol">H1</span><span>Heading 1</span></button>
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="2"><span class="markdown-tool-menu-symbol">H2</span><span>Heading 2</span></button>
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="3"><span class="markdown-tool-menu-symbol">H3</span><span>Heading 3</span></button>
@@ -518,10 +506,46 @@
               </div>
             </div>
           </div>
-          <div class="markdown-toolbar-group markdown-toolbar-group--utilities" role="group" aria-label="Editor tools">
-            <button type="button" class="tool-button" data-md-action="find" title="Find &amp; Replace" aria-label="Find &amp; Replace"><i class="bi bi-search"></i></button>
-            <button type="button" class="tool-button" data-md-action="fullscreen" title="Fullscreen" aria-label="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
-            <button type="button" class="tool-button" data-md-action="info" title="About Markdown Viewer" aria-label="About Markdown Viewer"><i class="bi bi-info-circle"></i></button>
+          <div class="markdown-toolbar-group markdown-toolbar-group--document markdown-toolbar-group--utilities" role="group" aria-label="Document actions and view">
+            <div class="dropdown document-export-dropdown">
+              <button class="tool-button document-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Export Markdown" aria-label="Export Markdown">
+                <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span class="btn-text">Export</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                <li><a class="dropdown-item" href="#" id="export-md"><i class="bi bi-file-earmark-text me-2"></i>Markdown (.md)</a></li>
+                <li><a class="dropdown-item" href="#" id="export-html"><i class="bi bi-file-earmark-code me-2"></i>HTML</a></li>
+                <li><a class="dropdown-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf me-2"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="#" id="export-png"><i class="bi bi-file-earmark-image me-2"></i>Image (.png)</a></li>
+              </ul>
+            </div>
+            <button id="review-toggle" class="tool-button document-command-btn" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
+              <i class="bi bi-chat-square-text" aria-hidden="true"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span>
+            </button>
+            <div class="dropdown document-actions-dropdown">
+              <button class="tool-button document-command-btn" type="button" id="documentActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="More document actions" aria-label="More document actions">
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end document-actions-menu" aria-labelledby="documentActionsDropdown">
+                <button id="toggle-sync" class="dropdown-item document-action-item sync-enabled sync-active" type="button" title="Toggle Sync Scrolling">
+                  <i class="bi bi-link" aria-hidden="true"></i><span class="btn-text">Sync Off</span>
+                </button>
+                <button id="copy-markdown-button" class="dropdown-item document-action-item" type="button" title="Copy Markdown">
+                  <i class="bi bi-clipboard" aria-hidden="true"></i><span class="btn-text">Copy Markdown</span>
+                </button>
+                <button type="button" class="dropdown-item document-action-item" data-md-action="find" title="Find &amp; Replace">
+                  <i class="bi bi-search" aria-hidden="true"></i><span>Find &amp; replace</span>
+                </button>
+                <button type="button" class="dropdown-item document-action-item" data-md-action="fullscreen" title="Fullscreen">
+                  <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i><span>Fullscreen</span>
+                </button>
+              </div>
+            </div>
+            <span class="document-command-divider" aria-hidden="true"></span>
+            <div class="view-toolbar markdown-view-toolbar" role="group" aria-label="View mode">
+              <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only"><i class="bi bi-file-text" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only"><i class="bi bi-eye" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview"><i class="bi bi-layout-split" aria-hidden="true"></i></button>
+            </div>
           </div>
         </div>
 

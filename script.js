@@ -703,9 +703,20 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   document.documentElement.setAttribute("data-theme", initialTheme);
 
-  themeToggle.innerHTML = initialTheme === "dark"
-    ? '<i class="bi bi-sun"></i>'
-    : '<i class="bi bi-moon"></i>';
+  function updateThemeToggleUI(theme) {
+    const useLightAppearance = theme === "dark";
+    if (themeToggle) {
+      themeToggle.innerHTML = '<i class="bi bi-' + (useLightAppearance ? 'sun' : 'moon') + '" aria-hidden="true"></i><span>Toggle appearance</span>';
+      themeToggle.setAttribute('aria-label', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
+      themeToggle.setAttribute('title', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
+    }
+    if (mobileThemeToggle) {
+      mobileThemeToggle.innerHTML = '<i class="bi bi-' + (useLightAppearance ? 'sun' : 'moon') + ' me-2" aria-hidden="true"></i>' + (useLightAppearance ? 'Light Mode' : 'Dark Mode');
+      mobileThemeToggle.setAttribute('title', useLightAppearance ? 'Use Light Mode' : 'Use Dark Mode');
+    }
+  }
+
+  updateThemeToggleUI(initialTheme);
 
   function updateDirectionToggleUI(direction) {
     const isRtl = direction === "rtl";
@@ -7056,6 +7067,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     const staticNewBtn = document.getElementById('tab-new-btn');
     if (staticNewBtn) {
       staticNewBtn.onclick = function() {
+        newTab();
+      };
+    }
+    const headerNewFile = document.getElementById('header-new-file');
+    if (headerNewFile) {
+      headerNewFile.onclick = function() {
+        newTab();
+      };
+    }
+    const headerNewDocument = document.getElementById('header-new-document');
+    if (headerNewDocument) {
+      headerNewDocument.onclick = function(event) {
+        event.preventDefault();
         newTab();
       };
     }
@@ -14339,9 +14363,9 @@ ${selector} .arrowheadPath {
       if (!button) return;
       e.preventDefault();
       const action = button.getAttribute('data-md-action');
-      if (action === 'paragraph' || action === 'heading') {
+      if (action === 'heading') {
         const label = markdownFormatToolbar.querySelector('.markdown-tool-select--heading .markdown-tool-select-label');
-        if (label) label.textContent = action === 'paragraph' ? 'Text' : 'H' + (button.getAttribute('data-md-level') || '1');
+        if (label) label.textContent = 'H' + (button.getAttribute('data-md-level') || '1');
       }
       closeToolbarMenus();
       runMarkdownTool(action, button);
@@ -14563,7 +14587,6 @@ ${selector} .arrowheadPath {
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
-    mobileThemeToggle.innerHTML = themeToggle.innerHTML + " Toggle Dark Mode";
   });
 
   const mobileNewTabBtn = document.getElementById("mobile-new-tab-btn");
@@ -14704,6 +14727,10 @@ ${selector} .arrowheadPath {
   initMarkdownFormatToolbar();
   initFindReplaceModal();
   initAppModals();
+  const headerAboutButton = document.getElementById('header-about-button');
+  if (headerAboutButton) {
+    headerAboutButton.addEventListener('click', openAboutModal);
+  }
   
   // Editor key handlers for list continuation and indentation
   markdownEditor.addEventListener("keydown", function(e) {
@@ -14776,11 +14803,7 @@ ${selector} .arrowheadPath {
     document.documentElement.setAttribute("data-theme", theme);
     saveGlobalState({ theme });
 
-    if (theme === "dark") {
-      themeToggle.innerHTML = '<i class="bi bi-sun"></i>';
-    } else {
-      themeToggle.innerHTML = '<i class="bi bi-moon"></i>';
-    }
+    updateThemeToggleUI(theme);
     
     // PERF-004: Only re-render Mermaid diagrams on theme change instead of full renderMarkdown()
     // CSS custom properties handle all other theme transitions automatically.
@@ -19543,9 +19566,16 @@ ${selector} .arrowheadPath {
     }
   });
 
-  document.getElementById('tab-reset-btn').addEventListener('click', function() {
-    resetAllTabs();
-  });
+  const tabResetButton = document.getElementById('tab-reset-btn');
+  if (tabResetButton) {
+    tabResetButton.addEventListener('click', function() {
+      const settingsToggle = document.getElementById('workspaceSettingsDropdown');
+      if (settingsToggle && window.bootstrap && bootstrap.Dropdown) {
+        bootstrap.Dropdown.getOrCreateInstance(settingsToggle).hide();
+      }
+      resetAllTabs();
+    });
+  }
 
   // ========================================
   // MERMAID DIAGRAM TOOLBAR
@@ -21463,14 +21493,14 @@ ${selector} .arrowheadPath {
     // Copy / Share
     if (copyMarkdownButton) {
       const copyButtonText = copyMarkdownButton.querySelector('.btn-text');
-      if (copyButtonText) copyButtonText.textContent = dict.copy;
+      if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
     }
     const mCopyBtn = document.getElementById('mobile-copy-markdown');
     if (mCopyBtn) mCopyBtn.innerHTML = `<i class="bi bi-clipboard me-2"></i>${dict.copy}`;
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
-      if (shareButtonText) shareButtonText.textContent = dict.shareSnapshot || 'Share Snapshot';
+      if (shareButtonText) shareButtonText.textContent = dict.share || 'Share';
     }
     if (liveShareButton) {
       const liveShareButtonText = liveShareButton.querySelector('.btn-text');
@@ -21490,7 +21520,7 @@ ${selector} .arrowheadPath {
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
-    if (tabResetBtn) tabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset}`;
+    if (tabResetBtn) tabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>${dict.reset} workspace</span>`;
     const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
     if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset} all files`;
 
