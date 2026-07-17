@@ -260,6 +260,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   let isPreviewScrolling = false;
   let isProgrammaticScrolling = false;
   let scrollSyncTimeout = null;
+  let documentSplitSyncFrame = null;
+  let documentSplitScrollSource = null;
+  let documentSplitSyncReleaseTimeout = null;
+  let documentSplitPreviewTabId = null;
+  let documentSplitPreviewContent = null;
   const SCROLL_SYNC_DELAY = 10;
 
   // View Mode State - Story 1.1
@@ -370,8 +375,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const documentSplitPane = document.getElementById('document-split-pane');
   const documentSplitDivider = document.getElementById('document-split-divider');
   const documentSplitEditor = document.getElementById('document-split-editor');
-  const documentSplitTitle = document.getElementById('document-split-title');
-  const documentSplitClose = document.getElementById('document-split-close');
+  const documentSplitPreview = document.getElementById('document-split-preview');
   const noOpenDocument = document.getElementById('no-open-document');
   const noOpenDocumentNew = document.getElementById('no-open-document-new');
 
@@ -3521,7 +3525,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: tab.favorite ? 'Remove from Favorites' : 'Add to Favorites',
         run: function() { toggleDocumentFavorite(tab.id); }
       });
-      actions.push({ id: 'split', icon: 'bi-layout-split', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
+      if (tab.id === activeTabId && secondarySplitTabId) {
+        actions.push({ id: 'split-close', icon: 'bi-layout-sidebar-inset-reverse', label: 'Exit split view', run: function() { closeDocumentSplitView(); } });
+      } else {
+        actions.push({ id: 'split', icon: 'bi-layout-split', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
+      }
       actions.push({ id: 'download', icon: 'bi-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
     }
     actions.push({
@@ -3665,7 +3673,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     row.setAttribute('tabindex', options.tabindex === 0 ? '0' : '-1');
     row.setAttribute('data-tree-type', options.type);
     row.setAttribute('data-tree-id', options.id);
-    row.style.setProperty('--tree-depth', String(options.depth || 0));
+    const treeDepth = Number(options.depth) || 0;
+    row.style.setProperty('--tree-depth', String(treeDepth));
+    row.setAttribute('data-tree-depth', String(treeDepth));
     if (options.documentId) {
       row.setAttribute('data-document-id', options.documentId);
       row.classList.toggle('is-active', options.documentId === activeTabId);
@@ -3675,7 +3685,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (options.favorite) row.classList.add('is-favorite');
     if (options.temporary) row.classList.add('document-tree-temporary');
-    if (options.locationSelected) row.classList.add('is-location-selected');
     if (options.locked) row.classList.add('is-secret-locked');
     if (typeof options.expanded === 'boolean') row.setAttribute('aria-expanded', options.expanded ? 'true' : 'false');
     row.setAttribute('aria-label', options.ariaLabel || options.label);
@@ -3861,7 +3870,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         expanded: expanded,
         meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
         locked: secretLocked,
-        locationSelected: !secretLocked && documentOrganization.ui.lastWorkspaceId === workspace.id && !documentOrganization.ui.lastFolderId,
         dropLocation: { workspaceId: workspace.id, folderId: null },
         addActions: !secretLocked,
         menuActions: getWorkspaceMenuActions(workspace),
@@ -3889,7 +3897,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       tree.appendChild(workspaceRow);
 
       const workspaceGroup = document.createElement('div');
-      workspaceGroup.className = 'document-tree-group';
+      workspaceGroup.className = 'document-tree-group document-tree-group--workspace';
       workspaceGroup.setAttribute('role', 'group');
       workspaceGroup.hidden = !expanded;
 
@@ -3906,7 +3914,6 @@ document.addEventListener("DOMContentLoaded", async function () {
           depth: 1,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
-          locationSelected: documentOrganization.ui.lastWorkspaceId === workspace.id && documentOrganization.ui.lastFolderId === folder.id,
           dropLocation: { workspaceId: workspace.id, folderId: folder.id },
           addActions: true,
           menuActions: getFolderMenuActions(folder),
@@ -3925,7 +3932,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
         workspaceGroup.appendChild(folderRow);
         const folderGroup = document.createElement('div');
-        folderGroup.className = 'document-tree-group';
+        folderGroup.className = 'document-tree-group document-tree-group--folder';
         folderGroup.setAttribute('role', 'group');
         folderGroup.hidden = !folderExpanded;
         folderDocuments.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); }).forEach(function(tab) {
@@ -5806,6 +5813,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (action === 'split') {
       openDocumentSplitPicker(tabId);
       if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'split-close') {
+      closeDocumentSplitView();
+      if (isMobileMenu) closeMobileMenu();
     } else if (action === 'close') {
       closeTab(tabId);
     }
@@ -5841,7 +5851,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const favoriteAction = isShareSnapshotTab(tab)
       ? ''
       : '<button type="button" class="tab-menu-item" role="menuitem" data-action="favorite"><i class="bi ' + (tab.favorite ? 'bi-star-fill' : 'bi-star') + '"></i> ' + (tab.favorite ? 'Remove from Favorites' : 'Add to Favorites') + '</button>';
-    const splitAction = tabs.length > 1
+    const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
+    const splitAction = isCombinedSplitTab
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split-close"><i class="bi bi-layout-sidebar-inset-reverse"></i> Exit split view</button>'
+      : tabs.length > 1
       ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split"><i class="bi bi-layout-split"></i> Open in split view</button>'
       : '';
     dropdown.innerHTML =
@@ -5929,8 +5942,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', 'Tab actions for ' + (tab.title || 'Untitled'));
 
+    const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
     const actions = [{
-      id: 'split', icon: 'bi-layout-split', label: 'Open in split view', disabled: tabs.length < 2
+      id: isCombinedSplitTab ? 'split-close' : 'split',
+      icon: isCombinedSplitTab ? 'bi-layout-sidebar-inset-reverse' : 'bi-layout-split',
+      label: isCombinedSplitTab ? 'Exit split view' : 'Open in split view',
+      disabled: !isCombinedSplitTab && tabs.length < 2
     }, {
       separator: true
     }, {
@@ -5965,6 +5982,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (action.id === 'split') {
           closeTabMenus();
           openDocumentSplitPicker(tab.id);
+        } else if (action.id === 'split-close') {
+          closeTabMenus();
+          closeDocumentSplitView();
         } else {
           closeTabsByScope(tab.id, action.id);
         }
@@ -6125,6 +6145,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (e.target.closest('.tab-menu-btn, .tab-close-btn')) return;
       const tabId = tabItem.getAttribute('data-tab-id');
       if (tabId) switchTab(tabId);
+    };
+
+    tabList.oncontextmenu = function(event) {
+      if (event.target.closest('.tab-item')) return;
+      const activeTab = tabs.find(function(tab) { return tab.id === activeTabId && isTabOpen(tab); });
+      if (!activeTab) return;
+      event.preventDefault();
+      const activeItem = tabList.querySelector('.tab-item.active');
+      openTabContextMenu(activeTab, { x: event.clientX, y: event.clientY }, activeItem);
     };
 
 
@@ -6352,25 +6381,89 @@ document.addEventListener("DOMContentLoaded", async function () {
     const contentChanged = tab.content !== documentSplitEditor.value;
     tab.content = documentSplitEditor.value;
     tab.splitScrollPos = documentSplitEditor.scrollTop;
+    if (documentSplitPreview) tab.splitPreviewScrollPos = documentSplitPreview.scrollTop;
     if (contentChanged && !isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
     if (contentChanged) saveTabsToStorage(tabs);
   }
 
+  function namespaceSplitPreviewIds(container, tabId) {
+    const prefix = 'split-' + String(tabId || 'document').replace(/[^a-z0-9_-]/gi, '-') + '-';
+    const idMap = new Map();
+    container.querySelectorAll('[id]').forEach(function(element) {
+      const originalId = element.id;
+      const nextId = prefix + originalId;
+      idMap.set(originalId, nextId);
+      element.id = nextId;
+    });
+    container.querySelectorAll('a[href^="#"]').forEach(function(link) {
+      const originalId = link.getAttribute('href').slice(1);
+      if (idMap.has(originalId)) link.setAttribute('href', '#' + idMap.get(originalId));
+    });
+  }
+
+  function renderDocumentSplitPreview(tab) {
+    if (!documentSplitPreview || !tab) return;
+    const content = tab.content || '';
+    if (documentSplitPreviewTabId === tab.id && documentSplitPreviewContent === content && documentSplitPreview.childNodes.length) return;
+    const parsed = parseFrontmatter(content);
+    const tableHtml = parsed.frontmatter ? renderFrontmatterTable(parsed.frontmatter) : '';
+    const referenceData = extractReferenceDefinitions(parsed.body);
+    const html = tableHtml + marked.parse(referenceData.cleanedMarkdown);
+    documentSplitPreview.innerHTML = sanitizePreviewHtml(html);
+    applyReferencePreviewLinks(documentSplitPreview, referenceData.definitions);
+    enhanceGitHubAlerts(documentSplitPreview);
+    enhancePreviewCodeBlocks(documentSplitPreview);
+    processEmojis(documentSplitPreview);
+    namespaceSplitPreviewIds(documentSplitPreview, tab.id);
+    documentSplitPreviewTabId = tab.id;
+    documentSplitPreviewContent = content;
+  }
+
+  function syncDocumentSplitScroll(source, target) {
+    if (!syncScrollingEnabled || !secondarySplitTabId || !source || !target) return;
+    if (documentSplitScrollSource && documentSplitScrollSource !== source) return;
+    documentSplitScrollSource = source;
+    if (documentSplitSyncFrame) cancelAnimationFrame(documentSplitSyncFrame);
+    clearTimeout(documentSplitSyncReleaseTimeout);
+    documentSplitSyncFrame = requestAnimationFrame(function() {
+      documentSplitSyncFrame = null;
+      const sourceRange = source.scrollHeight - source.clientHeight;
+      const targetRange = target.scrollHeight - target.clientHeight;
+      const ratio = sourceRange > 0 ? source.scrollTop / sourceRange : 0;
+      const targetPosition = targetRange * ratio;
+      if (Number.isFinite(targetPosition)) target.scrollTop = targetPosition;
+      documentSplitSyncReleaseTimeout = setTimeout(function() {
+        documentSplitScrollSource = null;
+      }, 48);
+    });
+  }
+
   function renderDocumentSplitView() {
-    if (!contentContainer || !documentSplitPane || !documentSplitDivider || !documentSplitEditor) return;
+    if (!contentContainer || !documentSplitPane || !documentSplitDivider || !documentSplitEditor || !documentSplitPreview) return;
     const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
     const shouldShow = Boolean(tab && isTabOpen(tab) && tab.id !== activeTabId);
     contentContainer.classList.toggle('document-split-active', shouldShow);
     document.body.classList.toggle('document-split-active', shouldShow);
     documentSplitPane.hidden = !shouldShow;
     documentSplitDivider.hidden = !shouldShow;
-    if (!shouldShow) return;
-    if (documentSplitTitle) documentSplitTitle.textContent = tab.title || 'Untitled';
+    if (!shouldShow) {
+      documentSplitEditor.hidden = true;
+      documentSplitPreview.hidden = true;
+      updateSyncToggleVisibility(currentViewMode);
+      return;
+    }
+    const previewMode = currentViewMode === 'preview';
+    documentSplitEditor.hidden = previewMode;
+    documentSplitPreview.hidden = !previewMode;
     if (documentSplitEditor.value !== tab.content) documentSplitEditor.value = tab.content || '';
     documentSplitEditor.readOnly = shareSnapshotViewOnlyTabIds.has(tab.id);
     documentSplitEditor.setAttribute('aria-label', 'Edit ' + (tab.title || 'Untitled') + ' in split view');
+    documentSplitPreview.setAttribute('aria-label', 'Preview ' + (tab.title || 'Untitled') + ' in split view');
+    if (previewMode) renderDocumentSplitPreview(tab);
+    updateSyncToggleVisibility(currentViewMode);
     requestAnimationFrame(function() {
-      documentSplitEditor.scrollTop = tab.splitScrollPos || 0;
+      if (previewMode) documentSplitPreview.scrollTop = tab.splitPreviewScrollPos || 0;
+      else documentSplitEditor.scrollTop = tab.splitScrollPos || 0;
     });
   }
 
@@ -6378,11 +6471,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const settings = options || {};
     saveSecondarySplitState();
     secondarySplitTabId = null;
+    documentSplitPreviewTabId = null;
+    documentSplitPreviewContent = null;
+    documentSplitScrollSource = null;
     if (secondarySplitSaveTimeout) {
       clearTimeout(secondarySplitSaveTimeout);
       secondarySplitSaveTimeout = null;
     }
     renderDocumentSplitView();
+    updateSyncToggleVisibility(currentViewMode);
     if (currentViewMode === 'split') applyPaneWidths();
     if (settings.renderTabs !== false) renderTabBar(tabs, activeTabId);
     if (!settings.silent) announceToScreenReader('Split view closed.');
@@ -6465,10 +6562,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     openAppModal(modal, { focusTarget: select, onClose: cancel });
   }
 
-  if (documentSplitClose) {
-    documentSplitClose.addEventListener('click', function() { closeDocumentSplitView(); });
-  }
-
   if (documentSplitEditor) {
     documentSplitEditor.addEventListener('input', function() {
       const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
@@ -6484,6 +6577,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentSplitEditor.addEventListener('scroll', function() {
       const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
       if (tab) tab.splitScrollPos = documentSplitEditor.scrollTop;
+      if (currentViewMode === 'editor') syncDocumentSplitScroll(documentSplitEditor, markdownEditor);
+    });
+  }
+  if (documentSplitPreview) {
+    documentSplitPreview.addEventListener('scroll', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (tab) tab.splitPreviewScrollPos = documentSplitPreview.scrollTop;
+      if (currentViewMode === 'preview') syncDocumentSplitScroll(documentSplitPreview, previewPane);
     });
   }
 
@@ -8321,6 +8422,118 @@ ${selector} .arrowheadPath {
     }
   }
 
+  const CODE_LANGUAGE_LABELS = {
+    javascript: ['JS', 'JavaScript'], js: ['JS', 'JavaScript'], jsx: ['JSX', 'JavaScript JSX'],
+    typescript: ['TS', 'TypeScript'], ts: ['TS', 'TypeScript'], tsx: ['TSX', 'TypeScript JSX'],
+    python: ['PY', 'Python'], py: ['PY', 'Python'], ruby: ['RB', 'Ruby'], rb: ['RB', 'Ruby'],
+    java: ['JAVA', 'Java'], c: ['C', 'C'], cpp: ['C++', 'C++'], csharp: ['C#', 'C#'], cs: ['C#', 'C#'],
+    go: ['GO', 'Go'], rust: ['RS', 'Rust'], rs: ['RS', 'Rust'], php: ['PHP', 'PHP'],
+    kotlin: ['KT', 'Kotlin'], kt: ['KT', 'Kotlin'], swift: ['SW', 'Swift'], scala: ['SC', 'Scala'], dart: ['DART', 'Dart'],
+    bash: ['SH', 'Bash'], sh: ['SH', 'Shell'], shell: ['SH', 'Shell'], zsh: ['ZSH', 'Z shell'],
+    powershell: ['PS', 'PowerShell'], ps1: ['PS', 'PowerShell'], cmd: ['CMD', 'Command Prompt'], bat: ['BAT', 'Batch'], dos: ['DOS', 'DOS batch'],
+    html: ['HTML', 'HTML'], xml: ['XML', 'XML'], css: ['CSS', 'CSS'], scss: ['SCSS', 'SCSS'], sass: ['SASS', 'Sass'], less: ['LESS', 'Less'],
+    json: ['JSON', 'JSON'], yaml: ['YAML', 'YAML'], yml: ['YAML', 'YAML'], toml: ['TOML', 'TOML'], ini: ['INI', 'INI'],
+    markdown: ['MD', 'Markdown'], md: ['MD', 'Markdown'], sql: ['SQL', 'SQL'], graphql: ['GQL', 'GraphQL'],
+    dockerfile: ['DOCKER', 'Dockerfile'], nginx: ['NGINX', 'Nginx'], http: ['HTTP', 'HTTP'],
+    r: ['R', 'R'], matlab: ['MAT', 'MATLAB'], lua: ['LUA', 'Lua'], perl: ['PL', 'Perl'], pl: ['PL', 'Perl'],
+    haskell: ['HS', 'Haskell'], hs: ['HS', 'Haskell'], elixir: ['EX', 'Elixir'], ex: ['EX', 'Elixir'], erlang: ['ERL', 'Erlang'],
+    clojure: ['CLJ', 'Clojure'], objectivec: ['OBJ-C', 'Objective-C'], vbnet: ['VB', 'Visual Basic .NET'], fsharp: ['F#', 'F#'],
+    asm: ['ASM', 'Assembly'], diff: ['DIFF', 'Diff'], plaintext: ['TXT', 'Plain text'], text: ['TXT', 'Plain text']
+  };
+  const TERMINAL_CODE_LANGUAGES = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'cmd', 'bat', 'dos']);
+
+  function getPreviewCodeLanguage(codeElement) {
+    const classes = Array.from(codeElement ? codeElement.classList : []);
+    const rawLanguage = classes.find(function(className) {
+      return className !== 'hljs' && className !== 'language-plaintext';
+    }) || 'plaintext';
+    const language = rawLanguage.replace(/^language-/, '').toLowerCase();
+    const mapped = CODE_LANGUAGE_LABELS[language];
+    let fullName = mapped ? mapped[1] : '';
+    if (!fullName && typeof hljs !== 'undefined' && hljs.getLanguage) {
+      const definition = hljs.getLanguage(language);
+      if (definition && definition.name) fullName = definition.name;
+    }
+    if (!fullName) {
+      fullName = language === 'plaintext'
+        ? 'Plain text'
+        : language.replace(/[-_]+/g, ' ').replace(/\b\w/g, function(letter) { return letter.toUpperCase(); });
+    }
+    const shortName = mapped
+      ? mapped[0]
+      : (language.length <= 5 ? language.toUpperCase() : language.slice(0, 4).toUpperCase());
+    return {
+      id: language,
+      shortName: shortName || 'TXT',
+      fullName: fullName,
+      terminal: TERMINAL_CODE_LANGUAGES.has(language)
+    };
+  }
+
+  function enhancePreviewCodeBlocks(root) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+    const preElements = [];
+    if (root.matches && root.matches('pre')) preElements.push(root);
+    root.querySelectorAll('pre').forEach(function(pre) { preElements.push(pre); });
+
+    preElements.forEach(function(pre) {
+      if (pre.closest('.diagram-viewer, .geojson-container, .topojson-container, .stl-container, .math-block')) return;
+      if (pre.closest('.code-preview-block')) return;
+      const code = pre.querySelector('code');
+      if (!code) return;
+      const language = getPreviewCodeLanguage(code);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-preview-block' + (language.terminal ? ' is-terminal' : '');
+      wrapper.setAttribute('data-code-language', language.id);
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'code-preview-toolbar';
+      const languageLabel = document.createElement('span');
+      languageLabel.className = 'code-preview-language';
+      if (language.terminal) {
+        const terminalIcon = document.createElement('i');
+        terminalIcon.className = 'bi bi-terminal';
+        terminalIcon.setAttribute('aria-hidden', 'true');
+        languageLabel.appendChild(terminalIcon);
+      }
+      languageLabel.appendChild(document.createTextNode(language.shortName));
+      languageLabel.title = language.fullName;
+      languageLabel.setAttribute('aria-label', 'Language: ' + language.fullName);
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'code-preview-copy';
+      copyButton.title = 'Copy ' + language.fullName + ' code';
+      copyButton.setAttribute('aria-label', copyButton.title);
+      copyButton.innerHTML = '<i class="bi bi-clipboard" aria-hidden="true"></i><span>Copy</span>';
+      copyButton.addEventListener('click', async function() {
+        if (copyButton.disabled) return;
+        const originalHtml = copyButton.innerHTML;
+        copyButton.disabled = true;
+        try {
+          await copyTextToClipboard(code.textContent || '');
+          copyButton.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i><span>Copied</span>';
+          copyButton.setAttribute('aria-label', 'Code copied');
+          announceToScreenReader(language.fullName + ' code copied.');
+        } catch (error) {
+          copyButton.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>Retry</span>';
+          copyButton.setAttribute('aria-label', 'Copy failed. Retry');
+        }
+        setTimeout(function() {
+          copyButton.disabled = false;
+          copyButton.innerHTML = originalHtml;
+          copyButton.setAttribute('aria-label', 'Copy ' + language.fullName + ' code');
+        }, 1600);
+      });
+
+      toolbar.appendChild(languageLabel);
+      toolbar.appendChild(copyButton);
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(toolbar);
+      wrapper.appendChild(pre);
+    });
+  }
+
   function postProcessPreview(rawVal, context, patchResult) {
     const roots = getPreviewPostProcessRoots(patchResult, context);
 
@@ -8333,6 +8546,7 @@ ${selector} .arrowheadPath {
 
     roots.forEach(function(root) {
       processEmojis(root);
+      enhancePreviewCodeBlocks(root);
     });
 
     queryPreviewRoots(roots, 'input[type="checkbox"]').forEach(function(input) {
@@ -9546,9 +9760,11 @@ ${selector} .arrowheadPath {
       updateFindHighlights();
       scheduleEditorOverlayScrollSync();
     }
+    if (secondarySplitTabId) renderDocumentSplitView();
   }
 
   function resolveViewToggleMode(mode) {
+    if (secondarySplitTabId) return mode;
     if ((mode === 'editor' || mode === 'preview') && currentViewMode === mode) {
       return 'split';
     }
@@ -9557,7 +9773,7 @@ ${selector} .arrowheadPath {
 
   // Story 1.2: Update sync toggle visibility
   function updateSyncToggleVisibility(mode) {
-    const isSplitView = mode === 'split';
+    const isSplitView = mode === 'split' || Boolean(secondarySplitTabId);
 
     // Desktop sync toggle
     if (toggleSyncButton) {
@@ -14496,10 +14712,20 @@ ${selector} .arrowheadPath {
   markdownEditor.addEventListener("scroll", function() {
     cachedScrollTop = this.scrollTop;
     cachedScrollLeft = this.scrollLeft;
-    syncEditorToPreview();
+    if (secondarySplitTabId && currentViewMode === 'editor') {
+      syncDocumentSplitScroll(markdownEditor, documentSplitEditor);
+    } else {
+      syncEditorToPreview();
+    }
     scheduleEditorOverlayScrollSync();
   });
-  previewPane.addEventListener("scroll", syncPreviewToEditor);
+  previewPane.addEventListener("scroll", function() {
+    if (secondarySplitTabId && currentViewMode === 'preview') {
+      syncDocumentSplitScroll(previewPane, documentSplitPreview);
+    } else {
+      syncPreviewToEditor();
+    }
+  });
   toggleSyncButton.addEventListener("click", toggleSyncScrolling);
   if (directionToggle) {
     directionToggle.addEventListener("click", function () {
@@ -20581,7 +20807,7 @@ ${selector} .arrowheadPath {
       darkMode: "Dark Mode",
       lightMode: "Light Mode",
       helpTitle: "Markdown Viewer Help",
-      aboutTitle: "About Markdown",
+      aboutTitle: "About Markdown Viewer",
       shareTitle: "Share Document",
       renameTitle: "Rename file",
       insertLink: "Insert link",
