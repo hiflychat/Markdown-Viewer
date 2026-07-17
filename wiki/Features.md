@@ -10,9 +10,9 @@ Most work happens in the browser or desktop webview. Markdown parsing, syntax hi
 
 ## Main Workspace
 
-The app opens with a header, document-management sidebar, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
+The app opens with a header, Files sidebar, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
 
-- The left sidebar organizes documents into workspaces and one-level folders, with All Documents, Recent, Favorites, and search views.
+- The left **Files** sidebar organizes Markdown files into fixed Default and Secret workspaces with one-level folders, All files, Recent, Favorites, and search views.
 - The sidebar is resizable and collapsible on desktop, narrower on tablet, and becomes a full-height drawer on mobile.
 - Editor mode shows only the textarea.
 - Split mode shows the editor and preview side by side.
@@ -24,14 +24,16 @@ The app opens with a header, document-management sidebar, document tab bar, form
 
 The editor includes line numbers, wrapped-line height handling, a highlight layer for find results, live cursor overlays during Live Share, and skeleton placeholders during initial or heavy rendering. Line-number calculations are cached so large documents do not force a full layout measurement on every keystroke.
 
-## Document Sidebar, Tabs, and Local Workspace Storage
+## Files Sidebar, Tabs, and Local Workspace Storage
 
 Users can work with multiple documents at once.
 
-- Every existing saved document is migrated into **Default Workspace**. Users can add, rename, expand, collapse, and delete custom workspaces, and add one level of folders within them.
-- Deleting a folder moves its documents to the workspace root. Deleting a custom workspace moves its documents to Default Workspace, after confirmation, so container deletion does not discard content.
-- New documents can be created from the sidebar, tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
-- The sidebar supports document open, rename, duplicate, favorite, move, Markdown download, and delete actions. Recent and Favorites are filtered references to the original documents, not copies.
+- Every existing saved document is migrated into **Default Workspace**. Workspaces are fixed; users create one level of folders inside Default Workspace or the password-protected **Secret Workspace**.
+- Secret Workspace encrypts its files and folder names locally with a password-derived AES-GCM key. It remains locked after reload, the key stays in memory only while unlocked, and a forgotten password cannot be recovered. Resetting Secret Workspace permanently deletes its encrypted payload.
+- The sidebar has explicit **New file** and **New folder** actions for the selected location. Files can be dragged onto another folder or workspace; the Move dialog remains available for keyboard and touch workflows.
+- Deleting a folder moves its files to the workspace root so container deletion does not discard content.
+- New files can be created from the sidebar, tab bar, mobile menu, imports, shared snapshots, and Live Share joins. Multi-file imports show a compact bottom progress indicator.
+- The sidebar supports file open, rename, duplicate, favorite, move, Markdown download, and delete actions. Recent and Favorites are filtered references to the original files, not copies.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
 - The app enforces a consistent limit of 50 open documents. New documents, duplication, local/GitHub imports, Share Snapshot, and Live Share joins all use this limit.
 - Each normal tab stores a title, content, workspace/folder location, favorite state, recent activity metadata, scroll position, view mode, local review threads, and creation time.
@@ -43,8 +45,9 @@ Storage keys used by the current implementation include:
 
 | Key | What It Stores |
 | :--- | :--- |
-| `markdownViewerTabs` | Normal saved document tabs, including local comments and suggestions. Temporary shared/live tabs are stripped before saving. |
-| `markdownViewerDocumentOrganization` | Workspaces, folders, expanded state, active sidebar filter, sidebar width/collapse state, and the last creation location. |
+| `markdownViewerTabs` | Normal Default Workspace tabs, including local comments and suggestions. Secret and temporary shared/live tabs are stripped before saving. |
+| `markdownViewerDocumentOrganization` | Fixed workspace state, non-secret folders, active sidebar filter, sidebar width/collapse state, and the last non-secret creation location. |
+| `markdownViewerSecretWorkspace` | Password-encrypted Secret Workspace files and folder names plus the PBKDF2 salt, AES-GCM IV, and non-sensitive item counts. |
 | `markdownViewerActiveTab` | The active tab id. |
 | `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
 | `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |

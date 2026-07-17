@@ -133,7 +133,7 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Logo, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
-                    <button id="document-sidebar-open" class="tool-button document-sidebar-open" type="button" title="Open documents" aria-label="Open document sidebar" aria-controls="document-sidebar" aria-expanded="false">
+                    <button id="document-sidebar-open" class="tool-button document-sidebar-open" type="button" title="Open files" aria-label="Open file sidebar" aria-controls="document-sidebar" aria-expanded="false">
                         <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
                     </button>
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
@@ -254,9 +254,9 @@
                         <!-- Mobile Document Tabs Section -->
                         <div class="mobile-tabs-section mb-3">
                             <div class="mobile-tabs-header">
-                                <span class="mobile-tabs-label"><i class="bi bi-files me-1"></i> Documents</span>
-                                <button id="mobile-new-tab-btn" class="mobile-new-tab-btn" title="New document" aria-label="New document">
-                                    <i class="bi bi-plus-lg"></i>
+                                <span class="mobile-tabs-label"><i class="bi bi-files me-1"></i> Files</span>
+                                <button id="mobile-new-tab-btn" class="mobile-new-tab-btn" title="New file" aria-label="New file">
+                                    <i class="bi bi-filetype-md"></i>
                                 </button>
                             </div>
                             <div id="mobile-tab-list" class="mobile-tab-list" role="tablist" aria-label="Document tabs">
@@ -378,29 +378,27 @@
           <button id="document-sidebar-backdrop" class="document-sidebar-backdrop" type="button" aria-label="Close document sidebar" hidden></button>
           <aside id="document-sidebar" class="document-sidebar" aria-labelledby="document-sidebar-title">
             <div class="document-sidebar-header">
-              <div>
-                <p class="document-sidebar-eyebrow">Library</p>
-                <h2 id="document-sidebar-title">Documents</h2>
-              </div>
-              <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-mobile-close" type="button" aria-label="Close document sidebar" title="Close documents">
+              <h2 id="document-sidebar-title">Files</h2>
+              <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-close" type="button" aria-label="Close file sidebar" title="Close file sidebar">
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
               </button>
             </div>
 
             <div class="document-sidebar-create-row">
               <button id="sidebar-new-document" class="document-sidebar-primary-btn" type="button">
-                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
-                <span>New document</span>
+                <i class="bi bi-filetype-md" aria-hidden="true"></i>
+                <span>New file</span>
               </button>
-              <button id="sidebar-new-workspace" class="document-sidebar-icon-btn" type="button" aria-label="New workspace" title="New workspace">
+              <button id="sidebar-new-folder" class="document-sidebar-secondary-btn" type="button">
                 <i class="bi bi-folder-plus" aria-hidden="true"></i>
+                <span>New folder</span>
               </button>
             </div>
 
-            <label class="visually-hidden" for="document-sidebar-search">Search documents</label>
+            <label class="visually-hidden" for="document-sidebar-search">Search files</label>
             <div class="document-sidebar-search-wrap">
               <i class="bi bi-search" aria-hidden="true"></i>
-              <input id="document-sidebar-search" type="search" autocomplete="off" placeholder="Search documents" />
+              <input id="document-sidebar-search" type="search" autocomplete="off" placeholder="Search files" />
               <button id="document-sidebar-search-clear" type="button" aria-label="Clear document search" title="Clear search" hidden>
                 <i class="bi bi-x" aria-hidden="true"></i>
               </button>
@@ -408,7 +406,7 @@
 
             <nav class="document-sidebar-filters" aria-label="Document views">
               <button class="document-filter-btn is-active" type="button" data-document-filter="all" aria-current="page">
-                <i class="bi bi-files" aria-hidden="true"></i><span>All Documents</span>
+                <i class="bi bi-files" aria-hidden="true"></i><span>All files</span>
               </button>
               <button class="document-filter-btn" type="button" data-document-filter="recent">
                 <i class="bi bi-clock-history" aria-hidden="true"></i><span>Recent</span>
@@ -419,14 +417,10 @@
             </nav>
 
             <div id="document-sidebar-status" class="document-sidebar-status" role="status" aria-live="polite"></div>
-            <div id="document-tree" class="document-tree" role="tree" aria-label="Workspaces, folders, and documents"></div>
+            <div id="document-tree" class="document-tree" role="tree" aria-label="Workspaces, folders, and Markdown files"></div>
 
             <div class="document-sidebar-footer">
-              <span id="document-sidebar-count">0 of 50 documents</span>
-              <button id="document-sidebar-collapse" class="document-sidebar-collapse-btn" type="button" aria-label="Collapse document sidebar" title="Collapse sidebar" aria-expanded="true">
-                <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
-                <span>Collapse</span>
-              </button>
+              <span id="document-sidebar-count">0 of 50 files</span>
             </div>
             <div id="document-sidebar-resizer" class="document-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize document sidebar" aria-valuemin="220" aria-valuemax="420" tabindex="0"></div>
           </aside>
@@ -435,8 +429,8 @@
             <!-- Tab Bar -->
             <div class="tab-bar" id="tab-bar">
               <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
-              <button class="tab-new-btn" id="tab-new-btn" title="New Tab (Ctrl+T)" aria-label="Open new tab">
-                <i class="bi bi-plus-lg"></i> New Tab
+              <button class="tab-new-btn" id="tab-new-btn" title="New file (Ctrl+T)" aria-label="Create new file">
+                <i class="bi bi-filetype-md"></i> New file
               </button>
               <button class="tab-reset-btn" id="tab-reset-btn" title="Reset all files" aria-label="Reset all files">
                 <i class="bi bi-arrow-counterclockwise"></i> Reset
@@ -1330,6 +1324,19 @@
         </div>
     </div>
 
+    <div id="import-progress-toast" class="import-progress-toast" role="status" aria-live="polite" hidden>
+      <i class="bi bi-filetype-md import-progress-icon" aria-hidden="true"></i>
+      <div class="import-progress-content">
+        <div class="import-progress-copy">
+          <span id="import-progress-title">Importing files</span>
+          <span id="import-progress-count">0 of 0</span>
+        </div>
+        <div id="import-progress-bar" class="import-progress-track" role="progressbar" aria-label="Markdown file import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span id="import-progress-value"></span>
+        </div>
+      </div>
+    </div>
+
     <div id="document-name-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-name-modal-title" aria-describedby="document-name-modal-description" aria-hidden="true" style="display:none;">
       <div class="reset-modal-box reset-modal-box--wide modal-box">
         <div class="modal-header">
@@ -1343,6 +1350,37 @@
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-name-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-name-modal-confirm">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="secret-workspace-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="secret-workspace-modal-title" aria-describedby="secret-workspace-modal-description" aria-hidden="true" style="display:none;">
+      <div class="reset-modal-box reset-modal-box--wide modal-box">
+        <div class="modal-header">
+          <div class="secret-workspace-modal-heading">
+            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <p id="secret-workspace-modal-title" class="reset-modal-message">Unlock Secret Workspace</p>
+          </div>
+          <button type="button" class="modal-close-btn" id="secret-workspace-modal-close" aria-label="Close secret workspace dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <p id="secret-workspace-modal-description" class="modal-subtext">Enter the password used to encrypt this workspace on this device.</p>
+        <label class="reset-modal-label" for="secret-workspace-password">Password</label>
+        <div class="secret-password-field">
+          <input type="password" id="secret-workspace-password" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="current-password" />
+          <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password" aria-label="Show password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
+        </div>
+        <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
+          <label class="reset-modal-label" for="secret-workspace-password-confirm">Confirm password</label>
+          <div class="secret-password-field">
+            <input type="password" id="secret-workspace-password-confirm" class="rename-modal-input" minlength="8" maxlength="256" autocomplete="new-password" />
+            <button type="button" class="secret-password-toggle" data-secret-password-toggle="secret-workspace-password-confirm" aria-label="Show confirmation password" title="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <p id="secret-workspace-modal-error" class="document-modal-error" role="alert" hidden></p>
+        <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot password? Reset Secret Workspace</button>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn reset-modal-cancel" id="secret-workspace-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="secret-workspace-modal-confirm">Unlock</button>
         </div>
       </div>
     </div>

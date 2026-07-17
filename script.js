@@ -5,7 +5,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     'markdownViewerTabs',
     'markdownViewerActiveTab',
     'markdownViewerUntitledCounter',
-    'markdownViewerDocumentOrganization'
+    'markdownViewerDocumentOrganization',
+    'markdownViewerSecretWorkspace'
   ]);
 
   function isPrivateStorageMode() {
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       'markdownViewerActiveTab',
       'markdownViewerUntitledCounter',
       'markdownViewerDocumentOrganization',
+      'markdownViewerSecretWorkspace',
       'find-replace-docked',
       'app-lang'
     ];
@@ -640,7 +642,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         markdownViewerTabs: '[]',
         markdownViewerActiveTab: '',
         markdownViewerUntitledCounter: '0',
-        markdownViewerDocumentOrganization: '{}'
+        markdownViewerDocumentOrganization: '{}',
+        markdownViewerSecretWorkspace: ''
       };
       await Promise.all(Object.keys(neutralinoValues).map(function(key) {
         return Neutralino.storage.setData(key, neutralinoValues[key]).catch(function(err) {
@@ -2415,9 +2418,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   const ACTIVE_TAB_KEY = 'markdownViewerActiveTab';
   const UNTITLED_COUNTER_KEY = 'markdownViewerUntitledCounter';
   const DOCUMENT_ORGANIZATION_KEY = 'markdownViewerDocumentOrganization';
-  const DOCUMENT_ORGANIZATION_VERSION = 1;
+  const SECRET_WORKSPACE_STORAGE_KEY = 'markdownViewerSecretWorkspace';
+  const DOCUMENT_ORGANIZATION_VERSION = 2;
+  const SECRET_WORKSPACE_VERSION = 1;
+  const SECRET_KDF_ITERATIONS = 250000;
   const MAX_DOCUMENTS = 50;
   const DEFAULT_WORKSPACE_ID = 'workspace_default';
+  const SECRET_WORKSPACE_ID = 'workspace_secret';
   const SIDEBAR_MIN_WIDTH = 220;
   const SIDEBAR_MAX_WIDTH = 420;
   let tabs = [];
@@ -2430,6 +2437,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   let documentSidebarSearch = '';
   let documentSidebarInitialized = false;
   let isDocumentSidebarResizing = false;
+  let draggedSidebarDocumentId = null;
+  let secretWorkspaceKey = null;
+  let secretWorkspaceSalt = null;
+  let secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+  let secretWorkspaceDocumentCount = 0;
+  let secretWorkspaceSaveTimeout = null;
+  let secretWorkspaceSaveChain = Promise.resolve();
+  let importProgressHideTimeout = null;
   let liveCollaboration = null;
   let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
@@ -2448,12 +2463,20 @@ document.addEventListener("DOMContentLoaded", async function () {
   function createDefaultDocumentOrganization() {
     return {
       version: DOCUMENT_ORGANIZATION_VERSION,
-      workspaces: [{
-        id: DEFAULT_WORKSPACE_ID,
-        name: 'Default Workspace',
-        expanded: true,
-        createdAt: 0
-      }],
+      workspaces: [
+        {
+          id: DEFAULT_WORKSPACE_ID,
+          name: 'Default Workspace',
+          expanded: true,
+          createdAt: 0
+        },
+        {
+          id: SECRET_WORKSPACE_ID,
+          name: 'Secret Workspace',
+          expanded: false,
+          createdAt: 1
+        }
+      ],
       folders: [],
       ui: {
         filter: 'all',
@@ -2468,41 +2491,23 @@ document.addEventListener("DOMContentLoaded", async function () {
   function normalizeDocumentOrganization(raw) {
     const fallback = createDefaultDocumentOrganization();
     const source = raw && typeof raw === 'object' ? raw : {};
-    const seenWorkspaceIds = new Set();
-    const workspaces = [];
     const rawWorkspaces = Array.isArray(source.workspaces) ? source.workspaces : [];
-
-    rawWorkspaces.forEach(function(workspace) {
-      if (!workspace || typeof workspace !== 'object') return;
-      const id = String(workspace.id || '').slice(0, 120);
-      if (!id || seenWorkspaceIds.has(id)) return;
-      const isDefault = id === DEFAULT_WORKSPACE_ID;
-      seenWorkspaceIds.add(id);
-      workspaces.push({
-        id: id,
-        name: isDefault ? 'Default Workspace' : (String(workspace.name || '').trim().slice(0, 160) || 'Workspace'),
-        expanded: workspace.expanded !== false,
-        createdAt: Number.isFinite(Number(workspace.createdAt)) ? Number(workspace.createdAt) : Date.now()
+    const storedDefault = rawWorkspaces.find(function(workspace) { return workspace && workspace.id === DEFAULT_WORKSPACE_ID; });
+    const storedSecret = rawWorkspaces.find(function(workspace) { return workspace && workspace.id === SECRET_WORKSPACE_ID; });
+    const workspaces = fallback.workspaces.map(function(workspace) {
+      const stored = workspace.id === DEFAULT_WORKSPACE_ID ? storedDefault : storedSecret;
+      return Object.assign({}, workspace, {
+        expanded: stored ? stored.expanded !== false : workspace.expanded
       });
-    });
-
-    if (!seenWorkspaceIds.has(DEFAULT_WORKSPACE_ID)) {
-      workspaces.unshift(fallback.workspaces[0]);
-      seenWorkspaceIds.add(DEFAULT_WORKSPACE_ID);
-    }
-
-    workspaces.sort(function(left, right) {
-      if (left.id === DEFAULT_WORKSPACE_ID) return -1;
-      if (right.id === DEFAULT_WORKSPACE_ID) return 1;
-      return left.createdAt - right.createdAt || left.name.localeCompare(right.name);
     });
 
     const seenFolderIds = new Set();
     const folders = (Array.isArray(source.folders) ? source.folders : []).map(function(folder) {
       if (!folder || typeof folder !== 'object') return null;
       const id = String(folder.id || '').slice(0, 120);
-      const workspaceId = String(folder.workspaceId || '');
-      if (!id || seenFolderIds.has(id) || !seenWorkspaceIds.has(workspaceId)) return null;
+      const sourceWorkspaceId = String(folder.workspaceId || '');
+      const workspaceId = sourceWorkspaceId === SECRET_WORKSPACE_ID ? SECRET_WORKSPACE_ID : DEFAULT_WORKSPACE_ID;
+      if (!id || seenFolderIds.has(id) || workspaceId === SECRET_WORKSPACE_ID) return null;
       seenFolderIds.add(id);
       return {
         id: id,
@@ -2516,7 +2521,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
     const allowedFilters = new Set(['all', 'recent', 'favorites']);
     const width = Number(ui.width);
-    const lastWorkspaceId = seenWorkspaceIds.has(ui.lastWorkspaceId) ? ui.lastWorkspaceId : DEFAULT_WORKSPACE_ID;
+    const lastWorkspaceId = ui.lastWorkspaceId === SECRET_WORKSPACE_ID && secretWorkspaceKey
+      ? SECRET_WORKSPACE_ID
+      : DEFAULT_WORKSPACE_ID;
     const lastFolderId = seenFolderIds.has(ui.lastFolderId) ? ui.lastFolderId : null;
     return {
       version: DOCUMENT_ORGANIZATION_VERSION,
@@ -2540,17 +2547,495 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  function removeStorageItem(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (_) {}
+    if (isNeutralinoRuntimeAvailable()) {
+      Neutralino.storage.setData(key, '').catch(function(err) {
+        console.warn('Failed to remove Neutralino storage key:', err);
+      });
+    }
+  }
+
   function saveDocumentOrganization() {
     if (!documentOrganization) return;
-    saveStorageItem(DOCUMENT_ORGANIZATION_KEY, JSON.stringify(documentOrganization));
+    const storageOrganization = {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: documentOrganization.workspaces.map(function(workspace) {
+        return {
+          id: workspace.id,
+          name: workspace.name,
+          expanded: workspace.id === SECRET_WORKSPACE_ID && !secretWorkspaceKey ? false : workspace.expanded,
+          createdAt: workspace.createdAt
+        };
+      }),
+      folders: documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId !== SECRET_WORKSPACE_ID;
+      }),
+      ui: Object.assign({}, documentOrganization.ui, {
+        lastWorkspaceId: documentOrganization.ui.lastWorkspaceId === SECRET_WORKSPACE_ID && !secretWorkspaceKey
+          ? DEFAULT_WORKSPACE_ID
+          : documentOrganization.ui.lastWorkspaceId,
+        lastFolderId: getFolderById(documentOrganization.ui.lastFolderId) && getFolderById(documentOrganization.ui.lastFolderId).workspaceId !== SECRET_WORKSPACE_ID
+          ? documentOrganization.ui.lastFolderId
+          : null
+      })
+    };
+    saveStorageItem(DOCUMENT_ORGANIZATION_KEY, JSON.stringify(storageOrganization));
+    scheduleSecretWorkspaceSave();
+  }
+
+  function getSecretWorkspaceEnvelope() {
+    try {
+      const raw = localStorage.getItem(SECRET_WORKSPACE_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== SECRET_WORKSPACE_VERSION || !parsed.salt || !parsed.iv || !parsed.ciphertext) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function initializeSecretWorkspaceState() {
+    const envelope = getSecretWorkspaceEnvelope();
+    secretWorkspaceDocumentCount = envelope && Number.isFinite(Number(envelope.documentCount))
+      ? Math.min(MAX_DOCUMENTS, Math.max(0, Number(envelope.documentCount)))
+      : 0;
+  }
+
+  function isSecretWorkspaceConfigured() {
+    try {
+      return Boolean(localStorage.getItem(SECRET_WORKSPACE_STORAGE_KEY));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function isSecretWorkspaceUnlocked() {
+    return Boolean(secretWorkspaceKey && secretWorkspaceSalt);
+  }
+
+  function getWebCrypto() {
+    return window.crypto && window.crypto.subtle ? window.crypto : null;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  }
+
+  async function deriveSecretWorkspaceKey(password, salt, iterations) {
+    const cryptoApi = getWebCrypto();
+    if (!cryptoApi) throw new Error('Password encryption is unavailable in this browser.');
+    const keyMaterial = await cryptoApi.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return cryptoApi.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: iterations || SECRET_KDF_ITERATIONS,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  function getSecretWorkspacePayload() {
+    return {
+      version: SECRET_WORKSPACE_VERSION,
+      folders: documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId === SECRET_WORKSPACE_ID;
+      }),
+      documents: tabs.filter(function(tab) {
+        return !isTemporaryDocument(tab) && tab.workspaceId === SECRET_WORKSPACE_ID;
+      })
+    };
+  }
+
+  function enqueueSecretWorkspaceSave() {
+    if (!isSecretWorkspaceUnlocked()) return Promise.resolve(false);
+    const cryptoApi = getWebCrypto();
+    const key = secretWorkspaceKey;
+    const salt = new Uint8Array(secretWorkspaceSalt);
+    const payload = getSecretWorkspacePayload();
+    const payloadText = JSON.stringify(payload);
+    secretWorkspaceDocumentCount = payload.documents.length;
+    secretWorkspaceSaveChain = secretWorkspaceSaveChain.catch(function() {}).then(async function() {
+      const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+      const encrypted = await cryptoApi.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        new TextEncoder().encode(payloadText)
+      );
+      saveStorageItem(SECRET_WORKSPACE_STORAGE_KEY, JSON.stringify({
+        version: SECRET_WORKSPACE_VERSION,
+        iterations: secretWorkspaceIterations,
+        salt: bytesToBase64(salt),
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(encrypted)),
+        documentCount: payload.documents.length,
+        folderCount: payload.folders.length,
+        updatedAt: Date.now()
+      }));
+      return true;
+    });
+    return secretWorkspaceSaveChain;
+  }
+
+  function scheduleSecretWorkspaceSave() {
+    if (!isSecretWorkspaceUnlocked()) return;
+    clearTimeout(secretWorkspaceSaveTimeout);
+    secretWorkspaceSaveTimeout = setTimeout(function() {
+      enqueueSecretWorkspaceSave().catch(function(error) {
+        console.warn('Failed to save Secret Workspace:', error);
+      });
+    }, 450);
+  }
+
+  function flushSecretWorkspaceToStorage() {
+    clearTimeout(secretWorkspaceSaveTimeout);
+    return enqueueSecretWorkspaceSave();
+  }
+
+  async function decryptSecretWorkspace(password) {
+    const envelope = getSecretWorkspaceEnvelope();
+    if (!envelope) throw new Error('Secret Workspace has not been set up yet.');
+    const salt = base64ToBytes(envelope.salt);
+    const iterations = Number(envelope.iterations) || SECRET_KDF_ITERATIONS;
+    const key = await deriveSecretWorkspaceKey(password, salt, iterations);
+    const decrypted = await getWebCrypto().subtle.decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(envelope.iv) },
+      key,
+      base64ToBytes(envelope.ciphertext)
+    );
+    const payload = JSON.parse(new TextDecoder().decode(decrypted));
+    return { payload: payload, key: key, salt: salt, iterations: iterations };
+  }
+
+  function mergeSecretWorkspacePayload(payload, key, salt, iterations) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    const folders = Array.isArray(source.folders) ? source.folders : [];
+    const seenFolderIds = new Set(documentOrganization.folders.map(function(folder) { return folder.id; }));
+    folders.forEach(function(folder) {
+      if (!folder || typeof folder !== 'object') return;
+      const id = String(folder.id || '').slice(0, 120);
+      if (!id || seenFolderIds.has(id)) return;
+      seenFolderIds.add(id);
+      documentOrganization.folders.push({
+        id: id,
+        workspaceId: SECRET_WORKSPACE_ID,
+        name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
+        expanded: folder.expanded !== false,
+        createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
+      });
+    });
+
+    const existingTabIds = new Set(tabs.map(function(tab) { return tab.id; }));
+    const secretFolderIds = new Set(documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(folder) { return folder.id; }));
+    const documents = Array.isArray(source.documents) ? source.documents : [];
+    documents.forEach(function(tab) {
+      if (!tab || typeof tab !== 'object' || !tab.id || existingTabIds.has(tab.id)) return;
+      tab.workspaceId = SECRET_WORKSPACE_ID;
+      tab.folderId = secretFolderIds.has(tab.folderId) ? tab.folderId : null;
+      tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+      normalizeTabDocumentMetadata(tab, { allowSecret: true });
+      tabs.push(tab);
+      existingTabIds.add(tab.id);
+    });
+
+    secretWorkspaceKey = key;
+    secretWorkspaceSalt = new Uint8Array(salt);
+    secretWorkspaceIterations = iterations || SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = documents.length;
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = true;
+    documentOrganization.ui.lastWorkspaceId = SECRET_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    saveDocumentOrganization();
+    renderTabBar(tabs, activeTabId);
+  }
+
+  async function createSecretWorkspacePassword(password) {
+    const cryptoApi = getWebCrypto();
+    if (!cryptoApi) throw new Error('Password encryption is unavailable in this browser.');
+    const salt = cryptoApi.getRandomValues(new Uint8Array(16));
+    const key = await deriveSecretWorkspaceKey(password, salt, SECRET_KDF_ITERATIONS);
+    secretWorkspaceKey = key;
+    secretWorkspaceSalt = salt;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = 0;
+    await flushSecretWorkspaceToStorage();
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = true;
+    documentOrganization.ui.lastWorkspaceId = SECRET_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    saveDocumentOrganization();
+  }
+
+  async function lockSecretWorkspace() {
+    if (!isSecretWorkspaceUnlocked()) return;
+    saveCurrentTabState();
+    await flushSecretWorkspaceToStorage();
+    const secretTabIds = new Set(tabs.filter(function(tab) {
+      return !isTemporaryDocument(tab) && tab.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(tab) { return tab.id; }));
+    tabs = tabs.filter(function(tab) { return !secretTabIds.has(tab.id); });
+    secretTabIds.forEach(function(tabId) {
+      if (typeof tabHistories !== 'undefined' && tabHistories[tabId]) delete tabHistories[tabId];
+    });
+    documentOrganization.folders = documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId !== SECRET_WORKSPACE_ID;
+    });
+    secretWorkspaceKey = null;
+    secretWorkspaceSalt = null;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = false;
+    documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+
+    if (secretTabIds.has(activeTabId)) {
+      let nextTab = tabs.find(function(tab) { return !isTemporaryDocument(tab); }) || tabs[0];
+      if (!nextTab) {
+        nextTab = createTab('', nextUntitledTitle(), 'split', { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+        tabs.push(nextTab);
+      }
+      switchTab(nextTab.id);
+    } else {
+      renderTabBar(tabs, activeTabId);
+    }
+    _flushTabsToStorage(tabs);
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+    announceToScreenReader('Secret Workspace locked.');
+  }
+
+  async function resetSecretWorkspaceData() {
+    const removedIds = new Set(tabs.filter(function(tab) {
+      return tab.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(tab) { return tab.id; }));
+    tabs = tabs.filter(function(tab) { return !removedIds.has(tab.id); });
+    documentOrganization.folders = documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId !== SECRET_WORKSPACE_ID;
+    });
+    secretWorkspaceKey = null;
+    secretWorkspaceSalt = null;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = 0;
+    clearTimeout(secretWorkspaceSaveTimeout);
+    await secretWorkspaceSaveChain.catch(function() {});
+    removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = false;
+    documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    if (removedIds.has(activeTabId)) {
+      let nextTab = tabs.find(function(tab) { return !isTemporaryDocument(tab); }) || tabs[0];
+      if (!nextTab) {
+        nextTab = createTab('', nextUntitledTitle(), 'split', { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+        tabs.push(nextTab);
+      }
+      switchTab(nextTab.id);
+    }
+    _flushTabsToStorage(tabs);
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+  }
+
+  function openSecretWorkspaceDialog(onUnlocked) {
+    if (isPrivateStorageMode()) {
+      alert('Secret Workspace needs local storage. Turn off Private mode before setting or unlocking its password.');
+      return;
+    }
+    if (!getWebCrypto()) {
+      alert('Password encryption is unavailable in this browser or context.');
+      return;
+    }
+    if (isSecretWorkspaceUnlocked()) {
+      if (typeof onUnlocked === 'function') onUnlocked();
+      return;
+    }
+
+    const modal = document.getElementById('secret-workspace-modal');
+    const title = document.getElementById('secret-workspace-modal-title');
+    const description = document.getElementById('secret-workspace-modal-description');
+    const secretInput = document.getElementById('secret-workspace-password');
+    const confirmInput = document.getElementById('secret-workspace-password-confirm');
+    const confirmGroup = document.getElementById('secret-workspace-confirm-group');
+    const error = document.getElementById('secret-workspace-modal-error');
+    const confirmButton = document.getElementById('secret-workspace-modal-confirm');
+    const cancelButton = document.getElementById('secret-workspace-modal-cancel');
+    const closeButton = document.getElementById('secret-workspace-modal-close');
+    const resetButton = document.getElementById('secret-workspace-reset');
+    const toggleButtons = Array.from(modal ? modal.querySelectorAll('[data-secret-password-toggle]') : []);
+    if (!modal || !secretInput || !confirmInput || !confirmButton || !cancelButton) return;
+
+    const setupMode = !isSecretWorkspaceConfigured();
+    title.textContent = setupMode ? 'Protect Secret Workspace' : 'Unlock Secret Workspace';
+    description.textContent = setupMode
+      ? 'Create a password to encrypt files and folder names stored in this workspace. The password cannot be recovered.'
+      : 'Enter the password used to encrypt this workspace on this device.';
+    confirmButton.textContent = setupMode ? 'Create password' : 'Unlock';
+    confirmGroup.hidden = !setupMode;
+    resetButton.hidden = setupMode;
+    secretInput.value = '';
+    confirmInput.value = '';
+    secretInput.type = 'password';
+    confirmInput.type = 'password';
+    secretInput.autocomplete = setupMode ? 'new-password' : 'current-password';
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', submit);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+      resetButton.removeEventListener('click', resetWorkspace);
+      secretInput.removeEventListener('keydown', onKeydown);
+      confirmInput.removeEventListener('keydown', onKeydown);
+      toggleButtons.forEach(function(button) { button.removeEventListener('click', togglePassword); });
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function togglePassword(event) {
+      const button = event.currentTarget;
+      const input = document.getElementById(button.getAttribute('data-secret-password-toggle'));
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      button.title = showing ? 'Show password' : 'Hide password';
+      const icon = button.querySelector('i');
+      if (icon) icon.className = 'bi ' + (showing ? 'bi-eye' : 'bi-eye-slash');
+      input.focus();
+    }
+
+    async function submit() {
+      const password = secretInput.value;
+      if (password.length < 8) {
+        error.textContent = 'Use at least 8 characters.';
+        error.hidden = false;
+        secretInput.focus();
+        return;
+      }
+      if (setupMode && password !== confirmInput.value) {
+        error.textContent = 'Passwords do not match.';
+        error.hidden = false;
+        confirmInput.focus();
+        return;
+      }
+      confirmButton.disabled = true;
+      confirmButton.textContent = setupMode ? 'Encrypting…' : 'Unlocking…';
+      error.hidden = true;
+      try {
+        if (setupMode) {
+          await createSecretWorkspacePassword(password);
+        } else {
+          const unlocked = await decryptSecretWorkspace(password);
+          mergeSecretWorkspacePayload(unlocked.payload, unlocked.key, unlocked.salt, unlocked.iterations);
+        }
+        cleanup();
+        closeAppModal(modal);
+        renderDocumentSidebar();
+        announceToScreenReader('Secret Workspace unlocked.');
+        if (typeof onUnlocked === 'function') onUnlocked();
+      } catch (_) {
+        if (setupMode) {
+          secretWorkspaceKey = null;
+          secretWorkspaceSalt = null;
+          secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+          secretWorkspaceDocumentCount = 0;
+          removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+        }
+        error.textContent = setupMode
+          ? 'Could not protect this workspace. Try again.'
+          : 'Incorrect password or unreadable Secret Workspace data.';
+        error.hidden = false;
+        secretInput.select();
+      } finally {
+        confirmButton.disabled = false;
+        confirmButton.textContent = setupMode ? 'Create password' : 'Unlock';
+      }
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    }
+
+    function resetWorkspace() {
+      cleanup();
+      closeAppModal(modal);
+      openDocumentConfirmation({
+        title: 'Reset Secret Workspace?',
+        description: 'This permanently deletes every encrypted file and folder in Secret Workspace. The content cannot be recovered.',
+        confirmText: 'Reset workspace',
+        onConfirm: function() {
+          resetSecretWorkspaceData().then(function() {
+            announceToScreenReader('Secret Workspace reset.');
+          });
+        }
+      });
+    }
+
+    confirmButton.addEventListener('click', submit);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    resetButton.addEventListener('click', resetWorkspace);
+    secretInput.addEventListener('keydown', onKeydown);
+    confirmInput.addEventListener('keydown', onKeydown);
+    toggleButtons.forEach(function(button) { button.addEventListener('click', togglePassword); });
+    openAppModal(modal, { focusTarget: secretInput, onClose: cancel });
+  }
+
+  function withUnlockedSecretWorkspace(action) {
+    if (isSecretWorkspaceUnlocked()) {
+      if (typeof action === 'function') action();
+      return true;
+    }
+    openSecretWorkspaceDialog(action);
+    return false;
   }
 
   function isTemporaryDocument(tab) {
     return Boolean(tab && (tab.temporary === true || isShareSnapshotTab(tab)));
   }
 
+  function getDocumentCountForLimit() {
+    return tabs.length + (isSecretWorkspaceUnlocked() ? 0 : secretWorkspaceDocumentCount);
+  }
+
   function hasDocumentCapacity() {
-    if (tabs.length < MAX_DOCUMENTS) return true;
+    if (getDocumentCountForLimit() < MAX_DOCUMENTS) return true;
     alert('Maximum of ' + MAX_DOCUMENTS + ' documents reached. Delete an existing document to create or import another.');
     announceToScreenReader('Maximum document limit reached.');
     return false;
@@ -2566,8 +3051,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
   }
 
-  function normalizeTabDocumentMetadata(tab) {
+  function normalizeTabDocumentMetadata(tab, options) {
     if (!tab || typeof tab !== 'object') return tab;
+    const settings = options || {};
     tab.createdAt = Number.isFinite(Number(tab.createdAt)) ? Number(tab.createdAt) : Date.now();
     tab.lastOpenedAt = Number.isFinite(Number(tab.lastOpenedAt)) ? Number(tab.lastOpenedAt) : tab.createdAt;
     tab.lastEditedAt = Number.isFinite(Number(tab.lastEditedAt)) ? Number(tab.lastEditedAt) : tab.createdAt;
@@ -2579,7 +3065,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       return tab;
     }
 
-    const workspace = getWorkspaceById(tab.workspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
+    const requestedWorkspaceId = tab.workspaceId === SECRET_WORKSPACE_ID && settings.allowSecret === true
+      ? SECRET_WORKSPACE_ID
+      : tab.workspaceId;
+    const workspace = getWorkspaceById(requestedWorkspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
     tab.workspaceId = workspace ? workspace.id : DEFAULT_WORKSPACE_ID;
     const folder = getFolderById(tab.folderId);
     tab.folderId = folder && folder.workspaceId === tab.workspaceId ? folder.id : null;
@@ -2600,6 +3089,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!tab || isTemporaryDocument(tab)) return false;
     const workspace = getWorkspaceById(workspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
     if (!workspace) return false;
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) return false;
     const folder = getFolderById(folderId);
     tab.workspaceId = workspace.id;
     tab.folderId = folder && folder.workspaceId === workspace.id ? folder.id : null;
@@ -2612,12 +3102,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getPreferredDocumentLocation() {
-    const selected = tabs.find(function(tab) { return tab.id === selectedDocumentId && !isTemporaryDocument(tab); });
-    if (selected) {
-      return { workspaceId: selected.workspaceId || DEFAULT_WORKSPACE_ID, folderId: selected.folderId || null };
-    }
-    const workspaceId = getWorkspaceById(documentOrganization.ui.lastWorkspaceId)
-      ? documentOrganization.ui.lastWorkspaceId
+    const requestedWorkspaceId = documentOrganization.ui.lastWorkspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()
+      ? DEFAULT_WORKSPACE_ID
+      : documentOrganization.ui.lastWorkspaceId;
+    const workspaceId = getWorkspaceById(requestedWorkspaceId)
+      ? requestedWorkspaceId
       : DEFAULT_WORKSPACE_ID;
     const folder = getFolderById(documentOrganization.ui.lastFolderId);
     return {
@@ -2728,95 +3217,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     openAppModal(modal, { focusTarget: cancelButton, onClose: cancel });
   }
 
-  function createWorkspace() {
-    openDocumentNameDialog({
-      title: 'Create workspace',
-      description: 'Workspaces keep related folders and documents together.',
-      label: 'Workspace name',
-      placeholder: 'Project notes',
-      confirmText: 'Create workspace',
-      validate: function(value) {
-        if (!value) return 'Enter a workspace name.';
-        if (documentOrganization.workspaces.some(function(workspace) { return workspace.name.toLowerCase() === value.toLowerCase(); })) {
-          return 'A workspace with this name already exists.';
-        }
-        return '';
-      },
-      onConfirm: function(value) {
-        const workspace = {
-          id: createDocumentEntityId('workspace'),
-          name: value,
-          expanded: true,
-          createdAt: Date.now()
-        };
-        documentOrganization.workspaces.push(workspace);
-        documentOrganization.ui.lastWorkspaceId = workspace.id;
-        documentOrganization.ui.lastFolderId = null;
-        saveDocumentOrganization();
-        renderDocumentSidebar();
-        announceToScreenReader('Workspace created: ' + value);
-      }
-    });
-  }
-
-  function renameWorkspace(workspaceId) {
-    const workspace = getWorkspaceById(workspaceId);
-    if (!workspace || workspace.id === DEFAULT_WORKSPACE_ID) return;
-    openDocumentNameDialog({
-      title: 'Rename workspace',
-      label: 'Workspace name',
-      value: workspace.name,
-      confirmText: 'Rename',
-      validate: function(value) {
-        if (!value) return 'Enter a workspace name.';
-        if (documentOrganization.workspaces.some(function(item) {
-          return item.id !== workspaceId && item.name.toLowerCase() === value.toLowerCase();
-        })) return 'A workspace with this name already exists.';
-        return '';
-      },
-      onConfirm: function(value) {
-        workspace.name = value;
-        saveDocumentOrganization();
-        renderDocumentSidebar();
-        announceToScreenReader('Workspace renamed to ' + value);
-      }
-    });
-  }
-
-  function deleteWorkspace(workspaceId) {
-    const workspace = getWorkspaceById(workspaceId);
-    if (!workspace || workspace.id === DEFAULT_WORKSPACE_ID) return;
-    const documentCount = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.workspaceId === workspaceId; }).length;
-    const folderCount = documentOrganization.folders.filter(function(folder) { return folder.workspaceId === workspaceId; }).length;
-    const details = documentCount || folderCount
-      ? 'Its ' + documentCount + ' document' + (documentCount === 1 ? '' : 's') + ' will move to Default Workspace so no content is lost.'
-      : 'This empty workspace will be removed.';
-    openDocumentConfirmation({
-      title: 'Delete workspace?',
-      description: details,
-      confirmText: 'Delete workspace',
-      onConfirm: function() {
-        tabs.forEach(function(tab) {
-          if (!isTemporaryDocument(tab) && tab.workspaceId === workspaceId) {
-            tab.workspaceId = DEFAULT_WORKSPACE_ID;
-            tab.folderId = null;
-          }
-        });
-        documentOrganization.folders = documentOrganization.folders.filter(function(folder) { return folder.workspaceId !== workspaceId; });
-        documentOrganization.workspaces = documentOrganization.workspaces.filter(function(item) { return item.id !== workspaceId; });
-        documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
-        documentOrganization.ui.lastFolderId = null;
-        saveDocumentOrganization();
-        saveTabsToStorage(tabs);
-        renderTabBar(tabs, activeTabId);
-        announceToScreenReader('Workspace deleted. Documents moved to Default Workspace.');
-      }
-    });
-  }
-
   function createFolder(workspaceId) {
     const workspace = getWorkspaceById(workspaceId);
     if (!workspace) return;
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() { createFolder(workspaceId); });
+      return;
+    }
     openDocumentNameDialog({
       title: 'Create folder',
       description: 'Folders stay one level deep inside a workspace.',
@@ -2911,8 +3318,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentOrganization.workspaces.forEach(function(workspace) {
       const rootOption = document.createElement('option');
       rootOption.value = workspace.id + '|';
-      rootOption.textContent = workspace.name;
+      const locked = workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked();
+      rootOption.textContent = workspace.name + (locked ? ' (password required)' : '');
       select.appendChild(rootOption);
+      if (locked) return;
       documentOrganization.folders.filter(function(folder) {
         return folder.workspaceId === workspace.id;
       }).forEach(function(folder) {
@@ -2935,15 +3344,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       closeAppModal(modal);
     }
 
-    function move() {
+    async function move() {
       const parts = String(select.value || '').split('|');
-      if (setDocumentLocation(tab, parts[0], parts[1] || null)) {
-        saveTabsToStorage(tabs);
-        renderTabBar(tabs, activeTabId);
-        announceToScreenReader('Document moved.');
-      }
       cleanup();
       closeAppModal(modal);
+      await moveDocumentToLocation(tab.id, parts[0], parts[1] || null);
     }
 
     confirmButton.addEventListener('click', move);
@@ -2983,6 +3388,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function selectSidebarDocument(tabId) {
     selectedDocumentId = tabId;
+    const selectedTab = tabs.find(function(tab) { return tab.id === tabId && !isTemporaryDocument(tab); });
+    if (selectedTab) {
+      documentOrganization.ui.lastWorkspaceId = selectedTab.workspaceId || DEFAULT_WORKSPACE_ID;
+      documentOrganization.ui.lastFolderId = selectedTab.folderId || null;
+      saveDocumentOrganization();
+    }
     document.querySelectorAll('#document-tree .document-tree-row[data-document-id]').forEach(function(row) {
       const selected = row.getAttribute('data-document-id') === tabId;
       row.classList.toggle('is-selected', selected);
@@ -3110,23 +3521,127 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getWorkspaceMenuActions(workspace) {
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      return [{
+        id: 'unlock',
+        icon: isSecretWorkspaceConfigured() ? 'bi-unlock' : 'bi-shield-lock',
+        label: isSecretWorkspaceConfigured() ? 'Unlock workspace' : 'Set password',
+        run: function() { openSecretWorkspaceDialog(); }
+      }];
+    }
     const actions = [
-      { id: 'new-document', icon: 'bi-file-earmark-plus', label: 'New document', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
+      { id: 'new-document', icon: 'bi-filetype-md', label: 'New file', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
       { id: 'new-folder', icon: 'bi-folder-plus', label: 'New folder', run: function() { createFolder(workspace.id); } }
     ];
-    if (workspace.id !== DEFAULT_WORKSPACE_ID) {
-      actions.push({ id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameWorkspace(workspace.id); } });
-      actions.push({ id: 'delete', icon: 'bi-trash', label: 'Delete', danger: true, run: function() { deleteWorkspace(workspace.id); } });
+    if (workspace.id === SECRET_WORKSPACE_ID) {
+      actions.push({ id: 'lock', icon: 'bi-lock', label: 'Lock workspace', run: function() { lockSecretWorkspace(); } });
     }
     return actions;
   }
 
   function getFolderMenuActions(folder) {
     return [
-      { id: 'new-document', icon: 'bi-file-earmark-plus', label: 'New document', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
+      { id: 'new-document', icon: 'bi-filetype-md', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
       { id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameFolder(folder.id); } },
       { id: 'delete', icon: 'bi-trash', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
+  }
+
+  async function moveDocumentToLocation(tabId, workspaceId, folderId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return false;
+    if (workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() {
+        moveDocumentToLocation(tabId, workspaceId, folderId);
+      });
+      return false;
+    }
+
+    const previousWorkspaceId = tab.workspaceId || DEFAULT_WORKSPACE_ID;
+    const previousFolderId = tab.folderId || null;
+    if (previousWorkspaceId === workspaceId && previousFolderId === (folderId || null)) {
+      announceToScreenReader('File is already in that location.');
+      return true;
+    }
+    if (!setDocumentLocation(tab, workspaceId, folderId)) return false;
+
+    try {
+      if (workspaceId === SECRET_WORKSPACE_ID) {
+        await flushSecretWorkspaceToStorage();
+        if (!_flushTabsToStorage(tabs)) throw new Error('Normal workspace storage failed.');
+      } else {
+        if (!_flushTabsToStorage(tabs)) throw new Error('Normal workspace storage failed.');
+        if (previousWorkspaceId === SECRET_WORKSPACE_ID) await flushSecretWorkspaceToStorage();
+      }
+    } catch (error) {
+      tab.workspaceId = previousWorkspaceId;
+      tab.folderId = previousFolderId;
+      saveDocumentOrganization();
+      if (isSecretWorkspaceUnlocked()) {
+        await flushSecretWorkspaceToStorage().catch(function() {});
+      }
+      _flushTabsToStorage(tabs);
+      renderDocumentSidebar();
+      alert('The file could not be moved because the destination could not be saved.');
+      return false;
+    }
+    renderTabBar(tabs, activeTabId);
+    announceToScreenReader('File moved to ' + getDocumentLocationLabel(tab) + '.');
+    return true;
+  }
+
+  function clearDocumentDropTargets() {
+    document.querySelectorAll('#document-tree .document-tree-row.is-drop-target').forEach(function(row) {
+      row.classList.remove('is-drop-target');
+    });
+  }
+
+  function attachDocumentDropTarget(row, location) {
+    if (!row || !location) return;
+    row.setAttribute('data-drop-workspace-id', location.workspaceId);
+    if (location.folderId) row.setAttribute('data-drop-folder-id', location.folderId);
+
+    row.addEventListener('dragover', function(event) {
+      const transferTypes = event.dataTransfer && event.dataTransfer.types
+        ? Array.from(event.dataTransfer.types)
+        : [];
+      const hasFiles = transferTypes.includes('Files') || Boolean(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length);
+      if (!draggedSidebarDocumentId && !hasFiles) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = draggedSidebarDocumentId ? 'move' : 'copy';
+      clearDocumentDropTargets();
+      row.classList.add('is-drop-target');
+    });
+
+    row.addEventListener('dragleave', function(event) {
+      if (!event.relatedTarget || !row.contains(event.relatedTarget)) row.classList.remove('is-drop-target');
+    });
+
+    row.addEventListener('drop', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      row.classList.remove('is-drop-target');
+      const files = event.dataTransfer && event.dataTransfer.files;
+      if (files && files.length) {
+        dragDepth = 0;
+        if (dragOverlay) {
+          dragOverlay.classList.remove('active');
+          dragOverlay.setAttribute('aria-hidden', 'true');
+        }
+        const importFiles = function() {
+          importMarkdownFiles(files, { location: location });
+        };
+        if (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+          withUnlockedSecretWorkspace(importFiles);
+        } else {
+          importFiles();
+        }
+        return;
+      }
+      const tabId = draggedSidebarDocumentId || (event.dataTransfer && event.dataTransfer.getData('application/x-markdown-viewer-document'));
+      if (tabId) moveDocumentToLocation(tabId, location.workspaceId, location.folderId || null);
+    });
   }
 
   function createDocumentTreeRow(options) {
@@ -3146,6 +3661,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (options.favorite) row.classList.add('is-favorite');
     if (options.temporary) row.classList.add('document-tree-temporary');
+    if (options.locationSelected) row.classList.add('is-location-selected');
+    if (options.locked) row.classList.add('is-secret-locked');
     if (typeof options.expanded === 'boolean') row.setAttribute('aria-expanded', options.expanded ? 'true' : 'false');
     row.setAttribute('aria-label', options.ariaLabel || options.label);
 
@@ -3221,6 +3738,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (options.menuActions && options.menuActions.length) {
       row.appendChild(createDocumentMenuButton(options.label, options.menuActions));
     }
+    if (options.documentId && !options.temporary) {
+      row.draggable = true;
+      row.addEventListener('dragstart', function(event) {
+        draggedSidebarDocumentId = options.documentId;
+        row.classList.add('is-dragging');
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('application/x-markdown-viewer-document', options.documentId);
+          event.dataTransfer.setData('text/plain', options.documentId);
+        }
+      });
+      row.addEventListener('dragend', function() {
+        draggedSidebarDocumentId = null;
+        row.classList.remove('is-dragging');
+        clearDocumentDropTargets();
+      });
+    }
+    if (options.dropLocation) attachDocumentDropTarget(row, options.dropLocation);
     return row;
   }
 
@@ -3231,7 +3766,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       documentId: tab.id,
       label: tab.title || 'Untitled',
       ariaLabel: (tab.id === activeTabId ? 'Active document, ' : 'Document, ') + (tab.title || 'Untitled') + (tab.favorite ? ', favorite' : ''),
-      icon: isTemporaryDocument(tab) ? (tab.kind === SHARE_SNAPSHOT_TAB_KIND ? 'bi-share' : 'bi-broadcast') : 'bi-file-earmark-text',
+      icon: 'bi-filetype-md',
       depth: depth,
       favorite: tab.favorite === true,
       temporary: isTemporaryDocument(tab),
@@ -3293,6 +3828,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     documentOrganization.workspaces.forEach(function(workspace) {
+      const isSecretWorkspace = workspace.id === SECRET_WORKSPACE_ID;
+      const secretLocked = isSecretWorkspace && !isSecretWorkspaceUnlocked();
       const workspaceDocuments = tabs.filter(function(tab) {
         return !isTemporaryDocument(tab) && tab.workspaceId === workspace.id;
       });
@@ -3303,28 +3840,42 @@ document.addEventListener("DOMContentLoaded", async function () {
         return folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
       })) return;
 
-      const expanded = documentSidebarSearch ? true : workspace.expanded !== false;
+      const expanded = secretLocked ? false : (documentSidebarSearch ? true : workspace.expanded !== false);
       const workspaceRow = createDocumentTreeRow({
         type: 'workspace',
         id: workspace.id,
         label: workspace.name,
-        icon: 'bi-collection',
+        ariaLabel: workspace.name + (secretLocked ? ', locked' : ', file location'),
+        icon: isSecretWorkspace
+          ? (secretLocked ? 'bi-shield-lock' : 'bi-shield-check')
+          : (expanded ? 'bi-folder2-open' : 'bi-folder2'),
         depth: 0,
         expanded: expanded,
-        meta: String(workspaceDocuments.length),
-        addActions: true,
+        meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
+        locked: secretLocked,
+        locationSelected: !secretLocked && documentOrganization.ui.lastWorkspaceId === workspace.id && !documentOrganization.ui.lastFolderId,
+        dropLocation: { workspaceId: workspace.id, folderId: null },
+        addActions: !secretLocked,
         menuActions: getWorkspaceMenuActions(workspace),
         onToggle: function() {
+          if (secretLocked) {
+            openSecretWorkspaceDialog();
+            return;
+          }
           workspace.expanded = !workspace.expanded;
           saveDocumentOrganization();
           renderDocumentSidebar();
         },
         onActivate: function() {
-          documentOrganization.ui.lastWorkspaceId = workspace.id;
-          documentOrganization.ui.lastFolderId = null;
-          workspace.expanded = !workspace.expanded;
-          saveDocumentOrganization();
-          renderDocumentSidebar();
+          const selectWorkspace = function() {
+            documentOrganization.ui.lastWorkspaceId = workspace.id;
+            documentOrganization.ui.lastFolderId = null;
+            workspace.expanded = true;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          };
+          if (secretLocked) withUnlockedSecretWorkspace(selectWorkspace);
+          else selectWorkspace();
         }
       });
       tree.appendChild(workspaceRow);
@@ -3347,6 +3898,8 @@ document.addEventListener("DOMContentLoaded", async function () {
           depth: 1,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
+          locationSelected: documentOrganization.ui.lastWorkspaceId === workspace.id && documentOrganization.ui.lastFolderId === folder.id,
+          dropLocation: { workspaceId: workspace.id, folderId: folder.id },
           addActions: true,
           menuActions: getFolderMenuActions(folder),
           onToggle: function() {
@@ -3357,7 +3910,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           onActivate: function() {
             documentOrganization.ui.lastWorkspaceId = workspace.id;
             documentOrganization.ui.lastFolderId = folder.id;
-            folder.expanded = !folder.expanded;
+            folder.expanded = true;
             saveDocumentOrganization();
             renderDocumentSidebar();
           }
@@ -3393,7 +3946,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const filter = documentOrganization.ui.filter || 'all';
     let renderedCount = filter === 'all' ? renderWorkspaceTree(tree) : renderFlatDocumentView(tree, filter);
 
-    if (!renderedCount) {
+    if (!renderedCount && !tree.querySelector('.document-tree-row')) {
       const empty = document.createElement('div');
       empty.className = 'document-tree-empty';
       empty.textContent = documentSidebarSearch
@@ -3403,7 +3956,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     const count = document.getElementById('document-sidebar-count');
-    if (count) count.textContent = tabs.length + ' of ' + MAX_DOCUMENTS + ' documents';
+    if (count) count.textContent = getDocumentCountForLimit() + ' of ' + MAX_DOCUMENTS + ' files';
     const status = document.getElementById('document-sidebar-status');
     if (status) {
       status.textContent = documentSidebarSearch ? renderedCount + ' result' + (renderedCount === 1 ? '' : 's') : '';
@@ -3425,7 +3978,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateDocumentSidebarVisibility() {
     const sidebar = document.getElementById('document-sidebar');
     const openButton = document.getElementById('document-sidebar-open');
-    const collapseButton = document.getElementById('document-sidebar-collapse');
     const backdrop = document.getElementById('document-sidebar-backdrop');
     if (!sidebar || !documentOrganization) return;
     if (isDocumentSidebarMobile()) {
@@ -3439,10 +3991,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.body.classList.toggle('document-sidebar-collapsed', documentOrganization.ui.collapsed === true);
     const mobileOpen = document.body.classList.contains('document-sidebar-mobile-open');
     if (openButton) openButton.setAttribute('aria-expanded', mobileOpen || !documentOrganization.ui.collapsed ? 'true' : 'false');
-    if (collapseButton) {
-      collapseButton.setAttribute('aria-expanded', documentOrganization.ui.collapsed ? 'false' : 'true');
-      collapseButton.setAttribute('aria-label', documentOrganization.ui.collapsed ? 'Expand document sidebar' : 'Collapse document sidebar');
-    }
     if (backdrop) backdrop.hidden = !mobileOpen;
   }
 
@@ -3547,10 +4095,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentSidebarInitialized = true;
     const openButton = document.getElementById('document-sidebar-open');
     const closeButton = document.getElementById('document-sidebar-close');
-    const collapseButton = document.getElementById('document-sidebar-collapse');
     const backdrop = document.getElementById('document-sidebar-backdrop');
     const newDocumentButton = document.getElementById('sidebar-new-document');
-    const newWorkspaceButton = document.getElementById('sidebar-new-workspace');
+    const newFolderButton = document.getElementById('sidebar-new-folder');
     const search = document.getElementById('document-sidebar-search');
     const clearSearch = document.getElementById('document-sidebar-search-clear');
     const tree = document.getElementById('document-tree');
@@ -3558,13 +4105,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     const sidebar = document.getElementById('document-sidebar');
 
     if (openButton) openButton.addEventListener('click', openDocumentSidebar);
-    if (closeButton) closeButton.addEventListener('click', closeDocumentSidebarOnMobile);
-    if (collapseButton) collapseButton.addEventListener('click', toggleDocumentSidebarCollapsed);
+    if (closeButton) closeButton.addEventListener('click', toggleDocumentSidebarCollapsed);
     if (backdrop) backdrop.addEventListener('click', closeDocumentSidebarOnMobile);
-    if (newWorkspaceButton) newWorkspaceButton.addEventListener('click', createWorkspace);
     if (newDocumentButton) newDocumentButton.addEventListener('click', function() {
       const location = getPreferredDocumentLocation();
       newTab('', null, location);
+    });
+    if (newFolderButton) newFolderButton.addEventListener('click', function() {
+      const location = getPreferredDocumentLocation();
+      createFolder(location.workspaceId);
     });
 
     document.querySelectorAll('.document-filter-btn').forEach(function(button) {
@@ -4965,6 +5514,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   function loadTabsFromStorage() {
     try {
       return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
+        if (tab.workspaceId === SECRET_WORKSPACE_ID) {
+          tab.workspaceId = DEFAULT_WORKSPACE_ID;
+          tab.folderId = null;
+        }
         tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
         return normalizeTabDocumentMetadata(tab);
       });
@@ -4977,13 +5530,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     // PERF-008: Debounce tab saves to reduce main thread blocking from JSON.stringify
     // on large document arrays. Immediate flush happens on visibilitychange/beforeunload.
     clearTimeout(saveTabStateTimeout);
+    scheduleSecretWorkspaceSave();
     saveTabStateTimeout = setTimeout(function() {
       _flushTabsToStorage(tabsArr);
     }, 500);
   }
 
   function getTabsForStorage(tabsArr) {
-    const sourceTabs = stripTemporaryTabs(tabsArr || tabs);
+    const sourceTabs = stripTemporaryTabs(tabsArr || tabs).filter(function(tab) {
+      return tab.workspaceId !== SECRET_WORKSPACE_ID;
+    });
     if (!liveCollaboration) {
       return sourceTabs;
     }
@@ -5009,15 +5565,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     clearTimeout(saveTabStateTimeout);
     try {
       saveStorageItem(STORAGE_KEY, JSON.stringify(getTabsForStorage(tabsArr)));
+      return true;
     } catch (e) {
       console.warn('Failed to save tabs to localStorage:', e);
+      return false;
     }
   }
 
   // Ensure tabs are persisted before page close (PERF-008)
-  window.addEventListener('beforeunload', function() { _flushTabsToStorage(tabs); });
+  window.addEventListener('beforeunload', function() {
+    saveCurrentTabState();
+    _flushTabsToStorage(tabs);
+    if (isSecretWorkspaceUnlocked()) flushSecretWorkspaceToStorage().catch(function() {});
+  });
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden') _flushTabsToStorage(tabs);
+    if (document.visibilityState === 'hidden') {
+      saveCurrentTabState();
+      _flushTabsToStorage(tabs);
+      if (isSecretWorkspaceUnlocked()) flushSecretWorkspaceToStorage().catch(function() {});
+    }
   });
 
   function loadActiveTabId() {
@@ -5026,6 +5592,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function saveActiveTabId(id) {
     if (isShareSnapshotTabId(id)) return;
+    const tab = tabs.find(function(item) { return item.id === id; });
+    if (tab && tab.workspaceId === SECRET_WORKSPACE_ID) return;
     saveStorageItem(ACTIVE_TAB_KEY, id);
   }
 
@@ -5516,11 +6084,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function newTab(content, title, location) {
     if (content === undefined) content = '';
+    const targetLocation = location || (documentOrganization ? getPreferredDocumentLocation() : { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+    if (targetLocation.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() { newTab(content, title, targetLocation); });
+      return false;
+    }
     if (!hasDocumentCapacity()) return false;
     if (reviewModeActive) setReviewMode(false);
     if (!title) title = nextUntitledTitle();
-    const tab = createTab(content, title, 'split', location);
-    normalizeTabDocumentMetadata(tab);
+    const tab = createTab(content, title, 'split', targetLocation);
+    normalizeTabDocumentMetadata(tab, { allowSecret: targetLocation.workspaceId === SECRET_WORKSPACE_ID });
     tabs.push(tab);
     selectedDocumentId = tab.id;
     switchTab(tab.id);
@@ -5732,7 +6305,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
     }
 
-    function doReset() {
+    async function doReset() {
       closeAppModal(modal);
       cleanup();
       closeReviewComposer();
@@ -5740,6 +6313,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       disconnectLiveCollaboration({ restoreOriginal: false, silent: true });
       applyShareSnapshotAccessMode('edit');
       resetShareSnapshotLink();
+      clearTimeout(secretWorkspaceSaveTimeout);
+      await secretWorkspaceSaveChain.catch(function() {});
+      removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+      secretWorkspaceKey = null;
+      secretWorkspaceSalt = null;
+      secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+      secretWorkspaceDocumentCount = 0;
       tabs = [];
       documentOrganization = createDefaultDocumentOrganization();
       documentSidebarSearch = '';
@@ -5792,6 +6372,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function initTabs() {
     untitledCounter = loadUntitledCounter();
     documentOrganization = loadDocumentOrganization();
+    initializeSecretWorkspaceState();
     tabs = loadTabsFromStorage();
     activeTabId = loadActiveTabId();
 
@@ -7613,7 +8194,45 @@ ${selector} .arrowheadPath {
     return (file && file.name ? file.name : "document.md").replace(/\.(md|markdown)$/i, "");
   }
 
-  function importMarkdownFile(file) {
+  function showImportProgress(total) {
+    const toast = document.getElementById('import-progress-toast');
+    const title = document.getElementById('import-progress-title');
+    const count = document.getElementById('import-progress-count');
+    const bar = document.getElementById('import-progress-bar');
+    const value = document.getElementById('import-progress-value');
+    if (!toast || !title || !count || !bar || !value) return;
+    clearTimeout(importProgressHideTimeout);
+    title.textContent = total === 1 ? 'Importing file' : 'Importing files';
+    count.textContent = '0 of ' + total;
+    value.style.width = '0%';
+    bar.setAttribute('aria-valuenow', '0');
+    toast.hidden = false;
+  }
+
+  function updateImportProgress(processed, total) {
+    const count = document.getElementById('import-progress-count');
+    const bar = document.getElementById('import-progress-bar');
+    const value = document.getElementById('import-progress-value');
+    const percent = total ? Math.round((processed / total) * 100) : 0;
+    if (count) count.textContent = processed + ' of ' + total;
+    if (value) value.style.width = percent + '%';
+    if (bar) bar.setAttribute('aria-valuenow', String(percent));
+  }
+
+  function finishImportProgress(imported, total) {
+    const toast = document.getElementById('import-progress-toast');
+    const title = document.getElementById('import-progress-title');
+    const count = document.getElementById('import-progress-count');
+    if (!toast || !title || !count) return;
+    updateImportProgress(total, total);
+    title.textContent = imported === total ? 'Import complete' : 'Import finished';
+    count.textContent = imported + ' imported';
+    importProgressHideTimeout = setTimeout(function() {
+      toast.hidden = true;
+    }, 3200);
+  }
+
+  function importMarkdownFile(file, location) {
     return new Promise(function(resolve) {
       if (!file) {
         resolve(false);
@@ -7640,7 +8259,7 @@ ${selector} .arrowheadPath {
           }
         }
 
-        resolve(newTab(text, getMarkdownFileTitle(file)) === true);
+        resolve(newTab(text, getMarkdownFileTitle(file), location) === true);
       };
       reader.onerror = function() {
         alert('Failed to read the file. Please check permissions and try again.');
@@ -7662,7 +8281,7 @@ ${selector} .arrowheadPath {
       return 0;
     }
 
-    const remainingCapacity = Math.max(0, MAX_DOCUMENTS - tabs.length);
+    const remainingCapacity = Math.max(0, MAX_DOCUMENTS - getDocumentCountForLimit());
     if (!remainingCapacity) {
       hasDocumentCapacity();
       return 0;
@@ -7673,11 +8292,17 @@ ${selector} .arrowheadPath {
     }
 
     let importedCount = 0;
-    for (const file of filesToImport) {
-      if (await importMarkdownFile(file)) {
+    showImportProgress(filesToImport.length);
+    for (let index = 0; index < filesToImport.length; index++) {
+      if (await importMarkdownFile(filesToImport[index], settings.location)) {
         importedCount++;
       }
+      updateImportProgress(index + 1, filesToImport.length);
     }
+    if (settings.location && settings.location.workspaceId === SECRET_WORKSPACE_ID && isSecretWorkspaceUnlocked()) {
+      await flushSecretWorkspaceToStorage();
+    }
+    finishImportProgress(importedCount, filesToImport.length);
 
     return importedCount;
   }

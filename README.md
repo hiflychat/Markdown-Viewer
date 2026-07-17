@@ -106,7 +106,7 @@ For the full feature list, details, limitations, and privacy notes, see the [fea
 ## Markdown Editing and Live Preview
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
-- Organize up to 50 Markdown documents in a responsive left sidebar with workspaces, one-level folders, search, Recent, Favorites, move actions, and automatic migration into Default Workspace. The tab strip remains available for quick switching and reordering.
+- Organize up to 50 Markdown files in a closable, responsive left sidebar with fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, and drag-and-drop moves. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 
@@ -276,6 +276,7 @@ Network use is user-triggered for features such as GitHub import, remote diagram
 ## Security and Privacy Controls
 
 - Preview HTML is sanitized before insertion, and exported HTML includes a restrictive CSP plus SRI metadata for its external assets.
+- Secret Workspace derives a local encryption key from the user's password with PBKDF2-SHA-256 and encrypts its files and folder names with AES-GCM. The key is kept only for the unlocked browser session, and forgotten passwords cannot be recovered.
 - Cloudflare Pages deployments use `_headers` for CSP, clickjacking protection, referrer and permissions policies, and no-sniff protection; sensitive paths are redirected to 404 responses.
 - Stored Share Snapshot API CORS is limited to the production app, `null`, and local development origins. Stored responses are `no-store`, and creators receive a deletion token from the API.
 - STL rendering rejects oversized sources, non-finite geometry, and excessive vertex counts before WebGL rendering.

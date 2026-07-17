@@ -6,8 +6,9 @@ This page documents the runtime, storage, dependency, Docker, Cloudflare, and de
 
 | Key | Location | Purpose |
 | :--- | :--- | :--- |
-| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal saved tabs, including local review threads. Temporary share/live tabs are excluded. |
-| `markdownViewerDocumentOrganization` | `localStorage`, mirrored to Neutralino storage in desktop | Workspace/folder definitions, expansion state, sidebar filter, sidebar width/collapse state, and last creation location. |
+| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal Default Workspace tabs, including local review threads. Secret and temporary share/live tabs are excluded. |
+| `markdownViewerDocumentOrganization` | `localStorage`, mirrored to Neutralino storage in desktop | Fixed workspace expansion state, non-secret folders, sidebar filter, sidebar width/collapse state, and last non-secret creation location. |
+| `markdownViewerSecretWorkspace` | `localStorage`, mirrored to Neutralino storage in desktop | Secret Workspace files and folder names encrypted with AES-GCM using a PBKDF2-SHA-256 password-derived key. The salt, IV, and non-sensitive counts are stored with the ciphertext; the key is session-only. |
 | `markdownViewerActiveTab` | `localStorage`, mirrored in desktop | Active tab id. |
 | `markdownViewerUntitledCounter` | `localStorage`, mirrored in desktop | Next Untitled document number. |
 | `markdownViewerGlobalState` | `localStorage`, mirrored in desktop | Theme, direction, view mode, scroll sync, and other global UI preferences. |

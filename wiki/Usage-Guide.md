@@ -9,7 +9,7 @@ The app has six main areas:
 | Area | What It Does |
 | :--- | :--- |
 | Header | Shows app name, stats, view controls, import/export, copy, sharing, language, and theme controls. |
-| Document sidebar | Organizes up to 50 documents into workspaces and folders, with All Documents, Recent, Favorites, and search. |
+| Files sidebar | Organizes up to 50 Markdown files in fixed Default and Secret workspaces, with folders, All files, Recent, Favorites, and search. |
 | Tab bar | Preserves quick switching and drag-to-reorder for open documents. |
 | Formatting toolbar | Inserts Markdown syntax, opens helper modals, starts find/replace, and toggles fullscreen/help/about. |
 | Editor pane | Plain-text Markdown textarea with line numbers, custom undo/redo, list continuation, and find highlights. |
@@ -17,21 +17,24 @@ The app has six main areas:
 
 Use the view buttons to switch between Editor, Split, and Preview. Split view is the main live Markdown preview workflow: type, paste, or open Markdown on one side and read the rendered result on the other. Sync scrolling can keep the source and preview aligned while you write. Drag the divider to change the pane widths. The app prevents either side from becoming too narrow. On small screens, the document sidebar opens as a full-height drawer and the mobile menu exposes the remaining main actions without forcing a cramped split layout.
 
-## Documents, Workspaces, and Autosave
+## Files, Folders, and Autosave
 
-- Use **New document** in the sidebar to create in the last selected workspace or folder. Use the plus beside a workspace or folder to create directly inside it.
-- Create custom workspaces with the folder-plus button. Workspaces contain documents and optional one-level folders.
-- Use **All Documents** for the hierarchy, **Recent** for recently opened or edited documents, and **Favorites** for starred documents.
+- Select Default Workspace, Secret Workspace, or a folder, then use the clearly labeled **New file** or **New folder** button. The selected row shows where the item will be created; the plus menu beside an unlocked workspace or folder creates directly inside it.
+- Workspaces are fixed. Create one-level folders inside **Default Workspace** or the password-protected **Secret Workspace**.
+- The first time Secret Workspace is opened, create a password of at least eight characters. Files and folder names are encrypted locally. Use its menu to lock it when finished; the password cannot be recovered.
+- Drag a file row onto a folder or workspace to move it. Use **Move to…** from the file menu as the keyboard and touch-friendly alternative. Dropping local Markdown files onto a folder imports them there.
+- Use **All files** for the hierarchy, **Recent** for recently opened or edited files, and **Favorites** for starred files.
 - On desktop, one click selects a sidebar document and a double click opens it. On touch layouts, one tap opens it and closes the drawer.
 - Each document menu supports Open, Rename, Duplicate, Favorites, Move, Download Markdown, and Delete. The tab strip still supports quick switching and drag-to-reorder.
-- Deleting a folder moves its documents to the workspace root. Deleting a custom workspace moves its documents to Default Workspace after confirmation.
+- Deleting a folder moves its files to the workspace root.
+- Dragging or selecting several local Markdown files shows a small import-progress popup at the bottom of the screen until processing finishes.
 - Closing the last normal tab resets to a clean document.
 - Reset clears the saved workspace.
 - Normal tabs autosave to local browser storage or desktop storage.
 - The document limit is 50 across creation, duplication, imports, Share Snapshot, and Live Share joins.
 - Temporary Share Snapshot and Live Share tabs are not saved to the recipient's workspace.
 - Use **Private mode** from the About dialog to clear existing document state and prevent normal document-state persistence while it is enabled.
-- Use **Clear local data** from the About dialog to remove saved tabs, active-tab state, workspace preferences, and desktop storage mirrors.
+- Use **Clear local data** from the About dialog to remove saved tabs, the encrypted Secret Workspace, active-tab state, workspace preferences, and desktop storage mirrors.
 
 Storage is local unless you explicitly use a network feature such as GitHub import, Share Snapshot storage, or Live Share.
 
