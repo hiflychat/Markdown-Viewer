@@ -3865,7 +3865,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         ariaLabel: workspace.name + (secretLocked ? ', locked' : ', file location'),
         icon: isSecretWorkspace
           ? (secretLocked ? 'bi-shield-lock' : 'bi-shield-check')
-          : (expanded ? 'bi-folder2-open' : 'bi-folder2'),
+          : (expanded ? 'bi-folder2-open' : 'bi-folder'),
         depth: 0,
         expanded: expanded,
         meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
@@ -3910,7 +3910,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           type: 'folder',
           id: folder.id,
           label: folder.name,
-          icon: folderExpanded ? 'bi-folder2-open' : 'bi-folder2',
+          icon: folderExpanded ? 'bi-folder2-open' : 'bi-folder',
           depth: 1,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),

@@ -14,6 +14,7 @@
   --button-bg: #f6f8fa;
   --button-hover: #e1e4e8;
   --button-active: #d1d5da;
+  --favorite-color: #d97706;
   --scrollbar-thumb: #c1c1c1;
   --scrollbar-track: #f1f1f1;
   --accent-color: #0366d6;
@@ -54,6 +55,7 @@
   --button-bg: #21262d;
   --button-hover: #30363d;
   --button-active: #3b434b;
+  --favorite-color: #fbbf24;
   --scrollbar-thumb: #484f58;
   --scrollbar-track: #21262d;
   --accent-color: #58a6ff;
@@ -449,22 +451,16 @@ body {
 }
 
 .document-tree-row.is-active {
-  background: color-mix(in srgb, var(--accent-color) 11%, transparent);
+  background: transparent;
   color: var(--text-color);
 }
 
 .document-tree-row.is-active:hover {
-  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  background: transparent;
 }
 
-.document-tree-row.is-active::before {
-  content: '';
-  position: absolute;
-  inset-block: 5px;
-  inset-inline-start: 0;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent-color);
+.document-tree-row.is-active > .document-tree-main {
+  background: var(--button-active);
 }
 
 .document-tree-row[draggable="true"] {
@@ -510,8 +506,8 @@ body {
   text-align: center;
 }
 
-.document-tree-row.is-active .document-tree-main > i,
-.document-tree-row.is-favorite .document-tree-main > .document-favorite-indicator {
+.document-tree-main > .bi-folder,
+.document-tree-main > .bi-folder2-open {
   color: var(--accent-color);
 }
 
@@ -536,9 +532,9 @@ body {
   font-size: 10px;
 }
 
-.document-favorite-indicator {
+.document-tree-main > .document-favorite-indicator {
   flex: 0 0 auto;
-  color: var(--accent-color);
+  color: var(--favorite-color);
   font-size: 10px;
 }
 
@@ -1848,6 +1844,12 @@ body.document-split-active .mobile-view-mode-btn[data-mode="split"] {
   border-left: 1px solid var(--border-color);
   background: var(--header-bg);
   box-shadow: -8px 0 12px -12px rgba(31, 35, 40, 0.55);
+}
+
+.markdown-toolbar-group--utilities .tool-button {
+  flex: 0 0 auto;
+  height: 28px;
+  min-width: 28px;
 }
 
 .markdown-toolbar-group:first-child {
