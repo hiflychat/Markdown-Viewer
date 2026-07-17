@@ -106,7 +106,7 @@ For the full feature list, details, limitations, and privacy notes, see the [fea
 ## Markdown Editing and Live Preview
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
-- Work with multiple Markdown documents in tabs, rename or duplicate tabs, import local Markdown files, and keep normal workspace state in browser storage.
+- Organize up to 50 Markdown documents in a responsive left sidebar with workspaces, one-level folders, search, Recent, Favorites, move actions, and automatic migration into Default Workspace. The tab strip remains available for quick switching and reordering.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 

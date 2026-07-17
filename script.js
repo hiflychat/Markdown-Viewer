@@ -4,7 +4,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     'markdownViewerGlobalState',
     'markdownViewerTabs',
     'markdownViewerActiveTab',
-    'markdownViewerUntitledCounter'
+    'markdownViewerUntitledCounter',
+    'markdownViewerDocumentOrganization'
   ]);
 
   function isPrivateStorageMode() {
@@ -30,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       'markdownViewerTabs',
       'markdownViewerActiveTab',
       'markdownViewerUntitledCounter',
+      'markdownViewerDocumentOrganization',
       'find-replace-docked',
       'app-lang'
     ];
@@ -395,7 +397,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function stripTemporaryTabs(tabsArr) {
     return (tabsArr || []).filter(function(tab) {
-      return !isShareSnapshotTab(tab);
+      return !isShareSnapshotTab(tab) && tab.temporary !== true;
     });
   }
 
@@ -637,7 +639,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         markdownViewerGlobalState: '{}',
         markdownViewerTabs: '[]',
         markdownViewerActiveTab: '',
-        markdownViewerUntitledCounter: '0'
+        markdownViewerUntitledCounter: '0',
+        markdownViewerDocumentOrganization: '{}'
       };
       await Promise.all(Object.keys(neutralinoValues).map(function(key) {
         return Neutralino.storage.setData(key, neutralinoValues[key]).catch(function(err) {
@@ -2411,11 +2414,22 @@ document.addEventListener("DOMContentLoaded", async function () {
   const STORAGE_KEY = 'markdownViewerTabs';
   const ACTIVE_TAB_KEY = 'markdownViewerActiveTab';
   const UNTITLED_COUNTER_KEY = 'markdownViewerUntitledCounter';
+  const DOCUMENT_ORGANIZATION_KEY = 'markdownViewerDocumentOrganization';
+  const DOCUMENT_ORGANIZATION_VERSION = 1;
+  const MAX_DOCUMENTS = 50;
+  const DEFAULT_WORKSPACE_ID = 'workspace_default';
+  const SIDEBAR_MIN_WIDTH = 220;
+  const SIDEBAR_MAX_WIDTH = 420;
   let tabs = [];
   let activeTabId = null;
   let draggedTabId = null;
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
+  let documentOrganization = null;
+  let selectedDocumentId = null;
+  let documentSidebarSearch = '';
+  let documentSidebarInitialized = false;
+  let isDocumentSidebarResizing = false;
   let liveCollaboration = null;
   let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
@@ -2423,6 +2437,1221 @@ document.addEventListener("DOMContentLoaded", async function () {
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
   const LIVE_REVIEW_EDIT_ORIGIN = Symbol("markdown-viewer-live-review-local-edit");
   const LIVE_REVIEW_RELAY_ORIGIN = Symbol("markdown-viewer-live-review-relay");
+
+  function createDocumentEntityId(prefix) {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return prefix + '_' + window.crypto.randomUUID();
+    }
+    return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function createDefaultDocumentOrganization() {
+    return {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: [{
+        id: DEFAULT_WORKSPACE_ID,
+        name: 'Default Workspace',
+        expanded: true,
+        createdAt: 0
+      }],
+      folders: [],
+      ui: {
+        filter: 'all',
+        collapsed: false,
+        width: 288,
+        lastWorkspaceId: DEFAULT_WORKSPACE_ID,
+        lastFolderId: null
+      }
+    };
+  }
+
+  function normalizeDocumentOrganization(raw) {
+    const fallback = createDefaultDocumentOrganization();
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const seenWorkspaceIds = new Set();
+    const workspaces = [];
+    const rawWorkspaces = Array.isArray(source.workspaces) ? source.workspaces : [];
+
+    rawWorkspaces.forEach(function(workspace) {
+      if (!workspace || typeof workspace !== 'object') return;
+      const id = String(workspace.id || '').slice(0, 120);
+      if (!id || seenWorkspaceIds.has(id)) return;
+      const isDefault = id === DEFAULT_WORKSPACE_ID;
+      seenWorkspaceIds.add(id);
+      workspaces.push({
+        id: id,
+        name: isDefault ? 'Default Workspace' : (String(workspace.name || '').trim().slice(0, 160) || 'Workspace'),
+        expanded: workspace.expanded !== false,
+        createdAt: Number.isFinite(Number(workspace.createdAt)) ? Number(workspace.createdAt) : Date.now()
+      });
+    });
+
+    if (!seenWorkspaceIds.has(DEFAULT_WORKSPACE_ID)) {
+      workspaces.unshift(fallback.workspaces[0]);
+      seenWorkspaceIds.add(DEFAULT_WORKSPACE_ID);
+    }
+
+    workspaces.sort(function(left, right) {
+      if (left.id === DEFAULT_WORKSPACE_ID) return -1;
+      if (right.id === DEFAULT_WORKSPACE_ID) return 1;
+      return left.createdAt - right.createdAt || left.name.localeCompare(right.name);
+    });
+
+    const seenFolderIds = new Set();
+    const folders = (Array.isArray(source.folders) ? source.folders : []).map(function(folder) {
+      if (!folder || typeof folder !== 'object') return null;
+      const id = String(folder.id || '').slice(0, 120);
+      const workspaceId = String(folder.workspaceId || '');
+      if (!id || seenFolderIds.has(id) || !seenWorkspaceIds.has(workspaceId)) return null;
+      seenFolderIds.add(id);
+      return {
+        id: id,
+        workspaceId: workspaceId,
+        name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
+        expanded: folder.expanded !== false,
+        createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
+      };
+    }).filter(Boolean);
+
+    const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
+    const allowedFilters = new Set(['all', 'recent', 'favorites']);
+    const width = Number(ui.width);
+    const lastWorkspaceId = seenWorkspaceIds.has(ui.lastWorkspaceId) ? ui.lastWorkspaceId : DEFAULT_WORKSPACE_ID;
+    const lastFolderId = seenFolderIds.has(ui.lastFolderId) ? ui.lastFolderId : null;
+    return {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: workspaces,
+      folders: folders,
+      ui: {
+        filter: allowedFilters.has(ui.filter) ? ui.filter : 'all',
+        collapsed: ui.collapsed === true,
+        width: Number.isFinite(width) ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width)) : 288,
+        lastWorkspaceId: lastWorkspaceId,
+        lastFolderId: lastFolderId
+      }
+    };
+  }
+
+  function loadDocumentOrganization() {
+    try {
+      return normalizeDocumentOrganization(JSON.parse(localStorage.getItem(DOCUMENT_ORGANIZATION_KEY)) || {});
+    } catch (_) {
+      return createDefaultDocumentOrganization();
+    }
+  }
+
+  function saveDocumentOrganization() {
+    if (!documentOrganization) return;
+    saveStorageItem(DOCUMENT_ORGANIZATION_KEY, JSON.stringify(documentOrganization));
+  }
+
+  function isTemporaryDocument(tab) {
+    return Boolean(tab && (tab.temporary === true || isShareSnapshotTab(tab)));
+  }
+
+  function hasDocumentCapacity() {
+    if (tabs.length < MAX_DOCUMENTS) return true;
+    alert('Maximum of ' + MAX_DOCUMENTS + ' documents reached. Delete an existing document to create or import another.');
+    announceToScreenReader('Maximum document limit reached.');
+    return false;
+  }
+
+  function getWorkspaceById(workspaceId) {
+    if (!documentOrganization) return null;
+    return documentOrganization.workspaces.find(function(workspace) { return workspace.id === workspaceId; }) || null;
+  }
+
+  function getFolderById(folderId) {
+    if (!documentOrganization || !folderId) return null;
+    return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
+  }
+
+  function normalizeTabDocumentMetadata(tab) {
+    if (!tab || typeof tab !== 'object') return tab;
+    tab.createdAt = Number.isFinite(Number(tab.createdAt)) ? Number(tab.createdAt) : Date.now();
+    tab.lastOpenedAt = Number.isFinite(Number(tab.lastOpenedAt)) ? Number(tab.lastOpenedAt) : tab.createdAt;
+    tab.lastEditedAt = Number.isFinite(Number(tab.lastEditedAt)) ? Number(tab.lastEditedAt) : tab.createdAt;
+    tab.favorite = tab.favorite === true;
+
+    if (isTemporaryDocument(tab)) {
+      delete tab.workspaceId;
+      delete tab.folderId;
+      return tab;
+    }
+
+    const workspace = getWorkspaceById(tab.workspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
+    tab.workspaceId = workspace ? workspace.id : DEFAULT_WORKSPACE_ID;
+    const folder = getFolderById(tab.folderId);
+    tab.folderId = folder && folder.workspaceId === tab.workspaceId ? folder.id : null;
+    return tab;
+  }
+
+  function migrateDocumentsToOrganization() {
+    tabs.forEach(function(tab) {
+      normalizeTabDocumentMetadata(tab);
+    });
+    saveDocumentOrganization();
+    // Always write once after normalization so legacy tabs receive location,
+    // favorite, and recent-activity metadata on their first migrated load.
+    _flushTabsToStorage(tabs);
+  }
+
+  function setDocumentLocation(tab, workspaceId, folderId) {
+    if (!tab || isTemporaryDocument(tab)) return false;
+    const workspace = getWorkspaceById(workspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
+    if (!workspace) return false;
+    const folder = getFolderById(folderId);
+    tab.workspaceId = workspace.id;
+    tab.folderId = folder && folder.workspaceId === workspace.id ? folder.id : null;
+    documentOrganization.ui.lastWorkspaceId = tab.workspaceId;
+    documentOrganization.ui.lastFolderId = tab.folderId;
+    workspace.expanded = true;
+    if (folder) folder.expanded = true;
+    saveDocumentOrganization();
+    return true;
+  }
+
+  function getPreferredDocumentLocation() {
+    const selected = tabs.find(function(tab) { return tab.id === selectedDocumentId && !isTemporaryDocument(tab); });
+    if (selected) {
+      return { workspaceId: selected.workspaceId || DEFAULT_WORKSPACE_ID, folderId: selected.folderId || null };
+    }
+    const workspaceId = getWorkspaceById(documentOrganization.ui.lastWorkspaceId)
+      ? documentOrganization.ui.lastWorkspaceId
+      : DEFAULT_WORKSPACE_ID;
+    const folder = getFolderById(documentOrganization.ui.lastFolderId);
+    return {
+      workspaceId: workspaceId,
+      folderId: folder && folder.workspaceId === workspaceId ? folder.id : null
+    };
+  }
+
+  function getDocumentActivityTime(tab) {
+    return Math.max(Number(tab.lastOpenedAt) || 0, Number(tab.lastEditedAt) || 0, Number(tab.createdAt) || 0);
+  }
+
+  function openDocumentNameDialog(options) {
+    const modal = document.getElementById('document-name-modal');
+    const title = document.getElementById('document-name-modal-title');
+    const description = document.getElementById('document-name-modal-description');
+    const label = document.getElementById('document-name-modal-label');
+    const input = document.getElementById('document-name-modal-input');
+    const error = document.getElementById('document-name-modal-error');
+    const confirmButton = document.getElementById('document-name-modal-confirm');
+    const cancelButton = document.getElementById('document-name-modal-cancel');
+    const closeButton = document.getElementById('document-name-modal-close');
+    if (!modal || !input || !confirmButton || !cancelButton) return;
+
+    title.textContent = options.title || 'Name item';
+    description.textContent = options.description || '';
+    description.hidden = !options.description;
+    label.textContent = options.label || 'Name';
+    input.value = options.value || '';
+    input.placeholder = options.placeholder || '';
+    confirmButton.textContent = options.confirmText || 'Save';
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', submit);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+      input.removeEventListener('keydown', onKeydown);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function submit() {
+      const value = input.value.trim();
+      const validationMessage = options.validate ? options.validate(value) : (!value ? 'Enter a name.' : '');
+      if (validationMessage) {
+        error.textContent = validationMessage;
+        error.hidden = false;
+        input.focus();
+        return;
+      }
+      cleanup();
+      closeAppModal(modal);
+      options.onConfirm(value);
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    }
+
+    confirmButton.addEventListener('click', submit);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    input.addEventListener('keydown', onKeydown);
+    openAppModal(modal, { focusTarget: input, onClose: cancel });
+    requestAnimationFrame(function() { input.select(); });
+  }
+
+  function openDocumentConfirmation(options) {
+    const modal = document.getElementById('document-confirm-modal');
+    const title = document.getElementById('document-confirm-modal-title');
+    const description = document.getElementById('document-confirm-modal-description');
+    const confirmButton = document.getElementById('document-confirm-modal-confirm');
+    const cancelButton = document.getElementById('document-confirm-modal-cancel');
+    const closeButton = document.getElementById('document-confirm-modal-close');
+    if (!modal || !confirmButton || !cancelButton) return;
+    title.textContent = options.title || 'Confirm action';
+    description.textContent = options.description || '';
+    confirmButton.textContent = options.confirmText || 'Confirm';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', confirmAction);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function confirmAction() {
+      cleanup();
+      closeAppModal(modal);
+      options.onConfirm();
+    }
+
+    confirmButton.addEventListener('click', confirmAction);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: cancelButton, onClose: cancel });
+  }
+
+  function createWorkspace() {
+    openDocumentNameDialog({
+      title: 'Create workspace',
+      description: 'Workspaces keep related folders and documents together.',
+      label: 'Workspace name',
+      placeholder: 'Project notes',
+      confirmText: 'Create workspace',
+      validate: function(value) {
+        if (!value) return 'Enter a workspace name.';
+        if (documentOrganization.workspaces.some(function(workspace) { return workspace.name.toLowerCase() === value.toLowerCase(); })) {
+          return 'A workspace with this name already exists.';
+        }
+        return '';
+      },
+      onConfirm: function(value) {
+        const workspace = {
+          id: createDocumentEntityId('workspace'),
+          name: value,
+          expanded: true,
+          createdAt: Date.now()
+        };
+        documentOrganization.workspaces.push(workspace);
+        documentOrganization.ui.lastWorkspaceId = workspace.id;
+        documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Workspace created: ' + value);
+      }
+    });
+  }
+
+  function renameWorkspace(workspaceId) {
+    const workspace = getWorkspaceById(workspaceId);
+    if (!workspace || workspace.id === DEFAULT_WORKSPACE_ID) return;
+    openDocumentNameDialog({
+      title: 'Rename workspace',
+      label: 'Workspace name',
+      value: workspace.name,
+      confirmText: 'Rename',
+      validate: function(value) {
+        if (!value) return 'Enter a workspace name.';
+        if (documentOrganization.workspaces.some(function(item) {
+          return item.id !== workspaceId && item.name.toLowerCase() === value.toLowerCase();
+        })) return 'A workspace with this name already exists.';
+        return '';
+      },
+      onConfirm: function(value) {
+        workspace.name = value;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Workspace renamed to ' + value);
+      }
+    });
+  }
+
+  function deleteWorkspace(workspaceId) {
+    const workspace = getWorkspaceById(workspaceId);
+    if (!workspace || workspace.id === DEFAULT_WORKSPACE_ID) return;
+    const documentCount = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.workspaceId === workspaceId; }).length;
+    const folderCount = documentOrganization.folders.filter(function(folder) { return folder.workspaceId === workspaceId; }).length;
+    const details = documentCount || folderCount
+      ? 'Its ' + documentCount + ' document' + (documentCount === 1 ? '' : 's') + ' will move to Default Workspace so no content is lost.'
+      : 'This empty workspace will be removed.';
+    openDocumentConfirmation({
+      title: 'Delete workspace?',
+      description: details,
+      confirmText: 'Delete workspace',
+      onConfirm: function() {
+        tabs.forEach(function(tab) {
+          if (!isTemporaryDocument(tab) && tab.workspaceId === workspaceId) {
+            tab.workspaceId = DEFAULT_WORKSPACE_ID;
+            tab.folderId = null;
+          }
+        });
+        documentOrganization.folders = documentOrganization.folders.filter(function(folder) { return folder.workspaceId !== workspaceId; });
+        documentOrganization.workspaces = documentOrganization.workspaces.filter(function(item) { return item.id !== workspaceId; });
+        documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
+        documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader('Workspace deleted. Documents moved to Default Workspace.');
+      }
+    });
+  }
+
+  function createFolder(workspaceId) {
+    const workspace = getWorkspaceById(workspaceId);
+    if (!workspace) return;
+    openDocumentNameDialog({
+      title: 'Create folder',
+      description: 'Folders stay one level deep inside a workspace.',
+      label: 'Folder name',
+      placeholder: 'Research',
+      confirmText: 'Create folder',
+      validate: function(value) {
+        if (!value) return 'Enter a folder name.';
+        if (documentOrganization.folders.some(function(folder) {
+          return folder.workspaceId === workspaceId && folder.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in the workspace.';
+        return '';
+      },
+      onConfirm: function(value) {
+        const folder = {
+          id: createDocumentEntityId('folder'),
+          workspaceId: workspaceId,
+          name: value,
+          expanded: true,
+          createdAt: Date.now()
+        };
+        documentOrganization.folders.push(folder);
+        workspace.expanded = true;
+        documentOrganization.ui.lastWorkspaceId = workspaceId;
+        documentOrganization.ui.lastFolderId = folder.id;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Folder created: ' + value);
+      }
+    });
+  }
+
+  function renameFolder(folderId) {
+    const folder = getFolderById(folderId);
+    if (!folder) return;
+    openDocumentNameDialog({
+      title: 'Rename folder',
+      label: 'Folder name',
+      value: folder.name,
+      confirmText: 'Rename',
+      validate: function(value) {
+        if (!value) return 'Enter a folder name.';
+        if (documentOrganization.folders.some(function(item) {
+          return item.id !== folderId && item.workspaceId === folder.workspaceId && item.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in the workspace.';
+        return '';
+      },
+      onConfirm: function(value) {
+        folder.name = value;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Folder renamed to ' + value);
+      }
+    });
+  }
+
+  function deleteFolder(folderId) {
+    const folder = getFolderById(folderId);
+    if (!folder) return;
+    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.folderId === folderId; });
+    openDocumentConfirmation({
+      title: 'Delete folder?',
+      description: documents.length
+        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' will move to the workspace root so no content is lost.'
+        : 'This empty folder will be removed.',
+      confirmText: 'Delete folder',
+      onConfirm: function() {
+        documents.forEach(function(tab) { tab.folderId = null; });
+        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return item.id !== folderId; });
+        if (documentOrganization.ui.lastFolderId === folderId) documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader('Folder deleted. Documents moved to the workspace root.');
+      }
+    });
+  }
+
+  function openMoveDocumentDialog(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return;
+    const modal = document.getElementById('document-move-modal');
+    const title = document.getElementById('document-move-modal-title');
+    const select = document.getElementById('document-move-destination');
+    const confirmButton = document.getElementById('document-move-modal-confirm');
+    const cancelButton = document.getElementById('document-move-modal-cancel');
+    const closeButton = document.getElementById('document-move-modal-close');
+    if (!modal || !select || !confirmButton || !cancelButton) return;
+
+    title.textContent = 'Move “' + (tab.title || 'Untitled') + '”';
+    select.textContent = '';
+    documentOrganization.workspaces.forEach(function(workspace) {
+      const rootOption = document.createElement('option');
+      rootOption.value = workspace.id + '|';
+      rootOption.textContent = workspace.name;
+      select.appendChild(rootOption);
+      documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId === workspace.id;
+      }).forEach(function(folder) {
+        const option = document.createElement('option');
+        option.value = workspace.id + '|' + folder.id;
+        option.textContent = workspace.name + ' / ' + folder.name;
+        select.appendChild(option);
+      });
+    });
+    select.value = (tab.workspaceId || DEFAULT_WORKSPACE_ID) + '|' + (tab.folderId || '');
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', move);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function move() {
+      const parts = String(select.value || '').split('|');
+      if (setDocumentLocation(tab, parts[0], parts[1] || null)) {
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader('Document moved.');
+      }
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    confirmButton.addEventListener('click', move);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: select, onClose: cancel });
+  }
+
+  function toggleDocumentFavorite(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return;
+    tab.favorite = !tab.favorite;
+    saveTabsToStorage(tabs);
+    renderTabBar(tabs, activeTabId);
+    announceToScreenReader(tab.favorite ? 'Document added to favorites.' : 'Document removed from favorites.');
+  }
+
+  function openSidebarDocument(tabId, options) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab) return;
+    selectedDocumentId = tabId;
+    tab.lastOpenedAt = Date.now();
+    if (!isTemporaryDocument(tab)) {
+      documentOrganization.ui.lastWorkspaceId = tab.workspaceId || DEFAULT_WORKSPACE_ID;
+      documentOrganization.ui.lastFolderId = tab.folderId || null;
+      saveDocumentOrganization();
+      saveTabsToStorage(tabs);
+    }
+    if (tabId !== activeTabId) {
+      switchTab(tabId);
+    } else {
+      renderDocumentSidebar();
+    }
+    if (!options || options.closeMobile !== false) closeDocumentSidebarOnMobile();
+    announceToScreenReader('Opened document ' + (tab.title || 'Untitled') + '.');
+  }
+
+  function selectSidebarDocument(tabId) {
+    selectedDocumentId = tabId;
+    document.querySelectorAll('#document-tree .document-tree-row[data-document-id]').forEach(function(row) {
+      const selected = row.getAttribute('data-document-id') === tabId;
+      row.classList.toggle('is-selected', selected);
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+  }
+
+  function removeDocumentSidebarMenus() {
+    document.querySelectorAll('.document-menu-dropdown').forEach(function(menu) { menu.remove(); });
+  }
+
+  function closeDocumentSidebarMenus() {
+    document.querySelectorAll('.document-menu-btn.open').forEach(function(button) {
+      button.classList.remove('open');
+      button.setAttribute('aria-expanded', 'false');
+    });
+    document.querySelectorAll('.document-menu-dropdown.open').forEach(function(menu) { menu.classList.remove('open'); });
+  }
+
+  function createDocumentMenuButton(label, actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'document-tree-action document-menu-btn';
+    button.setAttribute('aria-label', label + ' options');
+    button.setAttribute('aria-haspopup', 'menu');
+    button.setAttribute('aria-expanded', 'false');
+    button.title = label + ' options';
+    const icon = document.createElement('i');
+    icon.className = 'bi bi-three-dots';
+    icon.setAttribute('aria-hidden', 'true');
+    button.appendChild(icon);
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-menu-dropdown document-menu-dropdown';
+    menu.setAttribute('role', 'menu');
+    actions.forEach(function(action) {
+      const actionButton = document.createElement('button');
+      actionButton.type = 'button';
+      actionButton.className = 'tab-menu-item' + (action.danger ? ' tab-menu-item-danger' : '');
+      actionButton.setAttribute('role', 'menuitem');
+      actionButton.setAttribute('data-action', action.id);
+      const actionIcon = document.createElement('i');
+      actionIcon.className = 'bi ' + action.icon;
+      actionIcon.setAttribute('aria-hidden', 'true');
+      actionButton.appendChild(actionIcon);
+      actionButton.appendChild(document.createTextNode(' ' + action.label));
+      actionButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeDocumentSidebarMenus();
+        action.run();
+      });
+      menu.appendChild(actionButton);
+    });
+    menu.addEventListener('keydown', function(event) {
+      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+      const currentIndex = items.indexOf(document.activeElement);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeDocumentSidebarMenus();
+        button.focus();
+        return;
+      }
+      if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1 + items.length) % items.length;
+      if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = items.length - 1;
+      items[nextIndex].focus();
+    });
+    document.body.appendChild(menu);
+
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const shouldOpen = !button.classList.contains('open');
+      closeTabMenus();
+      closeDocumentSidebarMenus();
+      if (shouldOpen) {
+        button.classList.add('open');
+        button.setAttribute('aria-expanded', 'true');
+        menu.classList.add('open');
+        positionTabMenu(button, menu);
+        const firstAction = menu.querySelector('[role="menuitem"]');
+        if (firstAction) firstAction.focus();
+      }
+    });
+    button.addEventListener('keydown', function(event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        button.click();
+      }
+    });
+    return button;
+  }
+
+  function getDocumentMenuActions(tab) {
+    const actions = [{
+      id: 'open', icon: 'bi-box-arrow-up-right', label: 'Open', run: function() { openSidebarDocument(tab.id); }
+    }, {
+      id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameTab(tab.id); }
+    }];
+    if (!isTemporaryDocument(tab)) {
+      actions.push({ id: 'duplicate', icon: 'bi-files', label: 'Duplicate', run: function() { duplicateTab(tab.id); } });
+      actions.push({
+        id: 'favorite',
+        icon: tab.favorite ? 'bi-star-fill' : 'bi-star',
+        label: tab.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+        run: function() { toggleDocumentFavorite(tab.id); }
+      });
+      actions.push({ id: 'move', icon: 'bi-folder-symlink', label: 'Move to…', run: function() { openMoveDocumentDialog(tab.id); } });
+      actions.push({ id: 'download', icon: 'bi-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
+    }
+    actions.push({
+      id: 'delete',
+      icon: isTemporaryDocument(tab) ? 'bi-x-lg' : 'bi-trash',
+      label: isTemporaryDocument(tab) ? 'Close' : 'Delete',
+      danger: true,
+      run: function() { deleteTab(tab.id); }
+    });
+    return actions;
+  }
+
+  function getWorkspaceMenuActions(workspace) {
+    const actions = [
+      { id: 'new-document', icon: 'bi-file-earmark-plus', label: 'New document', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
+      { id: 'new-folder', icon: 'bi-folder-plus', label: 'New folder', run: function() { createFolder(workspace.id); } }
+    ];
+    if (workspace.id !== DEFAULT_WORKSPACE_ID) {
+      actions.push({ id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameWorkspace(workspace.id); } });
+      actions.push({ id: 'delete', icon: 'bi-trash', label: 'Delete', danger: true, run: function() { deleteWorkspace(workspace.id); } });
+    }
+    return actions;
+  }
+
+  function getFolderMenuActions(folder) {
+    return [
+      { id: 'new-document', icon: 'bi-file-earmark-plus', label: 'New document', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
+      { id: 'rename', icon: 'bi-pencil', label: 'Rename', run: function() { renameFolder(folder.id); } },
+      { id: 'delete', icon: 'bi-trash', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
+    ];
+  }
+
+  function createDocumentTreeRow(options) {
+    const row = document.createElement('div');
+    row.className = 'document-tree-row';
+    row.setAttribute('role', 'treeitem');
+    row.setAttribute('tabindex', options.tabindex === 0 ? '0' : '-1');
+    row.setAttribute('data-tree-type', options.type);
+    row.setAttribute('data-tree-id', options.id);
+    row.style.setProperty('--tree-depth', String(options.depth || 0));
+    if (options.documentId) {
+      row.setAttribute('data-document-id', options.documentId);
+      row.classList.toggle('is-active', options.documentId === activeTabId);
+      row.classList.toggle('is-selected', options.documentId === selectedDocumentId);
+      row.setAttribute('aria-selected', options.documentId === selectedDocumentId ? 'true' : 'false');
+      if (options.documentId === activeTabId) row.setAttribute('aria-current', 'page');
+    }
+    if (options.favorite) row.classList.add('is-favorite');
+    if (options.temporary) row.classList.add('document-tree-temporary');
+    if (typeof options.expanded === 'boolean') row.setAttribute('aria-expanded', options.expanded ? 'true' : 'false');
+    row.setAttribute('aria-label', options.ariaLabel || options.label);
+
+    if (typeof options.expanded === 'boolean') {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'document-tree-toggle';
+      toggle.setAttribute('aria-label', (options.expanded ? 'Collapse ' : 'Expand ') + options.label);
+      toggle.setAttribute('tabindex', '-1');
+      const toggleIcon = document.createElement('i');
+      toggleIcon.className = 'bi ' + (options.expanded ? 'bi-chevron-down' : 'bi-chevron-right');
+      toggleIcon.setAttribute('aria-hidden', 'true');
+      toggle.appendChild(toggleIcon);
+      toggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        options.onToggle();
+      });
+      row.appendChild(toggle);
+    } else {
+      const spacer = document.createElement('span');
+      spacer.className = 'document-tree-toggle';
+      spacer.setAttribute('aria-hidden', 'true');
+      row.appendChild(spacer);
+    }
+
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'document-tree-main';
+    main.setAttribute('tabindex', '-1');
+    main.title = options.label;
+    const icon = document.createElement('i');
+    icon.className = 'bi ' + options.icon;
+    icon.setAttribute('aria-hidden', 'true');
+    main.appendChild(icon);
+    const label = document.createElement('span');
+    label.className = 'document-tree-label';
+    label.textContent = options.label;
+    main.appendChild(label);
+    if (options.favorite) {
+      const favorite = document.createElement('i');
+      favorite.className = 'bi bi-star-fill document-favorite-indicator';
+      favorite.setAttribute('aria-label', 'Favorite');
+      main.appendChild(favorite);
+    }
+    if (options.meta) {
+      const meta = document.createElement('span');
+      meta.className = 'document-tree-meta';
+      meta.textContent = options.meta;
+      main.appendChild(meta);
+    }
+    main.addEventListener('click', options.onActivate);
+    if (options.onDoubleClick) main.addEventListener('dblclick', options.onDoubleClick);
+    row.appendChild(main);
+
+    if (options.addActions) {
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.className = 'document-tree-add';
+      addButton.setAttribute('aria-label', 'Create in ' + options.label);
+      addButton.title = 'Create in ' + options.label;
+      const addIcon = document.createElement('i');
+      addIcon.className = 'bi bi-plus-lg';
+      addIcon.setAttribute('aria-hidden', 'true');
+      addButton.appendChild(addIcon);
+      addButton.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const menuButton = row.querySelector('.document-menu-btn');
+        if (menuButton) menuButton.click();
+      });
+      row.appendChild(addButton);
+    }
+
+    if (options.menuActions && options.menuActions.length) {
+      row.appendChild(createDocumentMenuButton(options.label, options.menuActions));
+    }
+    return row;
+  }
+
+  function appendDocumentTreeItem(container, tab, depth, meta) {
+    const row = createDocumentTreeRow({
+      type: 'document',
+      id: tab.id,
+      documentId: tab.id,
+      label: tab.title || 'Untitled',
+      ariaLabel: (tab.id === activeTabId ? 'Active document, ' : 'Document, ') + (tab.title || 'Untitled') + (tab.favorite ? ', favorite' : ''),
+      icon: isTemporaryDocument(tab) ? (tab.kind === SHARE_SNAPSHOT_TAB_KIND ? 'bi-share' : 'bi-broadcast') : 'bi-file-earmark-text',
+      depth: depth,
+      favorite: tab.favorite === true,
+      temporary: isTemporaryDocument(tab),
+      meta: meta || '',
+      menuActions: getDocumentMenuActions(tab),
+      onActivate: function() {
+        selectSidebarDocument(tab.id);
+        const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        if (coarsePointer || window.innerWidth < 768) openSidebarDocument(tab.id);
+      },
+      onDoubleClick: function(event) {
+        event.preventDefault();
+        openSidebarDocument(tab.id);
+      }
+    });
+    container.appendChild(row);
+  }
+
+  function getDocumentLocationLabel(tab) {
+    const workspace = getWorkspaceById(tab.workspaceId);
+    const folder = getFolderById(tab.folderId);
+    if (folder && workspace) return workspace.name + ' / ' + folder.name;
+    return workspace ? workspace.name : 'Default Workspace';
+  }
+
+  function documentMatchesSidebarSearch(tab) {
+    if (!documentSidebarSearch) return true;
+    const haystack = ((tab.title || '') + ' ' + getDocumentLocationLabel(tab)).toLocaleLowerCase();
+    return haystack.includes(documentSidebarSearch.toLocaleLowerCase());
+  }
+
+  function renderFlatDocumentView(tree, filter) {
+    let documents = tabs.filter(function(tab) {
+      if (isTemporaryDocument(tab)) return false;
+      if (filter === 'favorites' && !tab.favorite) return false;
+      return documentMatchesSidebarSearch(tab);
+    });
+    if (filter === 'recent') {
+      documents = documents.sort(function(left, right) { return getDocumentActivityTime(right) - getDocumentActivityTime(left); }).slice(0, 30);
+    } else {
+      documents = documents.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); });
+    }
+    documents.forEach(function(tab) { appendDocumentTreeItem(tree, tab, 0, getDocumentLocationLabel(tab)); });
+    return documents.length;
+  }
+
+  function renderWorkspaceTree(tree) {
+    let renderedDocuments = 0;
+    const temporaryTabs = tabs.filter(isTemporaryDocument).filter(documentMatchesSidebarSearch);
+    if (temporaryTabs.length) {
+      const temporaryLabel = document.createElement('p');
+      temporaryLabel.className = 'document-tree-section-label';
+      temporaryLabel.textContent = 'Temporary';
+      tree.appendChild(temporaryLabel);
+      temporaryTabs.forEach(function(tab) {
+        appendDocumentTreeItem(tree, tab, 0, tab.kind === SHARE_SNAPSHOT_TAB_KIND ? 'Snapshot' : 'Live Share');
+      });
+      renderedDocuments += temporaryTabs.length;
+    }
+
+    documentOrganization.workspaces.forEach(function(workspace) {
+      const workspaceDocuments = tabs.filter(function(tab) {
+        return !isTemporaryDocument(tab) && tab.workspaceId === workspace.id;
+      });
+      const folders = documentOrganization.folders.filter(function(folder) { return folder.workspaceId === workspace.id; });
+      const matchingDocuments = workspaceDocuments.filter(documentMatchesSidebarSearch);
+      const workspaceMatchesSearch = !documentSidebarSearch || workspace.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+      if (documentSidebarSearch && !workspaceMatchesSearch && !matchingDocuments.length && !folders.some(function(folder) {
+        return folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+      })) return;
+
+      const expanded = documentSidebarSearch ? true : workspace.expanded !== false;
+      const workspaceRow = createDocumentTreeRow({
+        type: 'workspace',
+        id: workspace.id,
+        label: workspace.name,
+        icon: 'bi-collection',
+        depth: 0,
+        expanded: expanded,
+        meta: String(workspaceDocuments.length),
+        addActions: true,
+        menuActions: getWorkspaceMenuActions(workspace),
+        onToggle: function() {
+          workspace.expanded = !workspace.expanded;
+          saveDocumentOrganization();
+          renderDocumentSidebar();
+        },
+        onActivate: function() {
+          documentOrganization.ui.lastWorkspaceId = workspace.id;
+          documentOrganization.ui.lastFolderId = null;
+          workspace.expanded = !workspace.expanded;
+          saveDocumentOrganization();
+          renderDocumentSidebar();
+        }
+      });
+      tree.appendChild(workspaceRow);
+
+      const workspaceGroup = document.createElement('div');
+      workspaceGroup.className = 'document-tree-group';
+      workspaceGroup.setAttribute('role', 'group');
+      workspaceGroup.hidden = !expanded;
+
+      folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); }).forEach(function(folder) {
+        const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
+        const folderMatchesSearch = !documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+        if (documentSidebarSearch && !folderMatchesSearch && !folderDocuments.length) return;
+        const folderExpanded = documentSidebarSearch ? true : folder.expanded !== false;
+        const folderRow = createDocumentTreeRow({
+          type: 'folder',
+          id: folder.id,
+          label: folder.name,
+          icon: folderExpanded ? 'bi-folder2-open' : 'bi-folder2',
+          depth: 1,
+          expanded: folderExpanded,
+          meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
+          addActions: true,
+          menuActions: getFolderMenuActions(folder),
+          onToggle: function() {
+            folder.expanded = !folder.expanded;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          },
+          onActivate: function() {
+            documentOrganization.ui.lastWorkspaceId = workspace.id;
+            documentOrganization.ui.lastFolderId = folder.id;
+            folder.expanded = !folder.expanded;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          }
+        });
+        workspaceGroup.appendChild(folderRow);
+        const folderGroup = document.createElement('div');
+        folderGroup.className = 'document-tree-group';
+        folderGroup.setAttribute('role', 'group');
+        folderGroup.hidden = !folderExpanded;
+        folderDocuments.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); }).forEach(function(tab) {
+          appendDocumentTreeItem(folderGroup, tab, 2);
+          renderedDocuments++;
+        });
+        workspaceGroup.appendChild(folderGroup);
+      });
+
+      matchingDocuments.filter(function(tab) { return !tab.folderId; }).sort(function(left, right) {
+        return (left.title || '').localeCompare(right.title || '');
+      }).forEach(function(tab) {
+        appendDocumentTreeItem(workspaceGroup, tab, 1);
+        renderedDocuments++;
+      });
+      tree.appendChild(workspaceGroup);
+    });
+    return renderedDocuments;
+  }
+
+  function renderDocumentSidebar() {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !documentOrganization) return;
+    removeDocumentSidebarMenus();
+    tree.textContent = '';
+    const filter = documentOrganization.ui.filter || 'all';
+    let renderedCount = filter === 'all' ? renderWorkspaceTree(tree) : renderFlatDocumentView(tree, filter);
+
+    if (!renderedCount) {
+      const empty = document.createElement('div');
+      empty.className = 'document-tree-empty';
+      empty.textContent = documentSidebarSearch
+        ? 'No documents match your search.'
+        : (filter === 'favorites' ? 'No favorite documents yet.' : 'No documents to show.');
+      tree.appendChild(empty);
+    }
+
+    const count = document.getElementById('document-sidebar-count');
+    if (count) count.textContent = tabs.length + ' of ' + MAX_DOCUMENTS + ' documents';
+    const status = document.getElementById('document-sidebar-status');
+    if (status) {
+      status.textContent = documentSidebarSearch ? renderedCount + ' result' + (renderedCount === 1 ? '' : 's') : '';
+    }
+    document.querySelectorAll('.document-filter-btn').forEach(function(button) {
+      const active = button.getAttribute('data-document-filter') === filter;
+      button.classList.toggle('is-active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    const firstRow = tree.querySelector('.document-tree-row');
+    if (firstRow && !tree.querySelector('.document-tree-row[tabindex="0"]')) firstRow.setAttribute('tabindex', '0');
+  }
+
+  function isDocumentSidebarMobile() {
+    return window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+  }
+
+  function updateDocumentSidebarVisibility() {
+    const sidebar = document.getElementById('document-sidebar');
+    const openButton = document.getElementById('document-sidebar-open');
+    const collapseButton = document.getElementById('document-sidebar-collapse');
+    const backdrop = document.getElementById('document-sidebar-backdrop');
+    if (!sidebar || !documentOrganization) return;
+    if (isDocumentSidebarMobile()) {
+      sidebar.style.removeProperty('--document-sidebar-width');
+    } else {
+      const responsiveWidth = window.innerWidth < 1080
+        ? Math.min(documentOrganization.ui.width, 260)
+        : documentOrganization.ui.width;
+      sidebar.style.setProperty('--document-sidebar-width', responsiveWidth + 'px');
+    }
+    document.body.classList.toggle('document-sidebar-collapsed', documentOrganization.ui.collapsed === true);
+    const mobileOpen = document.body.classList.contains('document-sidebar-mobile-open');
+    if (openButton) openButton.setAttribute('aria-expanded', mobileOpen || !documentOrganization.ui.collapsed ? 'true' : 'false');
+    if (collapseButton) {
+      collapseButton.setAttribute('aria-expanded', documentOrganization.ui.collapsed ? 'false' : 'true');
+      collapseButton.setAttribute('aria-label', documentOrganization.ui.collapsed ? 'Expand document sidebar' : 'Collapse document sidebar');
+    }
+    if (backdrop) backdrop.hidden = !mobileOpen;
+  }
+
+  function openDocumentSidebar() {
+    if (!documentOrganization) return;
+    if (isDocumentSidebarMobile()) {
+      document.body.classList.add('document-sidebar-mobile-open');
+      updateDocumentSidebarVisibility();
+      requestAnimationFrame(function() {
+        const search = document.getElementById('document-sidebar-search');
+        if (search) search.focus();
+      });
+      return;
+    }
+    documentOrganization.ui.collapsed = false;
+    saveDocumentOrganization();
+    updateDocumentSidebarVisibility();
+  }
+
+  function closeDocumentSidebarOnMobile() {
+    if (!document.body.classList.contains('document-sidebar-mobile-open')) return;
+    document.body.classList.remove('document-sidebar-mobile-open');
+    updateDocumentSidebarVisibility();
+    const openButton = document.getElementById('document-sidebar-open');
+    if (openButton) openButton.focus();
+  }
+
+  function toggleDocumentSidebarCollapsed() {
+    if (isDocumentSidebarMobile()) {
+      closeDocumentSidebarOnMobile();
+      return;
+    }
+    documentOrganization.ui.collapsed = !documentOrganization.ui.collapsed;
+    saveDocumentOrganization();
+    updateDocumentSidebarVisibility();
+    if (documentOrganization.ui.collapsed) {
+      const openButton = document.getElementById('document-sidebar-open');
+      if (openButton) openButton.focus();
+    }
+  }
+
+  function handleDocumentTreeKeydown(event) {
+    const tree = document.getElementById('document-tree');
+    const row = event.target.closest('.document-tree-row');
+    if (!tree || !row || event.target.closest('.document-menu-btn, .document-tree-add')) return;
+    const rows = Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(item) {
+      return item.offsetParent !== null;
+    });
+    const index = rows.indexOf(row);
+    if (index === -1) return;
+
+    function focusRow(target) {
+      rows.forEach(function(item) { item.setAttribute('tabindex', item === target ? '0' : '-1'); });
+      target.focus();
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      let targetIndex = index;
+      if (event.key === 'ArrowDown') targetIndex = Math.min(rows.length - 1, index + 1);
+      if (event.key === 'ArrowUp') targetIndex = Math.max(0, index - 1);
+      if (event.key === 'Home') targetIndex = 0;
+      if (event.key === 'End') targetIndex = rows.length - 1;
+      focusRow(rows[targetIndex]);
+      return;
+    }
+
+    if (event.key === 'ArrowRight' && row.hasAttribute('aria-expanded')) {
+      event.preventDefault();
+      if (row.getAttribute('aria-expanded') === 'false') row.querySelector('.document-tree-toggle').click();
+      else if (rows[index + 1]) focusRow(rows[index + 1]);
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if (row.getAttribute('aria-expanded') === 'true') {
+        row.querySelector('.document-tree-toggle').click();
+      } else {
+        const depth = Number(row.style.getPropertyValue('--tree-depth')) || 0;
+        for (let previous = index - 1; previous >= 0; previous--) {
+          const previousDepth = Number(rows[previous].style.getPropertyValue('--tree-depth')) || 0;
+          if (previousDepth < depth) {
+            focusRow(rows[previous]);
+            break;
+          }
+        }
+      }
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (row.getAttribute('data-tree-type') === 'document') {
+        openSidebarDocument(row.getAttribute('data-document-id'));
+      } else {
+        row.querySelector('.document-tree-main').click();
+      }
+    }
+  }
+
+  function initDocumentSidebar() {
+    if (documentSidebarInitialized) return;
+    documentSidebarInitialized = true;
+    const openButton = document.getElementById('document-sidebar-open');
+    const closeButton = document.getElementById('document-sidebar-close');
+    const collapseButton = document.getElementById('document-sidebar-collapse');
+    const backdrop = document.getElementById('document-sidebar-backdrop');
+    const newDocumentButton = document.getElementById('sidebar-new-document');
+    const newWorkspaceButton = document.getElementById('sidebar-new-workspace');
+    const search = document.getElementById('document-sidebar-search');
+    const clearSearch = document.getElementById('document-sidebar-search-clear');
+    const tree = document.getElementById('document-tree');
+    const resizer = document.getElementById('document-sidebar-resizer');
+    const sidebar = document.getElementById('document-sidebar');
+
+    if (openButton) openButton.addEventListener('click', openDocumentSidebar);
+    if (closeButton) closeButton.addEventListener('click', closeDocumentSidebarOnMobile);
+    if (collapseButton) collapseButton.addEventListener('click', toggleDocumentSidebarCollapsed);
+    if (backdrop) backdrop.addEventListener('click', closeDocumentSidebarOnMobile);
+    if (newWorkspaceButton) newWorkspaceButton.addEventListener('click', createWorkspace);
+    if (newDocumentButton) newDocumentButton.addEventListener('click', function() {
+      const location = getPreferredDocumentLocation();
+      newTab('', null, location);
+    });
+
+    document.querySelectorAll('.document-filter-btn').forEach(function(button) {
+      button.addEventListener('click', function() {
+        documentOrganization.ui.filter = button.getAttribute('data-document-filter') || 'all';
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+      });
+    });
+
+    if (search) {
+      search.addEventListener('input', function() {
+        documentSidebarSearch = search.value.trim();
+        if (clearSearch) clearSearch.hidden = !documentSidebarSearch;
+        renderDocumentSidebar();
+      });
+      search.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && search.value) {
+          event.preventDefault();
+          search.value = '';
+          search.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    }
+    if (clearSearch) clearSearch.addEventListener('click', function() {
+      search.value = '';
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+      search.focus();
+    });
+    if (tree) tree.addEventListener('keydown', handleDocumentTreeKeydown);
+
+    if (resizer && sidebar) {
+      function applyResize(clientX) {
+        const rect = sidebar.getBoundingClientRect();
+        const isRtl = getComputedStyle(sidebar).direction === 'rtl';
+        const nextWidth = isRtl ? rect.right - clientX : clientX - rect.left;
+        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, Math.round(nextWidth)));
+        sidebar.style.setProperty('--document-sidebar-width', documentOrganization.ui.width + 'px');
+        resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+      }
+      resizer.addEventListener('pointerdown', function(event) {
+        if (isDocumentSidebarMobile()) return;
+        isDocumentSidebarResizing = true;
+        sidebar.classList.add('is-resizing');
+        resizer.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      resizer.addEventListener('pointermove', function(event) {
+        if (!isDocumentSidebarResizing) return;
+        applyResize(event.clientX);
+      });
+      resizer.addEventListener('pointerup', function(event) {
+        if (!isDocumentSidebarResizing) return;
+        isDocumentSidebarResizing = false;
+        sidebar.classList.remove('is-resizing');
+        if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+        saveDocumentOrganization();
+      });
+      resizer.addEventListener('keydown', function(event) {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, documentOrganization.ui.width + direction * 10));
+        sidebar.style.setProperty('--document-sidebar-width', documentOrganization.ui.width + 'px');
+        resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+        saveDocumentOrganization();
+      });
+      resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+    }
+
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('.document-menu-btn, .document-menu-dropdown')) closeDocumentSidebarMenus();
+    });
+    document.addEventListener('keydown', function(event) {
+      if (event.key !== 'Escape') return;
+      closeDocumentSidebarMenus();
+      closeDocumentSidebarOnMobile();
+    });
+    window.addEventListener('resize', function() {
+      if (!isDocumentSidebarMobile()) {
+        document.body.classList.remove('document-sidebar-mobile-open');
+        updateDocumentSidebarVisibility();
+      }
+    });
+    updateDocumentSidebarVisibility();
+    renderDocumentSidebar();
+  }
 
   // ========================================
   // COMMENTS & SUGGESTIONS
@@ -3737,7 +4966,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
       return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
         tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
-        return tab;
+        return normalizeTabDocumentMetadata(tab);
       });
     } catch (e) {
       return [];
@@ -3814,19 +5043,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     return 'Untitled ' + untitledCounter;
   }
 
-  function createTab(content, title, viewMode) {
+  function createTab(content, title, viewMode, location) {
     if (content === undefined) content = '';
     if (title === undefined) title = null;
     if (viewMode === undefined) viewMode = 'split';
-    return {
+    const createdAt = Date.now();
+    const tab = {
       id: 'tab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
       title: title || 'Untitled',
       content: content,
       scrollPos: 0,
       viewMode: viewMode,
       reviewThreads: [],
-      createdAt: Date.now()
+      favorite: false,
+      lastOpenedAt: createdAt,
+      lastEditedAt: createdAt,
+      createdAt: createdAt
     };
+    const target = location || (documentOrganization ? getPreferredDocumentLocation() : { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+    tab.workspaceId = target.workspaceId || DEFAULT_WORKSPACE_ID;
+    tab.folderId = target.folderId || null;
+    return tab;
   }
 
   function closeTabMenus() {
@@ -3837,6 +5074,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.querySelectorAll('.tab-menu-dropdown.open').forEach(function(dropdown) {
       dropdown.classList.remove('open');
     });
+    closeDocumentSidebarMenus();
   }
 
   function removeTabMenuDropdowns() {
@@ -4081,6 +5319,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
 
     renderMobileTabList(tabsArr, currentActiveTabId);
+    renderDocumentSidebar();
     if (typeof tabList.dispatchEvent === 'function') {
       tabList.dispatchEvent(new Event('scroll'));
     }
@@ -4210,6 +5449,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveCurrentTabState() {
     const tab = tabs.find(function(t) { return t.id === activeTabId; });
     if (!tab) return;
+    const contentChanged = tab.content !== markdownEditor.value;
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
     tab.viewMode = reviewModeActive && reviewPreviousViewModes.has(activeTabId)
@@ -4218,7 +5458,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
       return;
     }
+    if (contentChanged && !isTemporaryDocument(tab)) {
+      tab.lastEditedAt = Date.now();
+    }
     saveTabsToStorage(tabs);
+    if (contentChanged) renderDocumentSidebar();
   }
 
   function restoreViewMode(mode) {
@@ -4248,6 +5492,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     saveActiveTabId(activeTabId);
     const tab = tabs.find(function(t) { return t.id === tabId; });
     if (!tab) return;
+    selectedDocumentId = tabId;
+    tab.lastOpenedAt = Date.now();
+    if (!isTemporaryDocument(tab)) saveTabsToStorage(tabs);
     markdownEditor.value = tab.content;
     
     initTabHistory(tabId, tab.content);
@@ -4267,18 +5514,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderTabBar(tabs, activeTabId);
   }
 
-  function newTab(content, title) {
+  function newTab(content, title, location) {
     if (content === undefined) content = '';
-    if (tabs.length >= 20) {
-      alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
-      return;
-    }
+    if (!hasDocumentCapacity()) return false;
     if (reviewModeActive) setReviewMode(false);
     if (!title) title = nextUntitledTitle();
-    const tab = createTab(content, title);
+    const tab = createTab(content, title, 'split', location);
+    normalizeTabDocumentMetadata(tab);
     tabs.push(tab);
+    selectedDocumentId = tab.id;
     switchTab(tab.id);
     markdownEditor.focus();
+    closeDocumentSidebarOnMobile();
+    return true;
   }
 
   function closeTab(tabId) {
@@ -4313,6 +5561,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const newT = createTab('', nextUntitledTitle());
       tabs.push(newT);
       activeTabId = newT.id;
+      selectedDocumentId = newT.id;
       saveActiveTabId(activeTabId);
       markdownEditor.value = '';
       restoreViewMode('split');
@@ -4321,6 +5570,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (activeTabId === tabId) {
       const newIdx = Math.max(0, idx - 1);
       activeTabId = tabs[newIdx].id;
+      selectedDocumentId = activeTabId;
       saveActiveTabId(activeTabId);
       const newActiveTab = tabs[newIdx];
       markdownEditor.value = newActiveTab.content;
@@ -4331,6 +5581,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
       });
     }
+    if (selectedDocumentId === tabId) selectedDocumentId = activeTabId;
     saveTabsToStorage(tabs);
     renderTabBar(tabs, activeTabId);
     closeReviewComposer();
@@ -4398,17 +5649,18 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert('Shared snapshot tabs are temporary and cannot be duplicated.');
       return;
     }
-    if (tabs.length >= 20) {
-      alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
-      return;
-    }
+    if (!hasDocumentCapacity()) return;
     const shouldSwitchToDuplicate = tabId === activeTabId;
     saveCurrentTabState();
     const dupTitle = tab.title + ' (copy)';
-    const dup = createTab(tab.content, dupTitle, tab.viewMode);
+    const dup = createTab(tab.content, dupTitle, tab.viewMode, {
+      workspaceId: tab.workspaceId || DEFAULT_WORKSPACE_ID,
+      folderId: tab.folderId || null
+    });
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     tabs.splice(idx + 1, 0, dup);
     if (shouldSwitchToDuplicate) {
+      selectedDocumentId = dup.id;
       switchTab(dup.id);
     } else {
       saveTabsToStorage(tabs);
@@ -4489,6 +5741,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       applyShareSnapshotAccessMode('edit');
       resetShareSnapshotLink();
       tabs = [];
+      documentOrganization = createDefaultDocumentOrganization();
+      documentSidebarSearch = '';
+      saveDocumentOrganization();
+      const sidebarSearchInput = document.getElementById('document-sidebar-search');
+      const sidebarSearchClear = document.getElementById('document-sidebar-search-clear');
+      if (sidebarSearchInput) sidebarSearchInput.value = '';
+      if (sidebarSearchClear) sidebarSearchClear.hidden = true;
+      updateDocumentSidebarVisibility();
       untitledCounter = 0;
       saveUntitledCounter(0);
       const welcome = createTab(sampleMarkdown, 'Welcome to Markdown');
@@ -4531,17 +5791,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function initTabs() {
     untitledCounter = loadUntitledCounter();
+    documentOrganization = loadDocumentOrganization();
     tabs = loadTabsFromStorage();
     activeTabId = loadActiveTabId();
 
     // Check if Neutralino passed an initial file via command line (early load)
     if (window.NL_INITIAL_FILE_CONTENT) {
       const initialFile = window.NL_INITIAL_FILE_CONTENT;
-      const tab = createTab(initialFile.content, initialFile.name);
-      tabs.push(tab);
-      activeTabId = tab.id;
-      saveTabsToStorage(tabs);
-      saveActiveTabId(activeTabId);
+      if (tabs.length < MAX_DOCUMENTS) {
+        const tab = createTab(initialFile.content, initialFile.name);
+        tabs.push(tab);
+        activeTabId = tab.id;
+        saveTabsToStorage(tabs);
+        saveActiveTabId(activeTabId);
+      } else {
+        alert('The command-line file could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
+      }
       delete window.NL_INITIAL_FILE_CONTENT;
     } else if (tabs.length === 0) {
       const tab = createTab(sampleMarkdown, 'Welcome to Markdown');
@@ -4553,7 +5818,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       activeTabId = tabs[0].id;
       saveActiveTabId(activeTabId);
     }
+    migrateDocumentsToOrganization();
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
+    selectedDocumentId = activeTabId;
     markdownEditor.value = activeTab.content;
     initTabHistory(activeTabId, activeTab.content);
     updateUndoRedoButtons();
@@ -4568,6 +5835,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       markdownEditor.scrollTop = activeTab.scrollPos || 0;
     });
     renderTabBar(tabs, activeTabId);
+    initDocumentSidebar();
     setupTabOverflow();
 
     const staticNewBtn = document.getElementById('tab-new-btn');
@@ -6372,8 +7640,7 @@ ${selector} .arrowheadPath {
           }
         }
 
-        newTab(text, getMarkdownFileTitle(file));
-        resolve(true);
+        resolve(newTab(text, getMarkdownFileTitle(file)) === true);
       };
       reader.onerror = function() {
         alert('Failed to read the file. Please check permissions and try again.');
@@ -6395,8 +7662,18 @@ ${selector} .arrowheadPath {
       return 0;
     }
 
+    const remainingCapacity = Math.max(0, MAX_DOCUMENTS - tabs.length);
+    if (!remainingCapacity) {
+      hasDocumentCapacity();
+      return 0;
+    }
+    const filesToImport = markdownFiles.slice(0, remainingCapacity);
+    if (filesToImport.length < markdownFiles.length) {
+      alert('Only the first ' + filesToImport.length + ' file' + (filesToImport.length === 1 ? '' : 's') + ' will be imported because the ' + MAX_DOCUMENTS + '-document limit would be exceeded.');
+    }
+
     let importedCount = 0;
-    for (const file of markdownFiles) {
+    for (const file of filesToImport) {
       if (await importMarkdownFile(file)) {
         importedCount++;
       }
@@ -6709,13 +7986,22 @@ ${selector} .arrowheadPath {
         setGitHubImportMessage("Please select at least one file to import.");
         return;
       }
+      const remainingCapacity = Math.max(0, MAX_DOCUMENTS - tabs.length);
+      if (!remainingCapacity) {
+        hasDocumentCapacity();
+        return;
+      }
+      if (selectedPaths.length > remainingCapacity) {
+        setGitHubImportMessage('Select no more than ' + remainingCapacity + ' file' + (remainingCapacity === 1 ? '' : 's') + ' to stay within the ' + MAX_DOCUMENTS + '-document limit.');
+        return;
+      }
       setGitHubImportLoading(true);
       setGitHubImportDialogDisabled(true);
       announceToScreenReader("Importing selected files from GitHub...");
       try {
         for (const selectedPath of selectedPaths) {
           const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, selectedPath));
-          newTab(markdown, getFileName(selectedPath).replace(/\.(md|markdown)$/i, ""));
+          if (!newTab(markdown, getFileName(selectedPath).replace(/\.(md|markdown)$/i, ""))) break;
         }
         closeGitHubImportModal();
         announceToScreenReader("Files imported successfully.");
@@ -6752,7 +8038,7 @@ ${selector} .arrowheadPath {
         }
         announceToScreenReader("Fetching file from GitHub...");
         const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, parsed.ref, parsed.filePath));
-        newTab(markdown, getFileName(parsed.filePath).replace(/\.(md|markdown)$/i, ""));
+        if (!newTab(markdown, getFileName(parsed.filePath).replace(/\.(md|markdown)$/i, ""))) return;
         closeGitHubImportModal();
         announceToScreenReader("File imported successfully.");
         return;
@@ -6786,7 +8072,7 @@ ${selector} .arrowheadPath {
         const targetPath = files[0];
         announceToScreenReader("Fetching file content...");
         const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, ref, targetPath));
-        newTab(markdown, getFileName(targetPath).replace(/\.(md|markdown)$/i, ""));
+        if (!newTab(markdown, getFileName(targetPath).replace(/\.(md|markdown)$/i, ""))) return;
         closeGitHubImportModal();
         announceToScreenReader("File imported successfully.");
         return;
@@ -12098,7 +13384,7 @@ ${selector} .arrowheadPath {
         for (const filePath of result) {
           const content = await Neutralino.filesystem.readFile(filePath);
           const fileName = filePath.split(/[/\\]/).pop().replace(/\.(md|markdown)$/i, "");
-          newTab(content, fileName);
+          if (!newTab(content, fileName)) break;
         }
       }
     } catch (e) {
@@ -14212,8 +15498,8 @@ ${selector} .arrowheadPath {
   function openShareSnapshotTab(content, title, mode) {
     const shareMode = mode === 'edit' ? 'edit' : 'view';
     const viewMode = shareMode === 'edit' ? 'split' : 'preview';
-    if (tabs.length >= 20) {
-      alert('The shared snapshot could not be opened because the tab limit has been reached.');
+    if (tabs.length >= MAX_DOCUMENTS) {
+      alert('The shared snapshot could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
       return false;
     }
     const snapshotTab = createTab(typeof content === 'string' ? content : '', getSafeShareSnapshotTitle(title), viewMode);
@@ -15364,13 +16650,15 @@ ${selector} .arrowheadPath {
   function ensureLiveParticipantTab(markdown) {
     if (!liveCollaboration || liveCollaboration.tabId) return Boolean(liveCollaboration && liveCollaboration.tabId);
     if (!liveCollaboration.pendingJoinTab) return false;
-    if (tabs.length >= 20) {
-      showLiveShareExpiredModal('The Live Share room could not be opened because the tab limit has been reached.');
+    if (tabs.length >= MAX_DOCUMENTS) {
+      showLiveShareExpiredModal('The Live Share room could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
       leaveLiveSession({ restoreOriginal: false, silent: true });
       return false;
     }
 
     const liveTab = createTab(typeof markdown === 'string' ? markdown : '', getSafeLiveTitle(liveCollaboration.roomTitle), 'split');
+    liveTab.kind = 'live-share';
+    liveTab.temporary = true;
     tabs.push(liveTab);
     switchTab(liveTab.id);
     liveCollaboration.tabId = liveTab.id;
@@ -16177,12 +17465,14 @@ ${selector} .arrowheadPath {
     const shouldDeferParticipantTab = !isHost && options.openInNewTab && yText.length === 0;
 
     if (!isHost && options.openInNewTab && !shouldDeferParticipantTab) {
-      if (tabs.length >= 20) {
-        throw new Error('Maximum tab limit reached');
+      if (tabs.length >= MAX_DOCUMENTS) {
+        throw new Error('Maximum document limit reached');
       }
       returnTabId = options.returnTabId || activeTabId;
       const liveTabTitle = getSafeLiveTitle(sessionTitle);
       const liveTab = createTab(yText.toString(), liveTabTitle, 'split');
+      liveTab.kind = 'live-share';
+      liveTab.temporary = true;
       tabs.push(liveTab);
       switchTab(liveTab.id);
       liveTabId = liveTab.id;

@@ -133,6 +133,9 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Logo, GitHub, Stats -->
                 <div class="d-flex align-items-center header-left">
+                    <button id="document-sidebar-open" class="tool-button document-sidebar-open" type="button" title="Open documents" aria-label="Open document sidebar" aria-controls="document-sidebar" aria-expanded="false">
+                        <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+                    </button>
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
                         <i class="bi bi-github"></i>
@@ -371,16 +374,74 @@
             </div>
         </header>
 
-        <!-- Tab Bar -->
-        <div class="tab-bar" id="tab-bar">
-          <div class="tab-list" id="tab-list" role="tablist" aria-label="Document tabs"></div>
-          <button class="tab-new-btn" id="tab-new-btn" title="New Tab (Ctrl+T)" aria-label="Open new tab">
-            <i class="bi bi-plus-lg"></i> New Tab
-          </button>
-          <button class="tab-reset-btn" id="tab-reset-btn" title="Reset all files" aria-label="Reset all files">
-            <i class="bi bi-arrow-counterclockwise"></i> Reset
-          </button>
-        </div>
+        <div class="document-workspace-shell" id="document-workspace-shell">
+          <button id="document-sidebar-backdrop" class="document-sidebar-backdrop" type="button" aria-label="Close document sidebar" hidden></button>
+          <aside id="document-sidebar" class="document-sidebar" aria-labelledby="document-sidebar-title">
+            <div class="document-sidebar-header">
+              <div>
+                <p class="document-sidebar-eyebrow">Library</p>
+                <h2 id="document-sidebar-title">Documents</h2>
+              </div>
+              <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-mobile-close" type="button" aria-label="Close document sidebar" title="Close documents">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="document-sidebar-create-row">
+              <button id="sidebar-new-document" class="document-sidebar-primary-btn" type="button">
+                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                <span>New document</span>
+              </button>
+              <button id="sidebar-new-workspace" class="document-sidebar-icon-btn" type="button" aria-label="New workspace" title="New workspace">
+                <i class="bi bi-folder-plus" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <label class="visually-hidden" for="document-sidebar-search">Search documents</label>
+            <div class="document-sidebar-search-wrap">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <input id="document-sidebar-search" type="search" autocomplete="off" placeholder="Search documents" />
+              <button id="document-sidebar-search-clear" type="button" aria-label="Clear document search" title="Clear search" hidden>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <nav class="document-sidebar-filters" aria-label="Document views">
+              <button class="document-filter-btn is-active" type="button" data-document-filter="all" aria-current="page">
+                <i class="bi bi-files" aria-hidden="true"></i><span>All Documents</span>
+              </button>
+              <button class="document-filter-btn" type="button" data-document-filter="recent">
+                <i class="bi bi-clock-history" aria-hidden="true"></i><span>Recent</span>
+              </button>
+              <button class="document-filter-btn" type="button" data-document-filter="favorites">
+                <i class="bi bi-star" aria-hidden="true"></i><span>Favorites</span>
+              </button>
+            </nav>
+
+            <div id="document-sidebar-status" class="document-sidebar-status" role="status" aria-live="polite"></div>
+            <div id="document-tree" class="document-tree" role="tree" aria-label="Workspaces, folders, and documents"></div>
+
+            <div class="document-sidebar-footer">
+              <span id="document-sidebar-count">0 of 50 documents</span>
+              <button id="document-sidebar-collapse" class="document-sidebar-collapse-btn" type="button" aria-label="Collapse document sidebar" title="Collapse sidebar" aria-expanded="true">
+                <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+                <span>Collapse</span>
+              </button>
+            </div>
+            <div id="document-sidebar-resizer" class="document-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize document sidebar" aria-valuemin="220" aria-valuemax="420" tabindex="0"></div>
+          </aside>
+
+          <div class="document-editor-area" id="document-editor-area">
+            <!-- Tab Bar -->
+            <div class="tab-bar" id="tab-bar">
+              <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
+              <button class="tab-new-btn" id="tab-new-btn" title="New Tab (Ctrl+T)" aria-label="Open new tab">
+                <i class="bi bi-plus-lg"></i> New Tab
+              </button>
+              <button class="tab-reset-btn" id="tab-reset-btn" title="Reset all files" aria-label="Reset all files">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+              </button>
+            </div>
 
         <!-- Markdown Formatting Toolbar -->
         <div class="markdown-format-toolbar" id="markdown-format-toolbar" role="toolbar" aria-label="Markdown formatting toolbar for plain-text editing">
@@ -1264,7 +1325,55 @@
                     </section>
                 </div>
             </aside>
-        </main>
+            </main>
+          </div>
+        </div>
+    </div>
+
+    <div id="document-name-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-name-modal-title" aria-describedby="document-name-modal-description" aria-hidden="true" style="display:none;">
+      <div class="reset-modal-box reset-modal-box--wide modal-box">
+        <div class="modal-header">
+          <p id="document-name-modal-title" class="reset-modal-message">Name item</p>
+          <button type="button" class="modal-close-btn" id="document-name-modal-close" aria-label="Close dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <p id="document-name-modal-description" class="modal-subtext"></p>
+        <label id="document-name-modal-label" class="reset-modal-label" for="document-name-modal-input">Name</label>
+        <input type="text" id="document-name-modal-input" class="rename-modal-input" maxlength="160" autocomplete="off" />
+        <p id="document-name-modal-error" class="document-modal-error" role="alert" hidden></p>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-name-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-name-modal-confirm">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="document-move-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-move-modal-title" aria-hidden="true" style="display:none;">
+      <div class="reset-modal-box reset-modal-box--wide modal-box">
+        <div class="modal-header">
+          <p id="document-move-modal-title" class="reset-modal-message">Move document</p>
+          <button type="button" class="modal-close-btn" id="document-move-modal-close" aria-label="Close move dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <label class="reset-modal-label" for="document-move-destination">Destination</label>
+        <select id="document-move-destination" class="rename-modal-input"></select>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-move-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-move-modal-confirm">Move</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="document-confirm-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-confirm-modal-title" aria-describedby="document-confirm-modal-description" aria-hidden="true" style="display:none;">
+      <div class="reset-modal-box modal-box">
+        <div class="modal-header">
+          <p id="document-confirm-modal-title" class="reset-modal-message">Confirm action</p>
+          <button type="button" class="modal-close-btn" id="document-confirm-modal-close" aria-label="Close confirmation"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <p id="document-confirm-modal-description" class="modal-subtext"></p>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-confirm-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-confirm-modal-confirm">Delete</button>
+        </div>
+      </div>
     </div>
 
     <!-- Shared Diagram Viewer Modal -->

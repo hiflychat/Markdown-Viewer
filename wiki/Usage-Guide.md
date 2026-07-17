@@ -4,26 +4,31 @@ This guide explains how to use Markdown Viewer as a browser-based Markdown edito
 
 ## Workspace Layout for Editing and Previewing Markdown
 
-The app has five main areas:
+The app has six main areas:
 
 | Area | What It Does |
 | :--- | :--- |
 | Header | Shows app name, stats, view controls, import/export, copy, sharing, language, and theme controls. |
-| Tab bar | Holds up to 20 normal document tabs, plus temporary shared/live tabs. |
+| Document sidebar | Organizes up to 50 documents into workspaces and folders, with All Documents, Recent, Favorites, and search. |
+| Tab bar | Preserves quick switching and drag-to-reorder for open documents. |
 | Formatting toolbar | Inserts Markdown syntax, opens helper modals, starts find/replace, and toggles fullscreen/help/about. |
 | Editor pane | Plain-text Markdown textarea with line numbers, custom undo/redo, list continuation, and find highlights. |
 | Preview pane | Sanitized rendered Markdown with math, diagrams, maps, models, music, alerts, and syntax highlighting. |
 
-Use the view buttons to switch between Editor, Split, and Preview. Split view is the main live Markdown preview workflow: type, paste, or open Markdown on one side and read the rendered result on the other. Sync scrolling can keep the source and preview aligned while you write. Drag the divider to change the pane widths. The app prevents either side from becoming too narrow. On small screens, the mobile menu exposes the same main actions without forcing a cramped split layout.
+Use the view buttons to switch between Editor, Split, and Preview. Split view is the main live Markdown preview workflow: type, paste, or open Markdown on one side and read the rendered result on the other. Sync scrolling can keep the source and preview aligned while you write. Drag the divider to change the pane widths. The app prevents either side from becoming too narrow. On small screens, the document sidebar opens as a full-height drawer and the mobile menu exposes the remaining main actions without forcing a cramped split layout.
 
-## Tabs and Autosave
+## Documents, Workspaces, and Autosave
 
-- Click New Tab to create a document.
-- Rename a tab from its menu or rename action.
-- Duplicate, delete, or reorder tabs from the tab UI.
+- Use **New document** in the sidebar to create in the last selected workspace or folder. Use the plus beside a workspace or folder to create directly inside it.
+- Create custom workspaces with the folder-plus button. Workspaces contain documents and optional one-level folders.
+- Use **All Documents** for the hierarchy, **Recent** for recently opened or edited documents, and **Favorites** for starred documents.
+- On desktop, one click selects a sidebar document and a double click opens it. On touch layouts, one tap opens it and closes the drawer.
+- Each document menu supports Open, Rename, Duplicate, Favorites, Move, Download Markdown, and Delete. The tab strip still supports quick switching and drag-to-reorder.
+- Deleting a folder moves its documents to the workspace root. Deleting a custom workspace moves its documents to Default Workspace after confirmation.
 - Closing the last normal tab resets to a clean document.
 - Reset clears the saved workspace.
 - Normal tabs autosave to local browser storage or desktop storage.
+- The document limit is 50 across creation, duplication, imports, Share Snapshot, and Live Share joins.
 - Temporary Share Snapshot and Live Share tabs are not saved to the recipient's workspace.
 - Use **Private mode** from the About dialog to clear existing document state and prevent normal document-state persistence while it is enabled.
 - Use **Clear local data** from the About dialog to remove saved tabs, active-tab state, workspace preferences, and desktop storage mirrors.

@@ -10,8 +10,10 @@ Most work happens in the browser or desktop webview. Markdown parsing, syntax hi
 
 ## Main Workspace
 
-The app opens with a header, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
+The app opens with a header, document-management sidebar, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
 
+- The left sidebar organizes documents into workspaces and one-level folders, with All Documents, Recent, Favorites, and search views.
+- The sidebar is resizable and collapsible on desktop, narrower on tablet, and becomes a full-height drawer on mobile.
 - Editor mode shows only the textarea.
 - Split mode shows the editor and preview side by side.
 - Preview mode shows only the rendered document.
@@ -22,14 +24,17 @@ The app opens with a header, document tab bar, formatting toolbar, editor pane, 
 
 The editor includes line numbers, wrapped-line height handling, a highlight layer for find results, live cursor overlays during Live Share, and skeleton placeholders during initial or heavy rendering. Line-number calculations are cached so large documents do not force a full layout measurement on every keystroke.
 
-## Document Tabs and Local Workspace Storage
+## Document Sidebar, Tabs, and Local Workspace Storage
 
 Users can work with multiple documents at once.
 
-- New tabs can be created from the tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
+- Every existing saved document is migrated into **Default Workspace**. Users can add, rename, expand, collapse, and delete custom workspaces, and add one level of folders within them.
+- Deleting a folder moves its documents to the workspace root. Deleting a custom workspace moves its documents to Default Workspace, after confirmation, so container deletion does not discard content.
+- New documents can be created from the sidebar, tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
+- The sidebar supports document open, rename, duplicate, favorite, move, Markdown download, and delete actions. Recent and Favorites are filtered references to the original documents, not copies.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
-- The app enforces a practical tab limit of 20 tabs. Shared snapshots refuse to open when this limit has been reached.
-- Each normal tab stores a title, content, scroll position, view mode, local review threads, and creation time.
+- The app enforces a consistent limit of 50 open documents. New documents, duplication, local/GitHub imports, Share Snapshot, and Live Share joins all use this limit.
+- Each normal tab stores a title, content, workspace/folder location, favorite state, recent activity metadata, scroll position, view mode, local review threads, and creation time.
 - The active tab id and untitled-document counter are stored separately.
 - Temporary Share Snapshot and Live Share tabs are deliberately excluded from persistent tab storage.
 - The Reset button clears the current saved workspace and returns the app to a clean starting state.
@@ -39,6 +44,7 @@ Storage keys used by the current implementation include:
 | Key | What It Stores |
 | :--- | :--- |
 | `markdownViewerTabs` | Normal saved document tabs, including local comments and suggestions. Temporary shared/live tabs are stripped before saving. |
+| `markdownViewerDocumentOrganization` | Workspaces, folders, expanded state, active sidebar filter, sidebar width/collapse state, and the last creation location. |
 | `markdownViewerActiveTab` | The active tab id. |
 | `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
 | `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |
@@ -50,7 +56,7 @@ On the web, these values live in browser `localStorage`. In the desktop app, the
 The About dialog includes two storage controls:
 
 - **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
-- **Clear local data** removes saved document tabs, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+- **Clear local data** removes saved document tabs, document organization, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
 
 ## Comments and Suggestion Mode
 
