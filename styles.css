@@ -3269,9 +3269,9 @@ a:focus {
 
 .app-brand-icon {
   display: block;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
   border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
   border-radius: 8px;
   object-fit: cover;
@@ -3296,13 +3296,13 @@ a:focus {
 .app-brand-title-row h1 {
   overflow: hidden;
   color: var(--text-color);
-  font-size: var(--ui-font-lg);
+  font-size: 14px;
   font-weight: 650;
   line-height: 1.1;
   text-overflow: ellipsis;
 }
 
-.app-brand-title-row .github-link {
+.app-brand > .github-link {
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
@@ -3310,7 +3310,7 @@ a:focus {
   line-height: 1;
 }
 
-.app-brand-title-row .github-link i {
+.app-brand > .github-link i {
   font-size: 20px;
   line-height: 1;
 }
@@ -3321,7 +3321,7 @@ a:focus {
   color: var(--text-secondary);
   font-size: var(--ui-font-xs);
   line-height: 1.05;
-  width: calc(100% - 26px);
+  width: 100%;
   text-align: center;
   text-overflow: ellipsis;
 }
@@ -4530,7 +4530,7 @@ a:focus {
   border-bottom: 1px solid var(--border-color);
 }
 
-.about-modal-body {
+.reset-modal-box--about .about-modal-body {
   max-height: none;
   gap: 0;
   padding: 24px 24px 20px;
@@ -4864,7 +4864,7 @@ a:focus {
     padding: 14px 16px;
   }
 
-  .about-modal-body {
+  .reset-modal-box--about .about-modal-body {
     max-height: none;
     padding: 16px;
   }
@@ -9613,7 +9613,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 @media (max-width: 479.98px) {
-  .app-brand-title-row .github-link {
+  .app-brand > .github-link {
     display: inline-flex;
   }
 
