@@ -11,6 +11,14 @@
   /* Text color for preview in light mode */
   --border-color: #e1e4e8;
   --header-bg: #f6f8fa;
+  --toolbar-surface: #ffffff;
+  --menu-surface: #ffffff;
+  --menu-border: #d0d7de;
+  --menu-radius: 10px;
+  --menu-item-radius: 7px;
+  --menu-shadow: 0 10px 28px rgba(31, 35, 40, 0.16);
+  --icon-size-md: 15px;
+  --layer-menu: 1100;
   --button-bg: #f6f8fa;
   --button-hover: #e1e4e8;
   --button-active: #d1d5da;
@@ -55,6 +63,10 @@
   /* Text color for preview in dark mode */
   --border-color: #30363d;
   --header-bg: #161b22;
+  --toolbar-surface: #161b22;
+  --menu-surface: #161b22;
+  --menu-border: #3d444d;
+  --menu-shadow: 0 12px 32px rgba(0, 0, 0, 0.46);
   --button-bg: #21262d;
   --button-hover: #30363d;
   --button-active: #3b434b;
@@ -184,20 +196,12 @@ body {
 }
 
 .document-sidebar-heading {
-  gap: 7px;
+  gap: 0;
 }
 
 .document-sidebar-actions {
   flex: 0 0 auto;
   gap: 1px;
-}
-
-.document-sidebar-heading > i {
-  flex: 0 0 var(--document-sidebar-icon-size);
-  color: var(--text-secondary);
-  font-size: var(--document-sidebar-icon-size);
-  line-height: 1;
-  text-align: center;
 }
 
 .document-sidebar-heading h2 {
@@ -689,6 +693,8 @@ body {
   padding: 4px 6px;
   margin-inline-end: 2px;
   border-radius: 6px;
+  border-color: transparent;
+  background: transparent;
 }
 
 body.document-sidebar-collapsed .document-sidebar {
@@ -1565,7 +1571,7 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .tool-button i {
-  font-size: 15px;
+  font-size: var(--icon-size-md);
 }
 
 .tool-button.is-active,
@@ -1659,7 +1665,7 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .header-icon-command i {
-  font-size: 15px;
+  font-size: var(--icon-size-md);
   line-height: 1;
 }
 
@@ -1672,12 +1678,12 @@ body.document-sidebar-collapsed .document-sidebar {
   width: 280px;
   min-width: 280px;
   padding: 7px;
-  border-radius: 10px;
-  box-shadow: 0 10px 28px rgba(31, 35, 40, 0.16);
+  border-radius: var(--menu-radius);
+  box-shadow: var(--menu-shadow);
 }
 
 .app-command-menu {
-  z-index: 1050;
+  z-index: var(--layer-menu);
 }
 
 .settings-menu-header {
@@ -2094,10 +2100,14 @@ body.document-sidebar-collapsed .document-sidebar {
   outline-offset: -1px;
 }
 
-/* Dropdown improvements */
-.dropdown-menu {
-  background-color: var(--bg-color);
-  border-color: var(--border-color);
+/* Unified menu surface: header New is the reference for every command menu. */
+.dropdown-menu,
+.markdown-tool-menu,
+.tab-menu-dropdown {
+  border: 1px solid var(--menu-border);
+  border-radius: var(--menu-radius);
+  background-color: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
 }
 
 .dropdown-item {
@@ -2110,13 +2120,19 @@ body.document-sidebar-collapsed .document-sidebar {
   color: var(--text-color);
 }
 
+.dropdown-item.active,
+.dropdown-item:active {
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--menu-surface));
+  color: var(--accent-color);
+}
+
 /* Markdown formatting toolbar */
 .markdown-format-toolbar {
   display: flex;
   align-items: center;
   height: 36px;
   padding: 0 6px;
-  background-color: var(--header-bg);
+  background-color: var(--toolbar-surface);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
   overflow-y: hidden;
@@ -2145,7 +2161,7 @@ body.document-sidebar-collapsed .document-sidebar {
   inset-inline-end: 0;
   margin-inline-start: auto;
   border-right: 0;
-  background: var(--header-bg);
+  background: var(--toolbar-surface);
 }
 
 .markdown-toolbar-group--document {
@@ -2188,7 +2204,7 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .toolbar-portal-menu {
-  z-index: 1050;
+  z-index: var(--layer-menu);
 }
 
 .document-command-divider {
@@ -2256,7 +2272,7 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .markdown-tool-btn i {
-  font-size: 15px;
+  font-size: var(--icon-size-md);
 }
 
 .markdown-tool-btn.text-tool {
@@ -2307,7 +2323,9 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .markdown-tool-select--insert {
-  min-width: 70px;
+  min-width: 44px;
+  gap: 5px;
+  padding-inline: 6px;
 }
 
 .markdown-tool-select-label {
@@ -2319,21 +2337,18 @@ body.document-sidebar-collapsed .document-sidebar {
 
 .markdown-tool-menu {
   position: fixed;
-  z-index: 100000;
+  z-index: var(--layer-menu);
   display: none;
   min-width: 172px;
   max-height: min(420px, calc(100vh - 24px));
   padding: 4px;
   overflow-y: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 7px;
-  background: var(--header-bg);
-  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.18);
 }
 
 .markdown-tool-menu.open {
   display: flex;
   flex-direction: column;
+  animation: app-menu-fade 0.15s ease-out;
 }
 
 .markdown-tool-menu--wide {
@@ -2344,11 +2359,11 @@ body.document-sidebar-collapsed .document-sidebar {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 32px;
+  min-height: 40px;
   gap: 9px;
   padding: 5px 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--menu-item-radius);
   color: var(--text-color);
   background: transparent;
   cursor: pointer;
@@ -2728,10 +2743,10 @@ a:focus {
   font-size: 0.8rem;
 }
 
-#importDropdown i,
-#exportDropdown i,
-#languageDropdown i {
-  font-size: 0.9rem;
+#importDropdown > i:first-child,
+#exportDropdown > i:first-child,
+#languageDropdown > i:first-child {
+  font-size: var(--icon-size-md);
 }
 
 /* Ensure desktop dropdown menu options match the stats-container font size */
@@ -3052,8 +3067,8 @@ a:focus {
 
   /* Expand touch target sizes to meet WCAG mobile guidelines */
   .markdown-tool-btn {
-    width: 36px !important;
-    height: 36px !important;
+    width: 44px !important;
+    height: 44px !important;
     font-size: 16px !important;
   }
 
@@ -3067,17 +3082,17 @@ a:focus {
   }
 
   .markdown-tool-select--insert {
-    min-width: 76px;
+    min-width: 44px;
   }
 
   .markdown-format-toolbar {
-    height: 44px !important;
+    height: 52px !important;
   }
 
   .markdown-toolbar-group--document .tool-button {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
   }
 
   .document-action-item {
@@ -3353,6 +3368,28 @@ a:focus {
 .mobile-view-mode-btn:hover,
 .mobile-view-mode-btn:active {
   background-color: var(--button-hover);
+}
+
+@media (max-width: 767px) {
+  .markdown-format-toolbar {
+    padding-inline: 4px;
+    scroll-padding-inline: 4px;
+  }
+
+  .markdown-toolbar-group--utilities {
+    position: static;
+    margin-inline-start: 0;
+  }
+
+  .markdown-tool-select--insert {
+    min-width: 48px;
+  }
+
+  .markdown-tool-menu-item,
+  .tab-menu-item,
+  .header-command-menu .app-menu-item {
+    min-height: 44px;
+  }
 }
 
 .mobile-view-mode-btn:disabled,
@@ -4070,12 +4107,8 @@ a:focus {
   display: none;
   position: fixed;
   min-width: 130px;
-  background-color: var(--header-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 99999;
-  overflow: hidden;
+  z-index: var(--layer-menu);
+  padding: 4px;
   flex-direction: column;
 }
 
@@ -4085,15 +4118,18 @@ a:focus {
 
 .tab-menu-dropdown.open {
   display: flex;
+  animation: app-menu-fade 0.15s ease-out;
 }
 
 .tab-menu-item {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 12px;
+  min-height: 40px;
+  padding: 7px 9px;
   background: none;
   border: none;
+  border-radius: var(--menu-item-radius);
   color: var(--text-color);
   font-size: 12px;
   cursor: pointer;
@@ -4122,7 +4158,7 @@ a:focus {
 
 .tab-menu-separator {
   height: 1px;
-  margin: 4px 0;
+  margin: 4px;
   background: var(--border-color);
 }
 
@@ -6063,19 +6099,22 @@ button.live-share-participant-overflow {
 .lang-select-item {
   display: flex !important;
   align-items: center;
+  min-height: 40px;
   gap: 8px;
+  padding: 7px 9px;
+  border-radius: var(--menu-item-radius);
   cursor: pointer;
-  transition: background-color 0.2s ease, padding-left 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .lang-select-item:hover {
-  padding-left: 12px;
+  padding-inline: 9px;
 }
 
 .lang-select-item.active {
-  background-color: var(--accent-color) !important;
-  color: #ffffff !important;
-  font-weight: 600;
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--menu-surface)) !important;
+  color: var(--accent-color) !important;
+  font-weight: 500;
 }
 
 /* Adjust CJK text layout for maximum readability inside the preview pane */
@@ -6105,19 +6144,33 @@ html[lang="ko"] .markdown-body h3 {
   margin-bottom: 0.6em;
 }
 
-/* Smooth fade and scale transition for dropdown active states */
+/* Consistent, position-safe menu motion. Popper owns menu transforms. */
+@keyframes app-menu-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .dropdown-menu {
   opacity: 0;
-  transform: translateY(8px) scale(0.98);
   display: block;
   visibility: hidden;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
 }
 
 .dropdown-menu.show {
   opacity: 1;
-  transform: translateY(0) scale(1);
   visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-menu {
+    transition: none;
+  }
+
+  .markdown-tool-menu.open,
+  .tab-menu-dropdown.open {
+    animation: none;
+  }
 }
 
 .mobile-menu-items .dropdown-menu:not(.show) {

@@ -2501,7 +2501,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       workspaces: [
         {
           id: DEFAULT_WORKSPACE_ID,
-          name: 'Default Workspace',
+          name: 'Workspace',
           expanded: true,
           createdAt: 0
         },
@@ -3827,7 +3827,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const workspace = getWorkspaceById(tab.workspaceId);
     const folder = getFolderById(tab.folderId);
     if (folder && workspace) return workspace.name + ' / ' + folder.name;
-    return workspace ? workspace.name : 'Default Workspace';
+    return workspace ? workspace.name : 'Workspace';
   }
 
   function documentMatchesSidebarSearch(tab) {
@@ -4018,7 +4018,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const preferredFolder = getFolderById(preferredLocation.folderId);
     const preferredLocationLabel = preferredFolder
       ? (preferredWorkspace.name + ' / ' + preferredFolder.name)
-      : (preferredWorkspace ? preferredWorkspace.name : 'Default Workspace');
+      : (preferredWorkspace ? preferredWorkspace.name : 'Workspace');
     const newDocumentButton = document.getElementById('sidebar-new-document');
     const newFolderButton = document.getElementById('sidebar-new-folder');
     const collapseAllButton = document.getElementById('document-sidebar-collapse-all');
@@ -4027,7 +4027,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       newDocumentButton.setAttribute('aria-label', newDocumentButton.title);
     }
     if (newFolderButton) {
-      newFolderButton.title = 'New folder in ' + (preferredWorkspace ? preferredWorkspace.name : 'Default Workspace');
+      newFolderButton.title = 'New folder in ' + (preferredWorkspace ? preferredWorkspace.name : 'Workspace');
       newFolderButton.setAttribute('aria-label', newFolderButton.title);
     }
     if (collapseAllButton) {
@@ -4061,9 +4061,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const sidebarOpen = isDocumentSidebarMobile() ? mobileOpen : !documentOrganization.ui.collapsed;
     if (openButton) {
       openButton.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
-      openButton.classList.toggle('is-active', sidebarOpen);
-      openButton.title = sidebarOpen ? 'Hide files' : 'Show files';
-      openButton.setAttribute('aria-label', sidebarOpen ? 'Hide file sidebar' : 'Show file sidebar');
+      const icon = openButton.querySelector('i');
+      if (icon) icon.className = sidebarOpen ? 'bi bi-layout-sidebar' : 'bi bi-layout-sidebar-inset';
+      openButton.title = sidebarOpen ? 'Close Explorer' : 'Open Explorer';
+      openButton.setAttribute('aria-label', sidebarOpen ? 'Close Explorer' : 'Open Explorer');
     }
     if (backdrop) backdrop.hidden = !mobileOpen;
   }
@@ -5293,7 +5294,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (icon) icon.className = 'bi bi-check-lg';
         clearTimeout(copyReviewSummary._timeoutId);
         copyReviewSummary._timeoutId = setTimeout(function() {
-          if (icon) icon.className = 'bi bi-clipboard';
+          if (icon) icon.className = 'bi bi-copy';
         }, 1400);
       }
     } catch (error) {
@@ -8076,7 +8077,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     btnCopy.className = 'stl-toolbar-btn btn-copy';
     btnCopy.title = 'Copy image to clipboard';
     btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-    btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
+    btnCopy.innerHTML = '<i class="bi bi-copy"></i> Copy';
     
     const btnPng = document.createElement('button');
     btnPng.type = 'button';
@@ -8583,7 +8584,7 @@ ${selector} .arrowheadPath {
       copyButton.className = 'code-preview-copy';
       copyButton.title = 'Copy ' + language.fullName + ' code';
       copyButton.setAttribute('aria-label', copyButton.title);
-      copyButton.innerHTML = '<i class="bi bi-clipboard" aria-hidden="true"></i><span>Copy</span>';
+      copyButton.innerHTML = '<i class="bi bi-copy" aria-hidden="true"></i><span>Copy</span>';
       copyButton.addEventListener('click', async function() {
         if (copyButton.disabled) return;
         const originalHtml = copyButton.innerHTML;
@@ -10657,7 +10658,7 @@ ${selector} .arrowheadPath {
     button.classList.add('is-copied');
     clearTimeout(button.copyTimeout);
     button.copyTimeout = setTimeout(() => {
-      icon.className = 'bi bi-clipboard';
+      icon.className = 'bi bi-copy';
       button.classList.remove('is-copied');
     }, 1200);
   }
@@ -10812,7 +10813,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'emoji-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.shortcode}`);
-        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+        copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.shortcode)
@@ -10947,7 +10948,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'symbol-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.entity}`);
-        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+        copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.entity)
@@ -14641,12 +14642,12 @@ ${selector} .arrowheadPath {
   mobileToggleSync.addEventListener("click", () => {
     toggleSyncScrolling();
     if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync Off';
+      mobileToggleSync.innerHTML = '<i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i> Sync Off';
       mobileToggleSync.classList.add("sync-disabled");
       mobileToggleSync.classList.remove("sync-enabled");
       mobileToggleSync.classList.add("sync-active");
     } else {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync On';
+      mobileToggleSync.innerHTML = '<i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i> Sync On';
       mobileToggleSync.classList.add("sync-enabled");
       mobileToggleSync.classList.remove("sync-disabled");
       mobileToggleSync.classList.remove("sync-active");
@@ -17270,7 +17271,7 @@ ${selector} .arrowheadPath {
       shareGenerateBtn.textContent = 'Share';
     }
     if (shareCopyBtn) {
-      shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
+      shareCopyBtn.innerHTML = '<i class="bi bi-copy"></i><span>Copy</span>';
     }
     setShareInviteState('Ready to copy');
   }
@@ -19844,7 +19845,7 @@ ${selector} .arrowheadPath {
       },
       {
         title: 'Copy image to clipboard',
-        html: '<i class="bi bi-clipboard-image"></i> Copy',
+        html: '<i class="bi bi-copy"></i> Copy',
         onClick: button => copyMermaidImage(container, button)
       },
       {
@@ -21518,43 +21519,43 @@ ${selector} .arrowheadPath {
     // Update dynamic current language labels in drop menus
     const labelEl = document.getElementById('current-lang-label');
     if (labelEl) {
-      const flags = {
-        en: "🇺🇸 English",
-        zh: "🇨🇳 简体中文",
-        ja: "🇯🇵 日本語",
-        ko: "🇰🇷 한국어",
-        pt: "🇧🇷 Português (Brasil)",
-        es: "🇪🇸 Español",
-        fr: "🇫🇷 Français",
-        de: "🇩🇪 Deutsch",
-        ru: "🇷🇺 Русский",
-        it: "🇮🇹 Italiano",
-        tr: "🇹🇷 Türkçe",
-        pl: "🇵🇱 Polski",
-        tw: "🇹🇼 繁體中文",
-        uk: "🇺🇦 Українська"
+      const languageNames = {
+        en: "English",
+        zh: "简体中文",
+        ja: "日本語",
+        ko: "한국어",
+        pt: "Português (Brasil)",
+        es: "Español",
+        fr: "Français",
+        de: "Deutsch",
+        ru: "Русский",
+        it: "Italiano",
+        tr: "Türkçe",
+        pl: "Polski",
+        tw: "繁體中文",
+        uk: "Українська"
       };
-      labelEl.textContent = flags[lang];
+      labelEl.textContent = languageNames[lang];
     }
     const mobileLabelEl = document.getElementById('mobile-current-lang-label');
     if (mobileLabelEl) {
-      const flags = {
-        en: "us English",
-        zh: "CN 简体中文",
-        ja: "JP 日本語",
-        ko: "KR 한국어",
-        pt: "BR Português (Brasil)",
-        es: "ES Español",
-        fr: "FR Français",
-        de: "DE Deutsch",
-        ru: "RU Русский",
-        it: "IT Italiano",
-        tr: "TR Türkçe",
-        pl: "PL Polski",
-        tw: "TW 繁體中文",
-        uk: "UK Українська"
+      const languageNames = {
+        en: "English",
+        zh: "简体中文",
+        ja: "日本語",
+        ko: "한국어",
+        pt: "Português (Brasil)",
+        es: "Español",
+        fr: "Français",
+        de: "Deutsch",
+        ru: "Русский",
+        it: "Italiano",
+        tr: "Türkçe",
+        pl: "Polski",
+        tw: "繁體中文",
+        uk: "Українська"
       };
-      mobileLabelEl.textContent = flags[lang];
+      mobileLabelEl.textContent = languageNames[lang];
     }
 
     // Translate buttons with text content
@@ -21567,7 +21568,7 @@ ${selector} .arrowheadPath {
     const mobileToggleSyncEl = document.getElementById('mobile-toggle-sync');
     if (mobileToggleSyncEl) {
       const isSyncActive = mobileToggleSyncEl.classList.contains('sync-active');
-      mobileToggleSyncEl.innerHTML = `<i class="bi bi-link"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
+      mobileToggleSyncEl.innerHTML = `<i class="bi bi-arrow-repeat" aria-hidden="true"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
     }
 
     // Import buttons
@@ -21616,7 +21617,7 @@ ${selector} .arrowheadPath {
       if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
     }
     const mCopyBtn = document.getElementById('mobile-copy-markdown');
-    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="bi bi-clipboard me-2"></i>${dict.copy}`;
+    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="bi bi-copy me-2" aria-hidden="true"></i>${dict.copy}`;
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
@@ -21634,7 +21635,7 @@ ${selector} .arrowheadPath {
       if (mobileLiveShareLabel) {
         mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
       } else {
-        mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast-pin me-2"></i>${dict.liveShare || 'Live Share'}`;
       }
     }
 

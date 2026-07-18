@@ -29,7 +29,7 @@ The editor includes line numbers, wrapped-line height handling, a highlight laye
 
 Users can work with multiple documents at once.
 
-- Every existing saved document is migrated into **Default Workspace**. Workspaces are fixed; users create one level of folders inside Default Workspace or the password-protected **Secret Workspace**.
+- Every existing saved document is migrated into **Workspace**. Workspaces are fixed; users create one level of folders inside Workspace or the password-protected **Secret Workspace**.
 - Secret Workspace encrypts its files and folder names locally with a password-derived AES-GCM key. It remains locked after reload, the key stays in memory only while unlocked, and a forgotten password cannot be recovered. Resetting Secret Workspace permanently deletes its encrypted payload.
 - The sidebar has explicit **New file** and **New folder** actions for the selected location. Files can be dragged onto another folder or workspace; the Move dialog remains available for keyboard and touch workflows.
 - Deleting a folder moves its files to the workspace root so container deletion does not discard content.
@@ -46,7 +46,7 @@ Storage keys used by the current implementation include:
 
 | Key | What It Stores |
 | :--- | :--- |
-| `markdownViewerTabs` | Normal Default Workspace tabs, including local comments and suggestions. Secret and temporary shared/live tabs are stripped before saving. |
+| `markdownViewerTabs` | Normal Workspace tabs, including local comments and suggestions. Secret and temporary shared/live tabs are stripped before saving. |
 | `markdownViewerDocumentOrganization` | Fixed workspace state, non-secret folders, active sidebar filter, sidebar width/collapse state, and the last non-secret creation location. |
 | `markdownViewerSecretWorkspace` | Password-encrypted Secret Workspace files and folder names plus the PBKDF2 salt, AES-GCM IV, and non-sensitive item counts. |
 | `markdownViewerActiveTab` | The active tab id. |

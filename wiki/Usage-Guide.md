@@ -20,8 +20,8 @@ Use the view buttons to switch between Editor, Split, and Preview. Split view is
 
 ## Files, Folders, and Autosave
 
-- Select Default Workspace, Secret Workspace, or a folder, then use the clearly labeled **New file** or **New folder** button. The selected row shows where the item will be created; the plus menu beside an unlocked workspace or folder creates directly inside it.
-- Workspaces are fixed. Create one-level folders inside **Default Workspace** or the password-protected **Secret Workspace**.
+- Select Workspace, Secret Workspace, or a folder, then use the clearly labeled **New file** or **New folder** button. The selected row shows where the item will be created; the plus menu beside an unlocked workspace or folder creates directly inside it.
+- Workspaces are fixed. Create one-level folders inside **Workspace** or the password-protected **Secret Workspace**.
 - The first time Secret Workspace is opened, create a password of at least eight characters. Files and folder names are encrypted locally. Use its menu to lock it when finished; the password cannot be recovered.
 - Drag a file row onto a folder or workspace to move it. Use **Move to…** from the file menu as the keyboard and touch-friendly alternative. Dropping local Markdown files onto a folder imports them there.
 - Use **All files** for the hierarchy, **Recent** for recently opened or edited files, and **Favorites** for starred files.
