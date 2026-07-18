@@ -2469,6 +2469,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   let untitledCounter = 0;
   let documentOrganization = null;
   let selectedDocumentId = null;
+  let selectedDocumentTreeIds = new Set();
+  let documentTreeSelectionAnchor = null;
   let documentSidebarSearch = '';
   let documentSidebarInitialized = false;
   let isDocumentSidebarResizing = false;
@@ -3404,11 +3406,105 @@ document.addEventListener("DOMContentLoaded", async function () {
     announceToScreenReader(tab.favorite ? 'Document added to favorites.' : 'Document removed from favorites.');
   }
 
+  function getDocumentTreeSelectionKey(type, id) {
+    return (type === 'folder' ? 'folder:' : 'document:') + id;
+  }
+
+  function getDocumentTreeRowSelectionKey(row) {
+    if (!row || !isDocumentTreeRowSelectable(row)) return null;
+    return getDocumentTreeSelectionKey(row.getAttribute('data-tree-type'), row.getAttribute('data-tree-id'));
+  }
+
+  function isDocumentTreeRowSelectable(row) {
+    if (!row || row.classList.contains('document-tree-temporary')) return false;
+    const type = row.getAttribute('data-tree-type');
+    return type === 'document' || type === 'folder';
+  }
+
+  function getVisibleDocumentTreeRows() {
+    const tree = document.getElementById('document-tree');
+    if (!tree) return [];
+    return Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(row) {
+      return isDocumentTreeRowSelectable(row) && row.offsetParent !== null;
+    });
+  }
+
+  function updateDocumentTreeSelectionDom() {
+    document.querySelectorAll('#document-tree .document-tree-row').forEach(function(row) {
+      const key = getDocumentTreeRowSelectionKey(row);
+      const selected = Boolean(key && selectedDocumentTreeIds.has(key));
+      row.classList.toggle('is-selected', selected);
+      if (isDocumentTreeRowSelectable(row)) row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+  }
+
+  function clearDocumentTreeSelection(options) {
+    selectedDocumentTreeIds.clear();
+    documentTreeSelectionAnchor = null;
+    updateDocumentTreeSelectionDom();
+    if (!options || options.announce !== false) announceToScreenReader('Explorer selection cleared.');
+  }
+
+  function setSingleDocumentTreeSelection(type, id) {
+    const key = getDocumentTreeSelectionKey(type, id);
+    selectedDocumentTreeIds = new Set([key]);
+    documentTreeSelectionAnchor = key;
+    updateDocumentTreeSelectionDom();
+  }
+
+  function selectDocumentTreeRow(row, event, options) {
+    const key = getDocumentTreeRowSelectionKey(row);
+    if (!key) {
+      if (!event || (!event.ctrlKey && !event.metaKey && !event.shiftKey)) clearDocumentTreeSelection({ announce: false });
+      return { modified: false, selected: false };
+    }
+
+    const contextMenuSelection = Boolean(options && options.contextMenu);
+    const additive = Boolean(!contextMenuSelection && event && (event.ctrlKey || event.metaKey));
+    const ranged = Boolean(!contextMenuSelection && event && event.shiftKey);
+    if (ranged && documentTreeSelectionAnchor) {
+      const rows = getVisibleDocumentTreeRows();
+      const anchorIndex = rows.findIndex(function(item) {
+        return getDocumentTreeRowSelectionKey(item) === documentTreeSelectionAnchor;
+      });
+      const targetIndex = rows.indexOf(row);
+      if (anchorIndex !== -1 && targetIndex !== -1) {
+        if (!additive) selectedDocumentTreeIds.clear();
+        const start = Math.min(anchorIndex, targetIndex);
+        const end = Math.max(anchorIndex, targetIndex);
+        rows.slice(start, end + 1).forEach(function(item) {
+          selectedDocumentTreeIds.add(getDocumentTreeRowSelectionKey(item));
+        });
+      } else {
+        selectedDocumentTreeIds = new Set([key]);
+      }
+    } else if (additive) {
+      if (selectedDocumentTreeIds.has(key)) selectedDocumentTreeIds.delete(key);
+      else selectedDocumentTreeIds.add(key);
+      documentTreeSelectionAnchor = key;
+    } else if (!options || options.preserveExisting !== true || !selectedDocumentTreeIds.has(key)) {
+      selectedDocumentTreeIds = new Set([key]);
+      documentTreeSelectionAnchor = key;
+    }
+
+    if (!documentTreeSelectionAnchor || !selectedDocumentTreeIds.has(documentTreeSelectionAnchor)) {
+      documentTreeSelectionAnchor = selectedDocumentTreeIds.has(key) ? key : (selectedDocumentTreeIds.values().next().value || null);
+    }
+    updateDocumentTreeSelectionDom();
+    if (row && typeof row.focus === 'function' && (!event || event.type !== 'contextmenu')) {
+      row.focus({ preventScroll: true });
+    }
+    const selectedCount = selectedDocumentTreeIds.size;
+    announceToScreenReader(selectedCount + ' Explorer item' + (selectedCount === 1 ? '' : 's') + ' selected.');
+    return { modified: additive || ranged, selected: selectedDocumentTreeIds.has(key) };
+  }
+
   function openSidebarDocument(tabId, options) {
     const tab = tabs.find(function(item) { return item.id === tabId; });
     if (!tab) return;
     tab.isOpen = true;
     selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
     tab.lastOpenedAt = Date.now();
     if (!isTemporaryDocument(tab)) {
       documentOrganization.ui.lastWorkspaceId = tab.workspaceId || DEFAULT_WORKSPACE_ID;
@@ -3429,17 +3525,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function selectSidebarDocument(tabId) {
     selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
     const selectedTab = tabs.find(function(tab) { return tab.id === tabId && !isTemporaryDocument(tab); });
     if (selectedTab) {
       documentOrganization.ui.lastWorkspaceId = selectedTab.workspaceId || DEFAULT_WORKSPACE_ID;
       documentOrganization.ui.lastFolderId = selectedTab.folderId || null;
       saveDocumentOrganization();
     }
-    document.querySelectorAll('#document-tree .document-tree-row[data-document-id]').forEach(function(row) {
-      const selected = row.getAttribute('data-document-id') === tabId;
-      row.classList.toggle('is-selected', selected);
-      row.setAttribute('aria-selected', selected ? 'true' : 'false');
-    });
   }
 
   function removeDocumentSidebarMenus() {
@@ -3452,6 +3544,32 @@ document.addEventListener("DOMContentLoaded", async function () {
       button.setAttribute('aria-expanded', 'false');
     });
     document.querySelectorAll('.document-menu-dropdown.open').forEach(function(menu) { menu.classList.remove('open'); });
+    document.querySelectorAll('.document-menu-context').forEach(function(menu) { menu.remove(); });
+  }
+
+  function openDocumentMenu(button, menu, position, returnFocus) {
+    closeTabMenus();
+    closeDocumentSidebarMenus();
+    if (!menu) return;
+    if (button && button.isConnected) {
+      button.classList.add('open');
+      button.setAttribute('aria-expanded', 'true');
+    }
+    menu._returnFocus = returnFocus || button || null;
+    menu.classList.add('open');
+    if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+      menu.classList.add('document-menu-context');
+      menu.style.left = '0px';
+      menu.style.top = '0px';
+      const rect = menu.getBoundingClientRect();
+      const gutter = 8;
+      menu.style.left = Math.max(gutter, Math.min(position.x, window.innerWidth - rect.width - gutter)) + 'px';
+      menu.style.top = Math.max(gutter, Math.min(position.y, window.innerHeight - rect.height - gutter)) + 'px';
+    } else if (button) {
+      positionTabMenu(button, menu);
+    }
+    const firstAction = menu.querySelector('[role="menuitem"]');
+    if (firstAction) firstAction.focus();
   }
 
   function createDocumentMenuButton(label, actions) {
@@ -3470,6 +3588,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const menu = document.createElement('div');
     menu.className = 'tab-menu-dropdown document-menu-dropdown';
     menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', label + ' options');
     actions.forEach(function(action) {
       const actionButton = document.createElement('button');
       actionButton.type = 'button';
@@ -3495,8 +3614,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
+        const returnFocus = menu._returnFocus || button;
         closeDocumentSidebarMenus();
-        button.focus();
+        if (returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
         return;
       }
       if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
@@ -3509,21 +3629,30 @@ document.addEventListener("DOMContentLoaded", async function () {
       items[nextIndex].focus();
     });
     document.body.appendChild(menu);
+    button._documentMenu = menu;
+    button._documentMenuActions = actions;
 
     button.addEventListener('click', function(event) {
       event.preventDefault();
       event.stopPropagation();
-      const shouldOpen = !button.classList.contains('open');
-      closeTabMenus();
-      closeDocumentSidebarMenus();
-      if (shouldOpen) {
-        button.classList.add('open');
-        button.setAttribute('aria-expanded', 'true');
-        menu.classList.add('open');
-        positionTabMenu(button, menu);
-        const firstAction = menu.querySelector('[role="menuitem"]');
-        if (firstAction) firstAction.focus();
+      const row = button._documentTreeRow;
+      const rowKey = getDocumentTreeRowSelectionKey(row);
+      if (rowKey && !selectedDocumentTreeIds.has(rowKey)) {
+        selectDocumentTreeRow(row, event, { contextMenu: true });
       }
+      if (rowKey && selectedDocumentTreeIds.size > 1 && selectedDocumentTreeIds.has(rowKey)) {
+        const bulkActions = getBulkDocumentTreeMenuActions();
+        if (bulkActions.length) {
+          const virtualButton = createDocumentMenuButton('Selected Explorer items', bulkActions);
+          const rect = button.getBoundingClientRect();
+          openDocumentMenu(virtualButton, virtualButton._documentMenu, { x: rect.left, y: rect.bottom + 4 }, button);
+        }
+        return;
+      }
+      const shouldOpen = !button.classList.contains('open');
+      if (shouldOpen) {
+        openDocumentMenu(button, menu, null, button);
+      } else closeDocumentSidebarMenus();
     });
     button.addEventListener('keydown', function(event) {
       if (event.key === 'ArrowDown') {
@@ -3535,7 +3664,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getDocumentMenuActions(tab) {
-    const actions = [{
+    const actions = [
+      { id: 'open', icon: 'lucide-file-text', label: 'Open', run: function() { openSidebarDocument(tab.id); } }, {
       id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameTab(tab.id); }
     }];
     if (!isTemporaryDocument(tab)) {
@@ -3551,6 +3681,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       } else {
         actions.push({ id: 'split', icon: 'lucide-columns-2', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
       }
+      actions.push({ id: 'move', icon: 'lucide-arrow-right-to-line', label: 'Move', run: function() { openMoveDocumentDialog(tab.id); } });
       actions.push({ id: 'download', icon: 'lucide-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
     }
     actions.push({
@@ -3584,10 +3715,121 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getFolderMenuActions(folder) {
     return [
+      { id: 'open', icon: folder.expanded === false ? 'lucide-folder-open' : 'lucide-folder', label: folder.expanded === false ? 'Open' : 'Collapse', run: function() {
+        folder.expanded = folder.expanded === false;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+      } },
       { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
       { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
       { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
+  }
+
+  function getDocumentTreeMenuActionsForRow(row) {
+    if (!row) return [];
+    const type = row.getAttribute('data-tree-type');
+    const id = row.getAttribute('data-tree-id');
+    if (type === 'document') {
+      const tab = tabs.find(function(item) { return item.id === id; });
+      return tab ? getDocumentMenuActions(tab) : [];
+    }
+    if (type === 'folder') {
+      const folder = getFolderById(id);
+      return folder ? getFolderMenuActions(folder) : [];
+    }
+    if (type === 'workspace') {
+      const workspace = getWorkspaceById(id);
+      return workspace ? getWorkspaceMenuActions(workspace) : [];
+    }
+    return [];
+  }
+
+  function getSelectedDocumentTreeEntities() {
+    const entities = [];
+    selectedDocumentTreeIds.forEach(function(key) {
+      const separator = key.indexOf(':');
+      if (separator === -1) return;
+      const type = key.slice(0, separator);
+      const id = key.slice(separator + 1);
+      if (type === 'document') {
+        const tab = tabs.find(function(item) { return item.id === id && !isTemporaryDocument(item); });
+        if (tab) entities.push({ type: type, id: id, item: tab });
+      } else if (type === 'folder') {
+        const folder = getFolderById(id);
+        if (folder) entities.push({ type: type, id: id, item: folder });
+      }
+    });
+    return entities;
+  }
+
+  function deleteSelectedDocumentTreeItems() {
+    const entities = getSelectedDocumentTreeEntities();
+    if (entities.length < 2) return;
+    const documentIds = entities.filter(function(entity) { return entity.type === 'document'; }).map(function(entity) { return entity.id; });
+    const folderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const movedDocumentCount = tabs.filter(function(tab) {
+      return !isTemporaryDocument(tab) && folderIds.has(tab.folderId) && !documentIds.includes(tab.id);
+    }).length;
+    const consequences = [];
+    if (documentIds.length) consequences.push('permanently deletes ' + documentIds.length + ' file' + (documentIds.length === 1 ? '' : 's'));
+    if (folderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
+    let description = 'This ' + consequences.join(' and ') + '.';
+    if (movedDocumentCount) {
+      description += ' ' + movedDocumentCount + ' file' + (movedDocumentCount === 1 ? '' : 's') + ' inside selected folders will move to the workspace root.';
+    }
+    openDocumentConfirmation({
+      title: 'Delete ' + entities.length + ' selected items?',
+      description: description,
+      confirmText: 'Delete selected items',
+      onConfirm: function() {
+        tabs.forEach(function(tab) {
+          if (folderIds.has(tab.folderId) && !documentIds.includes(tab.id)) tab.folderId = null;
+        });
+        documentOrganization.folders = documentOrganization.folders.filter(function(folder) { return !folderIds.has(folder.id); });
+        if (folderIds.has(documentOrganization.ui.lastFolderId)) documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        documentIds.slice().forEach(function(tabId) { deleteTab(tabId); });
+        selectedDocumentTreeIds.clear();
+        documentTreeSelectionAnchor = null;
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader(entities.length + ' Explorer items deleted.');
+      }
+    });
+  }
+
+  function getBulkDocumentTreeMenuActions() {
+    const entities = getSelectedDocumentTreeEntities();
+    if (entities.length < 2) return [];
+    return [{
+      id: 'delete-selected',
+      icon: 'lucide-trash-2',
+      label: 'Delete ' + entities.length + ' selected items',
+      danger: true,
+      run: deleteSelectedDocumentTreeItems
+    }];
+  }
+
+  function openDocumentTreeContextMenu(row, event) {
+    if (!row) return;
+    if (event) event.preventDefault();
+    if (isDocumentTreeRowSelectable(row)) {
+      selectDocumentTreeRow(row, event, { preserveExisting: true, contextMenu: true });
+    } else {
+      clearDocumentTreeSelection({ announce: false });
+    }
+    const actions = selectedDocumentTreeIds.size > 1
+      ? getBulkDocumentTreeMenuActions()
+      : getDocumentTreeMenuActionsForRow(row);
+    if (!actions.length) return;
+    const virtualButton = createDocumentMenuButton('Explorer item', actions);
+    const menu = virtualButton._documentMenu;
+    const rect = row.getBoundingClientRect();
+    const position = event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)
+      ? { x: event.clientX, y: event.clientY }
+      : { x: Math.min(rect.right, window.innerWidth - 8), y: Math.min(rect.bottom, window.innerHeight - 8) };
+    openDocumentMenu(virtualButton, menu, position, row);
   }
 
   async function moveDocumentToLocation(tabId, workspaceId, folderId) {
@@ -3700,8 +3942,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (options.documentId) {
       row.setAttribute('data-document-id', options.documentId);
       row.classList.toggle('is-active', options.documentId === activeTabId);
-      row.classList.toggle('is-selected', options.documentId === selectedDocumentId);
-      row.setAttribute('aria-selected', options.documentId === selectedDocumentId ? 'true' : 'false');
       if (options.documentId === activeTabId) row.setAttribute('aria-current', 'page');
     }
     if (options.favorite) row.classList.add('is-favorite');
@@ -3721,6 +3961,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       toggleIcon.setAttribute('aria-hidden', 'true');
       toggle.appendChild(toggleIcon);
       toggle.addEventListener('click', function(event) {
+        if (isDocumentTreeRowSelectable(row)) selectDocumentTreeRow(row, event);
         event.stopPropagation();
         options.onToggle();
       });
@@ -3757,31 +3998,30 @@ document.addEventListener("DOMContentLoaded", async function () {
       meta.textContent = options.meta;
       main.appendChild(meta);
     }
-    main.addEventListener('click', options.onActivate);
     if (options.onDoubleClick) main.addEventListener('dblclick', options.onDoubleClick);
     row.appendChild(main);
 
-    if (options.addActions) {
-      const addButton = document.createElement('button');
-      addButton.type = 'button';
-      addButton.className = 'document-tree-add';
-      addButton.setAttribute('aria-label', 'Create in ' + options.label);
-      addButton.title = 'Create in ' + options.label;
-      const addIcon = document.createElement('i');
-      addIcon.className = 'lucide lucide-plus';
-      addIcon.setAttribute('aria-hidden', 'true');
-      addButton.appendChild(addIcon);
-      addButton.addEventListener('click', function(event) {
-        event.stopPropagation();
-        const menuButton = row.querySelector('.document-menu-btn');
-        if (menuButton) menuButton.click();
-      });
-      row.appendChild(addButton);
-    }
-
     if (options.menuActions && options.menuActions.length) {
-      row.appendChild(createDocumentMenuButton(options.label, options.menuActions));
+      const menuButton = createDocumentMenuButton(options.label, options.menuActions);
+      menuButton._documentTreeRow = row;
+      row.appendChild(menuButton);
     }
+    const selectionKey = getDocumentTreeRowSelectionKey(row);
+    const selected = Boolean(selectionKey && selectedDocumentTreeIds.has(selectionKey));
+    row.classList.toggle('is-selected', selected);
+    if (selectionKey) row.setAttribute('aria-selected', selected ? 'true' : 'false');
+
+    row.addEventListener('click', function(event) {
+      if (event.defaultPrevented || event.target.closest('.document-tree-toggle, .document-menu-btn, input, select, textarea, a')) return;
+      const selection = selectDocumentTreeRow(row, event);
+      if (selection.modified) return;
+      if (options.type === 'folder' && typeof options.onToggle === 'function') options.onToggle();
+      else if (typeof options.onActivate === 'function') options.onActivate();
+    });
+    row.addEventListener('contextmenu', function(event) {
+      if (event.target.closest('input, select, textarea, a')) return;
+      openDocumentTreeContextMenu(row, event);
+    });
     if (options.documentId && !options.temporary) {
       row.draggable = true;
       row.addEventListener('dragstart', function(event) {
@@ -3892,7 +4132,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
         locked: secretLocked,
         dropLocation: { workspaceId: workspace.id, folderId: null },
-        addActions: !secretLocked,
         menuActions: getWorkspaceMenuActions(workspace),
         onToggle: function() {
           if (secretLocked) {
@@ -3936,7 +4175,6 @@ document.addEventListener("DOMContentLoaded", async function () {
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
           dropLocation: { workspaceId: workspace.id, folderId: folder.id },
-          addActions: true,
           menuActions: getFolderMenuActions(folder),
           onToggle: function() {
             folder.expanded = !folder.expanded;
@@ -4128,12 +4366,23 @@ document.addEventListener("DOMContentLoaded", async function () {
   function handleDocumentTreeKeydown(event) {
     const tree = document.getElementById('document-tree');
     const row = event.target.closest('.document-tree-row');
-    if (!tree || !row || event.target.closest('.document-menu-btn, .document-tree-add')) return;
+    if (!tree || !row || event.target.closest('.document-menu-btn')) return;
     const rows = Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(item) {
       return item.offsetParent !== null;
     });
     const index = rows.indexOf(row);
     if (index === -1) return;
+
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      openDocumentTreeContextMenu(row, event);
+      return;
+    }
+    if (event.key === 'Delete' && selectedDocumentTreeIds.size > 1) {
+      event.preventDefault();
+      deleteSelectedDocumentTreeItems();
+      return;
+    }
 
     function focusRow(target) {
       rows.forEach(function(item) { item.setAttribute('tabindex', item === target ? '0' : '-1'); });
@@ -4238,7 +4487,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       search.dispatchEvent(new Event('input', { bubbles: true }));
       search.focus();
     });
-    if (tree) tree.addEventListener('keydown', handleDocumentTreeKeydown);
+    if (tree) {
+      tree.addEventListener('keydown', handleDocumentTreeKeydown);
+      tree.addEventListener('click', function(event) {
+        if (!event.target.closest('.document-tree-row')) clearDocumentTreeSelection({ announce: false });
+      });
+    }
 
     if (resizer && sidebar) {
       function applyResize(clientX) {
@@ -6694,6 +6948,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     saveActiveTabId(activeTabId);
     updateNoOpenDocumentState();
     selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
     tab.lastOpenedAt = Date.now();
     if (!isTemporaryDocument(tab)) saveTabsToStorage(tabs);
     markdownEditor.value = tab.content;
@@ -6995,6 +7250,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       secretWorkspaceDocumentCount = 0;
       closeDocumentSplitView({ silent: true, renderTabs: false });
       tabs = [];
+      selectedDocumentTreeIds.clear();
+      documentTreeSelectionAnchor = null;
       documentOrganization = createDefaultDocumentOrganization();
       documentSidebarSearch = '';
       saveDocumentOrganization();
@@ -11293,7 +11550,7 @@ ${selector} .arrowheadPath {
     }
   }
 
-  async function openDiagramModal() {
+  async function openDiagramModal(opener) {
     const modal = document.getElementById('diagram-modal');
     const sidebar = modal.querySelector('.diagram-modal-sidebar');
     const grid = document.getElementById('diagram-modal-grid');
@@ -11317,8 +11574,7 @@ ${selector} .arrowheadPath {
     
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
-    modal.style.display = 'flex';
-    
+
     // Clear and reset state
     searchInput.value = '';
     sidebar.textContent = '';
@@ -12381,10 +12637,14 @@ ${selector} .arrowheadPath {
       }
       
       filtered.forEach(t => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = 'diagram-card';
+        card.setAttribute('aria-pressed', 'false');
+        card.setAttribute('aria-label', 'Select ' + t.label);
         if (selectedTemplate && selectedTemplate.id === t.id) {
           card.classList.add('is-selected');
+          card.setAttribute('aria-pressed', 'true');
         }
         
         const previewDiv = document.createElement('div');
@@ -12422,8 +12682,12 @@ ${selector} .arrowheadPath {
         card.addEventListener('click', () => {
           selectedTemplate = t;
           const cards = grid.querySelectorAll('.diagram-card');
-          cards.forEach(c => c.classList.remove('is-selected'));
+          cards.forEach(c => {
+            c.classList.remove('is-selected');
+            c.setAttribute('aria-pressed', 'false');
+          });
           card.classList.add('is-selected');
+          card.setAttribute('aria-pressed', 'true');
           
           if (previewCode) previewCode.value = t.code.trim();
           confirmBtn.disabled = false;
@@ -12462,35 +12726,27 @@ ${selector} .arrowheadPath {
     
     function insertTemplate() {
       if (!selectedTemplate) return;
-      modal.style.display = 'none';
       cleanup();
+      closeAppModal(modal);
       insertMarkdownBlock(selectedTemplate.code, start, end);
     }
     
     function closeModal() {
-      modal.style.display = 'none';
       cleanup();
-    }
-    
-    function onKey(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-      }
+      closeAppModal(modal);
     }
     
     function cleanup() {
       confirmBtn.removeEventListener('click', insertTemplate);
       cancelBtn.removeEventListener('click', closeModal);
       closeBtn.removeEventListener('click', closeModal);
-      modal.removeEventListener('keydown', onKey);
       searchInput.removeEventListener('input', renderGrid);
     }
     
     confirmBtn.addEventListener('click', insertTemplate);
     cancelBtn.addEventListener('click', closeModal);
     closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('keydown', onKey);
+    openAppModal(modal, { focusTarget: searchInput, returnFocus: opener, onClose: closeModal });
   }
 
   function insertMarkdownLink() {
@@ -12787,17 +13043,19 @@ ${selector} .arrowheadPath {
     if (activeModal && activeModal !== modal) {
       closeAppModal(activeModal);
     }
-    lastFocusedElement = document.activeElement;
+    lastFocusedElement = options.returnFocus || document.activeElement;
+    modal._returnFocus = lastFocusedElement;
     modal.style.display = 'flex';
-    requestAnimationFrame(function() {
-      modal.classList.add('is-visible');
-    });
     modal.setAttribute('aria-hidden', 'false');
     activeModal = modal;
     const focusTarget = options.focusTarget || getFocusableElements(modal)[0];
-    if (focusTarget) {
-      focusTarget.focus();
-    }
+    requestAnimationFrame(function() {
+      modal.classList.add('is-visible');
+      const focusDelay = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 210;
+      window.setTimeout(function() {
+        if (activeModal === modal && focusTarget) focusTarget.focus({ preventScroll: true });
+      }, focusDelay);
+    });
     const handleKeydown = function(event) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -12837,8 +13095,10 @@ ${selector} .arrowheadPath {
         modal.style.display = 'none';
       }
     }, 200);
-    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-      lastFocusedElement.focus();
+    const returnFocus = modal._returnFocus || lastFocusedElement;
+    modal._returnFocus = null;
+    if (returnFocus && typeof returnFocus.focus === 'function') {
+      returnFocus.focus();
     }
   }
 
@@ -14262,13 +14522,13 @@ ${selector} .arrowheadPath {
     }
   }
 
-  function openAboutModal() {
+  function openAboutModal(opener) {
     if (aboutModal) {
       const aboutVersion = document.getElementById("about-version");
       if (aboutVersion) {
         aboutVersion.textContent = APP_VERSION;
       }
-      openAppModal(aboutModal);
+      openAppModal(aboutModal, { returnFocus: opener });
     }
   }
 
@@ -14332,7 +14592,7 @@ ${selector} .arrowheadPath {
     }
     else if (action === 'symbols') openSymbolsModal();
     else if (action === 'alert') openAlertModal();
-    else if (action === 'diagram') openDiagramModal();
+    else if (action === 'diagram') openDiagramModal(button);
     else if (action === 'terminal-block') insertMarkdownBlock('```bash\nnpm run dev\n```\n');
     else if (action === 'fullscreen') {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
@@ -14340,7 +14600,7 @@ ${selector} .arrowheadPath {
     } else if (action === 'clear-formatting') openClearFormattingModal();
     else if (action === 'find') openFindReplaceModal();
     else if (action === 'help') openHelpModal();
-    else if (action === 'info') openAboutModal();
+    else if (action === 'info') openAboutModal(button);
   }
 
   function initMarkdownFormatToolbar() {
@@ -14675,7 +14935,7 @@ ${selector} .arrowheadPath {
   if (mobileAboutButton) {
     mobileAboutButton.addEventListener('click', function() {
       closeMobileMenu();
-      openAboutModal();
+      openAboutModal(mobileAboutButton);
     });
   }
 
@@ -21585,7 +21845,7 @@ ${selector} .arrowheadPath {
     const mImportFileEl = document.getElementById('mobile-import-button');
     if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload me-2"></i>${dict.importFile}`;
     const mImportGithubEl = document.getElementById('mobile-import-github-button');
-    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="lucide lucide-git-fork me-2"></i>${dict.importGithub}`;
+    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github me-2" aria-hidden="true"></i>${dict.importGithub}`;
 
     // Export buttons
     const exportDropEl = document.getElementById('exportDropdown');
@@ -21635,7 +21895,7 @@ ${selector} .arrowheadPath {
       if (mobileLiveShareLabel) {
         mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
       } else {
-        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio-tower me-2"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio me-2" data-lucide="radio" aria-hidden="true"></i>${dict.liveShare || 'Live Share'}`;
       }
     }
 

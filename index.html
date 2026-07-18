@@ -135,7 +135,7 @@
                 <div class="d-flex align-items-center header-left">
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
-                        <i class="lucide lucide-git-fork"></i>
+                        <i class="bi bi-github" aria-hidden="true"></i>
                     </a>
                 </div>
 
@@ -148,7 +148,7 @@
                         <ul class="dropdown-menu app-command-menu header-command-menu header-new-menu" aria-labelledby="importDropdown">
                             <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="lucide lucide-file-plus-2" aria-hidden="true"></i><span class="app-menu-label">New document</span></a></li>
                             <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="lucide lucide-upload" aria-hidden="true"></i><span class="app-menu-label">From files</span></a></li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="lucide lucide-git-fork" aria-hidden="true"></i><span class="app-menu-label">From GitHub</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="bi bi-github" aria-hidden="true"></i><span class="app-menu-label">From GitHub</span></a></li>
                         </ul>
                     </div>
                     <div class="dropdown header-export-dropdown">
@@ -169,7 +169,7 @@
                     </button>
 
                     <button id="live-share-button" class="tool-button header-command-btn" title="Live Share">
-                        <i class="lucide lucide-radio-tower" aria-hidden="true"></i><span class="btn-text">Live Share</span>
+                        <i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i><span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
 
@@ -292,7 +292,7 @@
                             </button>
                             
                             <button id="mobile-import-github-button" class="mobile-menu-item" title="Import from GitHub">
-                                <i class="lucide lucide-git-fork me-2"></i> Import from GitHub
+                                <i class="bi bi-github me-2" aria-hidden="true"></i> Import from GitHub
                             </button>
                             
                             <button id="mobile-export-md" class="mobile-menu-item" title="Export as Markdown">
@@ -320,7 +320,7 @@
                             </button>
 
                             <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
-                                <span class="mobile-menu-item-label"><i class="lucide lucide-radio-tower me-2"></i><span id="mobile-live-share-label">Live Share</span></span>
+                                <span class="mobile-menu-item-label"><i class="lucide lucide-radio me-2" data-lucide="radio" aria-hidden="true"></i><span id="mobile-live-share-label">Live Share</span></span>
                                 <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
                             </button>
 
@@ -416,7 +416,7 @@
               <span id="document-tree-heading-label">Workspaces</span>
               <span id="document-tree-heading-hint">Drag files to move</span>
             </div>
-            <div id="document-tree" class="document-tree" role="tree" aria-label="Workspaces, folders, and Markdown files"></div>
+            <div id="document-tree" class="document-tree" role="tree" aria-multiselectable="true" aria-label="Workspaces, folders, and Markdown files"></div>
 
             <div class="document-sidebar-footer">
               <span id="document-sidebar-count">0 of 50 files</span>
@@ -794,7 +794,7 @@
           </div>
         </div>
 
-        <!-- About Markdown Modal -->
+        <!-- About Markdown Viewer Modal -->
         <div id="about-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="about-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--about modal-box">
             <div class="modal-header">
@@ -804,53 +804,19 @@
               </button>
             </div>
             <div class="modal-body about-modal-body">
-              <section class="about-app-card" aria-label="Application information">
-                <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="72" height="72" />
-                <div class="about-details">
-                  <div class="about-title-row">
-                    <h2 class="about-title">Markdown Viewer</h2>
-                  </div>
-                  <p class="about-description">A browser-based Markdown editor and viewer with GFM live preview, diagrams, maps, STL previews, ABC notation, sharing, export tools, and a lightweight Neutralinojs desktop build.</p>
-                  <p class="about-meta">Version <span id="about-version"></span> &bull; Apache License 2.0 &bull; Open source</p>
+              <section class="about-product" aria-label="Application information">
+                <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="64" height="64" />
+                <h2 class="about-title">Markdown Viewer</h2>
+                <p class="about-meta">Version <span id="about-version"></span><span aria-hidden="true"> &bull; </span>Open source</p>
+                <p class="about-description">A lightweight Markdown editor and viewer with live preview for the web and desktop.</p>
+                <div class="about-actions" aria-label="Project links">
+                  <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-github" aria-hidden="true"></i><span>GitHub Repository</span>
+                  </a>
+                  <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">
+                    <i class="lucide lucide-history" aria-hidden="true"></i><span>Changelog</span>
+                  </a>
                 </div>
-              </section>
-
-              <section class="modal-section" aria-labelledby="about-links-title">
-                <h3 id="about-links-title" class="modal-section-title">Open-source links</h3>
-                <ul class="modal-list">
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache License 2.0</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/wiki/Contributing" target="_blank" rel="noopener noreferrer">Contribution Guide</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new/choose" target="_blank" rel="noopener noreferrer">Report an Issue</a></li>
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/discussions" target="_blank" rel="noopener noreferrer">Community &amp; Support</a></li>
-                </ul>
-                <p class="modal-subtext">For feature requests, open a GitHub issue or start a discussion so the community can weigh in.</p>
-              </section>
-
-              <section class="modal-section" aria-labelledby="about-markdown-resources-title">
-                <h3 id="about-markdown-resources-title" class="modal-section-title">Markdown resources</h3>
-                <ul class="modal-list">
-                  <li><a href="https://github.com/ThisIs-Developer/Markdown-Viewer/wiki/Markdown-Reference" target="_blank" rel="noopener noreferrer">Markdown syntax reference</a></li>
-                </ul>
-              </section>
-
-              <section class="modal-section" aria-labelledby="about-stack-title">
-                <h3 id="about-stack-title" class="modal-section-title">Technology stack</h3>
-                <ul class="modal-list">
-                  <li>HTML, CSS, and JavaScript with Bootstrap 5 for layout and styling.</li>
-                  <li><a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide Icons</a> supplies the lightweight interface icon system.</li>
-                  <li>Marked, DOMPurify, Highlight.js, Mermaid, MathJax, and Emoji Toolkit for rendering.</li>
-                </ul>
-              </section>
-
-              <section class="modal-section" aria-labelledby="about-storage-title">
-                <h3 id="about-storage-title" class="modal-section-title">Storage privacy</h3>
-                <p class="modal-subtext">By default, document tabs are saved on this device for convenience. Private mode stops saving document content until it is turned off.</p>
-              </section>
-
-              <section class="modal-section" aria-labelledby="about-credits-title">
-                <h3 id="about-credits-title" class="modal-section-title">Open-source credits</h3>
-                <p class="modal-subtext">Markdown Viewer is built on top of open-source libraries maintained by the community. Thank you to every contributor and maintainer.</p>
               </section>
             </div>
             <div class="reset-modal-actions">
@@ -1176,8 +1142,8 @@
         </div>
 
         <!-- Diagram & Chart Modal -->
-        <div id="diagram-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diagram-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box">
+        <div id="diagram-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diagram-modal-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box modal-box">
             <div class="modal-header">
               <p id="diagram-modal-title" class="reset-modal-message">Insert Diagram &amp; More</p>
               <button class="modal-close-btn" id="diagram-modal-close" aria-label="Close diagram dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
@@ -1192,11 +1158,11 @@
               <!-- Content Area -->
               <div class="diagram-modal-content">
                 <div class="diagram-modal-search-wrapper">
-                  <input type="text" id="diagram-modal-search" class="rename-modal-input" placeholder="Search diagrams..." />
+                  <input type="text" id="diagram-modal-search" class="rename-modal-input" placeholder="Search diagrams..." aria-label="Search diagram templates" />
                 </div>
                 
                 <!-- Diagram Cards Grid -->
-                <div id="diagram-modal-grid" class="diagram-grid" role="listbox" aria-label="Diagram templates">
+                <div id="diagram-modal-grid" class="diagram-grid" role="group" aria-label="Diagram templates">
                   <!-- Populated dynamically via JS -->
                 </div>
                 <p id="diagram-modal-empty" class="modal-empty" style="display:none;">No diagrams found.</p>
@@ -1207,7 +1173,7 @@
                   <div class="diagram-modal-preview-split">
                     <!-- Left: Code -->
                     <div class="diagram-preview-code-pane">
-                      <textarea id="diagram-modal-preview-code" readonly class="rename-modal-input diagram-preview-textarea" placeholder="Diagram source code..."></textarea>
+                      <textarea id="diagram-modal-preview-code" readonly class="rename-modal-input diagram-preview-textarea" placeholder="Diagram source code..." aria-label="Selected diagram source"></textarea>
                     </div>
                     <!-- Right: Visual Preview -->
                     <div id="diagram-modal-preview" class="diagram-preview-container">
