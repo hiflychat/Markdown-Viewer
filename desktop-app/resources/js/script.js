@@ -3715,11 +3715,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getFolderMenuActions(folder) {
     return [
-      { id: 'open', icon: folder.expanded === false ? 'lucide-folder-open' : 'lucide-folder', label: folder.expanded === false ? 'Open' : 'Collapse', run: function() {
-        folder.expanded = folder.expanded === false;
-        saveDocumentOrganization();
-        renderDocumentSidebar();
-      } },
       { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
       { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
       { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
@@ -4015,7 +4010,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (event.defaultPrevented || event.target.closest('.document-tree-toggle, .document-menu-btn, input, select, textarea, a')) return;
       const selection = selectDocumentTreeRow(row, event);
       if (selection.modified) return;
-      if (options.type === 'folder' && typeof options.onToggle === 'function') options.onToggle();
+      if ((options.type === 'folder' || options.type === 'workspace') && typeof options.onToggle === 'function') options.onToggle();
       else if (typeof options.onActivate === 'function') options.onActivate();
     });
     row.addEventListener('contextmenu', function(event) {
@@ -4138,7 +4133,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             openSecretWorkspaceDialog();
             return;
           }
-          workspace.expanded = !workspace.expanded;
+          workspace.expanded = !expanded;
           saveDocumentOrganization();
           renderDocumentSidebar();
         },
@@ -4177,7 +4172,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           dropLocation: { workspaceId: workspace.id, folderId: folder.id },
           menuActions: getFolderMenuActions(folder),
           onToggle: function() {
-            folder.expanded = !folder.expanded;
+            folder.expanded = !folderExpanded;
             saveDocumentOrganization();
             renderDocumentSidebar();
           },
@@ -4269,9 +4264,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       newFolderButton.setAttribute('aria-label', newFolderButton.title);
     }
     if (collapseAllButton) {
-      const canCollapse = filter === 'all' && !documentSidebarSearch;
-      collapseAllButton.disabled = !canCollapse;
-      collapseAllButton.title = canCollapse ? 'Collapse all' : 'Collapse all is available in All files';
+      const canToggleAll = filter === 'all' && !documentSidebarSearch;
+      const expandedItems = getExpandableDocumentTreeItems().filter(function(item) { return item.expanded !== false; });
+      const willExpand = expandedItems.length === 0;
+      const actionLabel = willExpand ? 'Expand all folders' : 'Collapse all folders';
+      collapseAllButton.disabled = !canToggleAll;
+      collapseAllButton.title = canToggleAll ? actionLabel : 'Expand or collapse all is available in All files';
+      collapseAllButton.setAttribute('aria-label', collapseAllButton.title);
+      const collapseIcon = collapseAllButton.querySelector('i');
+      if (collapseIcon) collapseIcon.className = 'lucide ' + (willExpand ? 'lucide-unfold-vertical' : 'lucide-fold-vertical');
     }
     const firstRow = tree.querySelector('.document-tree-row');
     if (firstRow && !tree.querySelector('.document-tree-row[tabindex="0"]')) firstRow.setAttribute('tabindex', '0');
@@ -4312,10 +4313,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (isDocumentSidebarMobile()) {
       document.body.classList.add('document-sidebar-mobile-open');
       updateDocumentSidebarVisibility();
-      requestAnimationFrame(function() {
-        const search = document.getElementById('document-sidebar-search');
-        if (search) search.focus();
-      });
       return;
     }
     documentOrganization.ui.collapsed = false;
@@ -4354,13 +4351,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     toggleDocumentSidebarCollapsed();
   }
 
-  function collapseDocumentTree() {
+  function getExpandableDocumentTreeItems() {
+    if (!documentOrganization) return [];
+    const unlockedWorkspaceIds = new Set(documentOrganization.workspaces.filter(function(workspace) {
+      return workspace.id !== SECRET_WORKSPACE_ID || isSecretWorkspaceUnlocked();
+    }).map(function(workspace) { return workspace.id; }));
+    return documentOrganization.workspaces.filter(function(workspace) {
+      return unlockedWorkspaceIds.has(workspace.id);
+    }).concat(documentOrganization.folders.filter(function(folder) {
+      return unlockedWorkspaceIds.has(folder.workspaceId);
+    }));
+  }
+
+  function toggleDocumentTreeExpansion() {
     if (!documentOrganization) return;
-    documentOrganization.workspaces.forEach(function(workspace) { workspace.expanded = false; });
-    documentOrganization.folders.forEach(function(folder) { folder.expanded = false; });
+    const expandableItems = getExpandableDocumentTreeItems();
+    const shouldExpand = !expandableItems.some(function(item) { return item.expanded !== false; });
+    expandableItems.forEach(function(item) { item.expanded = shouldExpand; });
     saveDocumentOrganization();
     renderDocumentSidebar();
-    announceToScreenReader('All workspace folders collapsed.');
+    announceToScreenReader(shouldExpand ? 'All workspace folders expanded.' : 'All workspace folders collapsed.');
   }
 
   function handleDocumentTreeKeydown(event) {
@@ -4450,7 +4460,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (openButton) openButton.addEventListener('click', toggleDocumentSidebarFromTabBar);
     if (closeButton) closeButton.addEventListener('click', toggleDocumentSidebarCollapsed);
     if (backdrop) backdrop.addEventListener('click', closeDocumentSidebarOnMobile);
-    if (collapseAllButton) collapseAllButton.addEventListener('click', collapseDocumentTree);
+    if (collapseAllButton) collapseAllButton.addEventListener('click', toggleDocumentTreeExpansion);
     if (newDocumentButton) newDocumentButton.addEventListener('click', function() {
       const location = getPreferredDocumentLocation();
       newTab('', null, location);
@@ -14878,19 +14888,59 @@ ${selector} .arrowheadPath {
   function openMobileMenu() {
     mobileMenuPanel.classList.add("active");
     mobileMenuOverlay.classList.add("active");
+    document.body.classList.add("mobile-menu-open");
+    mobileMenuToggle.setAttribute("aria-expanded", "true");
+    mobileMenuToggle.setAttribute("aria-label", "Close menu");
+    mobileMenuPanel.setAttribute("aria-hidden", "false");
+    mobileMenuOverlay.setAttribute("aria-hidden", "false");
+    requestAnimationFrame(function() {
+      mobileCloseMenu.focus({ preventScroll: true });
+    });
   }
-  function closeMobileMenu() {
+  function closeMobileMenu(restoreFocus) {
     mobileMenuPanel.classList.remove("active");
     mobileMenuOverlay.classList.remove("active");
+    document.body.classList.remove("mobile-menu-open");
+    mobileMenuToggle.setAttribute("aria-expanded", "false");
+    mobileMenuToggle.setAttribute("aria-label", "Open menu");
+    mobileMenuPanel.setAttribute("aria-hidden", "true");
+    mobileMenuOverlay.setAttribute("aria-hidden", "true");
+    if (restoreFocus === true) mobileMenuToggle.focus({ preventScroll: true });
   }
   mobileMenuToggle.addEventListener("click", openMobileMenu);
-  mobileCloseMenu.addEventListener("click", closeMobileMenu);
-  mobileMenuOverlay.addEventListener("click", closeMobileMenu);
+  mobileCloseMenu.addEventListener("click", function() { closeMobileMenu(true); });
+  mobileMenuOverlay.addEventListener("click", function() { closeMobileMenu(true); });
+
+  const mobileMenuSectionToggles = Array.from(mobileMenuPanel.querySelectorAll('[data-mobile-menu-section-toggle]'));
+  function setMobileMenuSection(activeToggle) {
+    mobileMenuSectionToggles.forEach(function(toggle) {
+      const isOpen = toggle === activeToggle;
+      const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      toggle.closest('.mobile-menu-section')?.classList.toggle('is-open', isOpen);
+      if (panel) panel.hidden = !isOpen;
+    });
+  }
+  mobileMenuSectionToggles.forEach(function(toggle) {
+    toggle.addEventListener('click', function() {
+      setMobileMenuSection(toggle.getAttribute('aria-expanded') === 'true' ? null : toggle);
+    });
+  });
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && mobileMenuPanel.classList.contains('active')) {
+      event.preventDefault();
+      closeMobileMenu(true);
+    }
+  });
+  const mobileMenuMedia = window.matchMedia('(max-width: 1079px)');
+  mobileMenuMedia.addEventListener?.('change', function(event) {
+    if (!event.matches && mobileMenuPanel.classList.contains('active')) closeMobileMenu(false);
+  });
 
   function updateMobileStats() {
-    mobileCharCount.textContent   = charCountElement.textContent;
-    mobileWordCount.textContent   = wordCountElement.textContent;
-    mobileReadingTime.textContent = readingTimeElement.textContent;
+    if (mobileCharCount) mobileCharCount.textContent = charCountElement.textContent;
+    if (mobileWordCount) mobileWordCount.textContent = wordCountElement.textContent;
+    if (mobileReadingTime) mobileReadingTime.textContent = readingTimeElement.textContent;
   }
 
   const origUpdateStats = updateDocumentStats;

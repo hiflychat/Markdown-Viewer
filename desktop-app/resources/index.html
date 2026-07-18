@@ -38,12 +38,18 @@
         </div>
         <header class="app-header">
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
-                <!-- Left section: Title and GitHub -->
-                <div class="d-flex align-items-center header-left">
-                    <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
-                    <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
-                        <i class="bi bi-github" aria-hidden="true"></i>
-                    </a>
+                <!-- Left section: Application identity and GitHub -->
+                <div class="d-flex align-items-center header-left app-brand">
+                    <img class="app-brand-icon" src="assets/icon.jpg" width="30" height="30" alt="" aria-hidden="true" />
+                    <div class="app-brand-copy">
+                        <div class="app-brand-title-row">
+                            <h1 class="h4 mb-0">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
+                            <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer" aria-label="View Markdown Viewer on GitHub">
+                                <i class="bi bi-github" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                        <p class="app-brand-subtitle">Write. Preview. Share.</p>
+                    </div>
                 </div>
 
                 <!-- Right section: Toolbar -->
@@ -133,36 +139,30 @@
                 
                 <!-- Hamburger menu for mobile -->
                 <div class="mobile-menu d-md-none">
-                    <button id="mobile-menu-toggle" class="tool-button" title="Menu">
+                    <button id="mobile-menu-toggle" class="tool-button" type="button" title="Menu" aria-label="Open menu" aria-controls="mobile-menu-panel" aria-expanded="false">
                         <i class="lucide lucide-menu"></i>
                     </button>
                     
-                    <div id="mobile-menu-panel" class="mobile-menu-panel">
+                    <div id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" aria-hidden="true">
                         <div class="mobile-menu-header">
-                            <h2 class="h5 m-0">Menu</h2>
+                            <h2 id="mobile-menu-title" class="h5 m-0">Menu</h2>
                             <button id="close-mobile-menu" class="tool-button" aria-label="Close menu">
                                 <i class="lucide lucide-x"></i>
                             </button>
                         </div>
 
                         <!-- Mobile Document Tabs Section -->
-                        <div class="mobile-tabs-section mb-3">
+                        <div class="mobile-tabs-section">
                             <div class="mobile-tabs-header">
                                 <span class="mobile-tabs-label"><i class="lucide lucide-files me-1" aria-hidden="true"></i> Open documents</span>
-                                <button id="mobile-new-tab-btn" class="mobile-new-tab-btn" title="New file" aria-label="New file">
-                                    <i class="lucide lucide-file-text"></i>
-                                </button>
                             </div>
                             <div id="mobile-tab-list" class="mobile-tab-list" role="tablist" aria-label="Document tabs">
                                 <!-- Dynamically populated by JavaScript -->
                             </div>
-                            <button id="mobile-tab-reset-btn" class="tab-reset-btn mt-2 w-100" title="Reset all files" aria-label="Reset all files">
-                                <i class="lucide lucide-undo-2"></i> Reset all files
-                            </button>
                         </div>
 
                         <!-- Story 1.4: Mobile View Mode Buttons -->
-                        <div class="mobile-view-mode-group mb-3" role="group" aria-label="View mode">
+                        <div class="mobile-view-mode-group" role="group" aria-label="View mode">
                             <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Markdown editor only">
                                 <i class="lucide lucide-square-pen"></i>
                                 <span>Editor</span>
@@ -177,70 +177,75 @@
                             </button>
                         </div>
 
-                        <div class="mobile-stats-container mb-3">
-                            <div class="stat-item mb-2">
-                                <i class="lucide lucide-clock-3 me-1"></i> <span id="mobile-reading-time">0</span> <span id="lbl-mobile-min-read">Min Read</span>
-                            </div>
-                            <div class="stat-item mb-2">
-                                <i class="lucide lucide-pilcrow me-1"></i> <span id="mobile-word-count">0</span> <span id="lbl-mobile-words">Words</span>
-                            </div>
-                            <div class="stat-item">
-                                <i class="lucide lucide-case-sensitive me-1"></i> <span id="mobile-char-count">0</span> <span id="lbl-mobile-chars">Chars</span>
-                            </div>
-                        </div>
-
                         <div class="mobile-menu-items">
-                            <button id="mobile-toggle-sync" class="mobile-menu-item tool-button sync-enabled sync-active" title="Toggle Sync Scrolling">
-                                <i class="lucide lucide-refresh-cw" aria-hidden="true"></i> Sync Off
-                            </button>
-                            
-                            <button id="mobile-import-button" class="mobile-menu-item" title="Import from files">
-                                <i class="lucide lucide-upload me-2"></i> Import from files
-                            </button>
-                            
-                            <button id="mobile-import-github-button" class="mobile-menu-item" title="Import from GitHub">
-                                <i class="bi bi-github me-2" aria-hidden="true"></i> Import from GitHub
-                            </button>
-                            
-                            <button id="mobile-export-md" class="mobile-menu-item" title="Export as Markdown">
-                                <i class="lucide lucide-file-text me-2"></i> Export as Markdown
-                            </button>
-                            
-                            <button id="mobile-export-html" class="mobile-menu-item" title="Export as HTML">
-                                <i class="lucide lucide-file-code-2 me-2"></i> Export as HTML
-                            </button>
-                            
-                            <button id="mobile-export-pdf" class="mobile-menu-item" title="Export as PDF">
-                                <i class="lucide lucide-file-text me-2"></i> Export as PDF
-                            </button>
-
-                            <button id="mobile-export-png" class="mobile-menu-item" title="Export as Image">
-                                <i class="lucide lucide-file-image me-2"></i> Export as Image
-                            </button>
-                            
-                            <button id="mobile-copy-markdown" class="mobile-menu-item" title="Copy Markdown">
-                                <i class="lucide lucide-copy me-2" aria-hidden="true"></i> Copy
-                            </button>
-                            
-                            <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
-                                <i class="lucide lucide-share-2 me-2"></i> Share Snapshot
-                            </button>
-
-                            <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
-                                <span class="mobile-menu-item-label"><i class="lucide lucide-radio me-2" data-lucide="radio" aria-hidden="true"></i><span id="mobile-live-share-label">Live Share</span></span>
-                                <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
-                            </button>
-
-                            <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-                                <span><i class="lucide lucide-message-square-text me-2"></i>Review</span>
-                                <span id="mobile-review-count-badge" class="mobile-review-count-badge" aria-hidden="true" hidden>0</span>
-                            </button>
-                            
-                            <div class="mobile-menu-item dropdown w-100 p-0 border-0">
-                                <button class="mobile-menu-item w-100 text-start dropdown-toggle" type="button" id="mobileLanguageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
-                                    <i class="lucide lucide-languages me-2"></i> Language: <span id="mobile-current-lang-label">English</span>
+                            <div class="mobile-menu-quick-actions" aria-label="Sharing actions">
+                                <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
+                                    <i class="lucide lucide-share-2" aria-hidden="true"></i><span>Share</span>
                                 </button>
-                                <ul class="dropdown-menu w-100" aria-labelledby="mobileLanguageDropdown">
+                                <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
+                                    <span class="mobile-menu-item-label"><i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i><span id="mobile-live-share-label">Live Share</span></span>
+                                    <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
+                                </button>
+                            </div>
+
+                            <div class="mobile-menu-accordion" data-mobile-menu-accordion>
+                                <section class="mobile-menu-section">
+                                    <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-new-panel" data-mobile-menu-section-toggle>
+                                        <span><i class="lucide lucide-plus" aria-hidden="true"></i>New</span><i class="lucide lucide-chevron-down mobile-menu-section-chevron" aria-hidden="true"></i>
+                                    </button>
+                                    <div id="mobile-menu-new-panel" class="mobile-menu-section-panel" data-mobile-menu-section hidden>
+                                        <button id="mobile-new-tab-btn" class="mobile-menu-item" title="New file">
+                                            <i class="lucide lucide-file-plus-2" aria-hidden="true"></i> New document
+                                        </button>
+                                        <button id="mobile-import-button" class="mobile-menu-item" title="Import from files">
+                                            <i class="lucide lucide-upload" aria-hidden="true"></i> From files
+                                        </button>
+                                        <button id="mobile-import-github-button" class="mobile-menu-item" title="Import from GitHub">
+                                            <i class="bi bi-github" aria-hidden="true"></i> From GitHub
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section class="mobile-menu-section">
+                                    <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-export-panel" data-mobile-menu-section-toggle>
+                                        <span><i class="lucide lucide-download" aria-hidden="true"></i>Export</span><i class="lucide lucide-chevron-down mobile-menu-section-chevron" aria-hidden="true"></i>
+                                    </button>
+                                    <div id="mobile-menu-export-panel" class="mobile-menu-section-panel" data-mobile-menu-section hidden>
+                                        <button id="mobile-export-md" class="mobile-menu-item" title="Export as Markdown">
+                                            <i class="lucide lucide-file-text" aria-hidden="true"></i> Markdown (.md)
+                                        </button>
+                                        <button id="mobile-export-html" class="mobile-menu-item" title="Export as HTML">
+                                            <i class="lucide lucide-file-code-2" aria-hidden="true"></i> HTML
+                                        </button>
+                                        <button id="mobile-export-pdf" class="mobile-menu-item" title="Export as PDF">
+                                            <i class="lucide lucide-file-text" aria-hidden="true"></i> PDF
+                                        </button>
+                                        <button id="mobile-export-png" class="mobile-menu-item" title="Export as Image">
+                                            <i class="lucide lucide-file-image" aria-hidden="true"></i> Image (.png)
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section class="mobile-menu-section">
+                                    <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-settings-panel" data-mobile-menu-section-toggle>
+                                        <span><i class="lucide lucide-settings" aria-hidden="true"></i>Settings</span><i class="lucide lucide-chevron-down mobile-menu-section-chevron" aria-hidden="true"></i>
+                                    </button>
+                                    <div id="mobile-menu-settings-panel" class="mobile-menu-section-panel" data-mobile-menu-section hidden>
+                                        <button id="mobile-toggle-sync" class="mobile-menu-item tool-button sync-enabled sync-active" title="Toggle Sync Scrolling">
+                                            <i class="lucide lucide-refresh-cw" aria-hidden="true"></i> Sync Off
+                                        </button>
+                                        <button id="mobile-copy-markdown" class="mobile-menu-item" title="Copy Markdown">
+                                            <i class="lucide lucide-copy" aria-hidden="true"></i> Copy Markdown
+                                        </button>
+                                        <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
+                                            <span><i class="lucide lucide-message-square-text" aria-hidden="true"></i>Review</span>
+                                            <span id="mobile-review-count-badge" class="mobile-review-count-badge" aria-hidden="true" hidden>0</span>
+                                        </button>
+                                        <div class="mobile-menu-language dropdown w-100">
+                                            <button class="mobile-menu-item w-100 text-start dropdown-toggle" type="button" id="mobileLanguageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
+                                                <i class="lucide lucide-languages" aria-hidden="true"></i> Language: <span id="mobile-current-lang-label">English</span>
+                                            </button>
+                                            <ul class="dropdown-menu w-100" aria-labelledby="mobileLanguageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">English</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="zh">简体中文</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="ja">日本語</a></li>
@@ -255,21 +260,28 @@
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="pl">Polski</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="tw">繁體中文</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="uk">Українська</a></li>
-                                </ul>
+                                            </ul>
+                                        </div>
+                                        <button id="mobile-theme-toggle" class="mobile-menu-item" title="Toggle Dark Mode">
+                                            <i class="lucide lucide-moon" aria-hidden="true"></i> Appearance
+                                        </button>
+                                        <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
+                                            <span class="mobile-menu-item-label"><i class="lucide lucide-venetian-mask" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
+                                        </button>
+                                        <button id="mobile-about-button" class="mobile-menu-item" type="button" title="About Markdown Viewer">
+                                            <i class="lucide lucide-info" aria-hidden="true"></i>About Markdown Viewer
+                                        </button>
+                                    </div>
+                                </section>
                             </div>
-                            <button id="mobile-theme-toggle" class="mobile-menu-item" title="Toggle Dark Mode">
-                                <i class="lucide lucide-moon me-2"></i> Dark Mode
-                            </button>
-                            <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
-                                <span class="mobile-menu-item-label"><i class="lucide lucide-venetian-mask me-2" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
-                            </button>
-                            <button id="mobile-about-button" class="mobile-menu-item" type="button" title="About Markdown Viewer">
-                                <i class="lucide lucide-info me-2" aria-hidden="true"></i>About Markdown Viewer
+
+                            <button id="mobile-tab-reset-btn" class="mobile-menu-item mobile-menu-reset" title="Reset workspace" aria-label="Reset workspace">
+                                <i class="lucide lucide-undo-2" aria-hidden="true"></i> Reset workspace
                             </button>
                         </div>
                     </div>
                     
-                    <div id="mobile-menu-overlay"></div>
+                    <div id="mobile-menu-overlay" class="mobile-menu-overlay" aria-hidden="true"></div>
                 </div>
             </div>
         </header>
@@ -288,7 +300,7 @@
                 <button id="sidebar-new-folder" class="document-sidebar-icon-btn" type="button" aria-label="Create a folder" title="New folder">
                   <i class="lucide lucide-folder-plus" aria-hidden="true"></i>
                 </button>
-                <button id="document-sidebar-collapse-all" class="document-sidebar-icon-btn" type="button" aria-label="Collapse all folders" title="Collapse all">
+                <button id="document-sidebar-collapse-all" class="document-sidebar-icon-btn" type="button" aria-label="Collapse all folders" title="Collapse all folders">
                   <i class="lucide lucide-fold-vertical" aria-hidden="true"></i>
                 </button>
                 <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-close" type="button" aria-label="Close Explorer" title="Close Explorer">
