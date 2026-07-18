@@ -22080,7 +22080,7 @@ ${selector} .arrowheadPath {
     const tabResetBtn = document.getElementById('tab-reset-btn');
     if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
     const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
-    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="lucide lucide-undo-2"></i> ${dict.reset} all files`;
+    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="lucide lucide-power"></i> ${dict.reset} all files`;
 
     // View toggle buttons title tooltips
     document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = dict.editor);

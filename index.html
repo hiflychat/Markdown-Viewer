@@ -201,7 +201,7 @@
                                 <button class="settings-menu-item app-menu-item dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Switch language">
                                     <i class="lucide lucide-languages" aria-hidden="true"></i><span class="app-menu-copy"><span id="current-lang-label" class="app-menu-label">English</span><span class="app-menu-description">Application language</span></span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                                <ul class="dropdown-menu dropdown-menu-end app-command-menu settings-language-menu" aria-labelledby="languageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">English</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="zh">简体中文</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="ja">日本語</a></li>
@@ -220,11 +220,11 @@
                             </div>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button id="private-mode-toggle" class="settings-menu-item app-menu-item settings-menu-item--toggle" type="button" aria-pressed="false" title="Toggle private mode">
-                                <i class="lucide lucide-venetian-mask" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Data is stored locally</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
+                                <i class="lucide lucide-hat-glasses" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Data is stored locally</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
                             </button>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button class="settings-menu-item app-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
-                                <i class="lucide lucide-undo-2" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Reset workspace</span><span class="app-menu-description">Remove all files and review data</span></span>
+                                <i class="lucide lucide-power" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Reset workspace</span><span class="app-menu-description">Remove all files and review data</span></span>
                             </button>
                         </div>
                     </div>
@@ -345,7 +345,7 @@
                                             <button class="mobile-menu-item w-100 text-start dropdown-toggle" type="button" id="mobileLanguageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
                                                 <i class="lucide lucide-languages" aria-hidden="true"></i> Language: <span id="mobile-current-lang-label">English</span>
                                             </button>
-                                            <ul class="dropdown-menu w-100" aria-labelledby="mobileLanguageDropdown">
+                                            <ul class="dropdown-menu app-command-menu settings-language-menu mobile-language-menu w-100" aria-labelledby="mobileLanguageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">English</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="zh">简体中文</a></li>
                                     <li><a class="dropdown-item lang-select-item" href="#" data-lang="ja">日本語</a></li>
@@ -366,10 +366,10 @@
                                             <i class="lucide lucide-moon" aria-hidden="true"></i> Appearance
                                         </button>
                                         <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
-                                            <span class="mobile-menu-item-label"><i class="lucide lucide-venetian-mask" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
+                                            <span class="mobile-menu-item-label"><i class="lucide lucide-hat-glasses" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
                                         </button>
                                         <button id="mobile-tab-reset-btn" class="mobile-menu-item mobile-menu-reset" title="Reset workspace" aria-label="Reset workspace">
-                                            <i class="lucide lucide-undo-2" aria-hidden="true"></i> Reset workspace
+                                            <i class="lucide lucide-power" aria-hidden="true"></i> Reset workspace
                                         </button>
                                     </div>
                                 </section>

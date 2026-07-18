@@ -1973,6 +1973,13 @@ body.document-sidebar-collapsed .document-sidebar {
   overflow-y: auto;
 }
 
+.app-command-menu.settings-language-menu {
+  width: max-content;
+  min-width: 168px;
+  max-width: min(220px, calc(100vw - 24px));
+  padding: 7px;
+}
+
 .settings-menu-divider {
   height: 1px;
   margin: 6px 0;
@@ -2934,6 +2941,10 @@ a:focus {
 [aria-labelledby="exportDropdown"] .dropdown-item,
 [aria-labelledby="languageDropdown"] .dropdown-item {
   font-size: 0.8rem;
+}
+
+[aria-labelledby="languageDropdown"].settings-language-menu .lang-select-item {
+  font-size: 12px;
 }
 
 /* Ensure mobile menu import, export, and language dropdown triggers/options match the mobile stats-container font size */
