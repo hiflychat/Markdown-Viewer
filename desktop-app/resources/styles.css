@@ -3303,15 +3303,15 @@ a:focus {
 }
 
 .app-brand-title-row .github-link {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
   color: inherit;
   line-height: 1;
 }
 
 .app-brand-title-row .github-link i {
-  font-size: 30px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -3321,7 +3321,7 @@ a:focus {
   color: var(--text-secondary);
   font-size: var(--ui-font-xs);
   line-height: 1.05;
-  width: calc(100% - 36px);
+  width: calc(100% - 26px);
   text-align: center;
   text-overflow: ellipsis;
 }
