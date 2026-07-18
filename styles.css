@@ -980,27 +980,55 @@ body.document-sidebar-collapsed .document-sidebar {
   inset-inline-end: max(16px, env(safe-area-inset-right, 0px));
   inset-block-end: max(16px, env(safe-area-inset-bottom, 0px));
   display: flex;
-  align-items: center;
-  width: min(320px, calc(100vw - 32px));
-  min-height: 66px;
-  gap: 11px;
-  padding: 11px 13px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--header-bg);
-  box-shadow: 0 8px 28px rgba(31, 35, 40, 0.2);
+  align-items: flex-start;
+  width: min(360px, calc(100vw - 32px));
+  min-height: 82px;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--menu-border);
+  border-radius: 12px;
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
   color: var(--text-color);
   z-index: 3000;
+  animation: import-progress-toast-in 0.2s ease-out;
 }
 
 .import-progress-toast[hidden] {
   display: none;
 }
 
-.import-progress-icon {
+.import-progress-icon-shell {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-block-start: 1px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent-color) 11%, transparent);
   color: var(--accent-color);
-  font-size: 21px;
+}
+
+.import-progress-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.import-progress-toast[data-state="loading"] .import-progress-icon {
+  animation: import-progress-icon-spin 1.15s linear infinite;
+}
+
+.import-progress-toast[data-state="complete"] .import-progress-icon-shell {
+  background: color-mix(in srgb, var(--success-color) 12%, transparent);
+  color: var(--success-color);
+}
+
+.import-progress-toast[data-state="partial"] .import-progress-icon-shell {
+  background: color-mix(in srgb, var(--favorite-color) 13%, transparent);
+  color: var(--favorite-color);
 }
 
 .import-progress-content {
@@ -1013,9 +1041,9 @@ body.document-sidebar-collapsed .document-sidebar {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-block-end: 7px;
-  font-size: 12px;
+  font-size: var(--ui-font-md);
   font-weight: 600;
+  line-height: 1.35;
 }
 
 #import-progress-count {
@@ -1025,12 +1053,24 @@ body.document-sidebar-collapsed .document-sidebar {
   font-weight: 500;
 }
 
+.import-progress-detail {
+  display: block;
+  overflow: hidden;
+  margin-block-start: 2px;
+  color: var(--text-secondary);
+  font-size: var(--ui-font-sm);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .import-progress-track {
   width: 100%;
-  height: 4px;
+  height: 5px;
+  margin-block-start: 9px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--button-hover);
+  background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
 }
 
 #import-progress-value {
@@ -1042,8 +1082,34 @@ body.document-sidebar-collapsed .document-sidebar {
   transition: width 0.18s ease;
 }
 
+.import-progress-toast[data-state="complete"] #import-progress-value {
+  background: var(--success-color);
+}
+
+.import-progress-toast[data-state="partial"] #import-progress-value {
+  background: var(--favorite-color);
+}
+
+@keyframes import-progress-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes import-progress-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .import-progress-toast,
+  .import-progress-toast[data-state="loading"] .import-progress-icon,
   #import-progress-value {
+    animation: none;
     transition: none;
   }
 }
@@ -1051,8 +1117,9 @@ body.document-sidebar-collapsed .document-sidebar {
 @media (max-width: 767px) {
   .import-progress-toast {
     inset-inline: 12px;
-    inset-block-end: max(12px, env(safe-area-inset-bottom, 0px));
+    inset-block-end: max(46px, calc(env(safe-area-inset-bottom, 0px) + 46px));
     width: auto;
+    min-height: 78px;
   }
 
   .secret-password-toggle {

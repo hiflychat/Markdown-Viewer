@@ -1310,13 +1310,16 @@
         </footer>
     </div>
 
-    <div id="import-progress-toast" class="import-progress-toast" role="status" aria-live="polite" hidden>
-      <i class="lucide lucide-file-text import-progress-icon" aria-hidden="true"></i>
+    <div id="import-progress-toast" class="import-progress-toast" role="status" aria-live="polite" aria-atomic="true" data-state="loading" hidden>
+      <span class="import-progress-icon-shell" aria-hidden="true">
+        <i id="import-progress-icon" class="lucide lucide-refresh-cw import-progress-icon"></i>
+      </span>
       <div class="import-progress-content">
         <div class="import-progress-copy">
           <span id="import-progress-title">Importing files</span>
           <span id="import-progress-count">0 of 0</span>
         </div>
+        <span id="import-progress-detail" class="import-progress-detail">Preparing import…</span>
         <div id="import-progress-bar" class="import-progress-track" role="progressbar" aria-label="Markdown file import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <span id="import-progress-value"></span>
         </div>

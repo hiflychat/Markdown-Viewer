@@ -3093,6 +3093,36 @@ document.addEventListener("DOMContentLoaded", async function () {
     return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
   }
 
+  function ensureWorkspaceFolder(workspaceId, folderName) {
+    if (!documentOrganization) return null;
+    const workspace = getWorkspaceById(workspaceId);
+    const normalizedName = String(folderName || '').trim();
+    if (!workspace || !normalizedName) return null;
+
+    let folder = documentOrganization.folders.find(function(item) {
+      return item.workspaceId === workspace.id && String(item.name || '').trim().toLowerCase() === normalizedName.toLowerCase();
+    });
+    if (!folder) {
+      folder = {
+        id: createDocumentEntityId('folder'),
+        workspaceId: workspace.id,
+        name: normalizedName,
+        expanded: true,
+        createdAt: Date.now()
+      };
+      documentOrganization.folders.push(folder);
+    } else {
+      folder.expanded = true;
+    }
+
+    workspace.expanded = true;
+    documentOrganization.ui.lastWorkspaceId = workspace.id;
+    documentOrganization.ui.lastFolderId = folder.id;
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+    return folder;
+  }
+
   function normalizeTabDocumentMetadata(tab, options) {
     if (!tab || typeof tab !== 'object') return tab;
     const settings = options || {};
@@ -9269,42 +9299,61 @@ ${selector} .arrowheadPath {
     return (file && file.name ? file.name : "document.md").replace(/\.(md|markdown)$/i, "");
   }
 
-  function showImportProgress(total) {
+  function showImportProgress(total, options) {
+    const settings = options || {};
     const toast = document.getElementById('import-progress-toast');
     const title = document.getElementById('import-progress-title');
     const count = document.getElementById('import-progress-count');
+    const detail = document.getElementById('import-progress-detail');
+    const icon = document.getElementById('import-progress-icon');
     const bar = document.getElementById('import-progress-bar');
     const value = document.getElementById('import-progress-value');
     if (!toast || !title || !count || !bar || !value) return;
     clearTimeout(importProgressHideTimeout);
-    title.textContent = total === 1 ? 'Importing file' : 'Importing files';
+    toast.dataset.state = 'loading';
+    if (icon) icon.className = 'lucide lucide-refresh-cw import-progress-icon';
+    title.textContent = settings.title || (total === 1 ? 'Importing file' : 'Importing files');
     count.textContent = '0 of ' + total;
+    if (detail) detail.textContent = settings.detail || 'Preparing import…';
     value.style.width = '0%';
     bar.setAttribute('aria-valuenow', '0');
     toast.hidden = false;
   }
 
-  function updateImportProgress(processed, total) {
+  function updateImportProgress(processed, total, detailText) {
     const count = document.getElementById('import-progress-count');
+    const detail = document.getElementById('import-progress-detail');
     const bar = document.getElementById('import-progress-bar');
     const value = document.getElementById('import-progress-value');
     const percent = total ? Math.round((processed / total) * 100) : 0;
     if (count) count.textContent = processed + ' of ' + total;
+    if (detail && detailText) detail.textContent = detailText;
     if (value) value.style.width = percent + '%';
     if (bar) bar.setAttribute('aria-valuenow', String(percent));
   }
 
-  function finishImportProgress(imported, total) {
+  function finishImportProgress(imported, total, options) {
+    const settings = options || {};
     const toast = document.getElementById('import-progress-toast');
     const title = document.getElementById('import-progress-title');
     const count = document.getElementById('import-progress-count');
+    const detail = document.getElementById('import-progress-detail');
+    const icon = document.getElementById('import-progress-icon');
     if (!toast || !title || !count) return;
     updateImportProgress(total, total);
-    title.textContent = imported === total ? 'Import complete' : 'Import finished';
+    const completed = imported === total;
+    toast.dataset.state = completed ? 'complete' : 'partial';
+    if (icon) icon.className = 'lucide ' + (completed ? 'lucide-check' : 'lucide-triangle-alert') + ' import-progress-icon';
+    title.textContent = settings.title || (completed ? 'Import complete' : (imported ? 'Import finished with issues' : 'Import failed'));
     count.textContent = imported + ' imported';
+    if (detail) {
+      detail.textContent = settings.detail || (completed
+        ? (total === 1 ? 'Your file is ready.' : 'Your files are ready.')
+        : ((total - imported) + ' file' + (total - imported === 1 ? '' : 's') + ' could not be imported.'));
+    }
     importProgressHideTimeout = setTimeout(function() {
       toast.hidden = true;
-    }, 3200);
+    }, 4200);
   }
 
   function importMarkdownFile(file, location) {
@@ -9401,6 +9450,63 @@ ${selector} .arrowheadPath {
       .map((part) => encodeURIComponent(part))
       .join("/");
     return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(ref)}/${encodedPath}`;
+  }
+
+  async function importGitHubFilesInBackground(owner, repo, ref, filePaths) {
+    const paths = Array.from(filePaths || []).filter(Boolean);
+    if (!paths.length) return 0;
+
+    const folder = ensureWorkspaceFolder(DEFAULT_WORKSPACE_ID, repo);
+    if (!folder) {
+      showImportProgress(paths.length, { title: 'GitHub import', detail: 'Preparing repository folder…' });
+      finishImportProgress(0, paths.length, { detail: 'The repository folder could not be created.' });
+      announceToScreenReader('GitHub import failed. The repository folder could not be created.');
+      return 0;
+    }
+
+    const destination = { workspaceId: DEFAULT_WORKSPACE_ID, folderId: folder.id };
+    showImportProgress(paths.length, {
+      title: 'Importing from GitHub',
+      detail: 'Saving to Workspace / ' + folder.name
+    });
+
+    let imported = 0;
+    for (let index = 0; index < paths.length; index++) {
+      const filePath = paths[index];
+      updateImportProgress(index, paths.length, 'Importing ' + getFileName(filePath));
+      try {
+        const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, filePath));
+        if (newTab(markdown, getFileName(filePath).replace(/\.(md|markdown)$/i, ''), destination)) {
+          imported++;
+        }
+      } catch (error) {
+        console.error('GitHub file import failed:', filePath, error);
+      }
+      updateImportProgress(index + 1, paths.length, 'Saving to Workspace / ' + folder.name);
+    }
+
+    const failureCount = paths.length - imported;
+    finishImportProgress(imported, paths.length, {
+      detail: failureCount
+        ? failureCount + ' file' + (failureCount === 1 ? '' : 's') + ' could not be imported.'
+        : 'Saved in Workspace / ' + folder.name
+    });
+    announceToScreenReader(imported === paths.length
+      ? 'GitHub import complete. Files saved in the ' + folder.name + ' folder.'
+      : 'GitHub import finished. ' + imported + ' of ' + paths.length + ' files imported.');
+    return imported;
+  }
+
+  function startGitHubImport(owner, repo, ref, filePaths) {
+    const paths = Array.from(filePaths || []).filter(Boolean);
+    closeGitHubImportModal();
+    if (!paths.length) return;
+    void importGitHubFilesInBackground(owner, repo, ref, paths).catch(function(error) {
+      console.error('GitHub import failed:', error);
+      showImportProgress(paths.length, { title: 'GitHub import', detail: 'Unable to start import.' });
+      finishImportProgress(0, paths.length, { detail: error && error.message ? error.message : 'GitHub import failed.' });
+      announceToScreenReader('GitHub import failed.');
+    });
   }
 
   async function fetchGitHubJson(url) {
@@ -9687,7 +9793,7 @@ ${selector} .arrowheadPath {
         setGitHubImportMessage("Please select at least one file to import.");
         return;
       }
-      const remainingCapacity = Math.max(0, MAX_DOCUMENTS - tabs.length);
+      const remainingCapacity = Math.max(0, MAX_DOCUMENTS - getDocumentCountForLimit());
       if (!remainingCapacity) {
         hasDocumentCapacity();
         return;
@@ -9696,24 +9802,8 @@ ${selector} .arrowheadPath {
         setGitHubImportMessage('Select no more than ' + remainingCapacity + ' file' + (remainingCapacity === 1 ? '' : 's') + ' to stay within the ' + MAX_DOCUMENTS + '-document limit.');
         return;
       }
-      setGitHubImportLoading(true);
-      setGitHubImportDialogDisabled(true);
       announceToScreenReader("Importing selected files from GitHub...");
-      try {
-        for (const selectedPath of selectedPaths) {
-          const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, selectedPath));
-          if (!newTab(markdown, getFileName(selectedPath).replace(/\.(md|markdown)$/i, ""))) break;
-        }
-        closeGitHubImportModal();
-        announceToScreenReader("Files imported successfully.");
-      } catch (error) {
-        console.error("GitHub import failed:", error);
-        setGitHubImportMessage("GitHub import failed: " + error.message);
-        announceToScreenReader("GitHub import failed.");
-      } finally {
-        setGitHubImportDialogDisabled(false);
-        setGitHubImportLoading(false);
-      }
+      startGitHubImport(owner, repo, ref, selectedPaths);
       return;
     }
 
@@ -9737,11 +9827,9 @@ ${selector} .arrowheadPath {
         if (!isMarkdownPath(parsed.filePath)) {
           throw new Error("The provided URL does not point to a Markdown file.");
         }
-        announceToScreenReader("Fetching file from GitHub...");
-        const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, parsed.ref, parsed.filePath));
-        if (!newTab(markdown, getFileName(parsed.filePath).replace(/\.(md|markdown)$/i, ""))) return;
-        closeGitHubImportModal();
-        announceToScreenReader("File imported successfully.");
+        if (!hasDocumentCapacity()) return;
+        announceToScreenReader("Starting GitHub import...");
+        startGitHubImport(parsed.owner, parsed.repo, parsed.ref, [parsed.filePath]);
         return;
       }
 
@@ -9771,11 +9859,9 @@ ${selector} .arrowheadPath {
       const shownFiles = files.slice(0, MAX_GITHUB_FILES_SHOWN);
       if (files.length === 1) {
         const targetPath = files[0];
-        announceToScreenReader("Fetching file content...");
-        const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, ref, targetPath));
-        if (!newTab(markdown, getFileName(targetPath).replace(/\.(md|markdown)$/i, ""))) return;
-        closeGitHubImportModal();
-        announceToScreenReader("File imported successfully.");
+        if (!hasDocumentCapacity()) return;
+        announceToScreenReader("Starting GitHub import...");
+        startGitHubImport(parsed.owner, parsed.repo, ref, [targetPath]);
         return;
       }
 
