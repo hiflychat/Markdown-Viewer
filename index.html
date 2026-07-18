@@ -271,16 +271,6 @@
                         </div>
 
                         <div class="mobile-menu-items">
-                            <div class="mobile-menu-quick-actions" aria-label="Sharing actions">
-                                <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
-                                    <i class="lucide lucide-share-2" aria-hidden="true"></i><span>Share</span>
-                                </button>
-                                <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
-                                    <span class="mobile-menu-item-label"><i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i><span id="mobile-live-share-label">Live Share</span></span>
-                                    <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
-                                </button>
-                            </div>
-
                             <div class="mobile-menu-accordion" data-mobile-menu-accordion>
                                 <section class="mobile-menu-section">
                                     <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-new-panel" data-mobile-menu-section-toggle>
@@ -318,6 +308,23 @@
                                         </button>
                                     </div>
                                 </section>
+
+                                <button id="mobile-share-button" class="mobile-menu-item mobile-menu-command" type="button" title="Share Snapshot">
+                                    <i class="lucide lucide-share-2" aria-hidden="true"></i><span>Share Snapshot</span>
+                                </button>
+
+                                <button id="mobile-live-share-button" class="mobile-menu-item mobile-menu-command mobile-live-share-item" type="button" title="Live Share">
+                                    <span class="mobile-menu-item-label"><i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i><span id="mobile-live-share-label">Live Share</span></span>
+                                    <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
+                                </button>
+
+                                <a id="mobile-report-button" class="mobile-menu-item mobile-menu-command" href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new" target="_blank" rel="noopener noreferrer" title="Report an issue">
+                                    <i class="lucide lucide-bug" aria-hidden="true"></i><span>Report</span>
+                                </a>
+
+                                <button id="mobile-about-button" class="mobile-menu-item mobile-menu-command" type="button" title="About Markdown Viewer">
+                                    <i class="lucide lucide-info" aria-hidden="true"></i><span>About</span>
+                                </button>
 
                                 <section class="mobile-menu-section">
                                     <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-settings-panel" data-mobile-menu-section-toggle>
@@ -361,16 +368,12 @@
                                         <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
                                             <span class="mobile-menu-item-label"><i class="lucide lucide-venetian-mask" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
                                         </button>
-                                        <button id="mobile-about-button" class="mobile-menu-item" type="button" title="About Markdown Viewer">
-                                            <i class="lucide lucide-info" aria-hidden="true"></i>About Markdown Viewer
+                                        <button id="mobile-tab-reset-btn" class="mobile-menu-item mobile-menu-reset" title="Reset workspace" aria-label="Reset workspace">
+                                            <i class="lucide lucide-undo-2" aria-hidden="true"></i> Reset workspace
                                         </button>
                                     </div>
                                 </section>
                             </div>
-
-                            <button id="mobile-tab-reset-btn" class="mobile-menu-item mobile-menu-reset" title="Reset workspace" aria-label="Reset workspace">
-                                <i class="lucide lucide-undo-2" aria-hidden="true"></i> Reset workspace
-                            </button>
                         </div>
                     </div>
                     
@@ -820,7 +823,7 @@
                 <img src="assets/icon.jpg" alt="Markdown Viewer logo" class="about-logo" width="64" height="64" />
                 <h2 class="about-title">Markdown Viewer</h2>
                 <p class="about-meta">Version <span id="about-version"></span><span aria-hidden="true"> &bull; </span>Open source</p>
-                <p class="about-description">A lightweight Markdown editor and viewer with live preview for the web and desktop.</p>
+                <p class="about-description">A browser-based Markdown editor, viewer, previewer, and reader.</p>
                 <div class="about-actions" aria-label="Project links">
                   <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer" target="_blank" rel="noopener noreferrer">
                     <i class="bi bi-github" aria-hidden="true"></i><span>GitHub Repository</span>
@@ -828,7 +831,14 @@
                   <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">
                     <i class="lucide lucide-history" aria-hidden="true"></i><span>Changelog</span>
                   </a>
+                  <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">
+                    <i class="lucide lucide-shield-check" aria-hidden="true"></i><span>Licensed under an Apache License 2.0</span>
+                  </a>
+                  <a class="about-action" href="https://github.com/ThisIs-Developer/Markdown-Viewer/wiki/FAQ" target="_blank" rel="noopener noreferrer">
+                    <i class="lucide lucide-message-square-more" aria-hidden="true"></i><span>FAQ</span>
+                  </a>
                 </div>
+                <p class="about-support">For commercial support or custom development, please contact <a href="https://github.com/ThisIs-Developer" target="_blank" rel="noopener noreferrer">@ThisIs_Developer</a>.</p>
               </section>
             </div>
             <div class="reset-modal-actions">
@@ -855,7 +865,7 @@
                   <span class="share-card-icon"><i class="lucide lucide-eye"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">View only</span>
-                    <span class="share-card-desc">Preview-only link. Hides editing controls, but content is still delivered to the browser.</span>
+                    <span class="share-card-desc">Opens a read-only preview.</span>
                   </span>
                   <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
@@ -864,7 +874,7 @@
                   <span class="share-card-icon"><i class="lucide lucide-square-pen"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">Can edit</span>
-                    <span class="share-card-desc">Editable link. Opens the document with both editor and preview controls available.</span>
+                    <span class="share-card-desc">Opens with editing and preview enabled.</span>
                   </span>
                   <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
@@ -1142,9 +1152,15 @@
         </div>
 
         <!-- Markdown Alert Modal -->
-        <div id="alert-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="alert-modal-title" class="reset-modal-message">Markdown alerts</p>
+        <div id="alert-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box reset-modal-box--wide alert-modal-box modal-box">
+            <div class="modal-header">
+              <div>
+                <p id="alert-modal-title" class="reset-modal-message">Markdown alerts</p>
+                <p class="modal-subtext">Choose an alert style to insert into the document.</p>
+              </div>
+              <button type="button" class="modal-close-btn" id="alert-modal-close" aria-label="Close Markdown alerts dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
+            </div>
             <div id="alert-modal-grid" class="alert-grid" role="listbox" aria-label="Markdown alert types"></div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="alert-modal-cancel">Cancel</button>
@@ -1204,17 +1220,26 @@
         </div>
 
         <!-- GitHub Import Modal -->
-        <div id="github-import-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="github-import-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box">
-            <p id="github-import-title" class="reset-modal-message">Import Markdown from GitHub</p>
-            <input type="url" id="github-import-url" class="rename-modal-input" placeholder="https://github.com/owner/repo/blob/main/README.md" />
-            <select id="github-import-file-select" class="rename-modal-input" style="display:none;"></select>
-            <div id="github-import-selection-toolbar" class="github-import-selection-toolbar" style="display:none;">
-              <span id="github-import-selected-count" class="github-import-selected-count">0 selected</span>
-              <button type="button" class="reset-modal-btn" id="github-import-select-all">Select All</button>
+        <div id="github-import-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="github-import-title" aria-hidden="true" style="display:none;">
+          <div class="reset-modal-box github-import-modal-box modal-box">
+            <div class="modal-header">
+              <div>
+                <p id="github-import-title" class="reset-modal-message">Import Markdown from GitHub</p>
+                <p class="modal-subtext">Paste a GitHub file or repository URL.</p>
+              </div>
+              <button type="button" class="modal-close-btn" id="github-import-close" aria-label="Close GitHub import dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div id="github-import-tree" class="github-import-tree" style="display:none;"></div>
-            <p id="github-import-error" class="github-import-error" style="display:none;"></p>
+            <div class="github-import-modal-body">
+              <label class="reset-modal-label" id="github-import-url-label" for="github-import-url">GitHub URL</label>
+              <input type="url" id="github-import-url" class="rename-modal-input" placeholder="https://github.com/owner/repo/blob/main/README.md" autocomplete="url" spellcheck="false" />
+              <select id="github-import-file-select" class="rename-modal-input" aria-label="Select Markdown files" style="display:none;"></select>
+              <div id="github-import-selection-toolbar" class="github-import-selection-toolbar" style="display:none;">
+                <span id="github-import-selected-count" class="github-import-selected-count">0 selected</span>
+                <button type="button" class="reset-modal-btn" id="github-import-select-all">Select all</button>
+              </div>
+              <div id="github-import-tree" class="github-import-tree" style="display:none;"></div>
+              <p id="github-import-error" class="github-import-error" role="status" style="display:none;"></p>
+            </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="github-import-cancel">Cancel</button>
               <button class="reset-modal-btn" id="github-import-submit">Import</button>
@@ -1365,6 +1390,11 @@
             <div class="stat-item">
               <i class="lucide lucide-case-sensitive me-1" aria-hidden="true"></i><span id="char-count">0</span> <span id="lbl-chars">Chars</span>
             </div>
+          </div>
+          <div id="mobile-stats-container" class="mobile-stats-container" aria-label="Document statistics">
+            <div class="stat-item"><i class="lucide lucide-clock-3" aria-hidden="true"></i><span id="mobile-reading-time">0</span><span id="mobile-lbl-min-read">Min Read</span></div>
+            <div class="stat-item"><i class="lucide lucide-pilcrow" aria-hidden="true"></i><span id="mobile-word-count">0</span><span id="mobile-lbl-words">Words</span></div>
+            <div class="stat-item"><i class="lucide lucide-case-sensitive" aria-hidden="true"></i><span id="mobile-char-count">0</span><span id="mobile-lbl-chars">Chars</span></div>
           </div>
           <div id="save-status" class="app-save-status is-saved" data-state="saved" role="status" aria-live="polite" aria-atomic="true">
             <i id="save-status-icon" class="lucide lucide-check" aria-hidden="true"></i>

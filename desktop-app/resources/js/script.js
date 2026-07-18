@@ -496,6 +496,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
   const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
   const mobileAboutButton = document.getElementById("mobile-about-button");
+  const mobileReportButton = document.getElementById("mobile-report-button");
   const shareButton         = document.getElementById("share-button");
   const mobileShareButton   = document.getElementById("mobile-share-button");
   const liveShareButton     = document.getElementById("live-share-button");
@@ -504,6 +505,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const githubImportModal = document.getElementById("github-import-modal");
   const githubImportTitle = document.getElementById("github-import-title");
   const githubImportUrlInput = document.getElementById("github-import-url");
+  const githubImportUrlLabel = document.getElementById("github-import-url-label");
   const githubImportFileSelect = document.getElementById("github-import-file-select");
   const githubImportSelectionToolbar = document.getElementById("github-import-selection-toolbar");
   const githubImportSelectedCount = document.getElementById("github-import-selected-count");
@@ -511,6 +513,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const githubImportTree = document.getElementById("github-import-tree");
   const githubImportError = document.getElementById("github-import-error");
   const githubImportCancelBtn = document.getElementById("github-import-cancel");
+  const githubImportCloseBtn = document.getElementById("github-import-close");
   const githubImportSubmitBtn = document.getElementById("github-import-submit");
   const editorHighlightLayer = document.getElementById("editor-highlight-layer");
   const lineNumbers = document.getElementById("line-numbers");
@@ -9626,6 +9629,7 @@ ${selector} .arrowheadPath {
     }
     githubImportUrlInput.value = "";
     githubImportUrlInput.style.display = "block";
+    if (githubImportUrlLabel) githubImportUrlLabel.style.display = "block";
     githubImportUrlInput.disabled = false;
     githubImportFileSelect.innerHTML = "";
     githubImportFileSelect.style.display = "none";
@@ -9777,6 +9781,7 @@ ${selector} .arrowheadPath {
 
       githubImportFileSelect.innerHTML = "";
       githubImportUrlInput.style.display = "none";
+      if (githubImportUrlLabel) githubImportUrlLabel.style.display = "none";
       githubImportFileSelect.style.display = "none";
       if (githubImportSelectionToolbar) {
         githubImportSelectionToolbar.style.display = "flex";
@@ -11314,10 +11319,10 @@ ${selector} .arrowheadPath {
     const grid = document.getElementById('alert-modal-grid');
     const confirmBtn = document.getElementById('alert-modal-insert');
     const cancelBtn = document.getElementById('alert-modal-cancel');
-    if (!modal || !grid || !confirmBtn || !cancelBtn) return;
+    const closeBtn = document.getElementById('alert-modal-close');
+    if (!modal || !grid || !confirmBtn || !cancelBtn || !closeBtn) return;
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
-    modal.style.display = 'flex';
     // PERF-007: Clear elements using textContent
     grid.textContent = '';
 
@@ -11353,32 +11358,26 @@ ${selector} .arrowheadPath {
       const meta = GITHUB_ALERT_META[selectedType] || { label: selectedType };
       const body = `${meta.label} details go here.`;
       const block = `> [!${type}]\n> ${body}\n`;
-      modal.style.display = 'none';
       cleanup();
+      closeAppModal(modal);
       insertMarkdownBlock(block, start, end);
     }
 
     function closeModal() {
-      modal.style.display = 'none';
       cleanup();
-    }
-
-    function onKey(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-      }
+      closeAppModal(modal);
     }
 
     function cleanup() {
       confirmBtn.removeEventListener('click', insertAlert);
       cancelBtn.removeEventListener('click', closeModal);
-      modal.removeEventListener('keydown', onKey);
+      closeBtn.removeEventListener('click', closeModal);
     }
 
     confirmBtn.addEventListener('click', insertAlert);
     cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('keydown', onKey);
+    closeBtn.addEventListener('click', closeModal);
+    openAppModal(modal, { focusTarget: options[0], onClose: closeModal });
   }
 
   function getCleanCode(templateCode) {
@@ -14964,6 +14963,7 @@ ${selector} .arrowheadPath {
     }
   });
   mobileImportBtn.addEventListener("click", () => {
+    closeMobileMenu();
     if (typeof Neutralino !== 'undefined') {
       nativeImportMarkdown();
     } else {
@@ -14974,10 +14974,10 @@ ${selector} .arrowheadPath {
     closeMobileMenu();
     openGitHubImportModal();
   });
-  mobileExportMd.addEventListener("click", () => exportMd.click());
-  mobileExportHtml.addEventListener("click", () => exportHtml.click());
-  mobileExportPdf.addEventListener("click", () => exportPdf.click());
-  mobileExportPng.addEventListener("click", () => exportPng.click());
+  mobileExportMd.addEventListener("click", () => { closeMobileMenu(); exportMd.click(); });
+  mobileExportHtml.addEventListener("click", () => { closeMobileMenu(); exportHtml.click(); });
+  mobileExportPdf.addEventListener("click", () => { closeMobileMenu(); exportPdf.click(); });
+  mobileExportPng.addEventListener("click", () => { closeMobileMenu(); exportPng.click(); });
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
@@ -14986,6 +14986,11 @@ ${selector} .arrowheadPath {
     mobileAboutButton.addEventListener('click', function() {
       closeMobileMenu();
       openAboutModal(mobileAboutButton);
+    });
+  }
+  if (mobileReportButton) {
+    mobileReportButton.addEventListener('click', function() {
+      closeMobileMenu();
     });
   }
 
@@ -15340,6 +15345,9 @@ ${selector} .arrowheadPath {
   }
   if (githubImportCancelBtn) {
     githubImportCancelBtn.addEventListener("click", closeGitHubImportModal);
+  }
+  if (githubImportCloseBtn) {
+    githubImportCloseBtn.addEventListener("click", closeGitHubImportModal);
   }
   const handleGitHubImportInputKeydown = function(e) {
     if (e.key === "Enter") {
@@ -19807,7 +19815,10 @@ ${selector} .arrowheadPath {
   });
 
   shareButton.addEventListener('click', openShareModal);
-  mobileShareButton.addEventListener('click', openShareModal);
+  mobileShareButton.addEventListener('click', function() {
+    closeMobileMenu();
+    openShareModal();
+  });
 
   async function loadStoredShareHash(hash) {
     const rest = hash.slice('#id='.length);
