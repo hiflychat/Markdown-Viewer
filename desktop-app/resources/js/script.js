@@ -4,7 +4,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     'markdownViewerGlobalState',
     'markdownViewerTabs',
     'markdownViewerActiveTab',
-    'markdownViewerUntitledCounter'
+    'markdownViewerUntitledCounter',
+    'markdownViewerDocumentOrganization',
+    'markdownViewerSecretWorkspace'
   ]);
 
   function isPrivateStorageMode() {
@@ -30,6 +32,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       'markdownViewerTabs',
       'markdownViewerActiveTab',
       'markdownViewerUntitledCounter',
+      'markdownViewerDocumentOrganization',
+      'markdownViewerSecretWorkspace',
       'find-replace-docked',
       'app-lang'
     ];
@@ -222,7 +226,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.querySelectorAll('.abc-notation svg .abcjs-highlight').forEach(el => el.classList.remove('abcjs-highlight'));
 
     if (activeAbcBtn) {
-      activeAbcBtn.innerHTML = '<i class="bi bi-play-fill"></i> Listen';
+      activeAbcBtn.innerHTML = '<i class="lucide lucide-play-filled"></i> Listen';
       activeAbcBtn.setAttribute('aria-label', 'Listen to score');
       activeAbcBtn = null;
     }
@@ -256,6 +260,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   let isPreviewScrolling = false;
   let isProgrammaticScrolling = false;
   let scrollSyncTimeout = null;
+  let documentSplitSyncFrame = null;
+  let documentSplitScrollSource = null;
+  let documentSplitSyncReleaseTimeout = null;
+  let documentSplitPreviewTabId = null;
+  let documentSplitPreviewContent = null;
   const SCROLL_SYNC_DELAY = 10;
 
   // View Mode State - Story 1.1
@@ -363,6 +372,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   // View Mode Elements - Story 1.1
   const contentContainer = document.querySelector(".content-container");
   const viewModeButtons = document.querySelectorAll(".view-toggle-btn");
+  const documentSplitPane = document.getElementById('document-split-pane');
+  const documentSplitDivider = document.getElementById('document-split-divider');
+  const documentSplitEditor = document.getElementById('document-split-editor');
+  const documentSplitPreview = document.getElementById('document-split-preview');
+  const noOpenDocument = document.getElementById('no-open-document');
+  const noOpenDocumentNew = document.getElementById('no-open-document-new');
 
   // Mobile View Mode Elements - Story 1.4
   const mobileViewModeButtons = document.querySelectorAll(".mobile-view-mode-btn");
@@ -395,7 +410,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function stripTemporaryTabs(tabsArr) {
     return (tabsArr || []).filter(function(tab) {
-      return !isShareSnapshotTab(tab);
+      return !isShareSnapshotTab(tab) && tab.temporary !== true;
     });
   }
 
@@ -478,6 +493,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileExportPng     = document.getElementById("mobile-export-png");
   const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
+  const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
+  const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
+  const mobileAboutButton = document.getElementById("mobile-about-button");
   const shareButton         = document.getElementById("share-button");
   const mobileShareButton   = document.getElementById("mobile-share-button");
   const liveShareButton     = document.getElementById("live-share-button");
@@ -518,7 +536,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const aboutModalCloseIcon = document.getElementById("about-modal-close-icon");
   const aboutVersion = document.getElementById("about-version");
   const privateModeToggle = document.getElementById("private-mode-toggle");
-  const clearLocalDataBtn = document.getElementById("clear-local-data-btn");
+  const saveStatus = document.getElementById("save-status");
+  const saveStatusIcon = document.getElementById("save-status-icon");
+  const saveStatusText = document.getElementById("save-status-text");
   if (aboutVersion) {
     aboutVersion.textContent = APP_VERSION;
   }
@@ -621,8 +641,22 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updatePrivateModeButton() {
     if (!privateModeToggle) return;
     const enabled = isPrivateStorageMode();
-    privateModeToggle.textContent = enabled ? 'Private mode on' : 'Private mode off';
-    privateModeToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    privateModeToggle.classList.toggle('is-active', enabled);
+    privateModeToggle.setAttribute('aria-pressed', String(enabled));
+    privateModeToggle.setAttribute('aria-label', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    privateModeToggle.setAttribute('title', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    const description = document.getElementById('private-mode-description');
+    if (description) {
+      description.textContent = enabled
+        ? 'No data is stored'
+        : 'Data is stored locally';
+    }
+    if (mobilePrivateModeToggle) {
+      mobilePrivateModeToggle.setAttribute('aria-pressed', String(enabled));
+      mobilePrivateModeToggle.setAttribute('aria-label', enabled ? 'Turn private mode off' : 'Turn private mode on');
+      mobilePrivateModeToggle.setAttribute('title', enabled ? 'Turn private mode off' : 'Turn private mode on');
+    }
+    if (mobilePrivateModeStatus) mobilePrivateModeStatus.textContent = enabled ? 'On' : 'Off';
   }
 
   async function clearDocumentStorage() {
@@ -637,7 +671,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         markdownViewerGlobalState: '{}',
         markdownViewerTabs: '[]',
         markdownViewerActiveTab: '',
-        markdownViewerUntitledCounter: '0'
+        markdownViewerUntitledCounter: '0',
+        markdownViewerDocumentOrganization: '{}',
+        markdownViewerSecretWorkspace: ''
       };
       await Promise.all(Object.keys(neutralinoValues).map(function(key) {
         return Neutralino.storage.setData(key, neutralinoValues[key]).catch(function(err) {
@@ -665,18 +701,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
     });
   }
-  if (clearLocalDataBtn) {
-    clearLocalDataBtn.addEventListener('click', function() {
-      if (!confirm('Clear saved Markdown tabs and document state from this device?')) return;
-      clearDocumentStorage().then(function() {
-        resetAllTabs();
-        updatePrivateModeButton();
-      }).catch(function(error) {
-        console.warn('Failed to clear local data:', error);
-      });
-    });
-  }
-
   // Check dark mode preference first for proper initialization
   const prefersDarkMode =
     window.matchMedia &&
@@ -686,15 +710,30 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   document.documentElement.setAttribute("data-theme", initialTheme);
 
-  themeToggle.innerHTML = initialTheme === "dark"
-    ? '<i class="bi bi-sun"></i>'
-    : '<i class="bi bi-moon"></i>';
+  function updateThemeToggleUI(theme) {
+    const useLightAppearance = theme === "dark";
+    if (themeToggle) {
+      const icon = themeToggle.querySelector('i');
+      const description = document.getElementById('theme-toggle-description');
+      if (icon) icon.className = 'lucide lucide-' + (useLightAppearance ? 'sun' : 'moon');
+      if (description) description.textContent = useLightAppearance ? 'Switch to light appearance' : 'Switch to dark appearance';
+      themeToggle.setAttribute('aria-label', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
+      themeToggle.setAttribute('title', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
+    }
+    if (mobileThemeToggle) {
+      mobileThemeToggle.innerHTML = '<i class="lucide lucide-' + (useLightAppearance ? 'sun' : 'moon') + ' me-2" aria-hidden="true"></i>' + (useLightAppearance ? 'Light Mode' : 'Dark Mode');
+      mobileThemeToggle.setAttribute('title', useLightAppearance ? 'Use Light Mode' : 'Use Dark Mode');
+    }
+  }
+
+  updateThemeToggleUI(initialTheme);
 
   function updateDirectionToggleUI(direction) {
     const isRtl = direction === "rtl";
     const toggleLabel = isRtl ? "Switch to LTR" : "Switch to RTL";
     if (directionToggle) {
-      directionToggle.textContent = isRtl ? "R" : "L";
+      const label = directionToggle.querySelector('span');
+      if (label) label.textContent = isRtl ? 'Left-to-right text' : 'Right-to-left text';
       directionToggle.setAttribute("title", toggleLabel);
       directionToggle.setAttribute("aria-label", toggleLabel);
       directionToggle.setAttribute("aria-pressed", isRtl.toString());
@@ -2411,11 +2450,38 @@ document.addEventListener("DOMContentLoaded", async function () {
   const STORAGE_KEY = 'markdownViewerTabs';
   const ACTIVE_TAB_KEY = 'markdownViewerActiveTab';
   const UNTITLED_COUNTER_KEY = 'markdownViewerUntitledCounter';
+  const DOCUMENT_ORGANIZATION_KEY = 'markdownViewerDocumentOrganization';
+  const SECRET_WORKSPACE_STORAGE_KEY = 'markdownViewerSecretWorkspace';
+  const DOCUMENT_ORGANIZATION_VERSION = 2;
+  const SECRET_WORKSPACE_VERSION = 1;
+  const SECRET_KDF_ITERATIONS = 250000;
+  const MAX_DOCUMENTS = 50;
+  const DEFAULT_WORKSPACE_ID = 'workspace_default';
+  const SECRET_WORKSPACE_ID = 'workspace_secret';
+  const SIDEBAR_MIN_WIDTH = 220;
+  const SIDEBAR_MAX_WIDTH = 420;
   let tabs = [];
   let activeTabId = null;
+  let secondarySplitTabId = null;
+  let secondarySplitSaveTimeout = null;
   let draggedTabId = null;
   let saveTabStateTimeout = null;
   let untitledCounter = 0;
+  let documentOrganization = null;
+  let selectedDocumentId = null;
+  let selectedDocumentTreeIds = new Set();
+  let documentTreeSelectionAnchor = null;
+  let documentSidebarSearch = '';
+  let documentSidebarInitialized = false;
+  let isDocumentSidebarResizing = false;
+  let draggedSidebarDocumentId = null;
+  let secretWorkspaceKey = null;
+  let secretWorkspaceSalt = null;
+  let secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+  let secretWorkspaceDocumentCount = 0;
+  let secretWorkspaceSaveTimeout = null;
+  let secretWorkspaceSaveChain = Promise.resolve();
+  let importProgressHideTimeout = null;
   let liveCollaboration = null;
   let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
@@ -2423,6 +2489,2081 @@ document.addEventListener("DOMContentLoaded", async function () {
   const LIVE_RELAY_ORIGIN = Symbol("markdown-viewer-live-relay");
   const LIVE_REVIEW_EDIT_ORIGIN = Symbol("markdown-viewer-live-review-local-edit");
   const LIVE_REVIEW_RELAY_ORIGIN = Symbol("markdown-viewer-live-review-relay");
+
+  function createDocumentEntityId(prefix) {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return prefix + '_' + window.crypto.randomUUID();
+    }
+    return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function createDefaultDocumentOrganization() {
+    return {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: [
+        {
+          id: DEFAULT_WORKSPACE_ID,
+          name: 'Workspace',
+          expanded: true,
+          createdAt: 0
+        },
+        {
+          id: SECRET_WORKSPACE_ID,
+          name: 'Secret Workspace',
+          expanded: false,
+          createdAt: 1
+        }
+      ],
+      folders: [],
+      ui: {
+        filter: 'all',
+        collapsed: false,
+        width: 288,
+        lastWorkspaceId: DEFAULT_WORKSPACE_ID,
+        lastFolderId: null
+      }
+    };
+  }
+
+  function normalizeDocumentOrganization(raw) {
+    const fallback = createDefaultDocumentOrganization();
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const rawWorkspaces = Array.isArray(source.workspaces) ? source.workspaces : [];
+    const storedDefault = rawWorkspaces.find(function(workspace) { return workspace && workspace.id === DEFAULT_WORKSPACE_ID; });
+    const storedSecret = rawWorkspaces.find(function(workspace) { return workspace && workspace.id === SECRET_WORKSPACE_ID; });
+    const workspaces = fallback.workspaces.map(function(workspace) {
+      const stored = workspace.id === DEFAULT_WORKSPACE_ID ? storedDefault : storedSecret;
+      return Object.assign({}, workspace, {
+        expanded: stored ? stored.expanded !== false : workspace.expanded
+      });
+    });
+
+    const seenFolderIds = new Set();
+    const folders = (Array.isArray(source.folders) ? source.folders : []).map(function(folder) {
+      if (!folder || typeof folder !== 'object') return null;
+      const id = String(folder.id || '').slice(0, 120);
+      const sourceWorkspaceId = String(folder.workspaceId || '');
+      const workspaceId = sourceWorkspaceId === SECRET_WORKSPACE_ID ? SECRET_WORKSPACE_ID : DEFAULT_WORKSPACE_ID;
+      if (!id || seenFolderIds.has(id) || workspaceId === SECRET_WORKSPACE_ID) return null;
+      seenFolderIds.add(id);
+      return {
+        id: id,
+        workspaceId: workspaceId,
+        name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
+        expanded: folder.expanded !== false,
+        createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
+      };
+    }).filter(Boolean);
+
+    const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
+    const allowedFilters = new Set(['all', 'recent', 'favorites']);
+    const width = Number(ui.width);
+    const lastWorkspaceId = ui.lastWorkspaceId === SECRET_WORKSPACE_ID && secretWorkspaceKey
+      ? SECRET_WORKSPACE_ID
+      : DEFAULT_WORKSPACE_ID;
+    const lastFolderId = seenFolderIds.has(ui.lastFolderId) ? ui.lastFolderId : null;
+    return {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: workspaces,
+      folders: folders,
+      ui: {
+        filter: allowedFilters.has(ui.filter) ? ui.filter : 'all',
+        collapsed: ui.collapsed === true,
+        width: Number.isFinite(width) ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width)) : 288,
+        lastWorkspaceId: lastWorkspaceId,
+        lastFolderId: lastFolderId
+      }
+    };
+  }
+
+  function loadDocumentOrganization() {
+    try {
+      return normalizeDocumentOrganization(JSON.parse(localStorage.getItem(DOCUMENT_ORGANIZATION_KEY)) || {});
+    } catch (_) {
+      return createDefaultDocumentOrganization();
+    }
+  }
+
+  function removeStorageItem(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (_) {}
+    if (isNeutralinoRuntimeAvailable()) {
+      Neutralino.storage.setData(key, '').catch(function(err) {
+        console.warn('Failed to remove Neutralino storage key:', err);
+      });
+    }
+  }
+
+  function saveDocumentOrganization() {
+    if (!documentOrganization) return;
+    const storageOrganization = {
+      version: DOCUMENT_ORGANIZATION_VERSION,
+      workspaces: documentOrganization.workspaces.map(function(workspace) {
+        return {
+          id: workspace.id,
+          name: workspace.name,
+          expanded: workspace.id === SECRET_WORKSPACE_ID && !secretWorkspaceKey ? false : workspace.expanded,
+          createdAt: workspace.createdAt
+        };
+      }),
+      folders: documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId !== SECRET_WORKSPACE_ID;
+      }),
+      ui: Object.assign({}, documentOrganization.ui, {
+        lastWorkspaceId: documentOrganization.ui.lastWorkspaceId === SECRET_WORKSPACE_ID && !secretWorkspaceKey
+          ? DEFAULT_WORKSPACE_ID
+          : documentOrganization.ui.lastWorkspaceId,
+        lastFolderId: getFolderById(documentOrganization.ui.lastFolderId) && getFolderById(documentOrganization.ui.lastFolderId).workspaceId !== SECRET_WORKSPACE_ID
+          ? documentOrganization.ui.lastFolderId
+          : null
+      })
+    };
+    saveStorageItem(DOCUMENT_ORGANIZATION_KEY, JSON.stringify(storageOrganization));
+    scheduleSecretWorkspaceSave();
+  }
+
+  function getSecretWorkspaceEnvelope() {
+    try {
+      const raw = localStorage.getItem(SECRET_WORKSPACE_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== SECRET_WORKSPACE_VERSION || !parsed.salt || !parsed.iv || !parsed.ciphertext) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function initializeSecretWorkspaceState() {
+    const envelope = getSecretWorkspaceEnvelope();
+    secretWorkspaceDocumentCount = envelope && Number.isFinite(Number(envelope.documentCount))
+      ? Math.min(MAX_DOCUMENTS, Math.max(0, Number(envelope.documentCount)))
+      : 0;
+  }
+
+  function isSecretWorkspaceConfigured() {
+    try {
+      return Boolean(localStorage.getItem(SECRET_WORKSPACE_STORAGE_KEY));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function isSecretWorkspaceUnlocked() {
+    return Boolean(secretWorkspaceKey && secretWorkspaceSalt);
+  }
+
+  function getWebCrypto() {
+    return window.crypto && window.crypto.subtle ? window.crypto : null;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  }
+
+  async function deriveSecretWorkspaceKey(password, salt, iterations) {
+    const cryptoApi = getWebCrypto();
+    if (!cryptoApi) throw new Error('Password encryption is unavailable in this browser.');
+    const keyMaterial = await cryptoApi.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return cryptoApi.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: iterations || SECRET_KDF_ITERATIONS,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  function getSecretWorkspacePayload() {
+    return {
+      version: SECRET_WORKSPACE_VERSION,
+      folders: documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId === SECRET_WORKSPACE_ID;
+      }),
+      documents: tabs.filter(function(tab) {
+        return !isTemporaryDocument(tab) && tab.workspaceId === SECRET_WORKSPACE_ID;
+      })
+    };
+  }
+
+  function enqueueSecretWorkspaceSave() {
+    if (!isSecretWorkspaceUnlocked()) return Promise.resolve(false);
+    const cryptoApi = getWebCrypto();
+    const key = secretWorkspaceKey;
+    const salt = new Uint8Array(secretWorkspaceSalt);
+    const payload = getSecretWorkspacePayload();
+    const payloadText = JSON.stringify(payload);
+    secretWorkspaceDocumentCount = payload.documents.length;
+    secretWorkspaceSaveChain = secretWorkspaceSaveChain.catch(function() {}).then(async function() {
+      const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+      const encrypted = await cryptoApi.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        new TextEncoder().encode(payloadText)
+      );
+      saveStorageItem(SECRET_WORKSPACE_STORAGE_KEY, JSON.stringify({
+        version: SECRET_WORKSPACE_VERSION,
+        iterations: secretWorkspaceIterations,
+        salt: bytesToBase64(salt),
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(encrypted)),
+        documentCount: payload.documents.length,
+        folderCount: payload.folders.length,
+        updatedAt: Date.now()
+      }));
+      return true;
+    });
+    return secretWorkspaceSaveChain;
+  }
+
+  function scheduleSecretWorkspaceSave() {
+    if (!isSecretWorkspaceUnlocked()) return;
+    clearTimeout(secretWorkspaceSaveTimeout);
+    secretWorkspaceSaveTimeout = setTimeout(function() {
+      enqueueSecretWorkspaceSave().catch(function(error) {
+        console.warn('Failed to save Secret Workspace:', error);
+      });
+    }, 450);
+  }
+
+  function flushSecretWorkspaceToStorage() {
+    clearTimeout(secretWorkspaceSaveTimeout);
+    return enqueueSecretWorkspaceSave();
+  }
+
+  async function decryptSecretWorkspace(password) {
+    const envelope = getSecretWorkspaceEnvelope();
+    if (!envelope) throw new Error('Secret Workspace has not been set up yet.');
+    const salt = base64ToBytes(envelope.salt);
+    const iterations = Number(envelope.iterations) || SECRET_KDF_ITERATIONS;
+    const key = await deriveSecretWorkspaceKey(password, salt, iterations);
+    const decrypted = await getWebCrypto().subtle.decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(envelope.iv) },
+      key,
+      base64ToBytes(envelope.ciphertext)
+    );
+    const payload = JSON.parse(new TextDecoder().decode(decrypted));
+    return { payload: payload, key: key, salt: salt, iterations: iterations };
+  }
+
+  function mergeSecretWorkspacePayload(payload, key, salt, iterations) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    const folders = Array.isArray(source.folders) ? source.folders : [];
+    const seenFolderIds = new Set(documentOrganization.folders.map(function(folder) { return folder.id; }));
+    folders.forEach(function(folder) {
+      if (!folder || typeof folder !== 'object') return;
+      const id = String(folder.id || '').slice(0, 120);
+      if (!id || seenFolderIds.has(id)) return;
+      seenFolderIds.add(id);
+      documentOrganization.folders.push({
+        id: id,
+        workspaceId: SECRET_WORKSPACE_ID,
+        name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
+        expanded: folder.expanded !== false,
+        createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
+      });
+    });
+
+    const existingTabIds = new Set(tabs.map(function(tab) { return tab.id; }));
+    const secretFolderIds = new Set(documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(folder) { return folder.id; }));
+    const documents = Array.isArray(source.documents) ? source.documents : [];
+    documents.forEach(function(tab) {
+      if (!tab || typeof tab !== 'object' || !tab.id || existingTabIds.has(tab.id)) return;
+      tab.workspaceId = SECRET_WORKSPACE_ID;
+      tab.folderId = secretFolderIds.has(tab.folderId) ? tab.folderId : null;
+      tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
+      normalizeTabDocumentMetadata(tab, { allowSecret: true });
+      tabs.push(tab);
+      existingTabIds.add(tab.id);
+    });
+
+    secretWorkspaceKey = key;
+    secretWorkspaceSalt = new Uint8Array(salt);
+    secretWorkspaceIterations = iterations || SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = documents.length;
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = true;
+    documentOrganization.ui.lastWorkspaceId = SECRET_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    saveDocumentOrganization();
+    renderTabBar(tabs, activeTabId);
+  }
+
+  async function createSecretWorkspacePassword(password) {
+    const cryptoApi = getWebCrypto();
+    if (!cryptoApi) throw new Error('Password encryption is unavailable in this browser.');
+    const salt = cryptoApi.getRandomValues(new Uint8Array(16));
+    const key = await deriveSecretWorkspaceKey(password, salt, SECRET_KDF_ITERATIONS);
+    secretWorkspaceKey = key;
+    secretWorkspaceSalt = salt;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = 0;
+    await flushSecretWorkspaceToStorage();
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = true;
+    documentOrganization.ui.lastWorkspaceId = SECRET_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    saveDocumentOrganization();
+  }
+
+  async function lockSecretWorkspace() {
+    if (!isSecretWorkspaceUnlocked()) return;
+    saveCurrentTabState();
+    saveSecondarySplitState();
+    await flushSecretWorkspaceToStorage();
+    const secretTabIds = new Set(tabs.filter(function(tab) {
+      return !isTemporaryDocument(tab) && tab.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(tab) { return tab.id; }));
+    if (secretTabIds.has(secondarySplitTabId)) closeDocumentSplitView({ silent: true, renderTabs: false });
+    tabs = tabs.filter(function(tab) { return !secretTabIds.has(tab.id); });
+    secretTabIds.forEach(function(tabId) {
+      if (typeof tabHistories !== 'undefined' && tabHistories[tabId]) delete tabHistories[tabId];
+    });
+    documentOrganization.folders = documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId !== SECRET_WORKSPACE_ID;
+    });
+    secretWorkspaceKey = null;
+    secretWorkspaceSalt = null;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = false;
+    documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+
+    if (secretTabIds.has(activeTabId)) {
+      const nextTab = getOpenTabs().find(function(tab) { return !isTemporaryDocument(tab); }) || getOpenTabs()[0];
+      if (nextTab) switchTab(nextTab.id);
+      else clearActiveDocument();
+    } else {
+      renderTabBar(tabs, activeTabId);
+    }
+    _flushTabsToStorage(tabs);
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+    announceToScreenReader('Secret Workspace locked.');
+  }
+
+  async function resetSecretWorkspaceData() {
+    const removedIds = new Set(tabs.filter(function(tab) {
+      return tab.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(tab) { return tab.id; }));
+    if (removedIds.has(secondarySplitTabId)) closeDocumentSplitView({ silent: true, renderTabs: false });
+    tabs = tabs.filter(function(tab) { return !removedIds.has(tab.id); });
+    documentOrganization.folders = documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId !== SECRET_WORKSPACE_ID;
+    });
+    secretWorkspaceKey = null;
+    secretWorkspaceSalt = null;
+    secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+    secretWorkspaceDocumentCount = 0;
+    clearTimeout(secretWorkspaceSaveTimeout);
+    await secretWorkspaceSaveChain.catch(function() {});
+    removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+    const workspace = getWorkspaceById(SECRET_WORKSPACE_ID);
+    if (workspace) workspace.expanded = false;
+    documentOrganization.ui.lastWorkspaceId = DEFAULT_WORKSPACE_ID;
+    documentOrganization.ui.lastFolderId = null;
+    if (removedIds.has(activeTabId)) {
+      const nextTab = getOpenTabs().find(function(tab) { return !isTemporaryDocument(tab); }) || getOpenTabs()[0];
+      if (nextTab) switchTab(nextTab.id);
+      else clearActiveDocument();
+    }
+    _flushTabsToStorage(tabs);
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+  }
+
+  function openSecretWorkspaceDialog(onUnlocked) {
+    if (isPrivateStorageMode()) {
+      alert('Secret Workspace needs local storage. Turn off Private mode before setting or unlocking its access key.');
+      return;
+    }
+    if (!getWebCrypto()) {
+      alert('Secret Workspace encryption is unavailable in this browser or context.');
+      return;
+    }
+    if (isSecretWorkspaceUnlocked()) {
+      if (typeof onUnlocked === 'function') onUnlocked();
+      return;
+    }
+
+    const modal = document.getElementById('secret-workspace-modal');
+    const title = document.getElementById('secret-workspace-modal-title');
+    const description = document.getElementById('secret-workspace-modal-description');
+    const secretInput = document.getElementById('secret-workspace-key');
+    const confirmInput = document.getElementById('secret-workspace-key-confirm');
+    const confirmGroup = document.getElementById('secret-workspace-confirm-group');
+    const error = document.getElementById('secret-workspace-modal-error');
+    const confirmButton = document.getElementById('secret-workspace-modal-confirm');
+    const cancelButton = document.getElementById('secret-workspace-modal-cancel');
+    const closeButton = document.getElementById('secret-workspace-modal-close');
+    const resetButton = document.getElementById('secret-workspace-reset');
+    const guidance = document.getElementById('secret-workspace-key-guidance');
+    const toggleButtons = Array.from(modal ? modal.querySelectorAll('[data-secret-key-toggle]') : []);
+    if (!modal || !secretInput || !confirmInput || !confirmButton || !cancelButton) return;
+
+    const setupMode = !isSecretWorkspaceConfigured();
+    title.textContent = setupMode ? 'Protect Secret Workspace' : 'Unlock Secret Workspace';
+    description.textContent = setupMode
+      ? 'Create a local access key to encrypt files and folder names stored in this workspace. The key cannot be recovered.'
+      : 'Enter the local access key used to encrypt this workspace on this device.';
+    confirmButton.textContent = setupMode ? 'Create access key' : 'Unlock';
+    confirmGroup.hidden = !setupMode;
+    resetButton.hidden = setupMode;
+    if (guidance) guidance.hidden = !setupMode;
+    secretInput.value = '';
+    confirmInput.value = '';
+    secretInput.classList.add('is-masked');
+    confirmInput.classList.add('is-masked');
+    secretInput.autocomplete = 'off';
+    confirmInput.autocomplete = 'off';
+    secretInput.minLength = 8;
+    confirmInput.minLength = 8;
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', submit);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+      resetButton.removeEventListener('click', resetWorkspace);
+      secretInput.removeEventListener('keydown', onKeydown);
+      confirmInput.removeEventListener('keydown', onKeydown);
+      toggleButtons.forEach(function(button) { button.removeEventListener('click', togglePassword); });
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function togglePassword(event) {
+      const button = event.currentTarget;
+      const input = document.getElementById(button.getAttribute('data-secret-key-toggle'));
+      if (!input) return;
+      const showing = !input.classList.contains('is-masked');
+      input.classList.toggle('is-masked', showing);
+      button.setAttribute('aria-label', showing ? 'Show access key' : 'Hide access key');
+      button.title = showing ? 'Show access key' : 'Hide access key';
+      const icon = button.querySelector('i');
+      if (icon) icon.className = 'lucide ' + (showing ? 'lucide-eye' : 'lucide-eye-off');
+      input.focus();
+    }
+
+    async function submit() {
+      const password = secretInput.value;
+      if (password.length < 8) {
+        error.textContent = 'Use at least 8 characters.';
+        error.hidden = false;
+        secretInput.focus();
+        return;
+      }
+      if (setupMode && password !== confirmInput.value) {
+        error.textContent = 'Access keys do not match.';
+        error.hidden = false;
+        confirmInput.focus();
+        return;
+      }
+      confirmButton.disabled = true;
+      confirmButton.textContent = setupMode ? 'Encrypting…' : 'Unlocking…';
+      error.hidden = true;
+      try {
+        if (setupMode) {
+          await createSecretWorkspacePassword(password);
+        } else {
+          const unlocked = await decryptSecretWorkspace(password);
+          mergeSecretWorkspacePayload(unlocked.payload, unlocked.key, unlocked.salt, unlocked.iterations);
+        }
+        cleanup();
+        closeAppModal(modal);
+        renderDocumentSidebar();
+        announceToScreenReader('Secret Workspace unlocked.');
+        if (typeof onUnlocked === 'function') onUnlocked();
+      } catch (_) {
+        if (setupMode) {
+          secretWorkspaceKey = null;
+          secretWorkspaceSalt = null;
+          secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+          secretWorkspaceDocumentCount = 0;
+          removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+        }
+        error.textContent = setupMode
+          ? 'Could not protect this workspace. Try again.'
+          : 'Incorrect access key or unreadable Secret Workspace data.';
+        error.hidden = false;
+        secretInput.select();
+      } finally {
+        confirmButton.disabled = false;
+        confirmButton.textContent = setupMode ? 'Create access key' : 'Unlock';
+      }
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    }
+
+    function resetWorkspace() {
+      cleanup();
+      closeAppModal(modal);
+      openDocumentConfirmation({
+        title: 'Reset Secret Workspace?',
+        description: 'This permanently deletes every encrypted file and folder in Secret Workspace. The content cannot be recovered.',
+        confirmText: 'Reset workspace',
+        onConfirm: function() {
+          resetSecretWorkspaceData().then(function() {
+            announceToScreenReader('Secret Workspace reset.');
+          });
+        }
+      });
+    }
+
+    confirmButton.addEventListener('click', submit);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    resetButton.addEventListener('click', resetWorkspace);
+    secretInput.addEventListener('keydown', onKeydown);
+    confirmInput.addEventListener('keydown', onKeydown);
+    toggleButtons.forEach(function(button) { button.addEventListener('click', togglePassword); });
+    openAppModal(modal, { focusTarget: secretInput, onClose: cancel });
+  }
+
+  function withUnlockedSecretWorkspace(action) {
+    if (isSecretWorkspaceUnlocked()) {
+      if (typeof action === 'function') action();
+      return true;
+    }
+    openSecretWorkspaceDialog(action);
+    return false;
+  }
+
+  function isTemporaryDocument(tab) {
+    return Boolean(tab && (tab.temporary === true || isShareSnapshotTab(tab)));
+  }
+
+  function getDocumentCountForLimit() {
+    return tabs.length + (isSecretWorkspaceUnlocked() ? 0 : secretWorkspaceDocumentCount);
+  }
+
+  function hasDocumentCapacity() {
+    if (getDocumentCountForLimit() < MAX_DOCUMENTS) return true;
+    alert('Maximum of ' + MAX_DOCUMENTS + ' documents reached. Delete an existing document to create or import another.');
+    announceToScreenReader('Maximum document limit reached.');
+    return false;
+  }
+
+  function getWorkspaceById(workspaceId) {
+    if (!documentOrganization) return null;
+    return documentOrganization.workspaces.find(function(workspace) { return workspace.id === workspaceId; }) || null;
+  }
+
+  function getFolderById(folderId) {
+    if (!documentOrganization || !folderId) return null;
+    return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
+  }
+
+  function normalizeTabDocumentMetadata(tab, options) {
+    if (!tab || typeof tab !== 'object') return tab;
+    const settings = options || {};
+    tab.createdAt = Number.isFinite(Number(tab.createdAt)) ? Number(tab.createdAt) : Date.now();
+    tab.lastOpenedAt = Number.isFinite(Number(tab.lastOpenedAt)) ? Number(tab.lastOpenedAt) : tab.createdAt;
+    tab.lastEditedAt = Number.isFinite(Number(tab.lastEditedAt)) ? Number(tab.lastEditedAt) : tab.createdAt;
+    tab.favorite = tab.favorite === true;
+    tab.isOpen = tab.isOpen !== false;
+
+    if (isTemporaryDocument(tab)) {
+      delete tab.workspaceId;
+      delete tab.folderId;
+      return tab;
+    }
+
+    const requestedWorkspaceId = tab.workspaceId === SECRET_WORKSPACE_ID && settings.allowSecret === true
+      ? SECRET_WORKSPACE_ID
+      : tab.workspaceId;
+    const workspace = getWorkspaceById(requestedWorkspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
+    tab.workspaceId = workspace ? workspace.id : DEFAULT_WORKSPACE_ID;
+    const folder = getFolderById(tab.folderId);
+    tab.folderId = folder && folder.workspaceId === tab.workspaceId ? folder.id : null;
+    return tab;
+  }
+
+  function migrateDocumentsToOrganization() {
+    tabs.forEach(function(tab) {
+      normalizeTabDocumentMetadata(tab);
+    });
+    saveDocumentOrganization();
+    // Always write once after normalization so legacy tabs receive location,
+    // favorite, and recent-activity metadata on their first migrated load.
+    _flushTabsToStorage(tabs);
+  }
+
+  function setDocumentLocation(tab, workspaceId, folderId) {
+    if (!tab || isTemporaryDocument(tab)) return false;
+    const workspace = getWorkspaceById(workspaceId) || getWorkspaceById(DEFAULT_WORKSPACE_ID);
+    if (!workspace) return false;
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) return false;
+    const folder = getFolderById(folderId);
+    tab.workspaceId = workspace.id;
+    tab.folderId = folder && folder.workspaceId === workspace.id ? folder.id : null;
+    documentOrganization.ui.lastWorkspaceId = tab.workspaceId;
+    documentOrganization.ui.lastFolderId = tab.folderId;
+    workspace.expanded = true;
+    if (folder) folder.expanded = true;
+    saveDocumentOrganization();
+    return true;
+  }
+
+  function getPreferredDocumentLocation() {
+    const requestedWorkspaceId = documentOrganization.ui.lastWorkspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()
+      ? DEFAULT_WORKSPACE_ID
+      : documentOrganization.ui.lastWorkspaceId;
+    const workspaceId = getWorkspaceById(requestedWorkspaceId)
+      ? requestedWorkspaceId
+      : DEFAULT_WORKSPACE_ID;
+    const folder = getFolderById(documentOrganization.ui.lastFolderId);
+    return {
+      workspaceId: workspaceId,
+      folderId: folder && folder.workspaceId === workspaceId ? folder.id : null
+    };
+  }
+
+  function getDocumentActivityTime(tab) {
+    return Math.max(Number(tab.lastOpenedAt) || 0, Number(tab.lastEditedAt) || 0, Number(tab.createdAt) || 0);
+  }
+
+  function openDocumentNameDialog(options) {
+    const modal = document.getElementById('document-name-modal');
+    const title = document.getElementById('document-name-modal-title');
+    const description = document.getElementById('document-name-modal-description');
+    const label = document.getElementById('document-name-modal-label');
+    const input = document.getElementById('document-name-modal-input');
+    const error = document.getElementById('document-name-modal-error');
+    const confirmButton = document.getElementById('document-name-modal-confirm');
+    const cancelButton = document.getElementById('document-name-modal-cancel');
+    const closeButton = document.getElementById('document-name-modal-close');
+    if (!modal || !input || !confirmButton || !cancelButton) return;
+
+    title.textContent = options.title || 'Name item';
+    description.textContent = options.description || '';
+    description.hidden = !options.description;
+    label.textContent = options.label || 'Name';
+    input.value = options.value || '';
+    input.placeholder = options.placeholder || '';
+    confirmButton.textContent = options.confirmText || 'Save';
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', submit);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+      input.removeEventListener('keydown', onKeydown);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function submit() {
+      const value = input.value.trim();
+      const validationMessage = options.validate ? options.validate(value) : (!value ? 'Enter a name.' : '');
+      if (validationMessage) {
+        error.textContent = validationMessage;
+        error.hidden = false;
+        input.focus();
+        return;
+      }
+      cleanup();
+      closeAppModal(modal);
+      options.onConfirm(value);
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    }
+
+    confirmButton.addEventListener('click', submit);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    input.addEventListener('keydown', onKeydown);
+    openAppModal(modal, { focusTarget: input, onClose: cancel });
+    requestAnimationFrame(function() { input.select(); });
+  }
+
+  function openDocumentConfirmation(options) {
+    const modal = document.getElementById('document-confirm-modal');
+    const title = document.getElementById('document-confirm-modal-title');
+    const description = document.getElementById('document-confirm-modal-description');
+    const confirmButton = document.getElementById('document-confirm-modal-confirm');
+    const cancelButton = document.getElementById('document-confirm-modal-cancel');
+    const closeButton = document.getElementById('document-confirm-modal-close');
+    if (!modal || !confirmButton || !cancelButton) return;
+    title.textContent = options.title || 'Confirm action';
+    description.textContent = options.description || '';
+    confirmButton.textContent = options.confirmText || 'Confirm';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', confirmAction);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function confirmAction() {
+      cleanup();
+      closeAppModal(modal);
+      options.onConfirm();
+    }
+
+    confirmButton.addEventListener('click', confirmAction);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: cancelButton, onClose: cancel });
+  }
+
+  function createFolder(workspaceId) {
+    const workspace = getWorkspaceById(workspaceId);
+    if (!workspace) return;
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() { createFolder(workspaceId); });
+      return;
+    }
+    openDocumentNameDialog({
+      title: 'Create folder',
+      description: 'Folders stay one level deep inside a workspace.',
+      label: 'Folder name',
+      placeholder: 'Research',
+      confirmText: 'Create folder',
+      validate: function(value) {
+        if (!value) return 'Enter a folder name.';
+        if (documentOrganization.folders.some(function(folder) {
+          return folder.workspaceId === workspaceId && folder.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in the workspace.';
+        return '';
+      },
+      onConfirm: function(value) {
+        const folder = {
+          id: createDocumentEntityId('folder'),
+          workspaceId: workspaceId,
+          name: value,
+          expanded: true,
+          createdAt: Date.now()
+        };
+        documentOrganization.folders.push(folder);
+        workspace.expanded = true;
+        documentOrganization.ui.lastWorkspaceId = workspaceId;
+        documentOrganization.ui.lastFolderId = folder.id;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Folder created: ' + value);
+      }
+    });
+  }
+
+  function renameFolder(folderId) {
+    const folder = getFolderById(folderId);
+    if (!folder) return;
+    openDocumentNameDialog({
+      title: 'Rename folder',
+      label: 'Folder name',
+      value: folder.name,
+      confirmText: 'Rename',
+      validate: function(value) {
+        if (!value) return 'Enter a folder name.';
+        if (documentOrganization.folders.some(function(item) {
+          return item.id !== folderId && item.workspaceId === folder.workspaceId && item.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in the workspace.';
+        return '';
+      },
+      onConfirm: function(value) {
+        folder.name = value;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+        announceToScreenReader('Folder renamed to ' + value);
+      }
+    });
+  }
+
+  function deleteFolder(folderId) {
+    const folder = getFolderById(folderId);
+    if (!folder) return;
+    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.folderId === folderId; });
+    openDocumentConfirmation({
+      title: 'Delete folder?',
+      description: documents.length
+        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' will move to the workspace root so no content is lost.'
+        : 'This empty folder will be removed.',
+      confirmText: 'Delete folder',
+      onConfirm: function() {
+        documents.forEach(function(tab) { tab.folderId = null; });
+        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return item.id !== folderId; });
+        if (documentOrganization.ui.lastFolderId === folderId) documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader('Folder deleted. Documents moved to the workspace root.');
+      }
+    });
+  }
+
+  function openMoveDocumentDialog(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return;
+    const modal = document.getElementById('document-move-modal');
+    const title = document.getElementById('document-move-modal-title');
+    const select = document.getElementById('document-move-destination');
+    const confirmButton = document.getElementById('document-move-modal-confirm');
+    const cancelButton = document.getElementById('document-move-modal-cancel');
+    const closeButton = document.getElementById('document-move-modal-close');
+    if (!modal || !select || !confirmButton || !cancelButton) return;
+
+    title.textContent = 'Move “' + (tab.title || 'Untitled') + '”';
+    select.textContent = '';
+    documentOrganization.workspaces.forEach(function(workspace) {
+      const rootOption = document.createElement('option');
+      rootOption.value = workspace.id + '|';
+      const locked = workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked();
+      rootOption.textContent = workspace.name + (locked ? ' (password required)' : '');
+      select.appendChild(rootOption);
+      if (locked) return;
+      documentOrganization.folders.filter(function(folder) {
+        return folder.workspaceId === workspace.id;
+      }).forEach(function(folder) {
+        const option = document.createElement('option');
+        option.value = workspace.id + '|' + folder.id;
+        option.textContent = workspace.name + ' / ' + folder.name;
+        select.appendChild(option);
+      });
+    });
+    select.value = (tab.workspaceId || DEFAULT_WORKSPACE_ID) + '|' + (tab.folderId || '');
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', move);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    async function move() {
+      const parts = String(select.value || '').split('|');
+      cleanup();
+      closeAppModal(modal);
+      await moveDocumentToLocation(tab.id, parts[0], parts[1] || null);
+    }
+
+    confirmButton.addEventListener('click', move);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: select, onClose: cancel });
+  }
+
+  function toggleDocumentFavorite(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return;
+    tab.favorite = !tab.favorite;
+    saveTabsToStorage(tabs);
+    renderTabBar(tabs, activeTabId);
+    announceToScreenReader(tab.favorite ? 'Document added to favorites.' : 'Document removed from favorites.');
+  }
+
+  function getDocumentTreeSelectionKey(type, id) {
+    return (type === 'folder' ? 'folder:' : 'document:') + id;
+  }
+
+  function getDocumentTreeRowSelectionKey(row) {
+    if (!row || !isDocumentTreeRowSelectable(row)) return null;
+    return getDocumentTreeSelectionKey(row.getAttribute('data-tree-type'), row.getAttribute('data-tree-id'));
+  }
+
+  function isDocumentTreeRowSelectable(row) {
+    if (!row || row.classList.contains('document-tree-temporary')) return false;
+    const type = row.getAttribute('data-tree-type');
+    return type === 'document' || type === 'folder';
+  }
+
+  function getVisibleDocumentTreeRows() {
+    const tree = document.getElementById('document-tree');
+    if (!tree) return [];
+    return Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(row) {
+      return isDocumentTreeRowSelectable(row) && row.offsetParent !== null;
+    });
+  }
+
+  function updateDocumentTreeSelectionDom() {
+    document.querySelectorAll('#document-tree .document-tree-row').forEach(function(row) {
+      const key = getDocumentTreeRowSelectionKey(row);
+      const selected = Boolean(key && selectedDocumentTreeIds.has(key));
+      row.classList.toggle('is-selected', selected);
+      if (isDocumentTreeRowSelectable(row)) row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+  }
+
+  function clearDocumentTreeSelection(options) {
+    selectedDocumentTreeIds.clear();
+    documentTreeSelectionAnchor = null;
+    updateDocumentTreeSelectionDom();
+    if (!options || options.announce !== false) announceToScreenReader('Explorer selection cleared.');
+  }
+
+  function setSingleDocumentTreeSelection(type, id) {
+    const key = getDocumentTreeSelectionKey(type, id);
+    selectedDocumentTreeIds = new Set([key]);
+    documentTreeSelectionAnchor = key;
+    updateDocumentTreeSelectionDom();
+  }
+
+  function selectDocumentTreeRow(row, event, options) {
+    const key = getDocumentTreeRowSelectionKey(row);
+    if (!key) {
+      if (!event || (!event.ctrlKey && !event.metaKey && !event.shiftKey)) clearDocumentTreeSelection({ announce: false });
+      return { modified: false, selected: false };
+    }
+
+    const contextMenuSelection = Boolean(options && options.contextMenu);
+    const additive = Boolean(!contextMenuSelection && event && (event.ctrlKey || event.metaKey));
+    const ranged = Boolean(!contextMenuSelection && event && event.shiftKey);
+    if (ranged && documentTreeSelectionAnchor) {
+      const rows = getVisibleDocumentTreeRows();
+      const anchorIndex = rows.findIndex(function(item) {
+        return getDocumentTreeRowSelectionKey(item) === documentTreeSelectionAnchor;
+      });
+      const targetIndex = rows.indexOf(row);
+      if (anchorIndex !== -1 && targetIndex !== -1) {
+        if (!additive) selectedDocumentTreeIds.clear();
+        const start = Math.min(anchorIndex, targetIndex);
+        const end = Math.max(anchorIndex, targetIndex);
+        rows.slice(start, end + 1).forEach(function(item) {
+          selectedDocumentTreeIds.add(getDocumentTreeRowSelectionKey(item));
+        });
+      } else {
+        selectedDocumentTreeIds = new Set([key]);
+      }
+    } else if (additive) {
+      if (selectedDocumentTreeIds.has(key)) selectedDocumentTreeIds.delete(key);
+      else selectedDocumentTreeIds.add(key);
+      documentTreeSelectionAnchor = key;
+    } else if (!options || options.preserveExisting !== true || !selectedDocumentTreeIds.has(key)) {
+      selectedDocumentTreeIds = new Set([key]);
+      documentTreeSelectionAnchor = key;
+    }
+
+    if (!documentTreeSelectionAnchor || !selectedDocumentTreeIds.has(documentTreeSelectionAnchor)) {
+      documentTreeSelectionAnchor = selectedDocumentTreeIds.has(key) ? key : (selectedDocumentTreeIds.values().next().value || null);
+    }
+    updateDocumentTreeSelectionDom();
+    if (row && typeof row.focus === 'function' && (!event || event.type !== 'contextmenu')) {
+      row.focus({ preventScroll: true });
+    }
+    const selectedCount = selectedDocumentTreeIds.size;
+    announceToScreenReader(selectedCount + ' Explorer item' + (selectedCount === 1 ? '' : 's') + ' selected.');
+    return { modified: additive || ranged, selected: selectedDocumentTreeIds.has(key) };
+  }
+
+  function openSidebarDocument(tabId, options) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab) return;
+    tab.isOpen = true;
+    selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
+    tab.lastOpenedAt = Date.now();
+    if (!isTemporaryDocument(tab)) {
+      documentOrganization.ui.lastWorkspaceId = tab.workspaceId || DEFAULT_WORKSPACE_ID;
+      documentOrganization.ui.lastFolderId = tab.folderId || null;
+      saveDocumentOrganization();
+      saveTabsToStorage(tabs);
+    }
+    if (tabId !== activeTabId) {
+      switchTab(tabId);
+    } else {
+      updateNoOpenDocumentState();
+      renderTabBar(tabs, activeTabId);
+      renderDocumentSidebar();
+    }
+    if (!options || options.closeMobile !== false) closeDocumentSidebarOnMobile();
+    announceToScreenReader('Opened document ' + (tab.title || 'Untitled') + '.');
+  }
+
+  function selectSidebarDocument(tabId) {
+    selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
+    const selectedTab = tabs.find(function(tab) { return tab.id === tabId && !isTemporaryDocument(tab); });
+    if (selectedTab) {
+      documentOrganization.ui.lastWorkspaceId = selectedTab.workspaceId || DEFAULT_WORKSPACE_ID;
+      documentOrganization.ui.lastFolderId = selectedTab.folderId || null;
+      saveDocumentOrganization();
+    }
+  }
+
+  function removeDocumentSidebarMenus() {
+    document.querySelectorAll('.document-menu-dropdown').forEach(function(menu) { menu.remove(); });
+  }
+
+  function closeDocumentSidebarMenus() {
+    document.querySelectorAll('.document-menu-btn.open').forEach(function(button) {
+      button.classList.remove('open');
+      button.setAttribute('aria-expanded', 'false');
+    });
+    document.querySelectorAll('.document-menu-dropdown.open').forEach(function(menu) { menu.classList.remove('open'); });
+    document.querySelectorAll('.document-menu-context').forEach(function(menu) { menu.remove(); });
+  }
+
+  function openDocumentMenu(button, menu, position, returnFocus) {
+    closeTabMenus();
+    closeDocumentSidebarMenus();
+    if (!menu) return;
+    if (button && button.isConnected) {
+      button.classList.add('open');
+      button.setAttribute('aria-expanded', 'true');
+    }
+    menu._returnFocus = returnFocus || button || null;
+    menu.classList.add('open');
+    if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+      menu.classList.add('document-menu-context');
+      menu.style.left = '0px';
+      menu.style.top = '0px';
+      const rect = menu.getBoundingClientRect();
+      const gutter = 8;
+      menu.style.left = Math.max(gutter, Math.min(position.x, window.innerWidth - rect.width - gutter)) + 'px';
+      menu.style.top = Math.max(gutter, Math.min(position.y, window.innerHeight - rect.height - gutter)) + 'px';
+    } else if (button) {
+      positionTabMenu(button, menu);
+    }
+    const firstAction = menu.querySelector('[role="menuitem"]');
+    if (firstAction) firstAction.focus();
+  }
+
+  function createDocumentMenuButton(label, actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'document-tree-action document-menu-btn';
+    button.setAttribute('aria-label', label + ' options');
+    button.setAttribute('aria-haspopup', 'menu');
+    button.setAttribute('aria-expanded', 'false');
+    button.title = label + ' options';
+    const icon = document.createElement('i');
+    icon.className = 'lucide lucide-ellipsis-vertical';
+    icon.setAttribute('aria-hidden', 'true');
+    button.appendChild(icon);
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-menu-dropdown document-menu-dropdown';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', label + ' options');
+    actions.forEach(function(action) {
+      const actionButton = document.createElement('button');
+      actionButton.type = 'button';
+      actionButton.className = 'tab-menu-item' + (action.danger ? ' tab-menu-item-danger' : '');
+      actionButton.setAttribute('role', 'menuitem');
+      actionButton.setAttribute('data-action', action.id);
+      const actionIcon = document.createElement('i');
+      actionIcon.className = 'lucide ' + action.icon;
+      actionIcon.setAttribute('aria-hidden', 'true');
+      actionButton.appendChild(actionIcon);
+      actionButton.appendChild(document.createTextNode(' ' + action.label));
+      actionButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeDocumentSidebarMenus();
+        action.run();
+      });
+      menu.appendChild(actionButton);
+    });
+    menu.addEventListener('keydown', function(event) {
+      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+      const currentIndex = items.indexOf(document.activeElement);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        const returnFocus = menu._returnFocus || button;
+        closeDocumentSidebarMenus();
+        if (returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
+        return;
+      }
+      if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1 + items.length) % items.length;
+      if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = items.length - 1;
+      items[nextIndex].focus();
+    });
+    document.body.appendChild(menu);
+    button._documentMenu = menu;
+    button._documentMenuActions = actions;
+
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const row = button._documentTreeRow;
+      const rowKey = getDocumentTreeRowSelectionKey(row);
+      if (rowKey && !selectedDocumentTreeIds.has(rowKey)) {
+        selectDocumentTreeRow(row, event, { contextMenu: true });
+      }
+      if (rowKey && selectedDocumentTreeIds.size > 1 && selectedDocumentTreeIds.has(rowKey)) {
+        const bulkActions = getBulkDocumentTreeMenuActions();
+        if (bulkActions.length) {
+          const virtualButton = createDocumentMenuButton('Selected Explorer items', bulkActions);
+          const rect = button.getBoundingClientRect();
+          openDocumentMenu(virtualButton, virtualButton._documentMenu, { x: rect.left, y: rect.bottom + 4 }, button);
+        }
+        return;
+      }
+      const shouldOpen = !button.classList.contains('open');
+      if (shouldOpen) {
+        openDocumentMenu(button, menu, null, button);
+      } else closeDocumentSidebarMenus();
+    });
+    button.addEventListener('keydown', function(event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        button.click();
+      }
+    });
+    return button;
+  }
+
+  function getDocumentMenuActions(tab) {
+    const actions = [
+      { id: 'open', icon: 'lucide-file-text', label: 'Open', run: function() { openSidebarDocument(tab.id); } }, {
+      id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameTab(tab.id); }
+    }];
+    if (!isTemporaryDocument(tab)) {
+      actions.push({ id: 'duplicate', icon: 'lucide-files', label: 'Duplicate', run: function() { duplicateTab(tab.id); } });
+      actions.push({
+        id: 'favorite',
+        icon: tab.favorite ? 'lucide-star-filled' : 'lucide-star',
+        label: tab.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+        run: function() { toggleDocumentFavorite(tab.id); }
+      });
+      if (tab.id === activeTabId && secondarySplitTabId) {
+        actions.push({ id: 'split-close', icon: 'lucide-panel-right-close', label: 'Exit split view', run: function() { closeDocumentSplitView(); } });
+      } else {
+        actions.push({ id: 'split', icon: 'lucide-columns-2', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
+      }
+      actions.push({ id: 'move', icon: 'lucide-arrow-right-to-line', label: 'Move', run: function() { openMoveDocumentDialog(tab.id); } });
+      actions.push({ id: 'download', icon: 'lucide-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
+    }
+    actions.push({
+      id: 'delete',
+      icon: isTemporaryDocument(tab) ? 'lucide-x' : 'lucide-trash-2',
+      label: isTemporaryDocument(tab) ? 'Close' : 'Delete',
+      danger: true,
+      run: function() { deleteTab(tab.id); }
+    });
+    return actions;
+  }
+
+  function getWorkspaceMenuActions(workspace) {
+    if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      return [{
+        id: 'unlock',
+        icon: isSecretWorkspaceConfigured() ? 'lucide-lock-open' : 'lucide-shield',
+        label: isSecretWorkspaceConfigured() ? 'Unlock workspace' : 'Set password',
+        run: function() { openSecretWorkspaceDialog(); }
+      }];
+    }
+    const actions = [
+      { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
+      { id: 'new-folder', icon: 'lucide-folder-plus', label: 'New folder', run: function() { createFolder(workspace.id); } }
+    ];
+    if (workspace.id === SECRET_WORKSPACE_ID) {
+      actions.push({ id: 'lock', icon: 'lucide-lock-keyhole', label: 'Lock workspace', run: function() { lockSecretWorkspace(); } });
+    }
+    return actions;
+  }
+
+  function getFolderMenuActions(folder) {
+    return [
+      { id: 'open', icon: folder.expanded === false ? 'lucide-folder-open' : 'lucide-folder', label: folder.expanded === false ? 'Open' : 'Collapse', run: function() {
+        folder.expanded = folder.expanded === false;
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+      } },
+      { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
+      { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
+      { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
+    ];
+  }
+
+  function getDocumentTreeMenuActionsForRow(row) {
+    if (!row) return [];
+    const type = row.getAttribute('data-tree-type');
+    const id = row.getAttribute('data-tree-id');
+    if (type === 'document') {
+      const tab = tabs.find(function(item) { return item.id === id; });
+      return tab ? getDocumentMenuActions(tab) : [];
+    }
+    if (type === 'folder') {
+      const folder = getFolderById(id);
+      return folder ? getFolderMenuActions(folder) : [];
+    }
+    if (type === 'workspace') {
+      const workspace = getWorkspaceById(id);
+      return workspace ? getWorkspaceMenuActions(workspace) : [];
+    }
+    return [];
+  }
+
+  function getSelectedDocumentTreeEntities() {
+    const entities = [];
+    selectedDocumentTreeIds.forEach(function(key) {
+      const separator = key.indexOf(':');
+      if (separator === -1) return;
+      const type = key.slice(0, separator);
+      const id = key.slice(separator + 1);
+      if (type === 'document') {
+        const tab = tabs.find(function(item) { return item.id === id && !isTemporaryDocument(item); });
+        if (tab) entities.push({ type: type, id: id, item: tab });
+      } else if (type === 'folder') {
+        const folder = getFolderById(id);
+        if (folder) entities.push({ type: type, id: id, item: folder });
+      }
+    });
+    return entities;
+  }
+
+  function deleteSelectedDocumentTreeItems() {
+    const entities = getSelectedDocumentTreeEntities();
+    if (entities.length < 2) return;
+    const documentIds = entities.filter(function(entity) { return entity.type === 'document'; }).map(function(entity) { return entity.id; });
+    const folderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const movedDocumentCount = tabs.filter(function(tab) {
+      return !isTemporaryDocument(tab) && folderIds.has(tab.folderId) && !documentIds.includes(tab.id);
+    }).length;
+    const consequences = [];
+    if (documentIds.length) consequences.push('permanently deletes ' + documentIds.length + ' file' + (documentIds.length === 1 ? '' : 's'));
+    if (folderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
+    let description = 'This ' + consequences.join(' and ') + '.';
+    if (movedDocumentCount) {
+      description += ' ' + movedDocumentCount + ' file' + (movedDocumentCount === 1 ? '' : 's') + ' inside selected folders will move to the workspace root.';
+    }
+    openDocumentConfirmation({
+      title: 'Delete ' + entities.length + ' selected items?',
+      description: description,
+      confirmText: 'Delete selected items',
+      onConfirm: function() {
+        tabs.forEach(function(tab) {
+          if (folderIds.has(tab.folderId) && !documentIds.includes(tab.id)) tab.folderId = null;
+        });
+        documentOrganization.folders = documentOrganization.folders.filter(function(folder) { return !folderIds.has(folder.id); });
+        if (folderIds.has(documentOrganization.ui.lastFolderId)) documentOrganization.ui.lastFolderId = null;
+        saveDocumentOrganization();
+        documentIds.slice().forEach(function(tabId) { deleteTab(tabId); });
+        selectedDocumentTreeIds.clear();
+        documentTreeSelectionAnchor = null;
+        saveTabsToStorage(tabs);
+        renderTabBar(tabs, activeTabId);
+        announceToScreenReader(entities.length + ' Explorer items deleted.');
+      }
+    });
+  }
+
+  function getBulkDocumentTreeMenuActions() {
+    const entities = getSelectedDocumentTreeEntities();
+    if (entities.length < 2) return [];
+    return [{
+      id: 'delete-selected',
+      icon: 'lucide-trash-2',
+      label: 'Delete ' + entities.length + ' selected items',
+      danger: true,
+      run: deleteSelectedDocumentTreeItems
+    }];
+  }
+
+  function openDocumentTreeContextMenu(row, event) {
+    if (!row) return;
+    if (event) event.preventDefault();
+    if (isDocumentTreeRowSelectable(row)) {
+      selectDocumentTreeRow(row, event, { preserveExisting: true, contextMenu: true });
+    } else {
+      clearDocumentTreeSelection({ announce: false });
+    }
+    const actions = selectedDocumentTreeIds.size > 1
+      ? getBulkDocumentTreeMenuActions()
+      : getDocumentTreeMenuActionsForRow(row);
+    if (!actions.length) return;
+    const virtualButton = createDocumentMenuButton('Explorer item', actions);
+    const menu = virtualButton._documentMenu;
+    const rect = row.getBoundingClientRect();
+    const position = event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)
+      ? { x: event.clientX, y: event.clientY }
+      : { x: Math.min(rect.right, window.innerWidth - 8), y: Math.min(rect.bottom, window.innerHeight - 8) };
+    openDocumentMenu(virtualButton, menu, position, row);
+  }
+
+  async function moveDocumentToLocation(tabId, workspaceId, folderId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab)) return false;
+    if (workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() {
+        moveDocumentToLocation(tabId, workspaceId, folderId);
+      });
+      return false;
+    }
+
+    const previousWorkspaceId = tab.workspaceId || DEFAULT_WORKSPACE_ID;
+    const previousFolderId = tab.folderId || null;
+    if (previousWorkspaceId === workspaceId && previousFolderId === (folderId || null)) {
+      announceToScreenReader('File is already in that location.');
+      return true;
+    }
+    if (!setDocumentLocation(tab, workspaceId, folderId)) return false;
+
+    try {
+      if (workspaceId === SECRET_WORKSPACE_ID) {
+        await flushSecretWorkspaceToStorage();
+        if (!_flushTabsToStorage(tabs)) throw new Error('Normal workspace storage failed.');
+      } else {
+        if (!_flushTabsToStorage(tabs)) throw new Error('Normal workspace storage failed.');
+        if (previousWorkspaceId === SECRET_WORKSPACE_ID) await flushSecretWorkspaceToStorage();
+      }
+    } catch (error) {
+      tab.workspaceId = previousWorkspaceId;
+      tab.folderId = previousFolderId;
+      saveDocumentOrganization();
+      if (isSecretWorkspaceUnlocked()) {
+        await flushSecretWorkspaceToStorage().catch(function() {});
+      }
+      _flushTabsToStorage(tabs);
+      renderDocumentSidebar();
+      alert('The file could not be moved because the destination could not be saved.');
+      return false;
+    }
+    renderTabBar(tabs, activeTabId);
+    announceToScreenReader('File moved to ' + getDocumentLocationLabel(tab) + '.');
+    return true;
+  }
+
+  function clearDocumentDropTargets() {
+    document.querySelectorAll('#document-tree .document-tree-row.is-drop-target').forEach(function(row) {
+      row.classList.remove('is-drop-target');
+    });
+  }
+
+  function attachDocumentDropTarget(row, location) {
+    if (!row || !location) return;
+    row.setAttribute('data-drop-workspace-id', location.workspaceId);
+    if (location.folderId) row.setAttribute('data-drop-folder-id', location.folderId);
+
+    row.addEventListener('dragover', function(event) {
+      const transferTypes = event.dataTransfer && event.dataTransfer.types
+        ? Array.from(event.dataTransfer.types)
+        : [];
+      const hasFiles = transferTypes.includes('Files') || Boolean(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length);
+      if (!draggedSidebarDocumentId && !hasFiles) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = draggedSidebarDocumentId ? 'move' : 'copy';
+      clearDocumentDropTargets();
+      row.classList.add('is-drop-target');
+    });
+
+    row.addEventListener('dragleave', function(event) {
+      if (!event.relatedTarget || !row.contains(event.relatedTarget)) row.classList.remove('is-drop-target');
+    });
+
+    row.addEventListener('drop', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      row.classList.remove('is-drop-target');
+      const files = event.dataTransfer && event.dataTransfer.files;
+      if (files && files.length) {
+        dragDepth = 0;
+        if (dragOverlay) {
+          dragOverlay.classList.remove('active');
+          dragOverlay.setAttribute('aria-hidden', 'true');
+        }
+        const importFiles = function() {
+          importMarkdownFiles(files, { location: location });
+        };
+        if (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+          withUnlockedSecretWorkspace(importFiles);
+        } else {
+          importFiles();
+        }
+        return;
+      }
+      const tabId = draggedSidebarDocumentId || (event.dataTransfer && event.dataTransfer.getData('application/x-markdown-viewer-document'));
+      if (tabId) moveDocumentToLocation(tabId, location.workspaceId, location.folderId || null);
+    });
+  }
+
+  function createDocumentTreeRow(options) {
+    const row = document.createElement('div');
+    row.className = 'document-tree-row';
+    row.setAttribute('role', 'treeitem');
+    row.setAttribute('tabindex', options.tabindex === 0 ? '0' : '-1');
+    row.setAttribute('data-tree-type', options.type);
+    row.setAttribute('data-tree-id', options.id);
+    const treeDepth = Number(options.depth) || 0;
+    row.style.setProperty('--tree-depth', String(treeDepth));
+    row.setAttribute('data-tree-depth', String(treeDepth));
+    if (options.documentId) {
+      row.setAttribute('data-document-id', options.documentId);
+      row.classList.toggle('is-active', options.documentId === activeTabId);
+      if (options.documentId === activeTabId) row.setAttribute('aria-current', 'page');
+    }
+    if (options.favorite) row.classList.add('is-favorite');
+    if (options.temporary) row.classList.add('document-tree-temporary');
+    if (options.locked) row.classList.add('is-secret-locked');
+    if (typeof options.expanded === 'boolean') row.setAttribute('aria-expanded', options.expanded ? 'true' : 'false');
+    row.setAttribute('aria-label', options.ariaLabel || options.label);
+
+    if (typeof options.expanded === 'boolean') {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'document-tree-toggle';
+      toggle.setAttribute('aria-label', (options.expanded ? 'Collapse ' : 'Expand ') + options.label);
+      toggle.setAttribute('tabindex', '-1');
+      const toggleIcon = document.createElement('i');
+      toggleIcon.className = 'lucide ' + (options.expanded ? 'lucide-chevron-down' : 'lucide-chevron-right');
+      toggleIcon.setAttribute('aria-hidden', 'true');
+      toggle.appendChild(toggleIcon);
+      toggle.addEventListener('click', function(event) {
+        if (isDocumentTreeRowSelectable(row)) selectDocumentTreeRow(row, event);
+        event.stopPropagation();
+        options.onToggle();
+      });
+      row.appendChild(toggle);
+    } else {
+      const spacer = document.createElement('span');
+      spacer.className = 'document-tree-toggle';
+      spacer.setAttribute('aria-hidden', 'true');
+      row.appendChild(spacer);
+    }
+
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'document-tree-main';
+    main.setAttribute('tabindex', '-1');
+    main.title = options.label;
+    const icon = document.createElement('i');
+    icon.className = 'lucide ' + options.icon;
+    icon.setAttribute('aria-hidden', 'true');
+    main.appendChild(icon);
+    const label = document.createElement('span');
+    label.className = 'document-tree-label';
+    label.textContent = options.label;
+    main.appendChild(label);
+    if (options.favorite) {
+      const favorite = document.createElement('i');
+      favorite.className = 'lucide lucide-star-filled document-favorite-indicator';
+      favorite.setAttribute('aria-label', 'Favorite');
+      main.appendChild(favorite);
+    }
+    if (options.meta) {
+      const meta = document.createElement('span');
+      meta.className = 'document-tree-meta';
+      meta.textContent = options.meta;
+      main.appendChild(meta);
+    }
+    if (options.onDoubleClick) main.addEventListener('dblclick', options.onDoubleClick);
+    row.appendChild(main);
+
+    if (options.menuActions && options.menuActions.length) {
+      const menuButton = createDocumentMenuButton(options.label, options.menuActions);
+      menuButton._documentTreeRow = row;
+      row.appendChild(menuButton);
+    }
+    const selectionKey = getDocumentTreeRowSelectionKey(row);
+    const selected = Boolean(selectionKey && selectedDocumentTreeIds.has(selectionKey));
+    row.classList.toggle('is-selected', selected);
+    if (selectionKey) row.setAttribute('aria-selected', selected ? 'true' : 'false');
+
+    row.addEventListener('click', function(event) {
+      if (event.defaultPrevented || event.target.closest('.document-tree-toggle, .document-menu-btn, input, select, textarea, a')) return;
+      const selection = selectDocumentTreeRow(row, event);
+      if (selection.modified) return;
+      if (options.type === 'folder' && typeof options.onToggle === 'function') options.onToggle();
+      else if (typeof options.onActivate === 'function') options.onActivate();
+    });
+    row.addEventListener('contextmenu', function(event) {
+      if (event.target.closest('input, select, textarea, a')) return;
+      openDocumentTreeContextMenu(row, event);
+    });
+    if (options.documentId && !options.temporary) {
+      row.draggable = true;
+      row.addEventListener('dragstart', function(event) {
+        draggedSidebarDocumentId = options.documentId;
+        row.classList.add('is-dragging');
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('application/x-markdown-viewer-document', options.documentId);
+          event.dataTransfer.setData('text/plain', options.documentId);
+        }
+      });
+      row.addEventListener('dragend', function() {
+        draggedSidebarDocumentId = null;
+        row.classList.remove('is-dragging');
+        clearDocumentDropTargets();
+      });
+    }
+    if (options.dropLocation) attachDocumentDropTarget(row, options.dropLocation);
+    return row;
+  }
+
+  function appendDocumentTreeItem(container, tab, depth, meta) {
+    const row = createDocumentTreeRow({
+      type: 'document',
+      id: tab.id,
+      documentId: tab.id,
+      label: tab.title || 'Untitled',
+      ariaLabel: (tab.id === activeTabId ? 'Active document, ' : 'Document, ') + (tab.title || 'Untitled') + (tab.favorite ? ', favorite' : ''),
+      icon: 'lucide-file-text',
+      depth: depth,
+      favorite: tab.favorite === true,
+      temporary: isTemporaryDocument(tab),
+      meta: meta || '',
+      menuActions: getDocumentMenuActions(tab),
+      onActivate: function() {
+        openSidebarDocument(tab.id);
+      }
+    });
+    container.appendChild(row);
+  }
+
+  function getDocumentLocationLabel(tab) {
+    const workspace = getWorkspaceById(tab.workspaceId);
+    const folder = getFolderById(tab.folderId);
+    if (folder && workspace) return workspace.name + ' / ' + folder.name;
+    return workspace ? workspace.name : 'Workspace';
+  }
+
+  function documentMatchesSidebarSearch(tab) {
+    if (!documentSidebarSearch) return true;
+    const haystack = ((tab.title || '') + ' ' + getDocumentLocationLabel(tab)).toLocaleLowerCase();
+    return haystack.includes(documentSidebarSearch.toLocaleLowerCase());
+  }
+
+  function renderFlatDocumentView(tree, filter) {
+    let documents = tabs.filter(function(tab) {
+      if (isTemporaryDocument(tab)) return false;
+      if (filter === 'favorites' && !tab.favorite) return false;
+      return documentMatchesSidebarSearch(tab);
+    });
+    if (filter === 'recent') {
+      documents = documents.sort(function(left, right) { return getDocumentActivityTime(right) - getDocumentActivityTime(left); }).slice(0, 30);
+    } else {
+      documents = documents.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); });
+    }
+    documents.forEach(function(tab) { appendDocumentTreeItem(tree, tab, 0, getDocumentLocationLabel(tab)); });
+    return documents.length;
+  }
+
+  function renderWorkspaceTree(tree) {
+    let renderedDocuments = 0;
+    const temporaryTabs = tabs.filter(isTemporaryDocument).filter(documentMatchesSidebarSearch);
+    if (temporaryTabs.length) {
+      const temporaryLabel = document.createElement('p');
+      temporaryLabel.className = 'document-tree-section-label';
+      temporaryLabel.textContent = 'Temporary';
+      tree.appendChild(temporaryLabel);
+      temporaryTabs.forEach(function(tab) {
+        appendDocumentTreeItem(tree, tab, 0, tab.kind === SHARE_SNAPSHOT_TAB_KIND ? 'Snapshot' : 'Live Share');
+      });
+      renderedDocuments += temporaryTabs.length;
+    }
+
+    documentOrganization.workspaces.forEach(function(workspace) {
+      const isSecretWorkspace = workspace.id === SECRET_WORKSPACE_ID;
+      const secretLocked = isSecretWorkspace && !isSecretWorkspaceUnlocked();
+      const workspaceDocuments = tabs.filter(function(tab) {
+        return !isTemporaryDocument(tab) && tab.workspaceId === workspace.id;
+      });
+      const folders = documentOrganization.folders.filter(function(folder) { return folder.workspaceId === workspace.id; });
+      const matchingDocuments = workspaceDocuments.filter(documentMatchesSidebarSearch);
+      const workspaceMatchesSearch = !documentSidebarSearch || workspace.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+      if (documentSidebarSearch && !workspaceMatchesSearch && !matchingDocuments.length && !folders.some(function(folder) {
+        return folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+      })) return;
+
+      const expanded = secretLocked ? false : (documentSidebarSearch ? true : workspace.expanded !== false);
+      const workspaceRow = createDocumentTreeRow({
+        type: 'workspace',
+        id: workspace.id,
+        label: workspace.name,
+        ariaLabel: workspace.name + (secretLocked ? ', locked' : ', file location'),
+        icon: isSecretWorkspace
+          ? (secretLocked ? 'lucide-shield' : 'lucide-shield-check')
+          : (expanded ? 'lucide-folder-open' : 'lucide-folder'),
+        depth: 0,
+        expanded: expanded,
+        meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
+        locked: secretLocked,
+        dropLocation: { workspaceId: workspace.id, folderId: null },
+        menuActions: getWorkspaceMenuActions(workspace),
+        onToggle: function() {
+          if (secretLocked) {
+            openSecretWorkspaceDialog();
+            return;
+          }
+          workspace.expanded = !workspace.expanded;
+          saveDocumentOrganization();
+          renderDocumentSidebar();
+        },
+        onActivate: function() {
+          const selectWorkspace = function() {
+            documentOrganization.ui.lastWorkspaceId = workspace.id;
+            documentOrganization.ui.lastFolderId = null;
+            workspace.expanded = true;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          };
+          if (secretLocked) withUnlockedSecretWorkspace(selectWorkspace);
+          else selectWorkspace();
+        }
+      });
+      tree.appendChild(workspaceRow);
+
+      const workspaceGroup = document.createElement('div');
+      workspaceGroup.className = 'document-tree-group document-tree-group--workspace';
+      workspaceGroup.setAttribute('role', 'group');
+      workspaceGroup.hidden = !expanded;
+
+      folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); }).forEach(function(folder) {
+        const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
+        const folderMatchesSearch = !documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
+        if (documentSidebarSearch && !folderMatchesSearch && !folderDocuments.length) return;
+        const folderExpanded = documentSidebarSearch ? true : folder.expanded !== false;
+        const folderRow = createDocumentTreeRow({
+          type: 'folder',
+          id: folder.id,
+          label: folder.name,
+          icon: folderExpanded ? 'lucide-folder-open' : 'lucide-folder',
+          depth: 1,
+          expanded: folderExpanded,
+          meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
+          dropLocation: { workspaceId: workspace.id, folderId: folder.id },
+          menuActions: getFolderMenuActions(folder),
+          onToggle: function() {
+            folder.expanded = !folder.expanded;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          },
+          onActivate: function() {
+            documentOrganization.ui.lastWorkspaceId = workspace.id;
+            documentOrganization.ui.lastFolderId = folder.id;
+            folder.expanded = true;
+            saveDocumentOrganization();
+            renderDocumentSidebar();
+          }
+        });
+        workspaceGroup.appendChild(folderRow);
+        const folderGroup = document.createElement('div');
+        folderGroup.className = 'document-tree-group document-tree-group--folder';
+        folderGroup.setAttribute('role', 'group');
+        folderGroup.hidden = !folderExpanded;
+        folderDocuments.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); }).forEach(function(tab) {
+          appendDocumentTreeItem(folderGroup, tab, 2);
+          renderedDocuments++;
+        });
+        workspaceGroup.appendChild(folderGroup);
+      });
+
+      matchingDocuments.filter(function(tab) { return !tab.folderId; }).sort(function(left, right) {
+        return (left.title || '').localeCompare(right.title || '');
+      }).forEach(function(tab) {
+        appendDocumentTreeItem(workspaceGroup, tab, 1);
+        renderedDocuments++;
+      });
+      tree.appendChild(workspaceGroup);
+    });
+    return renderedDocuments;
+  }
+
+  function renderDocumentSidebar() {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !documentOrganization) return;
+    removeDocumentSidebarMenus();
+    tree.textContent = '';
+    const filter = documentOrganization.ui.filter || 'all';
+    let renderedCount = filter === 'all' ? renderWorkspaceTree(tree) : renderFlatDocumentView(tree, filter);
+
+    const treeHeading = document.getElementById('document-tree-heading-label');
+    const treeHint = document.getElementById('document-tree-heading-hint');
+    const headingByFilter = { all: 'Workspaces', recent: 'Recent files', favorites: 'Favorites' };
+    if (treeHeading) treeHeading.textContent = headingByFilter[filter] || 'Files';
+    if (treeHint) treeHint.hidden = filter !== 'all';
+    tree.setAttribute('aria-label', filter === 'all'
+      ? 'Workspaces, folders, and Markdown files'
+      : (headingByFilter[filter] || 'Files'));
+
+    if (!renderedCount && !tree.querySelector('.document-tree-row')) {
+      const empty = document.createElement('div');
+      empty.className = 'document-tree-empty';
+      empty.textContent = documentSidebarSearch
+        ? 'No documents match your search.'
+        : (filter === 'favorites' ? 'No favorite documents yet.' : 'No documents to show.');
+      tree.appendChild(empty);
+    }
+
+    const count = document.getElementById('document-sidebar-count');
+    if (count) count.textContent = getDocumentCountForLimit() + ' of ' + MAX_DOCUMENTS + ' files';
+    const status = document.getElementById('document-sidebar-status');
+    if (status) {
+      status.textContent = documentSidebarSearch ? renderedCount + ' result' + (renderedCount === 1 ? '' : 's') : '';
+    }
+    document.querySelectorAll('.document-filter-btn').forEach(function(button) {
+      const active = button.getAttribute('data-document-filter') === filter;
+      button.classList.toggle('is-active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+
+    const preferredLocation = getPreferredDocumentLocation();
+    const preferredWorkspace = getWorkspaceById(preferredLocation.workspaceId);
+    const preferredFolder = getFolderById(preferredLocation.folderId);
+    const preferredLocationLabel = preferredFolder
+      ? (preferredWorkspace.name + ' / ' + preferredFolder.name)
+      : (preferredWorkspace ? preferredWorkspace.name : 'Workspace');
+    const newDocumentButton = document.getElementById('sidebar-new-document');
+    const newFolderButton = document.getElementById('sidebar-new-folder');
+    const collapseAllButton = document.getElementById('document-sidebar-collapse-all');
+    if (newDocumentButton) {
+      newDocumentButton.title = 'New Markdown file in ' + preferredLocationLabel;
+      newDocumentButton.setAttribute('aria-label', newDocumentButton.title);
+    }
+    if (newFolderButton) {
+      newFolderButton.title = 'New folder in ' + (preferredWorkspace ? preferredWorkspace.name : 'Workspace');
+      newFolderButton.setAttribute('aria-label', newFolderButton.title);
+    }
+    if (collapseAllButton) {
+      const canCollapse = filter === 'all' && !documentSidebarSearch;
+      collapseAllButton.disabled = !canCollapse;
+      collapseAllButton.title = canCollapse ? 'Collapse all' : 'Collapse all is available in All files';
+    }
+    const firstRow = tree.querySelector('.document-tree-row');
+    if (firstRow && !tree.querySelector('.document-tree-row[tabindex="0"]')) firstRow.setAttribute('tabindex', '0');
+  }
+
+  function isDocumentSidebarMobile() {
+    return window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+  }
+
+  function updateDocumentSidebarVisibility() {
+    const sidebar = document.getElementById('document-sidebar');
+    const openButton = document.getElementById('document-sidebar-open');
+    const backdrop = document.getElementById('document-sidebar-backdrop');
+    if (!sidebar || !documentOrganization) return;
+    if (isDocumentSidebarMobile()) {
+      sidebar.style.removeProperty('--document-sidebar-width');
+    } else {
+      const responsiveWidth = window.innerWidth < 1080
+        ? Math.min(documentOrganization.ui.width, 260)
+        : documentOrganization.ui.width;
+      sidebar.style.setProperty('--document-sidebar-width', responsiveWidth + 'px');
+    }
+    document.body.classList.toggle('document-sidebar-collapsed', documentOrganization.ui.collapsed === true);
+    const mobileOpen = document.body.classList.contains('document-sidebar-mobile-open');
+    const sidebarOpen = isDocumentSidebarMobile() ? mobileOpen : !documentOrganization.ui.collapsed;
+    if (openButton) {
+      openButton.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
+      const icon = openButton.querySelector('i');
+      if (icon) icon.className = sidebarOpen ? 'lucide lucide-panel-left-close' : 'lucide lucide-panel-left-open';
+      openButton.title = sidebarOpen ? 'Close Explorer' : 'Open Explorer';
+      openButton.setAttribute('aria-label', sidebarOpen ? 'Close Explorer' : 'Open Explorer');
+    }
+    if (backdrop) backdrop.hidden = !mobileOpen;
+  }
+
+  function openDocumentSidebar() {
+    if (!documentOrganization) return;
+    if (isDocumentSidebarMobile()) {
+      document.body.classList.add('document-sidebar-mobile-open');
+      updateDocumentSidebarVisibility();
+      requestAnimationFrame(function() {
+        const search = document.getElementById('document-sidebar-search');
+        if (search) search.focus();
+      });
+      return;
+    }
+    documentOrganization.ui.collapsed = false;
+    saveDocumentOrganization();
+    updateDocumentSidebarVisibility();
+  }
+
+  function closeDocumentSidebarOnMobile() {
+    if (!document.body.classList.contains('document-sidebar-mobile-open')) return;
+    document.body.classList.remove('document-sidebar-mobile-open');
+    updateDocumentSidebarVisibility();
+    const openButton = document.getElementById('document-sidebar-open');
+    if (openButton) openButton.focus();
+  }
+
+  function toggleDocumentSidebarCollapsed() {
+    if (isDocumentSidebarMobile()) {
+      closeDocumentSidebarOnMobile();
+      return;
+    }
+    documentOrganization.ui.collapsed = !documentOrganization.ui.collapsed;
+    saveDocumentOrganization();
+    updateDocumentSidebarVisibility();
+    if (documentOrganization.ui.collapsed) {
+      const openButton = document.getElementById('document-sidebar-open');
+      if (openButton) openButton.focus();
+    }
+  }
+
+  function toggleDocumentSidebarFromTabBar() {
+    if (isDocumentSidebarMobile()) {
+      if (document.body.classList.contains('document-sidebar-mobile-open')) closeDocumentSidebarOnMobile();
+      else openDocumentSidebar();
+      return;
+    }
+    toggleDocumentSidebarCollapsed();
+  }
+
+  function collapseDocumentTree() {
+    if (!documentOrganization) return;
+    documentOrganization.workspaces.forEach(function(workspace) { workspace.expanded = false; });
+    documentOrganization.folders.forEach(function(folder) { folder.expanded = false; });
+    saveDocumentOrganization();
+    renderDocumentSidebar();
+    announceToScreenReader('All workspace folders collapsed.');
+  }
+
+  function handleDocumentTreeKeydown(event) {
+    const tree = document.getElementById('document-tree');
+    const row = event.target.closest('.document-tree-row');
+    if (!tree || !row || event.target.closest('.document-menu-btn')) return;
+    const rows = Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(item) {
+      return item.offsetParent !== null;
+    });
+    const index = rows.indexOf(row);
+    if (index === -1) return;
+
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      openDocumentTreeContextMenu(row, event);
+      return;
+    }
+    if (event.key === 'Delete' && selectedDocumentTreeIds.size > 1) {
+      event.preventDefault();
+      deleteSelectedDocumentTreeItems();
+      return;
+    }
+
+    function focusRow(target) {
+      rows.forEach(function(item) { item.setAttribute('tabindex', item === target ? '0' : '-1'); });
+      target.focus();
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      let targetIndex = index;
+      if (event.key === 'ArrowDown') targetIndex = Math.min(rows.length - 1, index + 1);
+      if (event.key === 'ArrowUp') targetIndex = Math.max(0, index - 1);
+      if (event.key === 'Home') targetIndex = 0;
+      if (event.key === 'End') targetIndex = rows.length - 1;
+      focusRow(rows[targetIndex]);
+      return;
+    }
+
+    if (event.key === 'ArrowRight' && row.hasAttribute('aria-expanded')) {
+      event.preventDefault();
+      if (row.getAttribute('aria-expanded') === 'false') row.querySelector('.document-tree-toggle').click();
+      else if (rows[index + 1]) focusRow(rows[index + 1]);
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if (row.getAttribute('aria-expanded') === 'true') {
+        row.querySelector('.document-tree-toggle').click();
+      } else {
+        const depth = Number(row.style.getPropertyValue('--tree-depth')) || 0;
+        for (let previous = index - 1; previous >= 0; previous--) {
+          const previousDepth = Number(rows[previous].style.getPropertyValue('--tree-depth')) || 0;
+          if (previousDepth < depth) {
+            focusRow(rows[previous]);
+            break;
+          }
+        }
+      }
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (row.getAttribute('data-tree-type') === 'document') {
+        openSidebarDocument(row.getAttribute('data-document-id'));
+      } else {
+        row.querySelector('.document-tree-main').click();
+      }
+    }
+  }
+
+  function initDocumentSidebar() {
+    if (documentSidebarInitialized) return;
+    documentSidebarInitialized = true;
+    const openButton = document.getElementById('document-sidebar-open');
+    const closeButton = document.getElementById('document-sidebar-close');
+    const backdrop = document.getElementById('document-sidebar-backdrop');
+    const collapseAllButton = document.getElementById('document-sidebar-collapse-all');
+    const newDocumentButton = document.getElementById('sidebar-new-document');
+    const newFolderButton = document.getElementById('sidebar-new-folder');
+    const search = document.getElementById('document-sidebar-search');
+    const clearSearch = document.getElementById('document-sidebar-search-clear');
+    const tree = document.getElementById('document-tree');
+    const resizer = document.getElementById('document-sidebar-resizer');
+    const sidebar = document.getElementById('document-sidebar');
+
+    if (openButton) openButton.addEventListener('click', toggleDocumentSidebarFromTabBar);
+    if (closeButton) closeButton.addEventListener('click', toggleDocumentSidebarCollapsed);
+    if (backdrop) backdrop.addEventListener('click', closeDocumentSidebarOnMobile);
+    if (collapseAllButton) collapseAllButton.addEventListener('click', collapseDocumentTree);
+    if (newDocumentButton) newDocumentButton.addEventListener('click', function() {
+      const location = getPreferredDocumentLocation();
+      newTab('', null, location);
+    });
+    if (newFolderButton) newFolderButton.addEventListener('click', function() {
+      const location = getPreferredDocumentLocation();
+      createFolder(location.workspaceId);
+    });
+
+    document.querySelectorAll('.document-filter-btn').forEach(function(button) {
+      button.addEventListener('click', function() {
+        documentOrganization.ui.filter = button.getAttribute('data-document-filter') || 'all';
+        saveDocumentOrganization();
+        renderDocumentSidebar();
+      });
+    });
+
+    if (search) {
+      search.addEventListener('input', function() {
+        documentSidebarSearch = search.value.trim();
+        if (clearSearch) clearSearch.hidden = !documentSidebarSearch;
+        renderDocumentSidebar();
+      });
+      search.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && search.value) {
+          event.preventDefault();
+          search.value = '';
+          search.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    }
+    if (clearSearch) clearSearch.addEventListener('click', function() {
+      search.value = '';
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+      search.focus();
+    });
+    if (tree) {
+      tree.addEventListener('keydown', handleDocumentTreeKeydown);
+      tree.addEventListener('click', function(event) {
+        if (!event.target.closest('.document-tree-row')) clearDocumentTreeSelection({ announce: false });
+      });
+    }
+
+    if (resizer && sidebar) {
+      function applyResize(clientX) {
+        const rect = sidebar.getBoundingClientRect();
+        const isRtl = getComputedStyle(sidebar).direction === 'rtl';
+        const nextWidth = isRtl ? rect.right - clientX : clientX - rect.left;
+        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, Math.round(nextWidth)));
+        sidebar.style.setProperty('--document-sidebar-width', documentOrganization.ui.width + 'px');
+        resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+      }
+      resizer.addEventListener('pointerdown', function(event) {
+        if (isDocumentSidebarMobile()) return;
+        isDocumentSidebarResizing = true;
+        sidebar.classList.add('is-resizing');
+        resizer.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      resizer.addEventListener('pointermove', function(event) {
+        if (!isDocumentSidebarResizing) return;
+        applyResize(event.clientX);
+      });
+      resizer.addEventListener('pointerup', function(event) {
+        if (!isDocumentSidebarResizing) return;
+        isDocumentSidebarResizing = false;
+        sidebar.classList.remove('is-resizing');
+        if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+        saveDocumentOrganization();
+      });
+      resizer.addEventListener('keydown', function(event) {
+        if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Home') {
+          documentOrganization.ui.width = 288;
+          sidebar.style.setProperty('--document-sidebar-width', '288px');
+          resizer.setAttribute('aria-valuenow', '288');
+          saveDocumentOrganization();
+          return;
+        }
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const step = event.shiftKey ? 25 : 10;
+        documentOrganization.ui.width = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, documentOrganization.ui.width + direction * step));
+        sidebar.style.setProperty('--document-sidebar-width', documentOrganization.ui.width + 'px');
+        resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+        saveDocumentOrganization();
+      });
+      resizer.addEventListener('dblclick', function() {
+        documentOrganization.ui.width = 288;
+        sidebar.style.setProperty('--document-sidebar-width', '288px');
+        resizer.setAttribute('aria-valuenow', '288');
+        saveDocumentOrganization();
+      });
+      resizer.setAttribute('aria-valuenow', String(documentOrganization.ui.width));
+    }
+
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('.document-menu-btn, .document-menu-dropdown')) closeDocumentSidebarMenus();
+    });
+    document.addEventListener('keydown', function(event) {
+      if (event.key !== 'Escape') return;
+      closeDocumentSidebarMenus();
+      closeDocumentSidebarOnMobile();
+    });
+    window.addEventListener('resize', function() {
+      if (!isDocumentSidebarMobile()) {
+        document.body.classList.remove('document-sidebar-mobile-open');
+        updateDocumentSidebarVisibility();
+      }
+    });
+    updateDocumentSidebarVisibility();
+    renderDocumentSidebar();
+  }
 
   // ========================================
   // COMMENTS & SUGGESTIONS
@@ -2897,7 +5038,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const reviewLabel = targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's');
         const readButton = createTargetButton(
           'read',
-          'bi bi-chat-square-text',
+          'lucide lucide-message-square-text',
           'Read ' + reviewLabel,
           'Read ' + reviewLabel + ' for ' + label
         );
@@ -2908,7 +5049,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       actions.appendChild(createTargetButton(
         'add',
-        'bi bi-plus-lg',
+        'lucide lucide-plus',
         targetThreads.length > 0 ? 'Add another review item' : 'Add feedback',
         'Add feedback to ' + label
       ));
@@ -2993,7 +5134,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const kind = document.createElement('span');
     kind.className = 'review-kind-label';
     const kindIcon = document.createElement('i');
-    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-pencil-square' : 'bi bi-chat-left-text';
+    kindIcon.className = thread.kind === 'suggestion' ? 'lucide lucide-square-pen' : 'lucide lucide-message-square-text';
     kindIcon.setAttribute('aria-hidden', 'true');
     kind.appendChild(kindIcon);
     kind.appendChild(document.createTextNode(thread.kind === 'suggestion' ? 'Suggestion' : 'Comment'));
@@ -3404,10 +5545,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       announceToScreenReader('Review summary copied.');
       if (reviewCopySummary) {
         const icon = reviewCopySummary.querySelector('i');
-        if (icon) icon.className = 'bi bi-check-lg';
+        if (icon) icon.className = 'lucide lucide-check';
         clearTimeout(copyReviewSummary._timeoutId);
         copyReviewSummary._timeoutId = setTimeout(function() {
-          if (icon) icon.className = 'bi bi-clipboard';
+          if (icon) icon.className = 'lucide lucide-copy';
         }, 1400);
       }
     } catch (error) {
@@ -3733,11 +5874,30 @@ document.addEventListener("DOMContentLoaded", async function () {
     return getSafeDocumentBasename(activeTab ? activeTab.title : "", "document");
   }
 
+  function updateSaveStatus(state) {
+    if (!saveStatus || !saveStatusIcon || !saveStatusText) return;
+    const nextState = state === 'saving' || state === 'error' ? state : 'saved';
+    const presentation = {
+      saving: { icon: 'lucide lucide-refresh-cw', text: 'Saving...' },
+      saved: { icon: 'lucide lucide-check', text: 'All changes saved' },
+      error: { icon: 'lucide lucide-circle-alert', text: 'Changes not saved' }
+    }[nextState];
+    saveStatus.classList.remove('is-saving', 'is-saved', 'is-error');
+    saveStatus.classList.add('is-' + nextState);
+    saveStatus.dataset.state = nextState;
+    saveStatusIcon.className = presentation.icon;
+    saveStatusText.textContent = presentation.text;
+  }
+
   function loadTabsFromStorage() {
     try {
       return stripTemporaryTabs(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(function(tab) {
+        if (tab.workspaceId === SECRET_WORKSPACE_ID) {
+          tab.workspaceId = DEFAULT_WORKSPACE_ID;
+          tab.folderId = null;
+        }
         tab.reviewThreads = normalizeReviewThreads(tab.reviewThreads);
-        return tab;
+        return normalizeTabDocumentMetadata(tab);
       });
     } catch (e) {
       return [];
@@ -3747,14 +5907,18 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveTabsToStorage(tabsArr) {
     // PERF-008: Debounce tab saves to reduce main thread blocking from JSON.stringify
     // on large document arrays. Immediate flush happens on visibilitychange/beforeunload.
+    updateSaveStatus('saving');
     clearTimeout(saveTabStateTimeout);
+    scheduleSecretWorkspaceSave();
     saveTabStateTimeout = setTimeout(function() {
       _flushTabsToStorage(tabsArr);
     }, 500);
   }
 
   function getTabsForStorage(tabsArr) {
-    const sourceTabs = stripTemporaryTabs(tabsArr || tabs);
+    const sourceTabs = stripTemporaryTabs(tabsArr || tabs).filter(function(tab) {
+      return tab.workspaceId !== SECRET_WORKSPACE_ID;
+    });
     if (!liveCollaboration) {
       return sourceTabs;
     }
@@ -3780,15 +5944,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     clearTimeout(saveTabStateTimeout);
     try {
       saveStorageItem(STORAGE_KEY, JSON.stringify(getTabsForStorage(tabsArr)));
+      updateSaveStatus('saved');
+      return true;
     } catch (e) {
       console.warn('Failed to save tabs to localStorage:', e);
+      updateSaveStatus('error');
+      return false;
     }
   }
 
   // Ensure tabs are persisted before page close (PERF-008)
-  window.addEventListener('beforeunload', function() { _flushTabsToStorage(tabs); });
+  window.addEventListener('beforeunload', function() {
+    saveCurrentTabState();
+    _flushTabsToStorage(tabs);
+    if (isSecretWorkspaceUnlocked()) flushSecretWorkspaceToStorage().catch(function() {});
+  });
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden') _flushTabsToStorage(tabs);
+    if (document.visibilityState === 'hidden') {
+      saveCurrentTabState();
+      _flushTabsToStorage(tabs);
+      if (isSecretWorkspaceUnlocked()) flushSecretWorkspaceToStorage().catch(function() {});
+    }
   });
 
   function loadActiveTabId() {
@@ -3797,6 +5973,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function saveActiveTabId(id) {
     if (isShareSnapshotTabId(id)) return;
+    const tab = tabs.find(function(item) { return item.id === id; });
+    if (tab && tab.workspaceId === SECRET_WORKSPACE_ID) return;
     saveStorageItem(ACTIVE_TAB_KEY, id);
   }
 
@@ -3814,19 +5992,65 @@ document.addEventListener("DOMContentLoaded", async function () {
     return 'Untitled ' + untitledCounter;
   }
 
-  function createTab(content, title, viewMode) {
+  function createTab(content, title, viewMode, location) {
     if (content === undefined) content = '';
     if (title === undefined) title = null;
     if (viewMode === undefined) viewMode = 'split';
-    return {
+    const createdAt = Date.now();
+    const tab = {
       id: 'tab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
       title: title || 'Untitled',
       content: content,
       scrollPos: 0,
       viewMode: viewMode,
       reviewThreads: [],
-      createdAt: Date.now()
+      favorite: false,
+      isOpen: true,
+      lastOpenedAt: createdAt,
+      lastEditedAt: createdAt,
+      createdAt: createdAt
     };
+    const target = location || (documentOrganization ? getPreferredDocumentLocation() : { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+    tab.workspaceId = target.workspaceId || DEFAULT_WORKSPACE_ID;
+    tab.folderId = target.folderId || null;
+    return tab;
+  }
+
+  function isTabOpen(tab) {
+    return Boolean(tab && tab.isOpen !== false);
+  }
+
+  function getOpenTabs() {
+    return tabs.filter(isTabOpen);
+  }
+
+  function getTabBarTabs() {
+    return getOpenTabs().filter(function(tab) {
+      return !secondarySplitTabId || tab.id !== secondarySplitTabId;
+    });
+  }
+
+  function updateNoOpenDocumentState() {
+    const activeTab = tabs.find(function(tab) { return tab.id === activeTabId && isTabOpen(tab); });
+    const hasActiveTab = Boolean(activeTab);
+    if (contentContainer) contentContainer.classList.toggle('no-active-document', !hasActiveTab);
+    if (noOpenDocument) noOpenDocument.hidden = hasActiveTab;
+    if (!hasActiveTab) {
+      markdownEditor.value = '';
+      if (secondarySplitTabId) closeDocumentSplitView({ silent: true, renderTabs: false });
+    }
+  }
+
+  function clearActiveDocument() {
+    activeTabId = null;
+    selectedDocumentId = null;
+    removeStorageItem(ACTIVE_TAB_KEY);
+    closeReviewComposer();
+    clearReviewDecorations();
+    updateNoOpenDocumentState();
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    renderReviewPanel();
   }
 
   function closeTabMenus() {
@@ -3837,6 +6061,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.querySelectorAll('.tab-menu-dropdown.open').forEach(function(dropdown) {
       dropdown.classList.remove('open');
     });
+    document.querySelectorAll('[data-tab-context-menu="true"]').forEach(function(menu) {
+      menu.remove();
+    });
+    closeDocumentSidebarMenus();
   }
 
   function removeTabMenuDropdowns() {
@@ -3873,8 +6101,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (action === 'download') {
       downloadTabMarkdown(tabId);
       if (isMobileMenu) closeMobileMenu();
-    } else if (action === 'delete') {
-      deleteTab(tabId);
+    } else if (action === 'favorite') {
+      toggleDocumentFavorite(tabId);
+      if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'split') {
+      openDocumentSplitPicker(tabId);
+      if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'split-close') {
+      closeDocumentSplitView();
+      if (isMobileMenu) closeMobileMenu();
+    } else if (action === 'close') {
+      closeTab(tabId);
     }
   }
 
@@ -3892,8 +6129,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     menuBtn.setAttribute('aria-controls', menuId);
     menuBtn.setAttribute('draggable', 'false');
     menuBtn.title = 'File options';
-    // PERF-007: Replace HTML entity with plain unicode character set via textContent
-    menuBtn.textContent = '⋯';
+    menuBtn.innerHTML = '<i class="lucide lucide-ellipsis" aria-hidden="true"></i>';
 
     const dropdown = document.createElement('div');
     dropdown.id = menuId;
@@ -3902,16 +6138,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     dropdown.setAttribute('role', 'menu');
     const duplicateAction = isShareSnapshotTab(tab)
       ? ''
-      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>';
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="lucide lucide-files"></i> Duplicate</button>';
     const downloadAction = isShareSnapshotTab(tab)
       ? ''
-      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="bi bi-download"></i> Download Markdown</button>';
-    const closeLabel = isShareSnapshotTab(tab) ? 'Close' : 'Delete';
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="lucide lucide-download"></i> Download Markdown</button>';
+    const favoriteAction = isShareSnapshotTab(tab)
+      ? ''
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="favorite"><i class="lucide ' + (tab.favorite ? 'lucide-star-filled' : 'lucide-star') + '"></i> ' + (tab.favorite ? 'Remove from Favorites' : 'Add to Favorites') + '</button>';
+    const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
+    const splitAction = isCombinedSplitTab
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split-close"><i class="lucide lucide-panel-right-close"></i> Exit split view</button>'
+      : tabs.length > 1
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split"><i class="lucide lucide-columns-2"></i> Open in split view</button>'
+      : '';
     dropdown.innerHTML =
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil"></i> Rename</button>' +
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="lucide lucide-square-pen"></i> Rename</button>' +
       duplicateAction +
+      favoriteAction +
+      splitAction +
       downloadAction +
-      '<button type="button" class="tab-menu-item tab-menu-item-danger" role="menuitem" data-action="delete"><i class="bi bi-trash"></i> ' + closeLabel + '</button>';
+      '<div class="tab-menu-separator" role="separator"></div>' +
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="close"><i class="lucide lucide-x"></i> Close</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -3954,6 +6201,124 @@ document.addEventListener("DOMContentLoaded", async function () {
     return { button: menuBtn, dropdown: dropdown };
   }
 
+  function closeTabsByScope(tabId, scope) {
+    const openTabs = getOpenTabs();
+    const visibleTabs = getTabBarTabs();
+    const tabIndex = visibleTabs.findIndex(function(tab) { return tab.id === tabId; });
+    if (tabIndex === -1) return;
+    let idsToClose = [];
+    if (scope === 'close') {
+      idsToClose = [tabId];
+    } else if (scope === 'others') {
+      idsToClose = openTabs.filter(function(tab) { return tab.id !== tabId; }).map(function(tab) { return tab.id; });
+    } else if (scope === 'right') {
+      idsToClose = visibleTabs.slice(tabIndex + 1).map(function(tab) { return tab.id; });
+    } else if (scope === 'left') {
+      idsToClose = visibleTabs.slice(0, tabIndex).map(function(tab) { return tab.id; });
+    } else if (scope === 'all') {
+      idsToClose = openTabs.map(function(tab) { return tab.id; });
+    }
+    closeTabMenus();
+    idsToClose.forEach(function(id) {
+      if (tabs.some(function(tab) { return tab.id === id && isTabOpen(tab); })) closeTab(id);
+    });
+  }
+
+  function openTabContextMenu(tab, point, focusTab) {
+    if (!tab) return;
+    closeTabMenus();
+    const visibleTabs = getTabBarTabs();
+    const openTabs = getOpenTabs();
+    const tabIndex = visibleTabs.findIndex(function(item) { return item.id === tab.id; });
+    const menu = document.createElement('div');
+    menu.className = 'tab-menu-dropdown tab-context-menu open';
+    menu.setAttribute('data-tab-context-menu', 'true');
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Tab actions for ' + (tab.title || 'Untitled'));
+
+    const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
+    const actions = [{
+      id: isCombinedSplitTab ? 'split-close' : 'split',
+      icon: isCombinedSplitTab ? 'lucide-panel-right-close' : 'lucide-columns-2',
+      label: isCombinedSplitTab ? 'Exit split view' : 'Open in split view',
+      disabled: !isCombinedSplitTab && tabs.length < 2
+    }, {
+      separator: true
+    }, {
+      id: 'close', icon: 'lucide-x', label: 'Close'
+    }, {
+      id: 'others', icon: 'lucide-circle-x', label: 'Close others', disabled: openTabs.length < 2
+    }, {
+      id: 'right', icon: 'lucide-arrow-right-to-line', label: 'Close to the right', disabled: tabIndex >= visibleTabs.length - 1
+    }, {
+      id: 'left', icon: 'lucide-arrow-left-to-line', label: 'Close to the left', disabled: tabIndex <= 0
+    }, {
+      id: 'all', icon: 'lucide-square-x', label: 'Close all'
+    }];
+
+    actions.forEach(function(action) {
+      if (action.separator) {
+        const separator = document.createElement('div');
+        separator.className = 'tab-menu-separator';
+        separator.setAttribute('role', 'separator');
+        menu.appendChild(separator);
+        return;
+      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tab-menu-item';
+      button.setAttribute('role', 'menuitem');
+      button.disabled = action.disabled === true;
+      button.innerHTML = '<i class="lucide ' + action.icon + '" aria-hidden="true"></i> ' + action.label;
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (action.id === 'split') {
+          closeTabMenus();
+          openDocumentSplitPicker(tab.id);
+        } else if (action.id === 'split-close') {
+          closeTabMenus();
+          closeDocumentSplitView();
+        } else {
+          closeTabsByScope(tab.id, action.id);
+        }
+      });
+      menu.appendChild(button);
+    });
+
+    menu.addEventListener('click', function(event) { event.stopPropagation(); });
+    menu.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTabMenus();
+        if (focusTab) focusTab.focus();
+        return;
+      }
+      const enabledItems = Array.from(menu.querySelectorAll('.tab-menu-item:not(:disabled)'));
+      const currentIndex = enabledItems.indexOf(document.activeElement);
+      let nextIndex = -1;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % enabledItems.length;
+      if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + enabledItems.length) % enabledItems.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = enabledItems.length - 1;
+      if (nextIndex !== -1) {
+        event.preventDefault();
+        enabledItems[nextIndex].focus();
+      }
+    });
+    document.body.appendChild(menu);
+
+    const margin = 8;
+    const width = menu.offsetWidth || 188;
+    const height = menu.offsetHeight || 230;
+    const left = Math.max(margin, Math.min(point.x, window.innerWidth - width - margin));
+    const top = Math.max(margin, Math.min(point.y, window.innerHeight - height - margin));
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    const firstEnabled = menu.querySelector('.tab-menu-item:not(:disabled)');
+    if (firstEnabled) firstEnabled.focus();
+  }
+
   function renderTabBar(tabsArr, currentActiveTabId) {
     const tabList = document.getElementById('tab-list');
     if (!tabList) return;
@@ -3961,24 +6326,81 @@ document.addEventListener("DOMContentLoaded", async function () {
     removeTabMenuDropdowns();
     // PERF-007: Use textContent instead of innerHTML to clear elements faster
     tabList.textContent = '';
-    tabsArr.forEach(function(tab) {
+    const tabBarTabs = tabsArr.filter(function(tab) {
+      return isTabOpen(tab) && (!secondarySplitTabId || tab.id !== secondarySplitTabId);
+    });
+    tabBarTabs.forEach(function(tab) {
+      const splitPartner = tab.id === currentActiveTabId
+        ? tabs.find(function(item) { return item.id === secondarySplitTabId && isTabOpen(item); })
+        : null;
       const item = document.createElement('div');
-      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '');
+      item.className = 'tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (splitPartner ? ' is-document-split' : '');
       item.setAttribute('data-tab-id', tab.id);
+      if (splitPartner) item.setAttribute('data-split-tab-id', splitPartner.id);
       item.setAttribute('role', 'tab');
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('draggable', 'true');
       item.setAttribute('tabindex', tab.id === currentActiveTabId ? '0' : '-1');
+      if (splitPartner) {
+        const primaryTitleLength = (tab.title || 'Untitled').length;
+        const secondaryTitleLength = (splitPartner.title || 'Untitled').length;
+        const preferredWidth = Math.min(360, Math.max(210, 118 + ((primaryTitleLength + secondaryTitleLength) * 5.8)));
+        item.style.setProperty('--split-tab-preferred-width', Math.round(preferredWidth) + 'px');
+      }
+
+      const fileIcon = document.createElement('i');
+      fileIcon.className = 'lucide ' + (splitPartner ? 'lucide-columns-2' : 'lucide-file-text') + ' tab-file-icon';
+      fileIcon.setAttribute('aria-hidden', 'true');
 
       const titleSpan = document.createElement('span');
-      titleSpan.className = 'tab-title';
-      titleSpan.textContent = tab.title || 'Untitled';
-      titleSpan.title = tab.title || 'Untitled';
+      titleSpan.className = 'tab-title' + (splitPartner ? ' tab-split-titles' : '');
+      if (splitPartner) {
+        const primaryTitle = document.createElement('span');
+        primaryTitle.className = 'tab-split-title';
+        primaryTitle.textContent = tab.title || 'Untitled';
+        const separator = document.createElement('span');
+        separator.className = 'tab-split-title-separator';
+        separator.textContent = '/';
+        separator.setAttribute('aria-hidden', 'true');
+        const secondaryTitle = document.createElement('span');
+        secondaryTitle.className = 'tab-split-title';
+        secondaryTitle.textContent = splitPartner.title || 'Untitled';
+        titleSpan.appendChild(primaryTitle);
+        titleSpan.appendChild(separator);
+        titleSpan.appendChild(secondaryTitle);
+        titleSpan.title = (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled');
+        item.setAttribute('aria-label', 'Split view: ' + titleSpan.title);
+      } else {
+        titleSpan.textContent = tab.title || 'Untitled';
+        titleSpan.title = tab.title || 'Untitled';
+      }
 
       const tabMenu = createTabActionMenu(tab, { menuIdPrefix: 'desktop-tab-menu' });
 
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'tab-close-btn';
+      closeButton.setAttribute('aria-label', 'Close ' + (tab.title || 'Untitled'));
+      closeButton.setAttribute('draggable', 'false');
+      closeButton.title = 'Close';
+      closeButton.innerHTML = '<i class="lucide lucide-x" aria-hidden="true"></i>';
+      closeButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTab(tab.id);
+      });
+      closeButton.addEventListener('mousedown', function(event) { event.stopPropagation(); });
+
+      item.appendChild(fileIcon);
       item.appendChild(titleSpan);
       item.appendChild(tabMenu.button);
+      item.appendChild(closeButton);
+
+      item.addEventListener('contextmenu', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openTabContextMenu(tab, { x: event.clientX, y: event.clientY }, item);
+      });
 
       item.addEventListener('dragstart', function() {
         draggedTabId = tab.id;
@@ -4019,10 +6441,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     tabList.onclick = function(e) {
       const tabItem = e.target.closest('.tab-item');
       if (!tabItem) return;
-      // Don't switch tab if clicking the menu button
-      if (e.target.closest('.tab-menu-btn')) return;
+      // Don't switch tab if clicking an action button.
+      if (e.target.closest('.tab-menu-btn, .tab-close-btn')) return;
       const tabId = tabItem.getAttribute('data-tab-id');
       if (tabId) switchTab(tabId);
+    };
+
+    tabList.oncontextmenu = function(event) {
+      if (event.target.closest('.tab-item')) return;
+      const activeTab = tabs.find(function(tab) { return tab.id === activeTabId && isTabOpen(tab); });
+      if (!activeTab) return;
+      event.preventDefault();
+      const activeItem = tabList.querySelector('.tab-item.active');
+      openTabContextMenu(activeTab, { x: event.clientX, y: event.clientY }, activeItem);
     };
 
 
@@ -4044,6 +6475,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       
       const activeIdx = items.indexOf(focusedItem);
       if (activeIdx === -1) return;
+
+      if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+        e.preventDefault();
+        const tabId = focusedItem.getAttribute('data-tab-id');
+        const tab = tabs.find(function(item) { return item.id === tabId; });
+        const rect = focusedItem.getBoundingClientRect();
+        openTabContextMenu(tab, { x: rect.left + 12, y: rect.bottom - 2 }, focusedItem);
+        return;
+      }
       
       let targetIdx = -1;
       if (e.key === 'ArrowRight') {
@@ -4081,6 +6521,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
 
     renderMobileTabList(tabsArr, currentActiveTabId);
+    renderDocumentSidebar();
     if (typeof tabList.dispatchEvent === 'function') {
       tabList.dispatchEvent(new Event('scroll'));
     }
@@ -4105,7 +6546,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     scrollLeftBtn.className = 'tab-scroll-btn tab-scroll-left';
     scrollLeftBtn.setAttribute('aria-label', 'Scroll tabs left');
     scrollLeftBtn.title = 'Scroll left';
-    scrollLeftBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+    scrollLeftBtn.innerHTML = '<i class="lucide lucide-chevron-left"></i>';
     scrollLeftBtn.addEventListener('click', function() {
       tabList.scrollBy({ left: -200, behavior: 'smooth' });
     });
@@ -4114,7 +6555,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     scrollRightBtn.className = 'tab-scroll-btn tab-scroll-right';
     scrollRightBtn.setAttribute('aria-label', 'Scroll tabs right');
     scrollRightBtn.title = 'Scroll right';
-    scrollRightBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+    scrollRightBtn.innerHTML = '<i class="lucide lucide-chevron-right"></i>';
     scrollRightBtn.addEventListener('click', function() {
       tabList.scrollBy({ left: 200, behavior: 'smooth' });
     });
@@ -4173,17 +6614,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!mobileTabList) return;
     // PERF-007: Clear element content using textContent instead of innerHTML
     mobileTabList.textContent = '';
-    tabsArr.forEach(function(tab) {
+    tabsArr.filter(function(tab) {
+      return isTabOpen(tab) && (!secondarySplitTabId || tab.id !== secondarySplitTabId);
+    }).forEach(function(tab) {
       const item = document.createElement('div');
-      item.className = 'mobile-tab-item' + (tab.id === currentActiveTabId ? ' active' : '');
+      const splitPartner = tab.id === currentActiveTabId
+        ? tabs.find(function(candidate) { return candidate.id === secondarySplitTabId && isTabOpen(candidate); })
+        : null;
+      item.className = 'mobile-tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (splitPartner ? ' is-document-split' : '');
       item.setAttribute('role', 'tab');
       item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
       item.setAttribute('data-tab-id', tab.id);
 
       const titleSpan = document.createElement('span');
       titleSpan.className = 'mobile-tab-title';
-      titleSpan.textContent = tab.title || 'Untitled';
-      titleSpan.title = tab.title || 'Untitled';
+      titleSpan.textContent = splitPartner
+        ? (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled')
+        : (tab.title || 'Untitled');
+      titleSpan.title = titleSpan.textContent;
 
       const tabMenu = createTabActionMenu(tab, {
         isMobileMenu: true,
@@ -4210,6 +6658,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveCurrentTabState() {
     const tab = tabs.find(function(t) { return t.id === activeTabId; });
     if (!tab) return;
+    const contentChanged = tab.content !== markdownEditor.value;
     tab.content = markdownEditor.value;
     tab.scrollPos = markdownEditor.scrollTop;
     tab.viewMode = reviewModeActive && reviewPreviousViewModes.has(activeTabId)
@@ -4218,7 +6667,251 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (liveCollaboration && liveCollaboration.tabId === activeTabId) {
       return;
     }
+    if (contentChanged && !isTemporaryDocument(tab)) {
+      tab.lastEditedAt = Date.now();
+    }
     saveTabsToStorage(tabs);
+    if (contentChanged) renderDocumentSidebar();
+  }
+
+  function saveSecondarySplitState() {
+    if (!secondarySplitTabId || !documentSplitEditor) return;
+    const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+    if (!tab) return;
+    const contentChanged = tab.content !== documentSplitEditor.value;
+    tab.content = documentSplitEditor.value;
+    tab.splitScrollPos = documentSplitEditor.scrollTop;
+    if (documentSplitPreview) tab.splitPreviewScrollPos = documentSplitPreview.scrollTop;
+    if (contentChanged && !isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
+    if (contentChanged) saveTabsToStorage(tabs);
+  }
+
+  function namespaceSplitPreviewIds(container, tabId) {
+    const prefix = 'split-' + String(tabId || 'document').replace(/[^a-z0-9_-]/gi, '-') + '-';
+    const idMap = new Map();
+    container.querySelectorAll('[id]').forEach(function(element) {
+      const originalId = element.id;
+      const nextId = prefix + originalId;
+      idMap.set(originalId, nextId);
+      element.id = nextId;
+    });
+    container.querySelectorAll('a[href^="#"]').forEach(function(link) {
+      const originalId = link.getAttribute('href').slice(1);
+      if (idMap.has(originalId)) link.setAttribute('href', '#' + idMap.get(originalId));
+    });
+  }
+
+  function renderDocumentSplitPreview(tab) {
+    if (!documentSplitPreview || !tab) return;
+    const content = tab.content || '';
+    if (documentSplitPreviewTabId === tab.id && documentSplitPreviewContent === content && documentSplitPreview.childNodes.length) return;
+    const parsed = parseFrontmatter(content);
+    const tableHtml = parsed.frontmatter ? renderFrontmatterTable(parsed.frontmatter) : '';
+    const referenceData = extractReferenceDefinitions(parsed.body);
+    const html = tableHtml + marked.parse(referenceData.cleanedMarkdown);
+    documentSplitPreview.innerHTML = sanitizePreviewHtml(html);
+    applyReferencePreviewLinks(documentSplitPreview, referenceData.definitions);
+    enhanceGitHubAlerts(documentSplitPreview);
+    enhancePreviewCodeBlocks(documentSplitPreview);
+    processEmojis(documentSplitPreview);
+    namespaceSplitPreviewIds(documentSplitPreview, tab.id);
+    documentSplitPreviewTabId = tab.id;
+    documentSplitPreviewContent = content;
+  }
+
+  function syncDocumentSplitScroll(source, target) {
+    if (!syncScrollingEnabled || !secondarySplitTabId || !source || !target) return;
+    if (documentSplitScrollSource && documentSplitScrollSource !== source) return;
+    documentSplitScrollSource = source;
+    if (documentSplitSyncFrame) cancelAnimationFrame(documentSplitSyncFrame);
+    clearTimeout(documentSplitSyncReleaseTimeout);
+    documentSplitSyncFrame = requestAnimationFrame(function() {
+      documentSplitSyncFrame = null;
+      const sourceRange = source.scrollHeight - source.clientHeight;
+      const targetRange = target.scrollHeight - target.clientHeight;
+      const ratio = sourceRange > 0 ? source.scrollTop / sourceRange : 0;
+      const targetPosition = targetRange * ratio;
+      if (Number.isFinite(targetPosition)) target.scrollTop = targetPosition;
+      documentSplitSyncReleaseTimeout = setTimeout(function() {
+        documentSplitScrollSource = null;
+      }, 48);
+    });
+  }
+
+  function renderDocumentSplitView() {
+    if (!contentContainer || !documentSplitPane || !documentSplitDivider || !documentSplitEditor || !documentSplitPreview) return;
+    const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+    const shouldShow = Boolean(tab && isTabOpen(tab) && tab.id !== activeTabId);
+    contentContainer.classList.toggle('document-split-active', shouldShow);
+    document.body.classList.toggle('document-split-active', shouldShow);
+    updateDocumentSplitModeControls(shouldShow);
+    documentSplitPane.hidden = !shouldShow;
+    documentSplitDivider.hidden = !shouldShow;
+    if (!shouldShow) {
+      documentSplitEditor.hidden = true;
+      documentSplitPreview.hidden = true;
+      updateSyncToggleVisibility(currentViewMode);
+      return;
+    }
+    const previewMode = currentViewMode === 'preview';
+    documentSplitEditor.hidden = previewMode;
+    documentSplitPreview.hidden = !previewMode;
+    if (documentSplitEditor.value !== tab.content) documentSplitEditor.value = tab.content || '';
+    documentSplitEditor.readOnly = shareSnapshotViewOnlyTabIds.has(tab.id);
+    documentSplitEditor.setAttribute('aria-label', 'Edit ' + (tab.title || 'Untitled') + ' in split view');
+    documentSplitPreview.setAttribute('aria-label', 'Preview ' + (tab.title || 'Untitled') + ' in split view');
+    if (previewMode) renderDocumentSplitPreview(tab);
+    updateSyncToggleVisibility(currentViewMode);
+    requestAnimationFrame(function() {
+      if (previewMode) documentSplitPreview.scrollTop = tab.splitPreviewScrollPos || 0;
+      else documentSplitEditor.scrollTop = tab.splitScrollPos || 0;
+    });
+  }
+
+  function updateDocumentSplitModeControls(disabled) {
+    document.querySelectorAll('[data-view-mode="split"], .mobile-view-mode-btn[data-mode="split"]').forEach(function(button) {
+      if (disabled) {
+        button.dataset.documentSplitDisabled = 'true';
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+        button.setAttribute('title', 'Two documents are already open side by side');
+      } else if (button.dataset.documentSplitDisabled === 'true') {
+        delete button.dataset.documentSplitDisabled;
+        const remainsDisabled = button.dataset.shareSnapshotDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
+        button.setAttribute('title', 'Split editor and live preview');
+      }
+    });
+  }
+  if (mobilePrivateModeToggle) {
+    mobilePrivateModeToggle.addEventListener('click', function() {
+      setPrivateStorageMode(!isPrivateStorageMode()).catch(function(error) {
+        console.warn('Failed to update private mode:', error);
+      });
+    });
+  }
+
+  function closeDocumentSplitView(options) {
+    const settings = options || {};
+    saveSecondarySplitState();
+    secondarySplitTabId = null;
+    documentSplitPreviewTabId = null;
+    documentSplitPreviewContent = null;
+    documentSplitScrollSource = null;
+    if (secondarySplitSaveTimeout) {
+      clearTimeout(secondarySplitSaveTimeout);
+      secondarySplitSaveTimeout = null;
+    }
+    renderDocumentSplitView();
+    updateSyncToggleVisibility(currentViewMode);
+    if (currentViewMode === 'split') applyPaneWidths();
+    if (settings.renderTabs !== false) renderTabBar(tabs, activeTabId);
+    if (!settings.silent) announceToScreenReader('Split view closed.');
+  }
+
+  function openDocumentSplitView(sourceTabId, secondTabId) {
+    const sourceTab = tabs.find(function(item) { return item.id === sourceTabId; });
+    const secondTab = tabs.find(function(item) { return item.id === secondTabId; });
+    if (!sourceTab || !secondTab || sourceTab.id === secondTab.id) return;
+    sourceTab.isOpen = true;
+    secondTab.isOpen = true;
+    if (reviewModeActive) setReviewMode(false);
+    if (activeTabId !== sourceTab.id) switchTab(sourceTab.id);
+    saveSecondarySplitState();
+    secondarySplitTabId = secondTab.id;
+    if (currentViewMode === 'split') setViewMode('editor');
+    resetPaneWidths();
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    requestAnimationFrame(function() { documentSplitEditor.focus(); });
+    announceToScreenReader((secondTab.title || 'Untitled') + ' opened in split view.');
+  }
+
+  function openDocumentSplitPicker(sourceTabId) {
+    const sourceTab = tabs.find(function(item) { return item.id === sourceTabId; });
+    const candidates = tabs.filter(function(item) { return item.id !== sourceTabId; });
+    if (!sourceTab || candidates.length === 0) {
+      alert('Open or create another document before starting split view.');
+      return;
+    }
+    const modal = document.getElementById('document-split-modal');
+    const description = document.getElementById('document-split-modal-description');
+    const select = document.getElementById('document-split-destination');
+    const error = document.getElementById('document-split-modal-error');
+    const confirmButton = document.getElementById('document-split-modal-confirm');
+    const cancelButton = document.getElementById('document-split-modal-cancel');
+    const closeButton = document.getElementById('document-split-modal-close');
+    if (!modal || !select || !confirmButton || !cancelButton) return;
+
+    description.textContent = 'Choose a document to edit beside “' + (sourceTab.title || 'Untitled') + '”.';
+    select.textContent = '';
+    candidates.forEach(function(candidate) {
+      const option = document.createElement('option');
+      option.value = candidate.id;
+      option.textContent = candidate.title || 'Untitled';
+      select.appendChild(option);
+    });
+    if (secondarySplitTabId && candidates.some(function(item) { return item.id === secondarySplitTabId; })) {
+      select.value = secondarySplitTabId;
+    }
+    error.hidden = true;
+    error.textContent = '';
+
+    function cleanup() {
+      confirmButton.removeEventListener('click', confirm);
+      cancelButton.removeEventListener('click', cancel);
+      if (closeButton) closeButton.removeEventListener('click', cancel);
+    }
+
+    function cancel() {
+      cleanup();
+      closeAppModal(modal);
+    }
+
+    function confirm() {
+      const secondTabId = select.value;
+      if (!secondTabId || secondTabId === sourceTabId) {
+        error.textContent = 'Choose a different document.';
+        error.hidden = false;
+        return;
+      }
+      cleanup();
+      closeAppModal(modal);
+      openDocumentSplitView(sourceTabId, secondTabId);
+    }
+
+    confirmButton.addEventListener('click', confirm);
+    cancelButton.addEventListener('click', cancel);
+    if (closeButton) closeButton.addEventListener('click', cancel);
+    openAppModal(modal, { focusTarget: select, onClose: cancel });
+  }
+
+  if (documentSplitEditor) {
+    documentSplitEditor.addEventListener('input', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (!tab || documentSplitEditor.readOnly) return;
+      updateSaveStatus('saving');
+      tab.content = documentSplitEditor.value;
+      if (!isTemporaryDocument(tab)) tab.lastEditedAt = Date.now();
+      clearTimeout(secondarySplitSaveTimeout);
+      secondarySplitSaveTimeout = setTimeout(function() {
+        saveTabsToStorage(tabs);
+        renderDocumentSidebar();
+      }, 500);
+    });
+    documentSplitEditor.addEventListener('scroll', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (tab) tab.splitScrollPos = documentSplitEditor.scrollTop;
+      if (currentViewMode === 'editor') syncDocumentSplitScroll(documentSplitEditor, markdownEditor);
+    });
+  }
+  if (documentSplitPreview) {
+    documentSplitPreview.addEventListener('scroll', function() {
+      const tab = tabs.find(function(item) { return item.id === secondarySplitTabId; });
+      if (tab) tab.splitPreviewScrollPos = documentSplitPreview.scrollTop;
+      if (currentViewMode === 'preview') syncDocumentSplitScroll(documentSplitPreview, previewPane);
+    });
   }
 
   function restoreViewMode(mode) {
@@ -4231,8 +6924,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function switchTab(tabId) {
     if (tabId === activeTabId) return;
+    const tab = tabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    tab.isOpen = true;
+    const previousActiveTabId = activeTabId;
+    const swapSplitPanes = tabId === secondarySplitTabId;
     cancelReviewDeleteConfirmation();
     saveCurrentTabState();
+    saveSecondarySplitState();
     closeReviewComposer();
     clearReviewDecorations();
     
@@ -4245,9 +6944,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     pendingState = null;
     
     activeTabId = tabId;
+    if (swapSplitPanes) secondarySplitTabId = previousActiveTabId;
     saveActiveTabId(activeTabId);
-    const tab = tabs.find(function(t) { return t.id === tabId; });
-    if (!tab) return;
+    updateNoOpenDocumentState();
+    selectedDocumentId = tabId;
+    setSingleDocumentTreeSelection('document', tabId);
+    tab.lastOpenedAt = Date.now();
+    if (!isTemporaryDocument(tab)) saveTabsToStorage(tabs);
     markdownEditor.value = tab.content;
     
     initTabHistory(tabId, tab.content);
@@ -4259,6 +6962,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     refreshLiveEditorUi();
     renderMarkdown();
     renderReviewPanel();
+    renderDocumentSplitView();
     requestAnimationFrame(function() {
       markdownEditor.scrollTop = tab.scrollPos || 0;
       updateLiveCursorPosition();
@@ -4267,21 +6971,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderTabBar(tabs, activeTabId);
   }
 
-  function newTab(content, title) {
+  function newTab(content, title, location) {
     if (content === undefined) content = '';
-    if (tabs.length >= 20) {
-      alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
-      return;
+    const targetLocation = location || (documentOrganization ? getPreferredDocumentLocation() : { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null });
+    if (targetLocation.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
+      withUnlockedSecretWorkspace(function() { newTab(content, title, targetLocation); });
+      return false;
     }
+    if (!hasDocumentCapacity()) return false;
     if (reviewModeActive) setReviewMode(false);
     if (!title) title = nextUntitledTitle();
-    const tab = createTab(content, title);
+    const tab = createTab(content, title, 'split', targetLocation);
+    normalizeTabDocumentMetadata(tab, { allowSecret: targetLocation.workspaceId === SECRET_WORKSPACE_ID });
     tabs.push(tab);
+    selectedDocumentId = tab.id;
     switchTab(tab.id);
     markdownEditor.focus();
+    closeDocumentSidebarOnMobile();
+    return true;
   }
 
-  function closeTab(tabId) {
+  function deleteTab(tabId) {
     if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) {
       cancelReviewDeleteConfirmation();
     }
@@ -4296,9 +7006,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     if (idx === -1) return;
-    if (activeTabId === tabId) {
+    const wasActive = activeTabId === tabId;
+    const splitPartnerId = wasActive ? secondarySplitTabId : null;
+    if (wasActive) {
+      saveCurrentTabState();
       closeReviewComposer();
       clearReviewDecorations();
+    }
+    saveSecondarySplitState();
+    if (secondarySplitTabId === tabId || splitPartnerId) {
+      closeDocumentSplitView({ silent: true, renderTabs: false });
     }
     shareSnapshotViewOnlyTabIds.delete(tabId);
     
@@ -4308,37 +7025,72 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     
     tabs.splice(idx, 1);
-    if (tabs.length === 0) {
-      // Auto-create new "Untitled" when last tab is deleted
-      const newT = createTab('', nextUntitledTitle());
-      tabs.push(newT);
-      activeTabId = newT.id;
-      saveActiveTabId(activeTabId);
-      markdownEditor.value = '';
-      restoreViewMode('split');
-      refreshLiveEditorUi();
-      renderMarkdown();
-    } else if (activeTabId === tabId) {
-      const newIdx = Math.max(0, idx - 1);
-      activeTabId = tabs[newIdx].id;
-      saveActiveTabId(activeTabId);
-      const newActiveTab = tabs[newIdx];
-      markdownEditor.value = newActiveTab.content;
-      restoreViewMode(newActiveTab.viewMode);
-      refreshLiveEditorUi();
-      renderMarkdown();
-      requestAnimationFrame(function() {
-        markdownEditor.scrollTop = newActiveTab.scrollPos || 0;
-      });
-    }
     saveTabsToStorage(tabs);
+    if (wasActive) {
+      const remainingOpenTabs = getOpenTabs();
+      const nextTab = (splitPartnerId && remainingOpenTabs.find(function(item) { return item.id === splitPartnerId; }))
+        || remainingOpenTabs[Math.min(idx, Math.max(remainingOpenTabs.length - 1, 0))];
+      if (nextTab) {
+        switchTab(nextTab.id);
+      } else {
+        clearActiveDocument();
+      }
+      return;
+    }
+    if (selectedDocumentId === tabId) selectedDocumentId = activeTabId;
+    renderDocumentSplitView();
     renderTabBar(tabs, activeTabId);
     closeReviewComposer();
     renderReviewPanel();
+    renderDocumentSidebar();
   }
 
-  function deleteTab(tabId) {
-    closeTab(tabId);
+  function closeTab(tabId) {
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || !isTabOpen(tab)) return;
+    if (isTemporaryDocument(tab)) {
+      deleteTab(tabId);
+      return;
+    }
+    if (pendingReviewDelete && pendingReviewDelete.tabId === tabId) cancelReviewDeleteConfirmation();
+    if (liveCollaboration && liveCollaboration.tabId === tabId) {
+      if (liveCollaboration.isHost) endLiveSessionForEveryone();
+      else leaveLiveSession({ restoreOriginal: true });
+      return;
+    }
+
+    const openTabsBeforeClose = getOpenTabs();
+    const openIndex = openTabsBeforeClose.findIndex(function(item) { return item.id === tabId; });
+    if (activeTabId === tabId) saveCurrentTabState();
+    saveSecondarySplitState();
+    const wasSecondarySplit = secondarySplitTabId === tabId;
+    const wasPrimarySplit = activeTabId === tabId && Boolean(secondarySplitTabId);
+    const splitPartnerId = wasPrimarySplit ? secondarySplitTabId : null;
+    if (wasSecondarySplit || wasPrimarySplit) closeDocumentSplitView({ silent: true, renderTabs: false });
+
+    tab.isOpen = false;
+    saveTabsToStorage(tabs);
+
+    if (activeTabId === tabId) {
+      const remainingOpenTabs = getOpenTabs();
+      let nextTab = splitPartnerId
+        ? remainingOpenTabs.find(function(item) { return item.id === splitPartnerId; })
+        : null;
+      if (!nextTab && remainingOpenTabs.length) {
+        nextTab = remainingOpenTabs[Math.min(Math.max(openIndex - 1, 0), remainingOpenTabs.length - 1)];
+      }
+      if (nextTab) {
+        switchTab(nextTab.id);
+      } else {
+        clearActiveDocument();
+      }
+      return;
+    }
+
+    renderDocumentSplitView();
+    renderTabBar(tabs, activeTabId);
+    renderDocumentSidebar();
+    announceToScreenReader((tab.title || 'Untitled') + ' closed. Select it in Files to reopen it.');
   }
 
   function renameTab(tabId) {
@@ -4398,17 +7150,18 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert('Shared snapshot tabs are temporary and cannot be duplicated.');
       return;
     }
-    if (tabs.length >= 20) {
-      alert('Maximum of 20 tabs reached. Please close an existing tab to open a new one.');
-      return;
-    }
+    if (!hasDocumentCapacity()) return;
     const shouldSwitchToDuplicate = tabId === activeTabId;
     saveCurrentTabState();
     const dupTitle = tab.title + ' (copy)';
-    const dup = createTab(tab.content, dupTitle, tab.viewMode);
+    const dup = createTab(tab.content, dupTitle, tab.viewMode, {
+      workspaceId: tab.workspaceId || DEFAULT_WORKSPACE_ID,
+      folderId: tab.folderId || null
+    });
     const idx = tabs.findIndex(function(t) { return t.id === tabId; });
     tabs.splice(idx + 1, 0, dup);
     if (shouldSwitchToDuplicate) {
+      selectedDocumentId = dup.id;
       switchTab(dup.id);
     } else {
       saveTabsToStorage(tabs);
@@ -4474,13 +7227,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       return total + (Array.isArray(tab.reviewThreads) ? tab.reviewThreads.length : 0);
     }, 0);
     if (description) {
-      const fileSummary = fileCount + ' open file' + (fileCount === 1 ? '' : 's');
+      const fileSummary = fileCount + ' file' + (fileCount === 1 ? '' : 's');
       const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
       const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
       description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
     }
 
-    function doReset() {
+    async function doReset() {
       closeAppModal(modal);
       cleanup();
       closeReviewComposer();
@@ -4488,7 +7241,25 @@ document.addEventListener("DOMContentLoaded", async function () {
       disconnectLiveCollaboration({ restoreOriginal: false, silent: true });
       applyShareSnapshotAccessMode('edit');
       resetShareSnapshotLink();
+      clearTimeout(secretWorkspaceSaveTimeout);
+      await secretWorkspaceSaveChain.catch(function() {});
+      removeStorageItem(SECRET_WORKSPACE_STORAGE_KEY);
+      secretWorkspaceKey = null;
+      secretWorkspaceSalt = null;
+      secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
+      secretWorkspaceDocumentCount = 0;
+      closeDocumentSplitView({ silent: true, renderTabs: false });
       tabs = [];
+      selectedDocumentTreeIds.clear();
+      documentTreeSelectionAnchor = null;
+      documentOrganization = createDefaultDocumentOrganization();
+      documentSidebarSearch = '';
+      saveDocumentOrganization();
+      const sidebarSearchInput = document.getElementById('document-sidebar-search');
+      const sidebarSearchClear = document.getElementById('document-sidebar-search-clear');
+      if (sidebarSearchInput) sidebarSearchInput.value = '';
+      if (sidebarSearchClear) sidebarSearchClear.hidden = true;
+      updateDocumentSidebarVisibility();
       untitledCounter = 0;
       saveUntitledCounter(0);
       const welcome = createTab(sampleMarkdown, 'Welcome to Markdown');
@@ -4531,17 +7302,23 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function initTabs() {
     untitledCounter = loadUntitledCounter();
+    documentOrganization = loadDocumentOrganization();
+    initializeSecretWorkspaceState();
     tabs = loadTabsFromStorage();
     activeTabId = loadActiveTabId();
 
     // Check if Neutralino passed an initial file via command line (early load)
     if (window.NL_INITIAL_FILE_CONTENT) {
       const initialFile = window.NL_INITIAL_FILE_CONTENT;
-      const tab = createTab(initialFile.content, initialFile.name);
-      tabs.push(tab);
-      activeTabId = tab.id;
-      saveTabsToStorage(tabs);
-      saveActiveTabId(activeTabId);
+      if (tabs.length < MAX_DOCUMENTS) {
+        const tab = createTab(initialFile.content, initialFile.name);
+        tabs.push(tab);
+        activeTabId = tab.id;
+        saveTabsToStorage(tabs);
+        saveActiveTabId(activeTabId);
+      } else {
+        alert('The command-line file could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
+      }
       delete window.NL_INITIAL_FILE_CONTENT;
     } else if (tabs.length === 0) {
       const tab = createTab(sampleMarkdown, 'Welcome to Markdown');
@@ -4549,25 +7326,36 @@ document.addEventListener("DOMContentLoaded", async function () {
       activeTabId = tab.id;
       saveTabsToStorage(tabs);
       saveActiveTabId(activeTabId);
-    } else if (!tabs.find(function(t) { return t.id === activeTabId; })) {
-      activeTabId = tabs[0].id;
-      saveActiveTabId(activeTabId);
+    } else if (!tabs.find(function(t) { return t.id === activeTabId && isTabOpen(t); })) {
+      const firstOpenTab = getOpenTabs()[0];
+      activeTabId = firstOpenTab ? firstOpenTab.id : null;
+      if (activeTabId) saveActiveTabId(activeTabId);
+      else removeStorageItem(ACTIVE_TAB_KEY);
     }
+    migrateDocumentsToOrganization();
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
-    markdownEditor.value = activeTab.content;
-    initTabHistory(activeTabId, activeTab.content);
-    updateUndoRedoButtons();
-    restoreViewMode(activeTab.viewMode);
-    refreshLiveEditorUi();
-    renderMarkdown();
+    selectedDocumentId = activeTabId;
+    if (activeTab) {
+      markdownEditor.value = activeTab.content;
+      initTabHistory(activeTabId, activeTab.content);
+      updateUndoRedoButtons();
+      restoreViewMode(activeTab.viewMode);
+      refreshLiveEditorUi();
+      renderMarkdown();
+    } else {
+      markdownEditor.value = '';
+      updateUndoRedoButtons();
+      updateNoOpenDocumentState();
+    }
     const editorPane = document.querySelector('.editor-pane');
     if (editorPane) {
       editorPane.classList.remove('is-loading');
     }
     requestAnimationFrame(function() {
-      markdownEditor.scrollTop = activeTab.scrollPos || 0;
+      if (activeTab) markdownEditor.scrollTop = activeTab.scrollPos || 0;
     });
     renderTabBar(tabs, activeTabId);
+    initDocumentSidebar();
     setupTabOverflow();
 
     const staticNewBtn = document.getElementById('tab-new-btn');
@@ -4575,6 +7363,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       staticNewBtn.onclick = function() {
         newTab();
       };
+    }
+    const headerNewDocument = document.getElementById('header-new-document');
+    if (headerNewDocument) {
+      headerNewDocument.onclick = function(event) {
+        event.preventDefault();
+        newTab();
+      };
+    }
+    if (noOpenDocumentNew) {
+      noOpenDocumentNew.onclick = function() { newTab(); };
     }
   }
 
@@ -5133,7 +7931,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         mountDiagramViewer(container, 'abc', [{
           title: 'Listen to score',
           ariaLabel: 'Listen to score',
-          html: '<i class="bi bi-play-fill"></i> Listen',
+          html: '<i class="lucide lucide-play-filled"></i> Listen',
           onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
         }]);
 
@@ -5452,7 +8250,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function exportStlImage(view, isDownload, button, originalText) {
     if (!view || !view.renderer || !view.scene || !view.camera) return;
-    button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    button.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     
     // Force a render pass to ensure the canvas buffer is loaded with the current frame
     view.renderer.render(view.scene, view.camera);
@@ -5477,7 +8275,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       a.href = dataUrl;
       a.download = `model-${Date.now()}.png`;
       a.click();
-      button.innerHTML = '<i class="bi bi-check-lg"></i>';
+      button.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { button.innerHTML = originalText; }, 1500);
     } else {
       // Copy to clipboard
@@ -5486,10 +8284,10 @@ document.addEventListener("DOMContentLoaded", async function () {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          button.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (err) {
           console.error(err);
-          button.innerHTML = '<i class="bi bi-x-lg"></i>';
+          button.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { button.innerHTML = originalText; }, 1500);
       }, 'image/png');
@@ -5510,40 +8308,40 @@ document.addEventListener("DOMContentLoaded", async function () {
     btnSolid.type = 'button';
     btnSolid.className = 'stl-toolbar-btn active';
     btnSolid.setAttribute('data-mode', 'solid');
-    btnSolid.innerHTML = '<i class="bi bi-circle-fill"></i> Solid';
+    btnSolid.innerHTML = '<i class="lucide lucide-circle-filled"></i> Solid';
     
     const btnAngle = document.createElement('button');
     btnAngle.type = 'button';
     btnAngle.className = 'stl-toolbar-btn';
     btnAngle.setAttribute('data-mode', 'angle');
-    btnAngle.innerHTML = '<i class="bi bi-circle-half"></i> Surface Angle';
+    btnAngle.innerHTML = '<i class="lucide lucide-circle-dot"></i> Surface Angle';
     
     const btnWireframe = document.createElement('button');
     btnWireframe.type = 'button';
     btnWireframe.className = 'stl-toolbar-btn';
     btnWireframe.setAttribute('data-mode', 'wireframe');
-    btnWireframe.innerHTML = '<i class="bi bi-grid-3x3"></i> Wireframe';
+    btnWireframe.innerHTML = '<i class="lucide lucide-grid-3x3"></i> Wireframe';
     
     const btnZoom = document.createElement('button');
     btnZoom.type = 'button';
     btnZoom.className = 'stl-toolbar-btn btn-zoom';
     btnZoom.title = 'Zoom model';
     btnZoom.setAttribute('aria-label', 'Zoom model');
-    btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+    btnZoom.innerHTML = '<i class="lucide lucide-maximize"></i>';
     
     const btnCopy = document.createElement('button');
     btnCopy.type = 'button';
     btnCopy.className = 'stl-toolbar-btn btn-copy';
     btnCopy.title = 'Copy image to clipboard';
     btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-    btnCopy.innerHTML = '<i class="bi bi-clipboard-image"></i> Copy';
+    btnCopy.innerHTML = '<i class="lucide lucide-copy"></i> Copy';
     
     const btnPng = document.createElement('button');
     btnPng.type = 'button';
     btnPng.className = 'stl-toolbar-btn btn-png';
     btnPng.title = 'Download PNG';
     btnPng.setAttribute('aria-label', 'Download PNG');
-    btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
+    btnPng.innerHTML = '<i class="lucide lucide-file-image"></i> PNG';
     
     toolbar.appendChild(btnSolid);
     toolbar.appendChild(btnAngle);
@@ -5960,6 +8758,118 @@ ${selector} .arrowheadPath {
     }
   }
 
+  const CODE_LANGUAGE_LABELS = {
+    javascript: ['JS', 'JavaScript'], js: ['JS', 'JavaScript'], jsx: ['JSX', 'JavaScript JSX'],
+    typescript: ['TS', 'TypeScript'], ts: ['TS', 'TypeScript'], tsx: ['TSX', 'TypeScript JSX'],
+    python: ['PY', 'Python'], py: ['PY', 'Python'], ruby: ['RB', 'Ruby'], rb: ['RB', 'Ruby'],
+    java: ['JAVA', 'Java'], c: ['C', 'C'], cpp: ['C++', 'C++'], csharp: ['C#', 'C#'], cs: ['C#', 'C#'],
+    go: ['GO', 'Go'], rust: ['RS', 'Rust'], rs: ['RS', 'Rust'], php: ['PHP', 'PHP'],
+    kotlin: ['KT', 'Kotlin'], kt: ['KT', 'Kotlin'], swift: ['SW', 'Swift'], scala: ['SC', 'Scala'], dart: ['DART', 'Dart'],
+    bash: ['SH', 'Bash'], sh: ['SH', 'Shell'], shell: ['SH', 'Shell'], zsh: ['ZSH', 'Z shell'],
+    powershell: ['PS', 'PowerShell'], ps1: ['PS', 'PowerShell'], cmd: ['CMD', 'Command Prompt'], bat: ['BAT', 'Batch'], dos: ['DOS', 'DOS batch'],
+    html: ['HTML', 'HTML'], xml: ['XML', 'XML'], css: ['CSS', 'CSS'], scss: ['SCSS', 'SCSS'], sass: ['SASS', 'Sass'], less: ['LESS', 'Less'],
+    json: ['JSON', 'JSON'], yaml: ['YAML', 'YAML'], yml: ['YAML', 'YAML'], toml: ['TOML', 'TOML'], ini: ['INI', 'INI'],
+    markdown: ['MD', 'Markdown'], md: ['MD', 'Markdown'], sql: ['SQL', 'SQL'], graphql: ['GQL', 'GraphQL'],
+    dockerfile: ['DOCKER', 'Dockerfile'], nginx: ['NGINX', 'Nginx'], http: ['HTTP', 'HTTP'],
+    r: ['R', 'R'], matlab: ['MAT', 'MATLAB'], lua: ['LUA', 'Lua'], perl: ['PL', 'Perl'], pl: ['PL', 'Perl'],
+    haskell: ['HS', 'Haskell'], hs: ['HS', 'Haskell'], elixir: ['EX', 'Elixir'], ex: ['EX', 'Elixir'], erlang: ['ERL', 'Erlang'],
+    clojure: ['CLJ', 'Clojure'], objectivec: ['OBJ-C', 'Objective-C'], vbnet: ['VB', 'Visual Basic .NET'], fsharp: ['F#', 'F#'],
+    asm: ['ASM', 'Assembly'], diff: ['DIFF', 'Diff'], plaintext: ['TXT', 'Plain text'], text: ['TXT', 'Plain text']
+  };
+  const TERMINAL_CODE_LANGUAGES = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'cmd', 'bat', 'dos']);
+
+  function getPreviewCodeLanguage(codeElement) {
+    const classes = Array.from(codeElement ? codeElement.classList : []);
+    const rawLanguage = classes.find(function(className) {
+      return className !== 'hljs' && className !== 'language-plaintext';
+    }) || 'plaintext';
+    const language = rawLanguage.replace(/^language-/, '').toLowerCase();
+    const mapped = CODE_LANGUAGE_LABELS[language];
+    let fullName = mapped ? mapped[1] : '';
+    if (!fullName && typeof hljs !== 'undefined' && hljs.getLanguage) {
+      const definition = hljs.getLanguage(language);
+      if (definition && definition.name) fullName = definition.name;
+    }
+    if (!fullName) {
+      fullName = language === 'plaintext'
+        ? 'Plain text'
+        : language.replace(/[-_]+/g, ' ').replace(/\b\w/g, function(letter) { return letter.toUpperCase(); });
+    }
+    const shortName = mapped
+      ? mapped[0]
+      : (language.length <= 5 ? language.toUpperCase() : language.slice(0, 4).toUpperCase());
+    return {
+      id: language,
+      shortName: shortName || 'TXT',
+      fullName: fullName,
+      terminal: TERMINAL_CODE_LANGUAGES.has(language)
+    };
+  }
+
+  function enhancePreviewCodeBlocks(root) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+    const preElements = [];
+    if (root.matches && root.matches('pre')) preElements.push(root);
+    root.querySelectorAll('pre').forEach(function(pre) { preElements.push(pre); });
+
+    preElements.forEach(function(pre) {
+      if (pre.closest('.diagram-viewer, .geojson-container, .topojson-container, .stl-container, .math-block')) return;
+      if (pre.closest('.code-preview-block')) return;
+      const code = pre.querySelector('code');
+      if (!code) return;
+      const language = getPreviewCodeLanguage(code);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-preview-block' + (language.terminal ? ' is-terminal' : '');
+      wrapper.setAttribute('data-code-language', language.id);
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'code-preview-toolbar';
+      const languageLabel = document.createElement('span');
+      languageLabel.className = 'code-preview-language';
+      if (language.terminal) {
+        const terminalIcon = document.createElement('i');
+        terminalIcon.className = 'lucide lucide-square-terminal';
+        terminalIcon.setAttribute('aria-hidden', 'true');
+        languageLabel.appendChild(terminalIcon);
+      }
+      languageLabel.appendChild(document.createTextNode(language.shortName));
+      languageLabel.title = language.fullName;
+      languageLabel.setAttribute('aria-label', 'Language: ' + language.fullName);
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'code-preview-copy';
+      copyButton.title = 'Copy ' + language.fullName + ' code';
+      copyButton.setAttribute('aria-label', copyButton.title);
+      copyButton.innerHTML = '<i class="lucide lucide-copy" aria-hidden="true"></i><span>Copy</span>';
+      copyButton.addEventListener('click', async function() {
+        if (copyButton.disabled) return;
+        const originalHtml = copyButton.innerHTML;
+        copyButton.disabled = true;
+        try {
+          await copyTextToClipboard(code.textContent || '');
+          copyButton.innerHTML = '<i class="lucide lucide-check" aria-hidden="true"></i><span>Copied</span>';
+          copyButton.setAttribute('aria-label', 'Code copied');
+          announceToScreenReader(language.fullName + ' code copied.');
+        } catch (error) {
+          copyButton.innerHTML = '<i class="lucide lucide-circle-alert" aria-hidden="true"></i><span>Retry</span>';
+          copyButton.setAttribute('aria-label', 'Copy failed. Retry');
+        }
+        setTimeout(function() {
+          copyButton.disabled = false;
+          copyButton.innerHTML = originalHtml;
+          copyButton.setAttribute('aria-label', 'Copy ' + language.fullName + ' code');
+        }, 1600);
+      });
+
+      toolbar.appendChild(languageLabel);
+      toolbar.appendChild(copyButton);
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(toolbar);
+      wrapper.appendChild(pre);
+    });
+  }
+
   function postProcessPreview(rawVal, context, patchResult) {
     const roots = getPreviewPostProcessRoots(patchResult, context);
 
@@ -5972,6 +8882,7 @@ ${selector} .arrowheadPath {
 
     roots.forEach(function(root) {
       processEmojis(root);
+      enhancePreviewCodeBlocks(root);
     });
 
     queryPreviewRoots(roots, 'input[type="checkbox"]').forEach(function(input) {
@@ -6345,7 +9256,45 @@ ${selector} .arrowheadPath {
     return (file && file.name ? file.name : "document.md").replace(/\.(md|markdown)$/i, "");
   }
 
-  function importMarkdownFile(file) {
+  function showImportProgress(total) {
+    const toast = document.getElementById('import-progress-toast');
+    const title = document.getElementById('import-progress-title');
+    const count = document.getElementById('import-progress-count');
+    const bar = document.getElementById('import-progress-bar');
+    const value = document.getElementById('import-progress-value');
+    if (!toast || !title || !count || !bar || !value) return;
+    clearTimeout(importProgressHideTimeout);
+    title.textContent = total === 1 ? 'Importing file' : 'Importing files';
+    count.textContent = '0 of ' + total;
+    value.style.width = '0%';
+    bar.setAttribute('aria-valuenow', '0');
+    toast.hidden = false;
+  }
+
+  function updateImportProgress(processed, total) {
+    const count = document.getElementById('import-progress-count');
+    const bar = document.getElementById('import-progress-bar');
+    const value = document.getElementById('import-progress-value');
+    const percent = total ? Math.round((processed / total) * 100) : 0;
+    if (count) count.textContent = processed + ' of ' + total;
+    if (value) value.style.width = percent + '%';
+    if (bar) bar.setAttribute('aria-valuenow', String(percent));
+  }
+
+  function finishImportProgress(imported, total) {
+    const toast = document.getElementById('import-progress-toast');
+    const title = document.getElementById('import-progress-title');
+    const count = document.getElementById('import-progress-count');
+    if (!toast || !title || !count) return;
+    updateImportProgress(total, total);
+    title.textContent = imported === total ? 'Import complete' : 'Import finished';
+    count.textContent = imported + ' imported';
+    importProgressHideTimeout = setTimeout(function() {
+      toast.hidden = true;
+    }, 3200);
+  }
+
+  function importMarkdownFile(file, location) {
     return new Promise(function(resolve) {
       if (!file) {
         resolve(false);
@@ -6372,8 +9321,7 @@ ${selector} .arrowheadPath {
           }
         }
 
-        newTab(text, getMarkdownFileTitle(file));
-        resolve(true);
+        resolve(newTab(text, getMarkdownFileTitle(file), location) === true);
       };
       reader.onerror = function() {
         alert('Failed to read the file. Please check permissions and try again.');
@@ -6395,12 +9343,28 @@ ${selector} .arrowheadPath {
       return 0;
     }
 
+    const remainingCapacity = Math.max(0, MAX_DOCUMENTS - getDocumentCountForLimit());
+    if (!remainingCapacity) {
+      hasDocumentCapacity();
+      return 0;
+    }
+    const filesToImport = markdownFiles.slice(0, remainingCapacity);
+    if (filesToImport.length < markdownFiles.length) {
+      alert('Only the first ' + filesToImport.length + ' file' + (filesToImport.length === 1 ? '' : 's') + ' will be imported because the ' + MAX_DOCUMENTS + '-document limit would be exceeded.');
+    }
+
     let importedCount = 0;
-    for (const file of markdownFiles) {
-      if (await importMarkdownFile(file)) {
+    showImportProgress(filesToImport.length);
+    for (let index = 0; index < filesToImport.length; index++) {
+      if (await importMarkdownFile(filesToImport[index], settings.location)) {
         importedCount++;
       }
+      updateImportProgress(index + 1, filesToImport.length);
     }
+    if (settings.location && settings.location.workspaceId === SECRET_WORKSPACE_ID && isSecretWorkspaceUnlocked()) {
+      await flushSecretWorkspaceToStorage();
+    }
+    finishImportProgress(importedCount, filesToImport.length);
 
     return importedCount;
   }
@@ -6709,13 +9673,22 @@ ${selector} .arrowheadPath {
         setGitHubImportMessage("Please select at least one file to import.");
         return;
       }
+      const remainingCapacity = Math.max(0, MAX_DOCUMENTS - tabs.length);
+      if (!remainingCapacity) {
+        hasDocumentCapacity();
+        return;
+      }
+      if (selectedPaths.length > remainingCapacity) {
+        setGitHubImportMessage('Select no more than ' + remainingCapacity + ' file' + (remainingCapacity === 1 ? '' : 's') + ' to stay within the ' + MAX_DOCUMENTS + '-document limit.');
+        return;
+      }
       setGitHubImportLoading(true);
       setGitHubImportDialogDisabled(true);
       announceToScreenReader("Importing selected files from GitHub...");
       try {
         for (const selectedPath of selectedPaths) {
           const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, selectedPath));
-          newTab(markdown, getFileName(selectedPath).replace(/\.(md|markdown)$/i, ""));
+          if (!newTab(markdown, getFileName(selectedPath).replace(/\.(md|markdown)$/i, ""))) break;
         }
         closeGitHubImportModal();
         announceToScreenReader("Files imported successfully.");
@@ -6752,7 +9725,7 @@ ${selector} .arrowheadPath {
         }
         announceToScreenReader("Fetching file from GitHub...");
         const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, parsed.ref, parsed.filePath));
-        newTab(markdown, getFileName(parsed.filePath).replace(/\.(md|markdown)$/i, ""));
+        if (!newTab(markdown, getFileName(parsed.filePath).replace(/\.(md|markdown)$/i, ""))) return;
         closeGitHubImportModal();
         announceToScreenReader("File imported successfully.");
         return;
@@ -6786,7 +9759,7 @@ ${selector} .arrowheadPath {
         const targetPath = files[0];
         announceToScreenReader("Fetching file content...");
         const markdown = await fetchTextContent(buildRawGitHubUrl(parsed.owner, parsed.repo, ref, targetPath));
-        newTab(markdown, getFileName(targetPath).replace(/\.(md|markdown)$/i, ""));
+        if (!newTab(markdown, getFileName(targetPath).replace(/\.(md|markdown)$/i, ""))) return;
         closeGitHubImportModal();
         announceToScreenReader("File imported successfully.");
         return;
@@ -7042,22 +10015,30 @@ ${selector} .arrowheadPath {
 
   function toggleSyncScrolling() {
     syncScrollingEnabled = !syncScrollingEnabled;
+    const syncLabel = toggleSyncButton ? toggleSyncButton.querySelector('.btn-text') : null;
     if (syncScrollingEnabled) {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync Off</span>';
+      if (syncLabel) syncLabel.textContent = 'Sync Off';
       toggleSyncButton.classList.add("sync-disabled");
       toggleSyncButton.classList.remove("sync-enabled");
       toggleSyncButton.classList.add("sync-active");
     } else {
-      toggleSyncButton.innerHTML = '<i class="bi bi-link"></i> <span class="btn-text">Sync On</span>';
+      if (syncLabel) syncLabel.textContent = 'Sync On';
       toggleSyncButton.classList.add("sync-enabled");
       toggleSyncButton.classList.remove("sync-disabled");
       toggleSyncButton.classList.remove("sync-active");
     }
+    const syncActionLabel = syncScrollingEnabled
+      ? 'Disable synchronized scrolling'
+      : 'Enable synchronized scrolling';
+    toggleSyncButton.setAttribute('aria-pressed', String(syncScrollingEnabled));
+    toggleSyncButton.setAttribute('aria-label', syncActionLabel);
+    toggleSyncButton.setAttribute('title', syncActionLabel);
     saveGlobalState({ syncScrollingEnabled });
   }
 
   // View Mode Functions - Story 1.1 & 1.2
   function setViewMode(mode) {
+    if (secondarySplitTabId && mode === 'split') mode = 'editor';
     if (isShareSnapshotViewOnlyActive() && mode !== 'preview') {
       mode = 'preview';
       announceToScreenReader(getEditorReadOnlyMessage());
@@ -7122,9 +10103,11 @@ ${selector} .arrowheadPath {
       updateFindHighlights();
       scheduleEditorOverlayScrollSync();
     }
+    if (secondarySplitTabId) renderDocumentSplitView();
   }
 
   function resolveViewToggleMode(mode) {
+    if (secondarySplitTabId) return mode;
     if ((mode === 'editor' || mode === 'preview') && currentViewMode === mode) {
       return 'split';
     }
@@ -7133,7 +10116,7 @@ ${selector} .arrowheadPath {
 
   // Story 1.2: Update sync toggle visibility
   function updateSyncToggleVisibility(mode) {
-    const isSplitView = mode === 'split';
+    const isSplitView = mode === 'split' || Boolean(secondarySplitTabId);
 
     // Desktop sync toggle
     if (toggleSyncButton) {
@@ -7928,11 +10911,11 @@ ${selector} .arrowheadPath {
   function flashCopyButton(button) {
     const icon = button.querySelector('i');
     if (!icon) return;
-    icon.className = 'bi bi-check-lg';
+    icon.className = 'lucide lucide-check';
     button.classList.add('is-copied');
     clearTimeout(button.copyTimeout);
     button.copyTimeout = setTimeout(() => {
-      icon.className = 'bi bi-clipboard';
+      icon.className = 'lucide lucide-copy';
       button.classList.remove('is-copied');
     }, 1200);
   }
@@ -8087,7 +11070,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'emoji-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.shortcode}`);
-        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+        copyBtn.innerHTML = '<i class="lucide lucide-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.shortcode)
@@ -8222,7 +11205,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'symbol-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.entity}`);
-        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+        copyBtn.innerHTML = '<i class="lucide lucide-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.entity)
@@ -8567,7 +11550,7 @@ ${selector} .arrowheadPath {
     }
   }
 
-  async function openDiagramModal() {
+  async function openDiagramModal(opener) {
     const modal = document.getElementById('diagram-modal');
     const sidebar = modal.querySelector('.diagram-modal-sidebar');
     const grid = document.getElementById('diagram-modal-grid');
@@ -8591,8 +11574,7 @@ ${selector} .arrowheadPath {
     
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
-    modal.style.display = 'flex';
-    
+
     // Clear and reset state
     searchInput.value = '';
     sidebar.textContent = '';
@@ -8604,48 +11586,48 @@ ${selector} .arrowheadPath {
     const categoryGroups = [
       {
         label: 'Diagrams',
-        icon: 'bi-diagram-3',
+        icon: 'lucide-workflow',
         categories: ['Mermaid', 'PlantUML', 'Graphviz', 'D2']
       },
       {
         label: 'Mind Maps',
-        icon: 'bi-list-ul',
+        icon: 'lucide-list',
         categories: ['Markmap']
       },
       {
         label: 'Data Visualization',
-        icon: 'bi-bar-chart-line',
+        icon: 'lucide-chart-no-axes-column-increasing',
         categories: ['Vega-Lite']
       },
       {
         label: 'Technical Notation',
-        icon: 'bi-code-slash',
+        icon: 'lucide-code-2',
         categories: ['WaveDrom', 'ABC Notation']
       },
       {
         label: '3D Models',
-        icon: 'bi-box',
+        icon: 'lucide-box',
         categories: ['STL (3D)']
       },
       {
         label: 'Maps',
-        icon: 'bi-map',
+        icon: 'lucide-map',
         categories: ['GeoJSON', 'TopoJSON']
       }
     ];
 
     const categoryIcons = {
-      Mermaid: 'bi-water',
-      PlantUML: 'bi-braces',
-      Graphviz: 'bi-bezier2',
-      D2: 'bi-grid-3x3',
-      Markmap: 'bi-diagram-2',
-      'Vega-Lite': 'bi-bar-chart-line',
-      GeoJSON: 'bi-pin-map',
-      TopoJSON: 'bi-layers',
-      WaveDrom: 'bi-activity',
-      'ABC Notation': 'bi-music-note-beamed',
-      'STL (3D)': 'bi-badge-3d'
+      Mermaid: 'lucide-waves',
+      PlantUML: 'lucide-braces',
+      Graphviz: 'lucide-spline',
+      D2: 'lucide-grid-3x3',
+      Markmap: 'lucide-network',
+      'Vega-Lite': 'lucide-chart-no-axes-column-increasing',
+      GeoJSON: 'lucide-map-pin',
+      TopoJSON: 'lucide-layers-3',
+      WaveDrom: 'lucide-activity',
+      'ABC Notation': 'lucide-music-2',
+      'STL (3D)': 'lucide-box'
     };
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
@@ -9595,9 +12577,9 @@ ${selector} .arrowheadPath {
         heading.className = 'diagram-sidebar-group-header';
         heading.setAttribute('aria-expanded', String(isExpanded));
         heading.innerHTML = `
-          <i class="bi ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
+          <i class="lucide ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
           <span>${group.label}</span>
-          <i class="bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
+          <i class="lucide ${isExpanded ? 'lucide-chevron-up' : 'lucide-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
         `;
         heading.addEventListener('click', () => {
           if (!isExpanded) {
@@ -9618,7 +12600,7 @@ ${selector} .arrowheadPath {
           btn.className = 'diagram-sidebar-btn';
           if (cat === activeCategory) btn.classList.add('is-active');
           btn.innerHTML = `
-            <i class="bi ${categoryIcons[cat] || 'bi-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
+            <i class="lucide ${categoryIcons[cat] || 'lucide-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
             <span>${cat}</span>
           `;
           btn.addEventListener('click', () => {
@@ -9655,10 +12637,14 @@ ${selector} .arrowheadPath {
       }
       
       filtered.forEach(t => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = 'diagram-card';
+        card.setAttribute('aria-pressed', 'false');
+        card.setAttribute('aria-label', 'Select ' + t.label);
         if (selectedTemplate && selectedTemplate.id === t.id) {
           card.classList.add('is-selected');
+          card.setAttribute('aria-pressed', 'true');
         }
         
         const previewDiv = document.createElement('div');
@@ -9696,8 +12682,12 @@ ${selector} .arrowheadPath {
         card.addEventListener('click', () => {
           selectedTemplate = t;
           const cards = grid.querySelectorAll('.diagram-card');
-          cards.forEach(c => c.classList.remove('is-selected'));
+          cards.forEach(c => {
+            c.classList.remove('is-selected');
+            c.setAttribute('aria-pressed', 'false');
+          });
           card.classList.add('is-selected');
+          card.setAttribute('aria-pressed', 'true');
           
           if (previewCode) previewCode.value = t.code.trim();
           confirmBtn.disabled = false;
@@ -9736,35 +12726,27 @@ ${selector} .arrowheadPath {
     
     function insertTemplate() {
       if (!selectedTemplate) return;
-      modal.style.display = 'none';
       cleanup();
+      closeAppModal(modal);
       insertMarkdownBlock(selectedTemplate.code, start, end);
     }
     
     function closeModal() {
-      modal.style.display = 'none';
       cleanup();
-    }
-    
-    function onKey(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-      }
+      closeAppModal(modal);
     }
     
     function cleanup() {
       confirmBtn.removeEventListener('click', insertTemplate);
       cancelBtn.removeEventListener('click', closeModal);
       closeBtn.removeEventListener('click', closeModal);
-      modal.removeEventListener('keydown', onKey);
       searchInput.removeEventListener('input', renderGrid);
     }
     
     confirmBtn.addEventListener('click', insertTemplate);
     cancelBtn.addEventListener('click', closeModal);
     closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('keydown', onKey);
+    openAppModal(modal, { focusTarget: searchInput, returnFocus: opener, onClose: closeModal });
   }
 
   function insertMarkdownLink() {
@@ -10061,17 +13043,19 @@ ${selector} .arrowheadPath {
     if (activeModal && activeModal !== modal) {
       closeAppModal(activeModal);
     }
-    lastFocusedElement = document.activeElement;
+    lastFocusedElement = options.returnFocus || document.activeElement;
+    modal._returnFocus = lastFocusedElement;
     modal.style.display = 'flex';
-    requestAnimationFrame(function() {
-      modal.classList.add('is-visible');
-    });
     modal.setAttribute('aria-hidden', 'false');
     activeModal = modal;
     const focusTarget = options.focusTarget || getFocusableElements(modal)[0];
-    if (focusTarget) {
-      focusTarget.focus();
-    }
+    requestAnimationFrame(function() {
+      modal.classList.add('is-visible');
+      const focusDelay = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 210;
+      window.setTimeout(function() {
+        if (activeModal === modal && focusTarget) focusTarget.focus({ preventScroll: true });
+      }, focusDelay);
+    });
     const handleKeydown = function(event) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -10111,8 +13095,10 @@ ${selector} .arrowheadPath {
         modal.style.display = 'none';
       }
     }, 200);
-    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-      lastFocusedElement.focus();
+    const returnFocus = modal._returnFocus || lastFocusedElement;
+    modal._returnFocus = null;
+    if (returnFocus && typeof returnFocus.focus === 'function') {
+      returnFocus.focus();
     }
   }
 
@@ -10972,7 +13958,7 @@ ${selector} .arrowheadPath {
       panel.style.top = lastFloatingTop !== null ? lastFloatingTop : '';
       panel.style.right = lastFloatingRight !== null ? lastFloatingRight : '';
       
-      dockBtn.innerHTML = '<i class="bi bi-layout-sidebar-reverse"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panel-right"></i>';
       dockBtn.title = "Toggle Dock Mode";
       
       panel.style.display = 'flex';
@@ -11008,7 +13994,7 @@ ${selector} .arrowheadPath {
       contentCont.classList.add('fr-docked');
       contentCont.style.setProperty('--dock-width', '340px');
 
-      dockBtn.innerHTML = '<i class="bi bi-window"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panels-top-left"></i>';
       dockBtn.title = "Toggle Floating Mode";
     } else {
       panel.classList.remove('docked');
@@ -11022,7 +14008,7 @@ ${selector} .arrowheadPath {
       panel.style.top = lastFloatingTop !== null ? lastFloatingTop : '';
       panel.style.right = lastFloatingRight !== null ? lastFloatingRight : '';
       
-      dockBtn.innerHTML = '<i class="bi bi-layout-sidebar-reverse"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panel-right"></i>';
       dockBtn.title = "Toggle Dock Mode";
     }
     
@@ -11443,11 +14429,11 @@ ${selector} .arrowheadPath {
         if (isOpen) {
           drawerContent.style.display = 'none';
           drawerToggle.setAttribute('aria-expanded', 'false');
-          drawerToggle.innerHTML = '<i class="bi bi-chevron-right me-1"></i> Advanced Options';
+          drawerToggle.innerHTML = '<i class="lucide lucide-chevron-right me-1"></i> Advanced Options';
         } else {
           drawerContent.style.display = 'flex';
           drawerToggle.setAttribute('aria-expanded', 'true');
-          drawerToggle.innerHTML = '<i class="bi bi-chevron-down me-1"></i> Advanced Options';
+          drawerToggle.innerHTML = '<i class="lucide lucide-chevron-down me-1"></i> Advanced Options';
         }
       });
     }
@@ -11536,13 +14522,13 @@ ${selector} .arrowheadPath {
     }
   }
 
-  function openAboutModal() {
+  function openAboutModal(opener) {
     if (aboutModal) {
       const aboutVersion = document.getElementById("about-version");
       if (aboutVersion) {
         aboutVersion.textContent = APP_VERSION;
       }
-      openAppModal(aboutModal);
+      openAppModal(aboutModal, { returnFocus: opener });
     }
   }
 
@@ -11576,6 +14562,9 @@ ${selector} .arrowheadPath {
     else if (action === 'title-case') transformSelectionOrCurrentLine(toTitleCase);
     else if (action === 'uppercase') transformSelectionOrCurrentLine(function(text) { return text.toUpperCase(); });
     else if (action === 'lowercase') transformSelectionOrCurrentLine(function(text) { return text.toLowerCase(); });
+    else if (action === 'paragraph') {
+      transformEditorLines(function(line) { return line.replace(/^#{1,6}\s+/, ''); });
+    }
     else if (action === 'heading') {
       const level = parseInt(button.getAttribute('data-md-level') || '1', 10);
       const marker = '#'.repeat(Math.max(1, Math.min(6, level))) + ' ';
@@ -11603,7 +14592,7 @@ ${selector} .arrowheadPath {
     }
     else if (action === 'symbols') openSymbolsModal();
     else if (action === 'alert') openAlertModal();
-    else if (action === 'diagram') openDiagramModal();
+    else if (action === 'diagram') openDiagramModal(button);
     else if (action === 'terminal-block') insertMarkdownBlock('```bash\nnpm run dev\n```\n');
     else if (action === 'fullscreen') {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
@@ -11611,19 +14600,156 @@ ${selector} .arrowheadPath {
     } else if (action === 'clear-formatting') openClearFormattingModal();
     else if (action === 'find') openFindReplaceModal();
     else if (action === 'help') openHelpModal();
-    else if (action === 'info') openAboutModal();
+    else if (action === 'info') openAboutModal(button);
   }
 
   function initMarkdownFormatToolbar() {
     if (!markdownFormatToolbar) return;
+
+    function closeToolbarMenus(options) {
+      const settings = options || {};
+      markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
+        toggle.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      });
+      markdownFormatToolbar.querySelectorAll('[data-toolbar-menu].open').forEach(function(menu) {
+        menu.classList.remove('open');
+      });
+      if (settings.restoreFocus && settings.toggle) settings.toggle.focus();
+    }
+
+    function positionToolbarMenu(toggle, menu) {
+      const rect = toggle.getBoundingClientRect();
+      const margin = 8;
+      const width = menu.offsetWidth || 180;
+      const height = menu.offsetHeight || 240;
+      let left = rect.left;
+      let top = rect.bottom + 5;
+      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+      if (top + height > window.innerHeight - margin) top = Math.max(margin, rect.top - height - 5);
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+    }
+
+    function openToolbarMenu(toggle, menu, focusFirst) {
+      closeToolbarMenus();
+      toggle.classList.add('open');
+      toggle.setAttribute('aria-expanded', 'true');
+      menu.classList.add('open');
+      positionToolbarMenu(toggle, menu);
+      if (focusFirst) {
+        const first = menu.querySelector('.markdown-tool-menu-item:not(:disabled)');
+        if (first) first.focus();
+      }
+    }
+
     markdownFormatToolbar.addEventListener('mousedown', function(e) {
-      if (e.target.closest('[data-md-action]')) e.preventDefault();
+      if (e.target.closest('[data-md-action], [data-toolbar-menu-toggle]')) e.preventDefault();
     });
     markdownFormatToolbar.addEventListener('click', function(e) {
+      const toggle = e.target.closest('[data-toolbar-menu-toggle]');
+      if (toggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        const menu = markdownFormatToolbar.querySelector('[data-toolbar-menu="' + toggle.getAttribute('data-toolbar-menu-toggle') + '"]');
+        if (!menu) return;
+        if (menu.classList.contains('open')) closeToolbarMenus();
+        else openToolbarMenu(toggle, menu, false);
+        return;
+      }
       const button = e.target.closest('[data-md-action]');
       if (!button) return;
       e.preventDefault();
-      runMarkdownTool(button.getAttribute('data-md-action'), button);
+      const action = button.getAttribute('data-md-action');
+      if (action === 'heading') {
+        const label = markdownFormatToolbar.querySelector('.markdown-tool-select--heading .markdown-tool-select-label');
+        if (label) label.textContent = 'H' + (button.getAttribute('data-md-level') || '1');
+      }
+      closeToolbarMenus();
+      runMarkdownTool(action, button);
+    });
+
+    markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
+      toggle.addEventListener('keydown', function(event) {
+        if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        const menu = markdownFormatToolbar.querySelector('[data-toolbar-menu="' + toggle.getAttribute('data-toolbar-menu-toggle') + '"]');
+        if (menu) openToolbarMenu(toggle, menu, true);
+      });
+    });
+
+    markdownFormatToolbar.querySelectorAll('[data-toolbar-menu]').forEach(function(menu) {
+      menu.addEventListener('keydown', function(event) {
+        const toggle = markdownFormatToolbar.querySelector('[data-toolbar-menu-toggle="' + menu.getAttribute('data-toolbar-menu') + '"]');
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeToolbarMenus({ restoreFocus: true, toggle: toggle });
+          return;
+        }
+        const items = Array.from(menu.querySelectorAll('.markdown-tool-menu-item:not(:disabled)'));
+        const currentIndex = items.indexOf(document.activeElement);
+        let nextIndex = -1;
+        if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+        if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = items.length - 1;
+        if (nextIndex !== -1) {
+          event.preventDefault();
+          items[nextIndex].focus();
+        }
+      });
+    });
+
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('#markdown-format-toolbar')) closeToolbarMenus();
+    });
+    window.addEventListener('resize', function() { closeToolbarMenus(); });
+    markdownFormatToolbar.addEventListener('scroll', function() { closeToolbarMenus(); });
+  }
+
+  function initToolbarDropdownPortals() {
+    if (!window.bootstrap || !window.bootstrap.Dropdown) return;
+
+    document.querySelectorAll('.document-actions-dropdown').forEach(function(dropdown) {
+      const toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+      const menu = dropdown.querySelector('.dropdown-menu');
+      if (!toggle || !menu || menu.dataset.portalReady === 'true') return;
+
+      menu.dataset.portalReady = 'true';
+      const marker = document.createComment('toolbar dropdown location');
+      dropdown.insertBefore(marker, menu);
+      const instance = window.bootstrap.Dropdown.getOrCreateInstance(toggle, {
+        boundary: 'viewport',
+        popperConfig: function(defaultConfig) {
+          return { ...defaultConfig, strategy: 'fixed' };
+        }
+      });
+
+      dropdown.addEventListener('show.bs.dropdown', function() {
+        document.body.appendChild(menu);
+        menu.classList.add('toolbar-portal-menu');
+      });
+
+      dropdown.addEventListener('hidden.bs.dropdown', function() {
+        if (marker.parentNode) marker.parentNode.insertBefore(menu, marker.nextSibling);
+        menu.classList.remove('toolbar-portal-menu');
+        menu.style.position = '';
+        menu.style.inset = '';
+        menu.style.transform = '';
+        menu.removeAttribute('data-popper-placement');
+      });
+
+      menu.querySelectorAll('[data-md-action]').forEach(function(button) {
+        button.addEventListener('mousedown', function(event) {
+          event.preventDefault();
+        });
+        button.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          runMarkdownTool(button.getAttribute('data-md-action'), button);
+          instance.hide();
+        });
+      });
     });
   }
 
@@ -11776,12 +14902,12 @@ ${selector} .arrowheadPath {
   mobileToggleSync.addEventListener("click", () => {
     toggleSyncScrolling();
     if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync Off';
+      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync Off';
       mobileToggleSync.classList.add("sync-disabled");
       mobileToggleSync.classList.remove("sync-enabled");
       mobileToggleSync.classList.add("sync-active");
     } else {
-      mobileToggleSync.innerHTML = '<i class="bi bi-link me-2"></i> Sync On';
+      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync On';
       mobileToggleSync.classList.add("sync-enabled");
       mobileToggleSync.classList.remove("sync-disabled");
       mobileToggleSync.classList.remove("sync-active");
@@ -11805,8 +14931,13 @@ ${selector} .arrowheadPath {
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
-    mobileThemeToggle.innerHTML = themeToggle.innerHTML + " Toggle Dark Mode";
   });
+  if (mobileAboutButton) {
+    mobileAboutButton.addEventListener('click', function() {
+      closeMobileMenu();
+      openAboutModal(mobileAboutButton);
+    });
+  }
 
   const mobileNewTabBtn = document.getElementById("mobile-new-tab-btn");
   if (mobileNewTabBtn) {
@@ -11913,6 +15044,7 @@ ${selector} .arrowheadPath {
       announceToScreenReader(getEditorReadOnlyMessage());
       return;
     }
+    updateSaveStatus('saving');
     handleKeystrokeHistory(e);
     if (liveCollaboration && liveCollaboration.tabId === activeTabId && !liveCollaboration.isApplyingRemoteChange) {
       syncLiveLocalEditorChange(liveCollaboration.lastMarkdown || '', markdownEditor.value || '');
@@ -11944,8 +15076,23 @@ ${selector} .arrowheadPath {
   });
 
   initMarkdownFormatToolbar();
+  initToolbarDropdownPortals();
   initFindReplaceModal();
   initAppModals();
+  document.addEventListener('fullscreenchange', function() {
+    const fullscreenButton = markdownFormatToolbar && markdownFormatToolbar.querySelector('[data-md-action="fullscreen"]');
+    if (!fullscreenButton) return;
+    const isFullscreen = Boolean(document.fullscreenElement);
+    const label = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+    const icon = fullscreenButton.querySelector('i');
+    fullscreenButton.setAttribute('title', label);
+    fullscreenButton.setAttribute('aria-label', label);
+    if (icon) icon.className = isFullscreen ? 'lucide lucide-minimize' : 'lucide lucide-maximize';
+  });
+  const headerAboutButton = document.getElementById('header-about-button');
+  if (headerAboutButton) {
+    headerAboutButton.addEventListener('click', openAboutModal);
+  }
   
   // Editor key handlers for list continuation and indentation
   markdownEditor.addEventListener("keydown", function(e) {
@@ -11978,10 +15125,20 @@ ${selector} .arrowheadPath {
   markdownEditor.addEventListener("scroll", function() {
     cachedScrollTop = this.scrollTop;
     cachedScrollLeft = this.scrollLeft;
-    syncEditorToPreview();
+    if (secondarySplitTabId && currentViewMode === 'editor') {
+      syncDocumentSplitScroll(markdownEditor, documentSplitEditor);
+    } else {
+      syncEditorToPreview();
+    }
     scheduleEditorOverlayScrollSync();
   });
-  previewPane.addEventListener("scroll", syncPreviewToEditor);
+  previewPane.addEventListener("scroll", function() {
+    if (secondarySplitTabId && currentViewMode === 'preview') {
+      syncDocumentSplitScroll(previewPane, documentSplitPreview);
+    } else {
+      syncPreviewToEditor();
+    }
+  });
   toggleSyncButton.addEventListener("click", toggleSyncScrolling);
   if (directionToggle) {
     directionToggle.addEventListener("click", function () {
@@ -11990,6 +15147,13 @@ ${selector} .arrowheadPath {
       applyDirectionToContent(direction);
       saveGlobalState({ direction });
       updateDirectionToggleUI(direction);
+      const directionMenu = directionToggle.closest('[data-toolbar-menu]');
+      if (directionMenu) directionMenu.classList.remove('open');
+      const directionMenuToggle = document.querySelector('[data-toolbar-menu-toggle="alignment"]');
+      if (directionMenuToggle) {
+        directionMenuToggle.classList.remove('open');
+        directionMenuToggle.setAttribute('aria-expanded', 'false');
+      }
     });
   }
   themeToggle.addEventListener("click", function () {
@@ -12001,11 +15165,7 @@ ${selector} .arrowheadPath {
     document.documentElement.setAttribute("data-theme", theme);
     saveGlobalState({ theme });
 
-    if (theme === "dark") {
-      themeToggle.innerHTML = '<i class="bi bi-sun"></i>';
-    } else {
-      themeToggle.innerHTML = '<i class="bi bi-moon"></i>';
-    }
+    updateThemeToggleUI(theme);
     
     // PERF-004: Only re-render Mermaid diagrams on theme change instead of full renderMarkdown()
     // CSS custom properties handle all other theme transitions automatically.
@@ -12098,7 +15258,7 @@ ${selector} .arrowheadPath {
         for (const filePath of result) {
           const content = await Neutralino.filesystem.readFile(filePath);
           const fileName = filePath.split(/[/\\]/).pop().replace(/\.(md|markdown)$/i, "");
-          newTab(content, fileName);
+          if (!newTab(content, fileName)) break;
         }
       }
     } catch (e) {
@@ -12607,7 +15767,7 @@ ${selector} .arrowheadPath {
         <div class="pdf-progress-header">
           <p class="pdf-progress-title" id="pdf-progress-title">${titleText}</p>
           <button type="button" class="modal-close-btn pdf-progress-cancel-icon" aria-label="${cancelLabelText}" title="${cancelLabelText}">
-            <i class="bi bi-x-lg"></i>
+            <i class="lucide lucide-x"></i>
           </button>
         </div>
         <div class="pdf-progress-percent">0%</div>
@@ -12683,8 +15843,8 @@ ${selector} .arrowheadPath {
         state.triggerHtml.set(trigger, trigger.innerHTML);
         const generatingLabel = isPng ? "Generating Image..." : "Generating PDF...";
         trigger.innerHTML = index === 0
-          ? '<i class="bi bi-hourglass-split"></i> Generating...'
-          : `<i class="bi bi-hourglass-split me-2"></i> ${generatingLabel}`;
+          ? '<i class="lucide lucide-hourglass"></i> Generating...'
+          : `<i class="lucide lucide-hourglass me-2"></i> ${generatingLabel}`;
         trigger.classList.add("pdf-export-loading");
         trigger.setAttribute("aria-disabled", "true");
         trigger.disabled = true;
@@ -14139,11 +17299,22 @@ ${selector} .arrowheadPath {
   }
 
   function showCopiedMessage() {
-    const originalText = copyMarkdownButton.innerHTML;
-    copyMarkdownButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+    const icon = copyMarkdownButton.querySelector('i');
+    const label = copyMarkdownButton.querySelector('.btn-text');
+    const originalIconClass = icon ? icon.className : '';
+    const originalLabel = label ? label.textContent : '';
+    const originalTitle = copyMarkdownButton.getAttribute('title') || 'Copy Markdown';
+    const originalAriaLabel = copyMarkdownButton.getAttribute('aria-label') || 'Copy Markdown';
+    if (icon) icon.className = 'lucide lucide-check';
+    if (label) label.textContent = 'Copied';
+    copyMarkdownButton.setAttribute('title', 'Copied');
+    copyMarkdownButton.setAttribute('aria-label', 'Copied');
 
     setTimeout(() => {
-      copyMarkdownButton.innerHTML = originalText;
+      if (icon) icon.className = originalIconClass;
+      if (label) label.textContent = originalLabel;
+      copyMarkdownButton.setAttribute('title', originalTitle);
+      copyMarkdownButton.setAttribute('aria-label', originalAriaLabel);
     }, 2000);
   }
 
@@ -14212,8 +17383,8 @@ ${selector} .arrowheadPath {
   function openShareSnapshotTab(content, title, mode) {
     const shareMode = mode === 'edit' ? 'edit' : 'view';
     const viewMode = shareMode === 'edit' ? 'split' : 'preview';
-    if (tabs.length >= 20) {
-      alert('The shared snapshot could not be opened because the tab limit has been reached.');
+    if (tabs.length >= MAX_DOCUMENTS) {
+      alert('The shared snapshot could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
       return false;
     }
     const snapshotTab = createTab(typeof content === 'string' ? content : '', getSafeShareSnapshotTitle(title), viewMode);
@@ -14360,7 +17531,7 @@ ${selector} .arrowheadPath {
       shareGenerateBtn.textContent = 'Share';
     }
     if (shareCopyBtn) {
-      shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i><span>Copy</span>';
+      shareCopyBtn.innerHTML = '<i class="lucide lucide-copy"></i><span>Copy</span>';
     }
     setShareInviteState('Ready to copy');
   }
@@ -14482,7 +17653,7 @@ ${selector} .arrowheadPath {
     try {
       await copyTextToClipboard(generatedShareSnapshotUrl);
       shareUrlInput.value = generatedShareSnapshotUrl;
-      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i><span>Copied</span>';
+      shareCopyBtn.innerHTML = '<i class="lucide lucide-check"></i><span>Copied</span>';
       setTimeout(() => { shareCopyBtn.innerHTML = originalHTML; }, 2000);
     } catch (error) {
       console.error('Share copy failed:', error);
@@ -14776,8 +17947,9 @@ ${selector} .arrowheadPath {
         button.setAttribute('aria-disabled', 'true');
       } else if (button.dataset.shareSnapshotDisabled === 'true') {
         delete button.dataset.shareSnapshotDisabled;
-        button.disabled = false;
-        button.setAttribute('aria-disabled', 'false');
+        const remainsDisabled = button.dataset.documentSplitDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
       }
     });
 
@@ -14790,8 +17962,9 @@ ${selector} .arrowheadPath {
         button.setAttribute('aria-disabled', 'true');
       } else if (button.dataset.shareSnapshotDisabled === 'true') {
         delete button.dataset.shareSnapshotDisabled;
-        button.disabled = false;
-        button.setAttribute('aria-disabled', 'false');
+        const remainsDisabled = button.dataset.documentSplitDisabled === 'true';
+        button.disabled = remainsDisabled;
+        button.setAttribute('aria-disabled', remainsDisabled ? 'true' : 'false');
       }
     });
 
@@ -15364,13 +18537,15 @@ ${selector} .arrowheadPath {
   function ensureLiveParticipantTab(markdown) {
     if (!liveCollaboration || liveCollaboration.tabId) return Boolean(liveCollaboration && liveCollaboration.tabId);
     if (!liveCollaboration.pendingJoinTab) return false;
-    if (tabs.length >= 20) {
-      showLiveShareExpiredModal('The Live Share room could not be opened because the tab limit has been reached.');
+    if (tabs.length >= MAX_DOCUMENTS) {
+      showLiveShareExpiredModal('The Live Share room could not be opened because the ' + MAX_DOCUMENTS + '-document limit has been reached.');
       leaveLiveSession({ restoreOriginal: false, silent: true });
       return false;
     }
 
     const liveTab = createTab(typeof markdown === 'string' ? markdown : '', getSafeLiveTitle(liveCollaboration.roomTitle), 'split');
+    liveTab.kind = 'live-share';
+    liveTab.temporary = true;
     tabs.push(liveTab);
     switchTab(liveTab.id);
     liveCollaboration.tabId = liveTab.id;
@@ -16177,12 +19352,14 @@ ${selector} .arrowheadPath {
     const shouldDeferParticipantTab = !isHost && options.openInNewTab && yText.length === 0;
 
     if (!isHost && options.openInNewTab && !shouldDeferParticipantTab) {
-      if (tabs.length >= 20) {
-        throw new Error('Maximum tab limit reached');
+      if (tabs.length >= MAX_DOCUMENTS) {
+        throw new Error('Maximum document limit reached');
       }
       returnTabId = options.returnTabId || activeTabId;
       const liveTabTitle = getSafeLiveTitle(sessionTitle);
       const liveTab = createTab(yText.toString(), liveTabTitle, 'split');
+      liveTab.kind = 'live-share';
+      liveTab.temporary = true;
       tabs.push(liveTab);
       switchTab(liveTab.id);
       liveTabId = liveTab.id;
@@ -16413,7 +19590,7 @@ ${selector} .arrowheadPath {
 
     function onCopied() {
       const orig = liveShareCopyBtn.innerHTML;
-      liveShareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      liveShareCopyBtn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { liveShareCopyBtn.innerHTML = orig; }, 2000);
     }
 
@@ -16762,9 +19939,16 @@ ${selector} .arrowheadPath {
     }
   });
 
-  document.getElementById('tab-reset-btn').addEventListener('click', function() {
-    resetAllTabs();
-  });
+  const tabResetButton = document.getElementById('tab-reset-btn');
+  if (tabResetButton) {
+    tabResetButton.addEventListener('click', function() {
+      const settingsToggle = document.getElementById('workspaceSettingsDropdown');
+      if (settingsToggle && window.bootstrap && bootstrap.Dropdown) {
+        bootstrap.Dropdown.getOrCreateInstance(settingsToggle).hide();
+      }
+      resetAllTabs();
+    });
+  }
 
   // ========================================
   // MERMAID DIAGRAM TOOLBAR
@@ -16856,7 +20040,7 @@ ${selector} .arrowheadPath {
       status.appendChild(spinner);
     } else {
       const icon = document.createElement('i');
-      icon.className = 'bi bi-exclamation-triangle';
+      icon.className = 'lucide lucide-triangle-alert';
       icon.setAttribute('aria-hidden', 'true');
       status.appendChild(icon);
     }
@@ -16869,7 +20053,7 @@ ${selector} .arrowheadPath {
       const retryButton = document.createElement('button');
       retryButton.type = 'button';
       retryButton.className = 'diagram-retry-btn';
-      retryButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry';
+      retryButton.innerHTML = '<i class="lucide lucide-redo-2"></i> Retry';
       retryButton.addEventListener('click', retry);
       status.appendChild(retryButton);
     }
@@ -16916,22 +20100,22 @@ ${selector} .arrowheadPath {
       {
         title: 'Open diagram viewer',
         ariaLabel: 'Open diagram viewer with zoom and pan controls',
-        html: '<i class="bi bi-arrows-fullscreen"></i>',
+        html: '<i class="lucide lucide-maximize"></i>',
         onClick: () => openMermaidZoomModal(container)
       },
       {
         title: 'Copy image to clipboard',
-        html: '<i class="bi bi-clipboard-image"></i> Copy',
+        html: '<i class="lucide lucide-copy"></i> Copy',
         onClick: button => copyMermaidImage(container, button)
       },
       {
         title: 'Download PNG',
-        html: '<i class="bi bi-file-image"></i> PNG',
+        html: '<i class="lucide lucide-file-image"></i> PNG',
         onClick: button => downloadMermaidPng(container, button)
       },
       {
         title: 'Download SVG',
-        html: '<i class="bi bi-filetype-svg"></i> SVG',
+        html: '<i class="lucide lucide-file-code-2"></i> SVG',
         onClick: button => downloadMermaidSvg(container, button)
       }
     ];
@@ -17027,7 +20211,7 @@ ${selector} .arrowheadPath {
     }
 
     const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Loading...';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i> Loading...';
     activeAbcBtn = btn;
 
     try {
@@ -17067,7 +20251,7 @@ ${selector} .arrowheadPath {
         cursorControl.onStart();
         timingCallbacks.start();
 
-        btn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+        btn.innerHTML = '<i class="lucide lucide-square-filled"></i> Stop';
         btn.setAttribute('aria-label', 'Stop playback');
         return synth.start();
       })
@@ -17099,7 +20283,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(blob => {
@@ -17109,7 +20293,7 @@ ${selector} .arrowheadPath {
         a.download = `score-${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       }, 'image/png');
     } catch (e) {
@@ -17123,7 +20307,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(async blob => {
@@ -17131,10 +20315,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       }, 'image/png');
@@ -17158,7 +20342,7 @@ ${selector} .arrowheadPath {
     a.click();
     URL.revokeObjectURL(url);
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    btn.innerHTML = '<i class="lucide lucide-check"></i>';
     setTimeout(() => { btn.innerHTML = original; }, 1500);
   }
 
@@ -17167,7 +20351,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(blob => {
@@ -17177,7 +20361,7 @@ ${selector} .arrowheadPath {
         a.download = `diagram-${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       }, 'image/png');
     } catch (e) {
@@ -17191,7 +20375,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(async blob => {
@@ -17199,10 +20383,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       }, 'image/png');
@@ -17226,7 +20410,7 @@ ${selector} .arrowheadPath {
     a.click();
     URL.revokeObjectURL(url);
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    btn.innerHTML = '<i class="lucide lucide-check"></i>';
     setTimeout(() => { btn.innerHTML = original; }, 1500);
   }
 
@@ -17388,7 +20572,7 @@ ${selector} .arrowheadPath {
     if (!modalCurrentSvgEl) return;
     const btn = this;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       if (modalCurrentSvgEl.tagName.toLowerCase() === 'img') {
         const pngUrl = modalCurrentSvgEl.src.replace('/svg/', '/png/');
@@ -17398,7 +20582,7 @@ ${selector} .arrowheadPath {
         const a = document.createElement('a');
         a.href = url; a.download = `diagram-${Date.now()}.png`; a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       } else {
         // Use the original SVG (with dimensions) for proper PNG rendering
@@ -17408,7 +20592,7 @@ ${selector} .arrowheadPath {
           const a = document.createElement('a');
           a.href = url; a.download = `diagram-${Date.now()}.png`; a.click();
           URL.revokeObjectURL(url);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-check"></i>';
           setTimeout(() => { btn.innerHTML = original; }, 1500);
         }, 'image/png');
       }
@@ -17422,7 +20606,7 @@ ${selector} .arrowheadPath {
     if (!modalCurrentSvgEl) return;
     const btn = this;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       if (modalCurrentSvgEl.tagName.toLowerCase() === 'img') {
         const pngUrl = modalCurrentSvgEl.src.replace('/svg/', '/png/');
@@ -17432,10 +20616,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       } else {
@@ -17445,10 +20629,10 @@ ${selector} .arrowheadPath {
             await navigator.clipboard.write([
               new ClipboardItem({ 'image/png': blob })
             ]);
-            btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+            btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
           } catch (clipErr) {
             console.error('Clipboard write failed:', clipErr);
-            btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+            btn.innerHTML = '<i class="lucide lucide-x"></i>';
           }
           setTimeout(() => { btn.innerHTML = original; }, 1800);
         }, 'image/png');
@@ -17633,7 +20817,7 @@ ${selector} .arrowheadPath {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
     } catch (e) {
       console.warn('SVG fetch download failed, attempting fallback direct link download:', e);
@@ -17643,10 +20827,10 @@ ${selector} .arrowheadPath {
         a.download = filename;
         a.target = '_blank';
         a.click();
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
       } catch (err) {
         console.error('SVG download completely failed:', err);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
     }
@@ -17657,7 +20841,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17667,7 +20851,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('PlantUML PNG export failed:', e);
@@ -17680,7 +20864,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17688,10 +20872,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -17705,7 +20889,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -17750,7 +20934,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17760,7 +20944,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('D2 PNG export failed:', e);
@@ -17773,7 +20957,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17781,10 +20965,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -17798,7 +20982,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -17843,7 +21027,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17853,7 +21037,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('Graphviz PNG export failed:', e);
@@ -17866,7 +21050,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -17874,10 +21058,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -17891,7 +21075,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -18052,7 +21236,7 @@ ${selector} .arrowheadPath {
       darkMode: "Dark Mode",
       lightMode: "Light Mode",
       helpTitle: "Markdown Viewer Help",
-      aboutTitle: "About Markdown",
+      aboutTitle: "About Markdown Viewer",
       shareTitle: "Share Document",
       renameTitle: "Rename file",
       insertLink: "Insert link",
@@ -18580,6 +21764,14 @@ ${selector} .arrowheadPath {
     document.documentElement.setAttribute('lang', lang === 'zh' ? 'zh-Hans' : (lang === 'tw' ? 'zh-Hant' : lang));
     const dict = I18N_DICTS[lang] || I18N_DICTS.en;
 
+    function updateMenuLabel(element, text) {
+      if (!element) return false;
+      const label = element.querySelector('.app-menu-label');
+      if (!label) return false;
+      label.textContent = text;
+      return true;
+    }
+
     // Update main logo and header elements
     const logoEl = document.querySelector('.app-header h1');
     if (logoEl) logoEl.textContent = dict.title;
@@ -18587,43 +21779,43 @@ ${selector} .arrowheadPath {
     // Update dynamic current language labels in drop menus
     const labelEl = document.getElementById('current-lang-label');
     if (labelEl) {
-      const flags = {
-        en: "🇺🇸 English",
-        zh: "🇨🇳 简体中文",
-        ja: "🇯🇵 日本語",
-        ko: "🇰🇷 한국어",
-        pt: "🇧🇷 Português (Brasil)",
-        es: "🇪🇸 Español",
-        fr: "🇫🇷 Français",
-        de: "🇩🇪 Deutsch",
-        ru: "🇷🇺 Русский",
-        it: "🇮🇹 Italiano",
-        tr: "🇹🇷 Türkçe",
-        pl: "🇵🇱 Polski",
-        tw: "🇹🇼 繁體中文",
-        uk: "🇺🇦 Українська"
+      const languageNames = {
+        en: "English",
+        zh: "简体中文",
+        ja: "日本語",
+        ko: "한국어",
+        pt: "Português (Brasil)",
+        es: "Español",
+        fr: "Français",
+        de: "Deutsch",
+        ru: "Русский",
+        it: "Italiano",
+        tr: "Türkçe",
+        pl: "Polski",
+        tw: "繁體中文",
+        uk: "Українська"
       };
-      labelEl.textContent = flags[lang];
+      labelEl.textContent = languageNames[lang];
     }
     const mobileLabelEl = document.getElementById('mobile-current-lang-label');
     if (mobileLabelEl) {
-      const flags = {
-        en: "us English",
-        zh: "CN 简体中文",
-        ja: "JP 日本語",
-        ko: "KR 한국어",
-        pt: "BR Português (Brasil)",
-        es: "ES Español",
-        fr: "FR Français",
-        de: "DE Deutsch",
-        ru: "RU Русский",
-        it: "IT Italiano",
-        tr: "TR Türkçe",
-        pl: "PL Polski",
-        tw: "TW 繁體中文",
-        uk: "UK Українська"
+      const languageNames = {
+        en: "English",
+        zh: "简体中文",
+        ja: "日本語",
+        ko: "한국어",
+        pt: "Português (Brasil)",
+        es: "Español",
+        fr: "Français",
+        de: "Deutsch",
+        ru: "Русский",
+        it: "Italiano",
+        tr: "Türkçe",
+        pl: "Polski",
+        tw: "繁體中文",
+        uk: "Українська"
       };
-      mobileLabelEl.textContent = flags[lang];
+      mobileLabelEl.textContent = languageNames[lang];
     }
 
     // Translate buttons with text content
@@ -18636,24 +21828,24 @@ ${selector} .arrowheadPath {
     const mobileToggleSyncEl = document.getElementById('mobile-toggle-sync');
     if (mobileToggleSyncEl) {
       const isSyncActive = mobileToggleSyncEl.classList.contains('sync-active');
-      mobileToggleSyncEl.innerHTML = `<i class="bi bi-link"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
+      mobileToggleSyncEl.innerHTML = `<i class="lucide lucide-refresh-cw" aria-hidden="true"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
     }
 
     // Import buttons
     const importDropEl = document.getElementById('importDropdown');
     if (importDropEl) {
       const importText = importDropEl.querySelector('.btn-text');
-      if (importText) importText.textContent = dict.import;
+      if (importText) importText.textContent = 'New';
     }
     const importFileEl = document.getElementById('import-from-file');
-    if (importFileEl) importFileEl.innerHTML = `<i class="bi bi-upload me-2"></i>${dict.importFile}`;
+    if (importFileEl) updateMenuLabel(importFileEl, dict.importFile);
     const importGithubEl = document.getElementById('import-from-github');
-    if (importGithubEl) importGithubEl.innerHTML = `<i class="bi bi-github me-2"></i>${dict.importGithub}`;
+    if (importGithubEl) updateMenuLabel(importGithubEl, dict.importGithub);
 
     const mImportFileEl = document.getElementById('mobile-import-button');
-    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="bi bi-upload me-2"></i>${dict.importFile}`;
+    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload me-2"></i>${dict.importFile}`;
     const mImportGithubEl = document.getElementById('mobile-import-github-button');
-    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github me-2"></i>${dict.importGithub}`;
+    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github me-2" aria-hidden="true"></i>${dict.importGithub}`;
 
     // Export buttons
     const exportDropEl = document.getElementById('exportDropdown');
@@ -18662,56 +21854,56 @@ ${selector} .arrowheadPath {
       if (exportText) exportText.textContent = dict.export;
     }
     const exportMdEl = document.getElementById('export-md');
-    if (exportMdEl) exportMdEl.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${dict.exportMd}`;
+    if (exportMdEl) updateMenuLabel(exportMdEl, dict.exportMd);
     const exportHtmlEl = document.getElementById('export-html');
-    if (exportHtmlEl) exportHtmlEl.innerHTML = `<i class="bi bi-file-earmark-code me-2"></i>${dict.exportHtml}`;
+    if (exportHtmlEl) updateMenuLabel(exportHtmlEl, dict.exportHtml);
     const exportPdfEl = document.getElementById('export-pdf');
-    if (exportPdfEl) exportPdfEl.innerHTML = `<i class="bi bi-file-earmark-pdf me-2"></i>${dict.exportPdf}`;
+    if (exportPdfEl) updateMenuLabel(exportPdfEl, dict.exportPdf);
     const exportPngEl = document.getElementById('export-png');
-    if (exportPngEl) exportPngEl.innerHTML = `<i class="bi bi-file-earmark-image me-2"></i>${dict.exportPng}`;
+    if (exportPngEl) updateMenuLabel(exportPngEl, dict.exportPng);
 
     const mExportMdEl = document.getElementById('mobile-export-md');
-    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${dict.exportMd}`;
+    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportMd}`;
     const mExportHtmlEl = document.getElementById('mobile-export-html');
-    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="bi bi-file-earmark-code me-2"></i>${dict.exportHtml}`;
+    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2 me-2"></i>${dict.exportHtml}`;
     const mExportPdfEl = document.getElementById('mobile-export-pdf');
-    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="bi bi-file-earmark-pdf me-2"></i>${dict.exportPdf}`;
+    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportPdf}`;
     const mExportPngEl = document.getElementById('mobile-export-png');
-    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="bi bi-file-earmark-image me-2"></i>${dict.exportPng}`;
+    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image me-2"></i>${dict.exportPng}`;
 
     // Copy / Share
     if (copyMarkdownButton) {
       const copyButtonText = copyMarkdownButton.querySelector('.btn-text');
-      if (copyButtonText) copyButtonText.textContent = dict.copy;
+      if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
     }
     const mCopyBtn = document.getElementById('mobile-copy-markdown');
-    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="bi bi-clipboard me-2"></i>${dict.copy}`;
+    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="lucide lucide-copy me-2" aria-hidden="true"></i>${dict.copy}`;
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
-      if (shareButtonText) shareButtonText.textContent = dict.shareSnapshot || 'Share Snapshot';
+      if (shareButtonText) shareButtonText.textContent = dict.share || 'Share';
     }
     if (liveShareButton) {
       const liveShareButtonText = liveShareButton.querySelector('.btn-text');
       if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
     }
     const mShareBtn = document.getElementById('mobile-share-button');
-    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
+    if (mShareBtn) mShareBtn.innerHTML = `<i class="lucide lucide-share-2 me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
     const mLiveShareBtn = document.getElementById('mobile-live-share-button');
     if (mLiveShareBtn) {
       const mobileLiveShareLabel = document.getElementById('mobile-live-share-label');
       if (mobileLiveShareLabel) {
         mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
       } else {
-        mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast me-2"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio me-2" data-lucide="radio" aria-hidden="true"></i>${dict.liveShare || 'Live Share'}`;
       }
     }
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
-    if (tabResetBtn) tabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset}`;
+    if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
     const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
-    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset} all files`;
+    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="lucide lucide-undo-2"></i> ${dict.reset} all files`;
 
     // View toggle buttons title tooltips
     document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = dict.editor);
@@ -18752,7 +21944,7 @@ ${selector} .arrowheadPath {
     const mThemeToggle = document.getElementById('mobile-theme-toggle');
     if (mThemeToggle) {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      mThemeToggle.innerHTML = `<i class="bi bi-${currentTheme === 'dark' ? 'sun' : 'moon'} me-2"></i> ${currentTheme === 'dark' ? dict.lightMode : dict.darkMode}`;
+      mThemeToggle.innerHTML = `<i class="lucide lucide-${currentTheme === 'dark' ? 'sun' : 'moon'} me-2"></i> ${currentTheme === 'dark' ? dict.lightMode : dict.darkMode}`;
     }
 
     // Stats Labels
