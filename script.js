@@ -9,6 +9,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     'markdownViewerSecretWorkspace'
   ]);
 
+  document.addEventListener('click', function(event) {
+    const closeButton = event.target.closest('[data-modal-cancel]');
+    if (!closeButton) return;
+    const cancelButton = document.getElementById(closeButton.dataset.modalCancel);
+    if (cancelButton) cancelButton.click();
+  });
+
   function isPrivateStorageMode() {
     try {
       return localStorage.getItem(PRIVATE_MODE_KEY) === 'true';
@@ -15914,23 +15921,25 @@ ${selector} .arrowheadPath {
             <i class="lucide lucide-x"></i>
           </button>
         </div>
-        <div class="pdf-progress-percent">0%</div>
-        <div class="pdf-progress-track"
-             role="progressbar"
-             aria-label="${progressLabelText}"
-             aria-valuemin="0"
-             aria-valuemax="100"
-             aria-valuenow="0">
-          <div class="pdf-progress-fill"></div>
-        </div>
-        <div class="pdf-progress-details">
-          <div class="pdf-progress-detail">
-            <span>Current Step</span>
-            <strong class="pdf-progress-step">Preparing</strong>
+        <div class="pdf-progress-body">
+          <div class="pdf-progress-percent">0%</div>
+          <div class="pdf-progress-track"
+               role="progressbar"
+               aria-label="${progressLabelText}"
+               aria-valuemin="0"
+               aria-valuemax="100"
+               aria-valuenow="0">
+            <div class="pdf-progress-fill"></div>
           </div>
-          <div class="pdf-progress-detail">
-            <span>Estimated remaining</span>
-            <strong class="pdf-progress-eta">Calculating...</strong>
+          <div class="pdf-progress-details">
+            <div class="pdf-progress-detail">
+              <span>Current Step</span>
+              <strong class="pdf-progress-step">Preparing</strong>
+            </div>
+            <div class="pdf-progress-detail">
+              <span>Estimated remaining</span>
+              <strong class="pdf-progress-eta">Calculating...</strong>
+            </div>
           </div>
         </div>
         <div class="pdf-progress-actions">

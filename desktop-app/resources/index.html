@@ -456,14 +456,16 @@
 
         <!-- Reset Confirmation Modal -->
         <div id="reset-confirm-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title" aria-describedby="reset-modal-description" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box modal-box">
+          <div class="reset-modal-box app-modal-box modal-box">
             <div class="modal-header">
               <p id="reset-modal-title" class="reset-modal-message">Reset all files?</p>
               <button type="button" class="modal-close-btn" id="reset-modal-close" aria-label="Close reset confirmation dialog">
                 <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
-            <p id="reset-modal-description" class="modal-subtext">This will remove all files and review items. Unsaved changes cannot be recovered.</p>
+            <div class="modal-body">
+              <p id="reset-modal-description" class="modal-subtext">This will remove all files and review items. Unsaved changes cannot be recovered.</p>
+            </div>
             <div class="reset-modal-actions">
               <button type="button" class="reset-modal-btn reset-modal-cancel" id="reset-modal-cancel">Cancel</button>
               <button type="button" class="reset-modal-btn reset-modal-confirm" id="reset-modal-confirm">Reset all</button>
@@ -473,14 +475,16 @@
 
         <!-- Review Delete Confirmation Modal -->
         <div id="review-delete-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="review-delete-title" aria-describedby="review-delete-description" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box modal-box">
+          <div class="reset-modal-box app-modal-box modal-box">
             <div class="modal-header">
               <p id="review-delete-title" class="reset-modal-message">Delete review item?</p>
               <button type="button" class="modal-close-btn" id="review-delete-close" aria-label="Close review deletion dialog">
                 <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
-            <p id="review-delete-description" class="modal-subtext">This comment or suggestion will be permanently deleted.</p>
+            <div class="modal-body">
+              <p id="review-delete-description" class="modal-subtext">This comment or suggestion will be permanently deleted.</p>
+            </div>
             <div class="reset-modal-actions">
               <button type="button" class="reset-modal-btn reset-modal-cancel" id="review-delete-cancel">Cancel</button>
               <button type="button" class="reset-modal-btn reset-modal-confirm" id="review-delete-confirm">Delete</button>
@@ -490,14 +494,16 @@
 
         <!-- Clear Markdown Formatting Modal -->
         <div id="clear-formatting-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="clear-formatting-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <p id="clear-formatting-title" class="reset-modal-message">Clear active document?</p>
               <button type="button" class="modal-close-btn" id="clear-formatting-close" aria-label="Close clear document dialog">
                 <i class="lucide lucide-x"></i>
               </button>
             </div>
-            <p class="modal-subtext">Are you sure you want to clear the content of the active document? The document itself will not be deleted.</p>
+            <div class="modal-body">
+              <p class="modal-subtext">Are you sure you want to clear the content of the active document? The document itself will not be deleted.</p>
+            </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="clear-formatting-cancel">Cancel</button>
               <button class="reset-modal-btn reset-modal-confirm" id="clear-formatting-confirm">Clear Document</button>
@@ -507,7 +513,7 @@
 
         <!-- PDF Export Options Modal -->
         <div id="pdf-export-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pdf-export-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <p id="pdf-export-title" class="reset-modal-message">Export PDF Options</p>
               <button type="button" class="modal-close-btn" id="pdf-export-close" aria-label="Close PDF export dialog">
@@ -642,7 +648,7 @@
 
         <!-- Diff Preview Modal -->
         <div id="find-replace-diff-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diff-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--xl modal-box">
+          <div class="reset-modal-box reset-modal-box--xl app-modal-box modal-box">
             <div class="modal-header">
               <p id="diff-modal-title" class="reset-modal-message">Replace All Diff Preview</p>
               <button type="button" class="modal-close-btn" id="find-replace-diff-close-icon" aria-label="Close diff preview dialog">
@@ -665,7 +671,7 @@
 
         <!-- Help Modal -->
         <div id="help-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="help-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--xl modal-box">
+          <div class="reset-modal-box reset-modal-box--xl app-modal-box modal-box">
             <div class="modal-header">
               <p id="help-modal-title" class="reset-modal-message">Markdown Viewer Help</p>
               <button type="button" class="modal-close-btn" id="help-modal-close-icon" aria-label="Close help dialog">
@@ -718,7 +724,7 @@
 
         <!-- About Markdown Viewer Modal -->
         <div id="about-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="about-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--about modal-box">
+          <div class="reset-modal-box reset-modal-box--about app-modal-box modal-box">
             <div class="modal-header">
               <p id="about-modal-title" class="reset-modal-message">About Markdown Viewer</p>
               <button type="button" class="modal-close-btn" id="about-modal-close-icon" aria-label="Close about dialog">
@@ -756,7 +762,7 @@
 
         <!-- Share Modal -->
         <div id="share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <p id="share-modal-title" class="reset-modal-message">Share Snapshot</p>
               <button type="button" class="modal-close-btn" id="share-modal-close-icon" aria-label="Close share dialog">
@@ -808,7 +814,7 @@
         </div>
 
         <div id="share-error-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-error-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <p id="share-error-title" class="reset-modal-message">Share link failed</p>
               <button type="button" class="modal-close-btn" id="share-error-close-icon" aria-label="Close share error dialog">
@@ -826,7 +832,7 @@
 
         <!-- Live Share Modal -->
         <div id="live-share-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <div class="live-share-title-row">
                 <p id="live-share-modal-title" class="reset-modal-message">Live Share</p>
@@ -904,7 +910,7 @@
         </div>
 
         <div id="live-share-expired-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="live-share-expired-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide modal-box">
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
             <div class="modal-header">
               <p id="live-share-expired-title" class="reset-modal-message">Live Share room expired</p>
               <button type="button" class="modal-close-btn" id="live-share-expired-close-icon" aria-label="Close expired live share dialog">
@@ -922,9 +928,14 @@
 
         <!-- Rename Modal -->
         <div id="rename-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="rename-modal-title" class="reset-modal-message">Rename file</p>
-            <input type="text" id="rename-modal-input" class="rename-modal-input" placeholder="File name" />
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box">
+            <div class="modal-header">
+              <p id="rename-modal-title" class="reset-modal-message">Rename file</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="rename-modal-cancel" aria-label="Close rename dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
+            </div>
+            <div class="modal-body">
+              <input type="text" id="rename-modal-input" class="rename-modal-input" placeholder="File name" />
+            </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="rename-modal-cancel">Cancel</button>
               <button class="reset-modal-btn reset-modal-confirm" id="rename-modal-confirm">Rename</button>
@@ -934,15 +945,20 @@
 
         <!-- Link Modal -->
         <div id="link-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="link-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="link-modal-title" class="reset-modal-message">Insert link</p>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="link-modal-url">Address / URL</label>
-              <input type="url" id="link-modal-url" class="rename-modal-input" value="https://" />
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box">
+            <div class="modal-header">
+              <p id="link-modal-title" class="reset-modal-message">Insert link</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="link-modal-cancel" aria-label="Close link dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="link-modal-text">Link Text</label>
-              <input type="text" id="link-modal-text" class="rename-modal-input" placeholder="Link title" />
+            <div class="modal-body">
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="link-modal-url">Address / URL</label>
+                <input type="url" id="link-modal-url" class="rename-modal-input" value="https://" />
+              </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="link-modal-text">Link Text</label>
+                <input type="text" id="link-modal-text" class="rename-modal-input" placeholder="Link title" />
+              </div>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="link-modal-cancel">Cancel</button>
@@ -953,19 +969,24 @@
 
         <!-- Reference Modal -->
         <div id="reference-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reference-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="reference-modal-title" class="reset-modal-message">Insert reference</p>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="reference-modal-number">Reference Number</label>
-              <input type="text" id="reference-modal-number" class="rename-modal-input" value="[1]" />
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box">
+            <div class="modal-header">
+              <p id="reference-modal-title" class="reset-modal-message">Insert reference</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="reference-modal-cancel" aria-label="Close reference dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="reference-modal-url">Address / Link</label>
-              <input type="url" id="reference-modal-url" class="rename-modal-input" value="https://" />
-            </div>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="reference-modal-title-input">Title</label>
-              <input type="text" id="reference-modal-title-input" class="rename-modal-input" placeholder="Reference title" />
+            <div class="modal-body">
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="reference-modal-number">Reference Number</label>
+                <input type="text" id="reference-modal-number" class="rename-modal-input" value="[1]" />
+              </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="reference-modal-url">Address / Link</label>
+                <input type="url" id="reference-modal-url" class="rename-modal-input" value="https://" />
+              </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="reference-modal-title-input">Title</label>
+                <input type="text" id="reference-modal-title-input" class="rename-modal-input" placeholder="Reference title" />
+              </div>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="reference-modal-cancel">Cancel</button>
@@ -976,30 +997,35 @@
 
         <!-- Image Modal -->
         <div id="image-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="image-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="image-modal-title" class="reset-modal-message">Insert image</p>
-            <div class="reset-modal-toggle-group">
-              <label class="reset-modal-option">
-                <input type="radio" name="image-source" id="image-source-upload" value="upload">
-                Upload from Device
-              </label>
-              <label class="reset-modal-option">
-                <input type="radio" name="image-source" id="image-source-url" value="url" checked>
-                External Image (URL)
-              </label>
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box">
+            <div class="modal-header">
+              <p id="image-modal-title" class="reset-modal-message">Insert image</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="image-modal-cancel" aria-label="Close image dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div id="image-upload-fields" class="reset-modal-field-group" style="display:none;">
-              <input type="file" id="image-modal-file" class="rename-modal-input" accept="image/*" />
-            </div>
-            <div id="image-url-fields" class="reset-modal-field-group">
-              <div class="reset-modal-field">
-                <label class="reset-modal-label" for="image-modal-url">Image URL</label>
-                <input type="url" id="image-modal-url" class="rename-modal-input" value="https://" />
+            <div class="modal-body">
+              <div class="reset-modal-toggle-group">
+                <label class="reset-modal-option">
+                  <input type="radio" name="image-source" id="image-source-upload" value="upload">
+                  Upload from Device
+                </label>
+                <label class="reset-modal-option">
+                  <input type="radio" name="image-source" id="image-source-url" value="url" checked>
+                  External Image (URL)
+                </label>
               </div>
-            </div>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="image-modal-alt">Alt Text (used for title)</label>
-              <input type="text" id="image-modal-alt" class="rename-modal-input" placeholder="Image description" />
+              <div id="image-upload-fields" class="reset-modal-field-group" style="display:none;">
+                <input type="file" id="image-modal-file" class="rename-modal-input" accept="image/*" />
+              </div>
+              <div id="image-url-fields" class="reset-modal-field-group">
+                <div class="reset-modal-field">
+                  <label class="reset-modal-label" for="image-modal-url">Image URL</label>
+                  <input type="url" id="image-modal-url" class="rename-modal-input" value="https://" />
+                </div>
+              </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="image-modal-alt">Alt Text (used for title)</label>
+                <input type="text" id="image-modal-alt" class="rename-modal-input" placeholder="Image description" />
+              </div>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="image-modal-cancel">Cancel</button>
@@ -1010,15 +1036,20 @@
 
         <!-- Table Modal -->
         <div id="table-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="table-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide">
-            <p id="table-modal-title" class="reset-modal-message">Insert table</p>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="table-modal-columns">Column count</label>
-              <input type="number" id="table-modal-columns" class="rename-modal-input" min="1" max="20" value="3" />
+          <div class="reset-modal-box reset-modal-box--wide app-modal-box">
+            <div class="modal-header">
+              <p id="table-modal-title" class="reset-modal-message">Insert table</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="table-modal-cancel" aria-label="Close table dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="table-modal-rows">Row count</label>
-              <input type="number" id="table-modal-rows" class="rename-modal-input" min="1" max="20" value="1" />
+            <div class="modal-body">
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="table-modal-columns">Column count</label>
+                <input type="number" id="table-modal-columns" class="rename-modal-input" min="1" max="20" value="3" />
+              </div>
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="table-modal-rows">Row count</label>
+                <input type="number" id="table-modal-rows" class="rename-modal-input" min="1" max="20" value="1" />
+              </div>
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="table-modal-cancel">Cancel</button>
@@ -1029,14 +1060,19 @@
 
         <!-- Emoji Modal -->
         <div id="emoji-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="emoji-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl">
-            <p id="emoji-modal-title" class="reset-modal-message">GitHub Emojis</p>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="emoji-modal-search">Search</label>
-              <input type="text" id="emoji-modal-search" class="rename-modal-input" placeholder="Search emojis" />
+          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl app-modal-box">
+            <div class="modal-header">
+              <p id="emoji-modal-title" class="reset-modal-message">GitHub Emojis</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="emoji-modal-cancel" aria-label="Close GitHub Emojis dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div id="emoji-modal-grid" class="emoji-grid" role="listbox" aria-label="Emoji list"></div>
-            <p id="emoji-modal-empty" class="modal-empty" style="display:none;">No emojis found.</p>
+            <div class="modal-body">
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="emoji-modal-search">Search</label>
+                <input type="text" id="emoji-modal-search" class="rename-modal-input" placeholder="Search emojis" />
+              </div>
+              <div id="emoji-modal-grid" class="emoji-grid" role="listbox" aria-label="Emoji list"></div>
+              <p id="emoji-modal-empty" class="modal-empty" style="display:none;">No emojis found.</p>
+            </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="emoji-modal-cancel">Cancel</button>
               <button class="reset-modal-btn" id="emoji-modal-insert">Insert</button>
@@ -1046,14 +1082,19 @@
 
         <!-- Symbols Modal -->
         <div id="symbols-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="symbols-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl">
-            <p id="symbols-modal-title" class="reset-modal-message">Symbols &amp; HTML Entities</p>
-            <div class="reset-modal-field">
-              <label class="reset-modal-label" for="symbols-modal-search">Search</label>
-              <input type="text" id="symbols-modal-search" class="rename-modal-input" placeholder="Search symbols" />
+          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl app-modal-box">
+            <div class="modal-header">
+              <p id="symbols-modal-title" class="reset-modal-message">Symbols &amp; HTML Entities</p>
+              <button type="button" class="modal-close-btn" data-modal-cancel="symbols-modal-cancel" aria-label="Close Symbols and HTML Entities dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div id="symbols-modal-grid" class="symbol-grid" role="listbox" aria-label="Symbol list"></div>
-            <p id="symbols-modal-empty" class="modal-empty" style="display:none;">No symbols found.</p>
+            <div class="modal-body">
+              <div class="reset-modal-field">
+                <label class="reset-modal-label" for="symbols-modal-search">Search</label>
+                <input type="text" id="symbols-modal-search" class="rename-modal-input" placeholder="Search symbols" />
+              </div>
+              <div id="symbols-modal-grid" class="symbol-grid" role="listbox" aria-label="Symbol list"></div>
+              <p id="symbols-modal-empty" class="modal-empty" style="display:none;">No symbols found.</p>
+            </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="symbols-modal-cancel">Cancel</button>
               <button class="reset-modal-btn" id="symbols-modal-insert">Insert</button>
@@ -1063,7 +1104,7 @@
 
         <!-- Markdown Alert Modal -->
         <div id="alert-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide alert-modal-box modal-box">
+          <div class="reset-modal-box reset-modal-box--wide alert-modal-box app-modal-box modal-box">
             <div class="modal-header">
               <div>
                 <p id="alert-modal-title" class="reset-modal-message">Markdown alerts</p>
@@ -1081,7 +1122,7 @@
 
         <!-- Diagram & Chart Modal -->
         <div id="diagram-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diagram-modal-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box modal-box">
+          <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box app-modal-box modal-box">
             <div class="modal-header">
               <p id="diagram-modal-title" class="reset-modal-message">Insert Diagram &amp; More</p>
               <button class="modal-close-btn" id="diagram-modal-close" aria-label="Close diagram dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
@@ -1131,7 +1172,7 @@
 
         <!-- GitHub Import Modal -->
         <div id="github-import-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="github-import-title" aria-hidden="true" style="display:none;">
-          <div class="reset-modal-box github-import-modal-box modal-box">
+          <div class="reset-modal-box github-import-modal-box app-modal-box modal-box">
             <div class="modal-header">
               <div>
                 <p id="github-import-title" class="reset-modal-message">Import Markdown from GitHub</p>
@@ -1139,7 +1180,7 @@
               </div>
               <button type="button" class="modal-close-btn" id="github-import-close" aria-label="Close GitHub import dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
-            <div class="github-import-modal-body">
+            <div class="modal-body github-import-modal-body">
               <label class="reset-modal-label" id="github-import-url-label" for="github-import-url">GitHub URL</label>
               <input type="url" id="github-import-url" class="rename-modal-input" placeholder="https://github.com/owner/repo/blob/main/README.md" autocomplete="url" spellcheck="false" />
               <select id="github-import-file-select" class="rename-modal-input" aria-label="Select Markdown files" style="display:none;"></select>
@@ -1330,15 +1371,17 @@
     </div>
 
     <div id="document-name-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-name-modal-title" aria-describedby="document-name-modal-description" aria-hidden="true" style="display:none;">
-      <div class="reset-modal-box reset-modal-box--wide modal-box">
+      <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
         <div class="modal-header">
           <p id="document-name-modal-title" class="reset-modal-message">Name item</p>
           <button type="button" class="modal-close-btn" id="document-name-modal-close" aria-label="Close dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
-        <p id="document-name-modal-description" class="modal-subtext"></p>
-        <label id="document-name-modal-label" class="reset-modal-label" for="document-name-modal-input">Name</label>
-        <input type="text" id="document-name-modal-input" class="rename-modal-input" maxlength="160" autocomplete="off" />
-        <p id="document-name-modal-error" class="document-modal-error" role="alert" hidden></p>
+        <div class="modal-body">
+          <p id="document-name-modal-description" class="modal-subtext"></p>
+          <label id="document-name-modal-label" class="reset-modal-label" for="document-name-modal-input">Name</label>
+          <input type="text" id="document-name-modal-input" class="rename-modal-input" maxlength="160" autocomplete="off" />
+          <p id="document-name-modal-error" class="document-modal-error" role="alert" hidden></p>
+        </div>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-name-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-name-modal-confirm">Save</button>
@@ -1347,7 +1390,7 @@
     </div>
 
     <div id="secret-workspace-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="secret-workspace-modal-title" aria-describedby="secret-workspace-modal-description" aria-hidden="true" style="display:none;">
-      <div class="reset-modal-box reset-modal-box--wide modal-box">
+      <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
         <div class="modal-header">
           <div class="secret-workspace-modal-heading">
             <i class="lucide lucide-shield" aria-hidden="true"></i>
@@ -1355,22 +1398,24 @@
           </div>
           <button type="button" class="modal-close-btn" id="secret-workspace-modal-close" aria-label="Close secret workspace dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
-        <p id="secret-workspace-modal-description" class="modal-subtext">Enter the local access key used to encrypt this workspace on this device.</p>
-        <label class="reset-modal-label" for="secret-workspace-key">Access key</label>
-        <div class="secret-password-field">
-          <input type="text" id="secret-workspace-key" name="local-vault-key" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-describedby="secret-workspace-key-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-          <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key" aria-label="Show access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
-        </div>
-        <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
-          <label class="reset-modal-label" for="secret-workspace-key-confirm">Confirm access key</label>
+        <div class="modal-body">
+          <p id="secret-workspace-modal-description" class="modal-subtext">Enter the local access key used to encrypt this workspace on this device.</p>
+          <label class="reset-modal-label" for="secret-workspace-key">Access key</label>
           <div class="secret-password-field">
-            <input type="text" id="secret-workspace-key-confirm" name="local-vault-key-confirmation" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-            <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key-confirm" aria-label="Show confirmation access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
+            <input type="text" id="secret-workspace-key" name="local-vault-key" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-describedby="secret-workspace-key-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+            <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key" aria-label="Show access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
           </div>
+          <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
+            <label class="reset-modal-label" for="secret-workspace-key-confirm">Confirm access key</label>
+            <div class="secret-password-field">
+              <input type="text" id="secret-workspace-key-confirm" name="local-vault-key-confirmation" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
+              <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key-confirm" aria-label="Show confirmation access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
+            </div>
+          </div>
+          <p id="secret-workspace-key-guidance" class="secret-password-guidance" hidden>Use at least 8 characters.</p>
+          <p id="secret-workspace-modal-error" class="document-modal-error" role="alert" hidden></p>
+          <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot access key? Reset Secret Workspace</button>
         </div>
-        <p id="secret-workspace-key-guidance" class="secret-password-guidance" hidden>Use at least 8 characters.</p>
-        <p id="secret-workspace-modal-error" class="document-modal-error" role="alert" hidden></p>
-        <button id="secret-workspace-reset" class="secret-workspace-reset" type="button" hidden>Forgot access key? Reset Secret Workspace</button>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="secret-workspace-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="secret-workspace-modal-confirm">Unlock</button>
@@ -1379,7 +1424,7 @@
     </div>
 
     <div id="document-split-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-split-modal-title" aria-describedby="document-split-modal-description" aria-hidden="true" style="display:none;">
-      <div class="reset-modal-box modal-box">
+      <div class="reset-modal-box app-modal-box modal-box">
         <div class="modal-header">
           <div>
             <p id="document-split-modal-title" class="reset-modal-message">Open split view</p>
@@ -1387,9 +1432,11 @@
           </div>
           <button type="button" class="modal-close-btn" id="document-split-modal-close" aria-label="Close split view dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
-        <label class="reset-modal-label" for="document-split-destination">Second document</label>
-        <select id="document-split-destination" class="rename-modal-input"></select>
-        <p id="document-split-modal-error" class="document-modal-error" role="alert" hidden></p>
+        <div class="modal-body">
+          <label class="reset-modal-label" for="document-split-destination">Second document</label>
+          <select id="document-split-destination" class="rename-modal-input"></select>
+          <p id="document-split-modal-error" class="document-modal-error" role="alert" hidden></p>
+        </div>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-split-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-split-modal-confirm"><i class="lucide lucide-columns-2" aria-hidden="true"></i> Open split view</button>
@@ -1398,13 +1445,15 @@
     </div>
 
     <div id="document-move-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-move-modal-title" aria-hidden="true" style="display:none;">
-      <div class="reset-modal-box reset-modal-box--wide modal-box">
+      <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">
         <div class="modal-header">
           <p id="document-move-modal-title" class="reset-modal-message">Move document</p>
           <button type="button" class="modal-close-btn" id="document-move-modal-close" aria-label="Close move dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
-        <label class="reset-modal-label" for="document-move-destination">Destination</label>
-        <select id="document-move-destination" class="rename-modal-input"></select>
+        <div class="modal-body">
+          <label class="reset-modal-label" for="document-move-destination">Destination</label>
+          <select id="document-move-destination" class="rename-modal-input"></select>
+        </div>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-move-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-move-modal-confirm">Move</button>
@@ -1413,12 +1462,14 @@
     </div>
 
     <div id="document-confirm-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-confirm-modal-title" aria-describedby="document-confirm-modal-description" aria-hidden="true" style="display:none;">
-      <div class="reset-modal-box modal-box">
+      <div class="reset-modal-box app-modal-box modal-box">
         <div class="modal-header">
           <p id="document-confirm-modal-title" class="reset-modal-message">Confirm action</p>
           <button type="button" class="modal-close-btn" id="document-confirm-modal-close" aria-label="Close confirmation"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
-        <p id="document-confirm-modal-description" class="modal-subtext"></p>
+        <div class="modal-body">
+          <p id="document-confirm-modal-description" class="modal-subtext"></p>
+        </div>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-confirm-modal-cancel">Cancel</button>
           <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-confirm-modal-confirm">Delete</button>
@@ -1431,7 +1482,7 @@
         <div class="mermaid-modal-content">
             <div class="mermaid-modal-header">
                 <span id="diagram-viewer-modal-title">Diagram Viewer</span>
-                <button class="mermaid-modal-close" id="mermaid-modal-close" title="Close" aria-label="Close diagram modal">
+                <button class="modal-close-btn mermaid-modal-close" id="mermaid-modal-close" title="Close" aria-label="Close diagram modal">
                     <i class="lucide lucide-x"></i>
                 </button>
             </div>
@@ -1467,7 +1518,7 @@
         <div class="stl-modal-content">
             <div class="stl-modal-header">
                 <span>3D Model Viewer</span>
-                <button class="stl-modal-close" id="stl-zoom-modal-close" title="Close" aria-label="Close 3D modal">
+                <button class="modal-close-btn stl-modal-close" id="stl-zoom-modal-close" title="Close" aria-label="Close 3D modal">
                     <i class="lucide lucide-x"></i>
                 </button>
             </div>

@@ -5879,7 +5879,7 @@ a:focus {
   align-items: flex-start;
   gap: 9px;
   min-width: 0;
-  min-height: 86px;
+  min-height: 64px;
   padding: 10px;
   border-radius: 8px;
   background: var(--button-bg);
@@ -5905,9 +5905,10 @@ a:focus {
 
 #share-modal .share-card-body {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: start;
   gap: 2px;
-  height: 100%;
+  height: auto;
 }
 
 #share-modal .share-card-title {
@@ -9413,6 +9414,57 @@ html[data-theme="dark"] .mermaid svg {
   font-size: 22px;
 }
 
+/* Shared application dialog shell, based on the Markdown Alerts dialog. */
+.app-modal-box {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-modal-box > .modal-header {
+  flex: 0 0 auto;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.app-modal-box > .modal-body {
+  width: 100%;
+  padding: 16px;
+}
+
+.app-modal-box > .reset-modal-actions {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.app-modal-box > .modal-header + .reset-modal-actions {
+  border-top: 0;
+}
+
+.pdf-progress-modal {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pdf-progress-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pdf-progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.pdf-progress-actions {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
 #mermaid-zoom-modal,
 #stl-zoom-modal {
   padding: 20px;
@@ -9421,9 +9473,30 @@ html[data-theme="dark"] .mermaid svg {
 
 .mermaid-modal-content,
 .stl-modal-content {
-  padding: 14px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   border-radius: 12px;
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.3);
+}
+
+.mermaid-modal-header,
+.stl-modal-header {
+  flex: 0 0 auto;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mermaid-modal-diagram,
+.stl-modal-viewer {
+  margin: 16px;
+}
+
+.mermaid-modal-controls,
+.stl-modal-controls {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
 }
 
 .mermaid-modal-header span,
@@ -9755,8 +9828,26 @@ html[data-theme="dark"] .mermaid svg {
     padding: 14px;
   }
 
+  .app-modal-box,
   .reset-modal-box--about {
     padding: 0;
+  }
+
+  .app-modal-box > .modal-header {
+    padding: 12px 14px;
+  }
+
+  .app-modal-box > .modal-body {
+    padding: 14px;
+  }
+
+  .app-modal-box > .reset-modal-actions {
+    padding: 10px 14px;
+  }
+
+  .mermaid-modal-diagram,
+  .stl-modal-viewer {
+    margin: 12px;
   }
 
   .modal-body {
