@@ -17875,6 +17875,7 @@ ${selector} .arrowheadPath {
   const liveShareModal        = document.getElementById('live-share-modal');
   const liveShareModalCloseX  = document.getElementById('live-share-modal-close-icon');
   const liveShareStartBtn     = document.getElementById('live-share-start-btn');
+  const liveShareStartLabel   = liveShareStartBtn ? liveShareStartBtn.querySelector('.live-share-start-label') : null;
   const liveShareEndBtn       = document.getElementById('live-share-end-btn');
   const liveShareCopyBtn      = document.getElementById('live-share-copy-btn');
   const liveShareUrlInput     = document.getElementById('live-share-url-input');
@@ -18856,6 +18857,15 @@ ${selector} .arrowheadPath {
     setLiveShareStatus(status, state);
   }
 
+  function setLiveShareStartLoading(isLoading) {
+    if (!liveShareStartBtn) return;
+    liveShareStartBtn.classList.toggle('is-loading', isLoading);
+    liveShareStartBtn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    if (liveShareStartLabel) {
+      liveShareStartLabel.textContent = isLoading ? 'Starting…' : 'Start session';
+    }
+  }
+
   function updateLiveShareControls() {
     const isActive = Boolean(liveCollaboration);
     const isHost = isActive && liveCollaboration.isHost;
@@ -18863,9 +18873,11 @@ ${selector} .arrowheadPath {
     updateLiveEditorAccess();
     setLiveShareButtonActive(isActive);
     if (liveShareStartBtn) {
-      liveShareStartBtn.disabled = isActive;
+      if (isActive && liveShareAccessStatus && !liveShareAccessStatus.hidden) {
+        setLiveShareStartLoading(false);
+      }
+      liveShareStartBtn.disabled = isActive || liveShareStartBtn.classList.contains('is-loading');
       liveShareStartBtn.hidden = isActive;
-      liveShareStartBtn.textContent = 'Start session';
     }
     if (liveShareEndBtn) {
       liveShareEndBtn.disabled = !isActive;
@@ -19798,9 +19810,18 @@ ${selector} .arrowheadPath {
   }
   if (liveShareStartBtn) {
     liveShareStartBtn.addEventListener('click', function() {
+      if (liveShareStartBtn.disabled) return;
+      setLiveShareStartLoading(true);
+      liveShareStartBtn.disabled = true;
       setLiveShareStatus('Starting live room...', 'connecting');
-      startLiveSession({ isHost: true, accessMode: getSelectedLiveAccessMode() }).catch(function(error) {
+      startLiveSession({ isHost: true, accessMode: getSelectedLiveAccessMode() }).then(function() {
+        if (liveShareAccessStatus && !liveShareAccessStatus.hidden) {
+          setLiveShareStartLoading(false);
+        }
+      }).catch(function(error) {
         console.error('Failed to start live session:', error);
+        setLiveShareStartLoading(false);
+        liveShareStartBtn.disabled = false;
         setLiveShareStatus('Unable to start live room', 'error');
         alert('Failed to start Live Share. Please check your connection and try again.');
       });

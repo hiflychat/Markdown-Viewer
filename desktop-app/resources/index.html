@@ -781,7 +781,7 @@
                   <span class="share-card-icon"><i class="lucide lucide-square-pen"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">Can edit</span>
-                    <span class="share-card-desc">Opens with editing and preview enabled.</span>
+                    <span class="share-card-desc">Editing and preview enabled.</span>
                   </span>
                   <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
@@ -852,14 +852,14 @@
                     <input type="radio" name="live-share-access-mode" value="edit" checked />
                     <span class="live-share-access-option-copy">
                       <span class="live-share-access-option-title">Can edit</span>
-                      <span class="live-share-access-option-desc">Collaborators can type and sync changes.</span>
+                      <span class="live-share-access-option-desc">Collaborators can edit and sync.</span>
                     </span>
                   </label>
                   <label class="live-share-access-option">
                     <input type="radio" name="live-share-access-mode" value="view" />
                     <span class="live-share-access-option-copy">
                       <span class="live-share-access-option-title">View only</span>
-                      <span class="live-share-access-option-desc">Collaborators can read updates without editing.</span>
+                      <span class="live-share-access-option-desc">Collaborators can view without editing.</span>
                     </span>
                   </label>
                 </div>
@@ -895,7 +895,10 @@
             </div>
             <div class="reset-modal-actions">
               <button class="reset-modal-btn reset-modal-cancel" id="live-share-end-btn" disabled hidden>End live session</button>
-              <button class="reset-modal-btn" id="live-share-start-btn">Start session</button>
+              <button class="reset-modal-btn" id="live-share-start-btn">
+                <span class="live-share-start-spinner" aria-hidden="true"></span>
+                <span class="live-share-start-label">Start session</span>
+              </button>
             </div>
           </div>
         </div>
