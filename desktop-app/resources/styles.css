@@ -3225,7 +3225,7 @@ a:focus {
 }
 
 .github-link {
-  color: var(--text-color);
+  color: inherit;
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -3235,8 +3235,8 @@ a:focus {
 }
 
 .github-link:hover {
-  color: var(--accent-color);
-  transform: scale(1.1);
+  color: inherit;
+  transform: none;
 }
 
 .github-link i {
@@ -3303,15 +3303,15 @@ a:focus {
 }
 
 .app-brand-title-row .github-link {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  color: inherit;
   line-height: 1;
 }
 
 .app-brand-title-row .github-link i {
-  font-size: 1.25rem;
+  font-size: 30px;
   line-height: 1;
 }
 
@@ -3321,7 +3321,7 @@ a:focus {
   color: var(--text-secondary);
   font-size: var(--ui-font-xs);
   line-height: 1.05;
-  width: calc(100% - 26px);
+  width: calc(100% - 36px);
   text-align: center;
   text-overflow: ellipsis;
 }
