@@ -62,7 +62,7 @@ console.log("✓ Copied assets/ → resources/assets/ (excluding GIF demos)");
 function verifyIntegrity(filePath, expectedHash) {
   return new Promise((resolve, reject) => {
     if (!expectedHash) {
-      resolve(true); // Skip validation if no hash is provided (e.g., relative fonts)
+      resolve(true); // Skip validation for explicitly listed assets without an SRI hash.
       return;
     }
 
@@ -166,10 +166,7 @@ async function prepareOfflineDependencies() {
 
     // Determine local filename - sanitize package version tags or query strings
     const urlPath = new URL(url).pathname;
-    let filename = path.basename(urlPath);
-    if (url.includes("bootstrap-icons")) {
-      filename = "bootstrap-icons.min.css";
-    }
+    const filename = path.basename(urlPath);
     
     const localDest = path.join(LIBS_DIR, filename);
     downloads.push(downloadFile(url, localDest, expectedSha384));
@@ -181,12 +178,6 @@ async function prepareOfflineDependencies() {
       replaced: `${attr}="/libs/${filename}"`
     });
   }
-
-  // Also download the relative fonts loaded by bootstrap-icons (these are loaded by the stylesheet and do not have SRI tags)
-  const fontDir = path.join(LIBS_DIR, "fonts");
-  fs.mkdirSync(fontDir, { recursive: true });
-  downloads.push(downloadFile("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2", path.join(fontDir, "bootstrap-icons.woff2"), null));
-  downloads.push(downloadFile("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff", path.join(fontDir, "bootstrap-icons.woff"), null));
 
   // Create Leaflet images directory for offline map icons
   const leafletImagesDir = path.join(LIBS_DIR, "images");

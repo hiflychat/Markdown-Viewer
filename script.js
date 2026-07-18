@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.querySelectorAll('.abc-notation svg .abcjs-highlight').forEach(el => el.classList.remove('abcjs-highlight'));
 
     if (activeAbcBtn) {
-      activeAbcBtn.innerHTML = '<i class="bi bi-play-fill"></i> Listen';
+      activeAbcBtn.innerHTML = '<i class="lucide lucide-play-filled"></i> Listen';
       activeAbcBtn.setAttribute('aria-label', 'Listen to score');
       activeAbcBtn = null;
     }
@@ -715,13 +715,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (themeToggle) {
       const icon = themeToggle.querySelector('i');
       const description = document.getElementById('theme-toggle-description');
-      if (icon) icon.className = 'bi bi-' + (useLightAppearance ? 'sun' : 'moon');
+      if (icon) icon.className = 'lucide lucide-' + (useLightAppearance ? 'sun' : 'moon');
       if (description) description.textContent = useLightAppearance ? 'Switch to light appearance' : 'Switch to dark appearance';
       themeToggle.setAttribute('aria-label', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
       themeToggle.setAttribute('title', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
     }
     if (mobileThemeToggle) {
-      mobileThemeToggle.innerHTML = '<i class="bi bi-' + (useLightAppearance ? 'sun' : 'moon') + ' me-2" aria-hidden="true"></i>' + (useLightAppearance ? 'Light Mode' : 'Dark Mode');
+      mobileThemeToggle.innerHTML = '<i class="lucide lucide-' + (useLightAppearance ? 'sun' : 'moon') + ' me-2" aria-hidden="true"></i>' + (useLightAppearance ? 'Light Mode' : 'Dark Mode');
       mobileThemeToggle.setAttribute('title', useLightAppearance ? 'Use Light Mode' : 'Use Dark Mode');
     }
   }
@@ -2970,7 +2970,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       button.setAttribute('aria-label', showing ? 'Show access key' : 'Hide access key');
       button.title = showing ? 'Show access key' : 'Hide access key';
       const icon = button.querySelector('i');
-      if (icon) icon.className = 'bi ' + (showing ? 'bi-eye' : 'bi-eye-slash');
+      if (icon) icon.className = 'lucide ' + (showing ? 'lucide-eye' : 'lucide-eye-off');
       input.focus();
     }
 
@@ -3463,7 +3463,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     button.setAttribute('aria-expanded', 'false');
     button.title = label + ' options';
     const icon = document.createElement('i');
-    icon.className = 'bi bi-three-dots-vertical';
+    icon.className = 'lucide lucide-ellipsis-vertical';
     icon.setAttribute('aria-hidden', 'true');
     button.appendChild(icon);
 
@@ -3477,7 +3477,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       actionButton.setAttribute('role', 'menuitem');
       actionButton.setAttribute('data-action', action.id);
       const actionIcon = document.createElement('i');
-      actionIcon.className = 'bi ' + action.icon;
+      actionIcon.className = 'lucide ' + action.icon;
       actionIcon.setAttribute('aria-hidden', 'true');
       actionButton.appendChild(actionIcon);
       actionButton.appendChild(document.createTextNode(' ' + action.label));
@@ -3536,26 +3536,26 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function getDocumentMenuActions(tab) {
     const actions = [{
-      id: 'rename', icon: 'bi-pencil-square', label: 'Rename', run: function() { renameTab(tab.id); }
+      id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameTab(tab.id); }
     }];
     if (!isTemporaryDocument(tab)) {
-      actions.push({ id: 'duplicate', icon: 'bi-files', label: 'Duplicate', run: function() { duplicateTab(tab.id); } });
+      actions.push({ id: 'duplicate', icon: 'lucide-files', label: 'Duplicate', run: function() { duplicateTab(tab.id); } });
       actions.push({
         id: 'favorite',
-        icon: tab.favorite ? 'bi-star-fill' : 'bi-star',
+        icon: tab.favorite ? 'lucide-star-filled' : 'lucide-star',
         label: tab.favorite ? 'Remove from Favorites' : 'Add to Favorites',
         run: function() { toggleDocumentFavorite(tab.id); }
       });
       if (tab.id === activeTabId && secondarySplitTabId) {
-        actions.push({ id: 'split-close', icon: 'bi-layout-sidebar-inset-reverse', label: 'Exit split view', run: function() { closeDocumentSplitView(); } });
+        actions.push({ id: 'split-close', icon: 'lucide-panel-right-close', label: 'Exit split view', run: function() { closeDocumentSplitView(); } });
       } else {
-        actions.push({ id: 'split', icon: 'bi-layout-split', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
+        actions.push({ id: 'split', icon: 'lucide-columns-2', label: 'Open in split view', run: function() { openDocumentSplitPicker(tab.id); } });
       }
-      actions.push({ id: 'download', icon: 'bi-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
+      actions.push({ id: 'download', icon: 'lucide-download', label: 'Download Markdown', run: function() { downloadTabMarkdown(tab.id); } });
     }
     actions.push({
       id: 'delete',
-      icon: isTemporaryDocument(tab) ? 'bi-x-lg' : 'bi-trash3',
+      icon: isTemporaryDocument(tab) ? 'lucide-x' : 'lucide-trash-2',
       label: isTemporaryDocument(tab) ? 'Close' : 'Delete',
       danger: true,
       run: function() { deleteTab(tab.id); }
@@ -3567,26 +3567,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
       return [{
         id: 'unlock',
-        icon: isSecretWorkspaceConfigured() ? 'bi-unlock' : 'bi-shield-lock',
+        icon: isSecretWorkspaceConfigured() ? 'lucide-lock-open' : 'lucide-shield',
         label: isSecretWorkspaceConfigured() ? 'Unlock workspace' : 'Set password',
         run: function() { openSecretWorkspaceDialog(); }
       }];
     }
     const actions = [
-      { id: 'new-document', icon: 'bi-filetype-md', label: 'New file', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
-      { id: 'new-folder', icon: 'bi-folder-plus', label: 'New folder', run: function() { createFolder(workspace.id); } }
+      { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: workspace.id }); } },
+      { id: 'new-folder', icon: 'lucide-folder-plus', label: 'New folder', run: function() { createFolder(workspace.id); } }
     ];
     if (workspace.id === SECRET_WORKSPACE_ID) {
-      actions.push({ id: 'lock', icon: 'bi-lock', label: 'Lock workspace', run: function() { lockSecretWorkspace(); } });
+      actions.push({ id: 'lock', icon: 'lucide-lock-keyhole', label: 'Lock workspace', run: function() { lockSecretWorkspace(); } });
     }
     return actions;
   }
 
   function getFolderMenuActions(folder) {
     return [
-      { id: 'new-document', icon: 'bi-filetype-md', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
-      { id: 'rename', icon: 'bi-pencil-square', label: 'Rename', run: function() { renameFolder(folder.id); } },
-      { id: 'delete', icon: 'bi-trash3', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
+      { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
+      { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
+      { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
   }
 
@@ -3717,7 +3717,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       toggle.setAttribute('aria-label', (options.expanded ? 'Collapse ' : 'Expand ') + options.label);
       toggle.setAttribute('tabindex', '-1');
       const toggleIcon = document.createElement('i');
-      toggleIcon.className = 'bi ' + (options.expanded ? 'bi-chevron-down' : 'bi-chevron-right');
+      toggleIcon.className = 'lucide ' + (options.expanded ? 'lucide-chevron-down' : 'lucide-chevron-right');
       toggleIcon.setAttribute('aria-hidden', 'true');
       toggle.appendChild(toggleIcon);
       toggle.addEventListener('click', function(event) {
@@ -3738,7 +3738,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     main.setAttribute('tabindex', '-1');
     main.title = options.label;
     const icon = document.createElement('i');
-    icon.className = 'bi ' + options.icon;
+    icon.className = 'lucide ' + options.icon;
     icon.setAttribute('aria-hidden', 'true');
     main.appendChild(icon);
     const label = document.createElement('span');
@@ -3747,7 +3747,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     main.appendChild(label);
     if (options.favorite) {
       const favorite = document.createElement('i');
-      favorite.className = 'bi bi-star-fill document-favorite-indicator';
+      favorite.className = 'lucide lucide-star-filled document-favorite-indicator';
       favorite.setAttribute('aria-label', 'Favorite');
       main.appendChild(favorite);
     }
@@ -3768,7 +3768,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       addButton.setAttribute('aria-label', 'Create in ' + options.label);
       addButton.title = 'Create in ' + options.label;
       const addIcon = document.createElement('i');
-      addIcon.className = 'bi bi-plus-lg';
+      addIcon.className = 'lucide lucide-plus';
       addIcon.setAttribute('aria-hidden', 'true');
       addButton.appendChild(addIcon);
       addButton.addEventListener('click', function(event) {
@@ -3810,7 +3810,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       documentId: tab.id,
       label: tab.title || 'Untitled',
       ariaLabel: (tab.id === activeTabId ? 'Active document, ' : 'Document, ') + (tab.title || 'Untitled') + (tab.favorite ? ', favorite' : ''),
-      icon: 'bi-filetype-md',
+      icon: 'lucide-file-text',
       depth: depth,
       favorite: tab.favorite === true,
       temporary: isTemporaryDocument(tab),
@@ -3885,8 +3885,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         label: workspace.name,
         ariaLabel: workspace.name + (secretLocked ? ', locked' : ', file location'),
         icon: isSecretWorkspace
-          ? (secretLocked ? 'bi-shield-lock' : 'bi-shield-check')
-          : (expanded ? 'bi-folder2-open' : 'bi-folder'),
+          ? (secretLocked ? 'lucide-shield' : 'lucide-shield-check')
+          : (expanded ? 'lucide-folder-open' : 'lucide-folder'),
         depth: 0,
         expanded: expanded,
         meta: secretLocked ? 'Locked' : String(workspaceDocuments.length),
@@ -3931,7 +3931,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           type: 'folder',
           id: folder.id,
           label: folder.name,
-          icon: folderExpanded ? 'bi-folder2-open' : 'bi-folder',
+          icon: folderExpanded ? 'lucide-folder-open' : 'lucide-folder',
           depth: 1,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
@@ -4062,7 +4062,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (openButton) {
       openButton.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
       const icon = openButton.querySelector('i');
-      if (icon) icon.className = sidebarOpen ? 'bi bi-layout-sidebar' : 'bi bi-layout-sidebar-inset';
+      if (icon) icon.className = sidebarOpen ? 'lucide lucide-panel-left-close' : 'lucide lucide-panel-left-open';
       openButton.title = sidebarOpen ? 'Close Explorer' : 'Open Explorer';
       openButton.setAttribute('aria-label', sidebarOpen ? 'Close Explorer' : 'Open Explorer');
     }
@@ -4784,7 +4784,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const reviewLabel = targetThreads.length + ' review item' + (targetThreads.length === 1 ? '' : 's');
         const readButton = createTargetButton(
           'read',
-          'bi bi-chat-square-text',
+          'lucide lucide-message-square-text',
           'Read ' + reviewLabel,
           'Read ' + reviewLabel + ' for ' + label
         );
@@ -4795,7 +4795,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       actions.appendChild(createTargetButton(
         'add',
-        'bi bi-plus-lg',
+        'lucide lucide-plus',
         targetThreads.length > 0 ? 'Add another review item' : 'Add feedback',
         'Add feedback to ' + label
       ));
@@ -4880,7 +4880,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const kind = document.createElement('span');
     kind.className = 'review-kind-label';
     const kindIcon = document.createElement('i');
-    kindIcon.className = thread.kind === 'suggestion' ? 'bi bi-pencil-square' : 'bi bi-chat-left-text';
+    kindIcon.className = thread.kind === 'suggestion' ? 'lucide lucide-square-pen' : 'lucide lucide-message-square-text';
     kindIcon.setAttribute('aria-hidden', 'true');
     kind.appendChild(kindIcon);
     kind.appendChild(document.createTextNode(thread.kind === 'suggestion' ? 'Suggestion' : 'Comment'));
@@ -5291,10 +5291,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       announceToScreenReader('Review summary copied.');
       if (reviewCopySummary) {
         const icon = reviewCopySummary.querySelector('i');
-        if (icon) icon.className = 'bi bi-check-lg';
+        if (icon) icon.className = 'lucide lucide-check';
         clearTimeout(copyReviewSummary._timeoutId);
         copyReviewSummary._timeoutId = setTimeout(function() {
-          if (icon) icon.className = 'bi bi-copy';
+          if (icon) icon.className = 'lucide lucide-copy';
         }, 1400);
       }
     } catch (error) {
@@ -5624,9 +5624,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (!saveStatus || !saveStatusIcon || !saveStatusText) return;
     const nextState = state === 'saving' || state === 'error' ? state : 'saved';
     const presentation = {
-      saving: { icon: 'bi bi-arrow-repeat', text: 'Saving...' },
-      saved: { icon: 'bi bi-check2', text: 'All changes saved' },
-      error: { icon: 'bi bi-exclamation-circle', text: 'Changes not saved' }
+      saving: { icon: 'lucide lucide-refresh-cw', text: 'Saving...' },
+      saved: { icon: 'lucide lucide-check', text: 'All changes saved' },
+      error: { icon: 'lucide lucide-circle-alert', text: 'Changes not saved' }
     }[nextState];
     saveStatus.classList.remove('is-saving', 'is-saved', 'is-error');
     saveStatus.classList.add('is-' + nextState);
@@ -5875,7 +5875,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     menuBtn.setAttribute('aria-controls', menuId);
     menuBtn.setAttribute('draggable', 'false');
     menuBtn.title = 'File options';
-    menuBtn.innerHTML = '<i class="bi bi-three-dots" aria-hidden="true"></i>';
+    menuBtn.innerHTML = '<i class="lucide lucide-ellipsis" aria-hidden="true"></i>';
 
     const dropdown = document.createElement('div');
     dropdown.id = menuId;
@@ -5884,27 +5884,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     dropdown.setAttribute('role', 'menu');
     const duplicateAction = isShareSnapshotTab(tab)
       ? ''
-      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="bi bi-files"></i> Duplicate</button>';
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="duplicate"><i class="lucide lucide-files"></i> Duplicate</button>';
     const downloadAction = isShareSnapshotTab(tab)
       ? ''
-      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="bi bi-download"></i> Download Markdown</button>';
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="download"><i class="lucide lucide-download"></i> Download Markdown</button>';
     const favoriteAction = isShareSnapshotTab(tab)
       ? ''
-      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="favorite"><i class="bi ' + (tab.favorite ? 'bi-star-fill' : 'bi-star') + '"></i> ' + (tab.favorite ? 'Remove from Favorites' : 'Add to Favorites') + '</button>';
+      : '<button type="button" class="tab-menu-item" role="menuitem" data-action="favorite"><i class="lucide ' + (tab.favorite ? 'lucide-star-filled' : 'lucide-star') + '"></i> ' + (tab.favorite ? 'Remove from Favorites' : 'Add to Favorites') + '</button>';
     const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
     const splitAction = isCombinedSplitTab
-      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split-close"><i class="bi bi-layout-sidebar-inset-reverse"></i> Exit split view</button>'
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split-close"><i class="lucide lucide-panel-right-close"></i> Exit split view</button>'
       : tabs.length > 1
-      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split"><i class="bi bi-layout-split"></i> Open in split view</button>'
+      ? '<button type="button" class="tab-menu-item" role="menuitem" data-action="split"><i class="lucide lucide-columns-2"></i> Open in split view</button>'
       : '';
     dropdown.innerHTML =
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="bi bi-pencil-square"></i> Rename</button>' +
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="rename"><i class="lucide lucide-square-pen"></i> Rename</button>' +
       duplicateAction +
       favoriteAction +
       splitAction +
       downloadAction +
       '<div class="tab-menu-separator" role="separator"></div>' +
-      '<button type="button" class="tab-menu-item" role="menuitem" data-action="close"><i class="bi bi-x-lg"></i> Close</button>';
+      '<button type="button" class="tab-menu-item" role="menuitem" data-action="close"><i class="lucide lucide-x"></i> Close</button>';
 
     menuBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -5985,21 +5985,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     const isCombinedSplitTab = tab.id === activeTabId && Boolean(secondarySplitTabId);
     const actions = [{
       id: isCombinedSplitTab ? 'split-close' : 'split',
-      icon: isCombinedSplitTab ? 'bi-layout-sidebar-inset-reverse' : 'bi-layout-split',
+      icon: isCombinedSplitTab ? 'lucide-panel-right-close' : 'lucide-columns-2',
       label: isCombinedSplitTab ? 'Exit split view' : 'Open in split view',
       disabled: !isCombinedSplitTab && tabs.length < 2
     }, {
       separator: true
     }, {
-      id: 'close', icon: 'bi-x-lg', label: 'Close'
+      id: 'close', icon: 'lucide-x', label: 'Close'
     }, {
-      id: 'others', icon: 'bi-x-diamond', label: 'Close others', disabled: openTabs.length < 2
+      id: 'others', icon: 'lucide-circle-x', label: 'Close others', disabled: openTabs.length < 2
     }, {
-      id: 'right', icon: 'bi-arrow-bar-right', label: 'Close to the right', disabled: tabIndex >= visibleTabs.length - 1
+      id: 'right', icon: 'lucide-arrow-right-to-line', label: 'Close to the right', disabled: tabIndex >= visibleTabs.length - 1
     }, {
-      id: 'left', icon: 'bi-arrow-bar-left', label: 'Close to the left', disabled: tabIndex <= 0
+      id: 'left', icon: 'lucide-arrow-left-to-line', label: 'Close to the left', disabled: tabIndex <= 0
     }, {
-      id: 'all', icon: 'bi-x-square', label: 'Close all'
+      id: 'all', icon: 'lucide-square-x', label: 'Close all'
     }];
 
     actions.forEach(function(action) {
@@ -6015,7 +6015,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       button.className = 'tab-menu-item';
       button.setAttribute('role', 'menuitem');
       button.disabled = action.disabled === true;
-      button.innerHTML = '<i class="bi ' + action.icon + '" aria-hidden="true"></i> ' + action.label;
+      button.innerHTML = '<i class="lucide ' + action.icon + '" aria-hidden="true"></i> ' + action.label;
       button.addEventListener('click', function(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -6095,7 +6095,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
 
       const fileIcon = document.createElement('i');
-      fileIcon.className = 'bi ' + (splitPartner ? 'bi-layout-split' : 'bi-filetype-md') + ' tab-file-icon';
+      fileIcon.className = 'lucide ' + (splitPartner ? 'lucide-columns-2' : 'lucide-file-text') + ' tab-file-icon';
       fileIcon.setAttribute('aria-hidden', 'true');
 
       const titleSpan = document.createElement('span');
@@ -6129,7 +6129,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       closeButton.setAttribute('aria-label', 'Close ' + (tab.title || 'Untitled'));
       closeButton.setAttribute('draggable', 'false');
       closeButton.title = 'Close';
-      closeButton.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+      closeButton.innerHTML = '<i class="lucide lucide-x" aria-hidden="true"></i>';
       closeButton.addEventListener('click', function(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -6292,7 +6292,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     scrollLeftBtn.className = 'tab-scroll-btn tab-scroll-left';
     scrollLeftBtn.setAttribute('aria-label', 'Scroll tabs left');
     scrollLeftBtn.title = 'Scroll left';
-    scrollLeftBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+    scrollLeftBtn.innerHTML = '<i class="lucide lucide-chevron-left"></i>';
     scrollLeftBtn.addEventListener('click', function() {
       tabList.scrollBy({ left: -200, behavior: 'smooth' });
     });
@@ -6301,7 +6301,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     scrollRightBtn.className = 'tab-scroll-btn tab-scroll-right';
     scrollRightBtn.setAttribute('aria-label', 'Scroll tabs right');
     scrollRightBtn.title = 'Scroll right';
-    scrollRightBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+    scrollRightBtn.innerHTML = '<i class="lucide lucide-chevron-right"></i>';
     scrollRightBtn.addEventListener('click', function() {
       tabList.scrollBy({ left: 200, behavior: 'smooth' });
     });
@@ -7674,7 +7674,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         mountDiagramViewer(container, 'abc', [{
           title: 'Listen to score',
           ariaLabel: 'Listen to score',
-          html: '<i class="bi bi-play-fill"></i> Listen',
+          html: '<i class="lucide lucide-play-filled"></i> Listen',
           onClick: (btn) => toggleAbcPlay(visualObj, btn, container)
         }]);
 
@@ -7993,7 +7993,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function exportStlImage(view, isDownload, button, originalText) {
     if (!view || !view.renderer || !view.scene || !view.camera) return;
-    button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    button.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     
     // Force a render pass to ensure the canvas buffer is loaded with the current frame
     view.renderer.render(view.scene, view.camera);
@@ -8018,7 +8018,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       a.href = dataUrl;
       a.download = `model-${Date.now()}.png`;
       a.click();
-      button.innerHTML = '<i class="bi bi-check-lg"></i>';
+      button.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { button.innerHTML = originalText; }, 1500);
     } else {
       // Copy to clipboard
@@ -8027,10 +8027,10 @@ document.addEventListener("DOMContentLoaded", async function () {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          button.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (err) {
           console.error(err);
-          button.innerHTML = '<i class="bi bi-x-lg"></i>';
+          button.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { button.innerHTML = originalText; }, 1500);
       }, 'image/png');
@@ -8051,40 +8051,40 @@ document.addEventListener("DOMContentLoaded", async function () {
     btnSolid.type = 'button';
     btnSolid.className = 'stl-toolbar-btn active';
     btnSolid.setAttribute('data-mode', 'solid');
-    btnSolid.innerHTML = '<i class="bi bi-circle-fill"></i> Solid';
+    btnSolid.innerHTML = '<i class="lucide lucide-circle-filled"></i> Solid';
     
     const btnAngle = document.createElement('button');
     btnAngle.type = 'button';
     btnAngle.className = 'stl-toolbar-btn';
     btnAngle.setAttribute('data-mode', 'angle');
-    btnAngle.innerHTML = '<i class="bi bi-circle-half"></i> Surface Angle';
+    btnAngle.innerHTML = '<i class="lucide lucide-circle-dot"></i> Surface Angle';
     
     const btnWireframe = document.createElement('button');
     btnWireframe.type = 'button';
     btnWireframe.className = 'stl-toolbar-btn';
     btnWireframe.setAttribute('data-mode', 'wireframe');
-    btnWireframe.innerHTML = '<i class="bi bi-grid-3x3"></i> Wireframe';
+    btnWireframe.innerHTML = '<i class="lucide lucide-grid-3x3"></i> Wireframe';
     
     const btnZoom = document.createElement('button');
     btnZoom.type = 'button';
     btnZoom.className = 'stl-toolbar-btn btn-zoom';
     btnZoom.title = 'Zoom model';
     btnZoom.setAttribute('aria-label', 'Zoom model');
-    btnZoom.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+    btnZoom.innerHTML = '<i class="lucide lucide-maximize"></i>';
     
     const btnCopy = document.createElement('button');
     btnCopy.type = 'button';
     btnCopy.className = 'stl-toolbar-btn btn-copy';
     btnCopy.title = 'Copy image to clipboard';
     btnCopy.setAttribute('aria-label', 'Copy image to clipboard');
-    btnCopy.innerHTML = '<i class="bi bi-copy"></i> Copy';
+    btnCopy.innerHTML = '<i class="lucide lucide-copy"></i> Copy';
     
     const btnPng = document.createElement('button');
     btnPng.type = 'button';
     btnPng.className = 'stl-toolbar-btn btn-png';
     btnPng.title = 'Download PNG';
     btnPng.setAttribute('aria-label', 'Download PNG');
-    btnPng.innerHTML = '<i class="bi bi-file-image"></i> PNG';
+    btnPng.innerHTML = '<i class="lucide lucide-file-image"></i> PNG';
     
     toolbar.appendChild(btnSolid);
     toolbar.appendChild(btnAngle);
@@ -8571,7 +8571,7 @@ ${selector} .arrowheadPath {
       languageLabel.className = 'code-preview-language';
       if (language.terminal) {
         const terminalIcon = document.createElement('i');
-        terminalIcon.className = 'bi bi-terminal';
+        terminalIcon.className = 'lucide lucide-square-terminal';
         terminalIcon.setAttribute('aria-hidden', 'true');
         languageLabel.appendChild(terminalIcon);
       }
@@ -8584,18 +8584,18 @@ ${selector} .arrowheadPath {
       copyButton.className = 'code-preview-copy';
       copyButton.title = 'Copy ' + language.fullName + ' code';
       copyButton.setAttribute('aria-label', copyButton.title);
-      copyButton.innerHTML = '<i class="bi bi-copy" aria-hidden="true"></i><span>Copy</span>';
+      copyButton.innerHTML = '<i class="lucide lucide-copy" aria-hidden="true"></i><span>Copy</span>';
       copyButton.addEventListener('click', async function() {
         if (copyButton.disabled) return;
         const originalHtml = copyButton.innerHTML;
         copyButton.disabled = true;
         try {
           await copyTextToClipboard(code.textContent || '');
-          copyButton.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i><span>Copied</span>';
+          copyButton.innerHTML = '<i class="lucide lucide-check" aria-hidden="true"></i><span>Copied</span>';
           copyButton.setAttribute('aria-label', 'Code copied');
           announceToScreenReader(language.fullName + ' code copied.');
         } catch (error) {
-          copyButton.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>Retry</span>';
+          copyButton.innerHTML = '<i class="lucide lucide-circle-alert" aria-hidden="true"></i><span>Retry</span>';
           copyButton.setAttribute('aria-label', 'Copy failed. Retry');
         }
         setTimeout(function() {
@@ -10654,11 +10654,11 @@ ${selector} .arrowheadPath {
   function flashCopyButton(button) {
     const icon = button.querySelector('i');
     if (!icon) return;
-    icon.className = 'bi bi-check-lg';
+    icon.className = 'lucide lucide-check';
     button.classList.add('is-copied');
     clearTimeout(button.copyTimeout);
     button.copyTimeout = setTimeout(() => {
-      icon.className = 'bi bi-copy';
+      icon.className = 'lucide lucide-copy';
       button.classList.remove('is-copied');
     }, 1200);
   }
@@ -10813,7 +10813,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'emoji-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.shortcode}`);
-        copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
+        copyBtn.innerHTML = '<i class="lucide lucide-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.shortcode)
@@ -10948,7 +10948,7 @@ ${selector} .arrowheadPath {
         copyBtn.type = 'button';
         copyBtn.className = 'symbol-copy-btn';
         copyBtn.setAttribute('aria-label', `Copy ${entry.entity}`);
-        copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
+        copyBtn.innerHTML = '<i class="lucide lucide-copy"></i>';
         copyBtn.addEventListener('click', (event) => {
           event.stopPropagation();
           copyTextToClipboard(entry.entity)
@@ -11330,48 +11330,48 @@ ${selector} .arrowheadPath {
     const categoryGroups = [
       {
         label: 'Diagrams',
-        icon: 'bi-diagram-3',
+        icon: 'lucide-workflow',
         categories: ['Mermaid', 'PlantUML', 'Graphviz', 'D2']
       },
       {
         label: 'Mind Maps',
-        icon: 'bi-list-ul',
+        icon: 'lucide-list',
         categories: ['Markmap']
       },
       {
         label: 'Data Visualization',
-        icon: 'bi-bar-chart-line',
+        icon: 'lucide-chart-no-axes-column-increasing',
         categories: ['Vega-Lite']
       },
       {
         label: 'Technical Notation',
-        icon: 'bi-code-slash',
+        icon: 'lucide-code-2',
         categories: ['WaveDrom', 'ABC Notation']
       },
       {
         label: '3D Models',
-        icon: 'bi-box',
+        icon: 'lucide-box',
         categories: ['STL (3D)']
       },
       {
         label: 'Maps',
-        icon: 'bi-map',
+        icon: 'lucide-map',
         categories: ['GeoJSON', 'TopoJSON']
       }
     ];
 
     const categoryIcons = {
-      Mermaid: 'bi-water',
-      PlantUML: 'bi-braces',
-      Graphviz: 'bi-bezier2',
-      D2: 'bi-grid-3x3',
-      Markmap: 'bi-diagram-2',
-      'Vega-Lite': 'bi-bar-chart-line',
-      GeoJSON: 'bi-pin-map',
-      TopoJSON: 'bi-layers',
-      WaveDrom: 'bi-activity',
-      'ABC Notation': 'bi-music-note-beamed',
-      'STL (3D)': 'bi-badge-3d'
+      Mermaid: 'lucide-waves',
+      PlantUML: 'lucide-braces',
+      Graphviz: 'lucide-spline',
+      D2: 'lucide-grid-3x3',
+      Markmap: 'lucide-network',
+      'Vega-Lite': 'lucide-chart-no-axes-column-increasing',
+      GeoJSON: 'lucide-map-pin',
+      TopoJSON: 'lucide-layers-3',
+      WaveDrom: 'lucide-activity',
+      'ABC Notation': 'lucide-music-2',
+      'STL (3D)': 'lucide-box'
     };
     
     const svgFlowchart = `<svg viewBox="0 0 160 120" width="100%" height="100%"><rect x="45" y="15" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="31" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">Start</text><path d="M 80 41 L 80 75" stroke="#333" stroke-width="1.2" marker-end="url(#arrow-f)"/><rect x="45" y="75" width="70" height="26" fill="#f4f5f7" stroke="#673ab7" stroke-width="1.5" rx="3"/><text x="80" y="91" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#333" font-weight="bold">End</text><defs><marker id="arrow-f" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker></defs></svg>`;
@@ -12321,9 +12321,9 @@ ${selector} .arrowheadPath {
         heading.className = 'diagram-sidebar-group-header';
         heading.setAttribute('aria-expanded', String(isExpanded));
         heading.innerHTML = `
-          <i class="bi ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
+          <i class="lucide ${group.icon} diagram-sidebar-group-icon" aria-hidden="true"></i>
           <span>${group.label}</span>
-          <i class="bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
+          <i class="lucide ${isExpanded ? 'lucide-chevron-up' : 'lucide-chevron-right'} diagram-sidebar-chevron" aria-hidden="true"></i>
         `;
         heading.addEventListener('click', () => {
           if (!isExpanded) {
@@ -12344,7 +12344,7 @@ ${selector} .arrowheadPath {
           btn.className = 'diagram-sidebar-btn';
           if (cat === activeCategory) btn.classList.add('is-active');
           btn.innerHTML = `
-            <i class="bi ${categoryIcons[cat] || 'bi-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
+            <i class="lucide ${categoryIcons[cat] || 'lucide-circle'} diagram-sidebar-item-icon" aria-hidden="true"></i>
             <span>${cat}</span>
           `;
           btn.addEventListener('click', () => {
@@ -13698,7 +13698,7 @@ ${selector} .arrowheadPath {
       panel.style.top = lastFloatingTop !== null ? lastFloatingTop : '';
       panel.style.right = lastFloatingRight !== null ? lastFloatingRight : '';
       
-      dockBtn.innerHTML = '<i class="bi bi-layout-sidebar-reverse"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panel-right"></i>';
       dockBtn.title = "Toggle Dock Mode";
       
       panel.style.display = 'flex';
@@ -13734,7 +13734,7 @@ ${selector} .arrowheadPath {
       contentCont.classList.add('fr-docked');
       contentCont.style.setProperty('--dock-width', '340px');
 
-      dockBtn.innerHTML = '<i class="bi bi-window"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panels-top-left"></i>';
       dockBtn.title = "Toggle Floating Mode";
     } else {
       panel.classList.remove('docked');
@@ -13748,7 +13748,7 @@ ${selector} .arrowheadPath {
       panel.style.top = lastFloatingTop !== null ? lastFloatingTop : '';
       panel.style.right = lastFloatingRight !== null ? lastFloatingRight : '';
       
-      dockBtn.innerHTML = '<i class="bi bi-layout-sidebar-reverse"></i>';
+      dockBtn.innerHTML = '<i class="lucide lucide-panel-right"></i>';
       dockBtn.title = "Toggle Dock Mode";
     }
     
@@ -14169,11 +14169,11 @@ ${selector} .arrowheadPath {
         if (isOpen) {
           drawerContent.style.display = 'none';
           drawerToggle.setAttribute('aria-expanded', 'false');
-          drawerToggle.innerHTML = '<i class="bi bi-chevron-right me-1"></i> Advanced Options';
+          drawerToggle.innerHTML = '<i class="lucide lucide-chevron-right me-1"></i> Advanced Options';
         } else {
           drawerContent.style.display = 'flex';
           drawerToggle.setAttribute('aria-expanded', 'true');
-          drawerToggle.innerHTML = '<i class="bi bi-chevron-down me-1"></i> Advanced Options';
+          drawerToggle.innerHTML = '<i class="lucide lucide-chevron-down me-1"></i> Advanced Options';
         }
       });
     }
@@ -14450,7 +14450,7 @@ ${selector} .arrowheadPath {
   function initToolbarDropdownPortals() {
     if (!window.bootstrap || !window.bootstrap.Dropdown) return;
 
-    document.querySelectorAll('.document-export-dropdown, .document-actions-dropdown').forEach(function(dropdown) {
+    document.querySelectorAll('.document-actions-dropdown').forEach(function(dropdown) {
       const toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
       const menu = dropdown.querySelector('.dropdown-menu');
       if (!toggle || !menu || menu.dataset.portalReady === 'true') return;
@@ -14642,12 +14642,12 @@ ${selector} .arrowheadPath {
   mobileToggleSync.addEventListener("click", () => {
     toggleSyncScrolling();
     if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i> Sync Off';
+      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync Off';
       mobileToggleSync.classList.add("sync-disabled");
       mobileToggleSync.classList.remove("sync-enabled");
       mobileToggleSync.classList.add("sync-active");
     } else {
-      mobileToggleSync.innerHTML = '<i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i> Sync On';
+      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync On';
       mobileToggleSync.classList.add("sync-enabled");
       mobileToggleSync.classList.remove("sync-disabled");
       mobileToggleSync.classList.remove("sync-active");
@@ -14827,7 +14827,7 @@ ${selector} .arrowheadPath {
     const icon = fullscreenButton.querySelector('i');
     fullscreenButton.setAttribute('title', label);
     fullscreenButton.setAttribute('aria-label', label);
-    if (icon) icon.className = isFullscreen ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+    if (icon) icon.className = isFullscreen ? 'lucide lucide-minimize' : 'lucide lucide-maximize';
   });
   const headerAboutButton = document.getElementById('header-about-button');
   if (headerAboutButton) {
@@ -15507,7 +15507,7 @@ ${selector} .arrowheadPath {
         <div class="pdf-progress-header">
           <p class="pdf-progress-title" id="pdf-progress-title">${titleText}</p>
           <button type="button" class="modal-close-btn pdf-progress-cancel-icon" aria-label="${cancelLabelText}" title="${cancelLabelText}">
-            <i class="bi bi-x-lg"></i>
+            <i class="lucide lucide-x"></i>
           </button>
         </div>
         <div class="pdf-progress-percent">0%</div>
@@ -15583,8 +15583,8 @@ ${selector} .arrowheadPath {
         state.triggerHtml.set(trigger, trigger.innerHTML);
         const generatingLabel = isPng ? "Generating Image..." : "Generating PDF...";
         trigger.innerHTML = index === 0
-          ? '<i class="bi bi-hourglass-split"></i> Generating...'
-          : `<i class="bi bi-hourglass-split me-2"></i> ${generatingLabel}`;
+          ? '<i class="lucide lucide-hourglass"></i> Generating...'
+          : `<i class="lucide lucide-hourglass me-2"></i> ${generatingLabel}`;
         trigger.classList.add("pdf-export-loading");
         trigger.setAttribute("aria-disabled", "true");
         trigger.disabled = true;
@@ -17045,7 +17045,7 @@ ${selector} .arrowheadPath {
     const originalLabel = label ? label.textContent : '';
     const originalTitle = copyMarkdownButton.getAttribute('title') || 'Copy Markdown';
     const originalAriaLabel = copyMarkdownButton.getAttribute('aria-label') || 'Copy Markdown';
-    if (icon) icon.className = 'bi bi-check-lg';
+    if (icon) icon.className = 'lucide lucide-check';
     if (label) label.textContent = 'Copied';
     copyMarkdownButton.setAttribute('title', 'Copied');
     copyMarkdownButton.setAttribute('aria-label', 'Copied');
@@ -17271,7 +17271,7 @@ ${selector} .arrowheadPath {
       shareGenerateBtn.textContent = 'Share';
     }
     if (shareCopyBtn) {
-      shareCopyBtn.innerHTML = '<i class="bi bi-copy"></i><span>Copy</span>';
+      shareCopyBtn.innerHTML = '<i class="lucide lucide-copy"></i><span>Copy</span>';
     }
     setShareInviteState('Ready to copy');
   }
@@ -17393,7 +17393,7 @@ ${selector} .arrowheadPath {
     try {
       await copyTextToClipboard(generatedShareSnapshotUrl);
       shareUrlInput.value = generatedShareSnapshotUrl;
-      shareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i><span>Copied</span>';
+      shareCopyBtn.innerHTML = '<i class="lucide lucide-check"></i><span>Copied</span>';
       setTimeout(() => { shareCopyBtn.innerHTML = originalHTML; }, 2000);
     } catch (error) {
       console.error('Share copy failed:', error);
@@ -19330,7 +19330,7 @@ ${selector} .arrowheadPath {
 
     function onCopied() {
       const orig = liveShareCopyBtn.innerHTML;
-      liveShareCopyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      liveShareCopyBtn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { liveShareCopyBtn.innerHTML = orig; }, 2000);
     }
 
@@ -19780,7 +19780,7 @@ ${selector} .arrowheadPath {
       status.appendChild(spinner);
     } else {
       const icon = document.createElement('i');
-      icon.className = 'bi bi-exclamation-triangle';
+      icon.className = 'lucide lucide-triangle-alert';
       icon.setAttribute('aria-hidden', 'true');
       status.appendChild(icon);
     }
@@ -19793,7 +19793,7 @@ ${selector} .arrowheadPath {
       const retryButton = document.createElement('button');
       retryButton.type = 'button';
       retryButton.className = 'diagram-retry-btn';
-      retryButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry';
+      retryButton.innerHTML = '<i class="lucide lucide-redo-2"></i> Retry';
       retryButton.addEventListener('click', retry);
       status.appendChild(retryButton);
     }
@@ -19840,22 +19840,22 @@ ${selector} .arrowheadPath {
       {
         title: 'Open diagram viewer',
         ariaLabel: 'Open diagram viewer with zoom and pan controls',
-        html: '<i class="bi bi-arrows-fullscreen"></i>',
+        html: '<i class="lucide lucide-maximize"></i>',
         onClick: () => openMermaidZoomModal(container)
       },
       {
         title: 'Copy image to clipboard',
-        html: '<i class="bi bi-copy"></i> Copy',
+        html: '<i class="lucide lucide-copy"></i> Copy',
         onClick: button => copyMermaidImage(container, button)
       },
       {
         title: 'Download PNG',
-        html: '<i class="bi bi-file-image"></i> PNG',
+        html: '<i class="lucide lucide-file-image"></i> PNG',
         onClick: button => downloadMermaidPng(container, button)
       },
       {
         title: 'Download SVG',
-        html: '<i class="bi bi-filetype-svg"></i> SVG',
+        html: '<i class="lucide lucide-file-code-2"></i> SVG',
         onClick: button => downloadMermaidSvg(container, button)
       }
     ];
@@ -19951,7 +19951,7 @@ ${selector} .arrowheadPath {
     }
 
     const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Loading...';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i> Loading...';
     activeAbcBtn = btn;
 
     try {
@@ -19991,7 +19991,7 @@ ${selector} .arrowheadPath {
         cursorControl.onStart();
         timingCallbacks.start();
 
-        btn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+        btn.innerHTML = '<i class="lucide lucide-square-filled"></i> Stop';
         btn.setAttribute('aria-label', 'Stop playback');
         return synth.start();
       })
@@ -20023,7 +20023,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(blob => {
@@ -20033,7 +20033,7 @@ ${selector} .arrowheadPath {
         a.download = `score-${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       }, 'image/png');
     } catch (e) {
@@ -20047,7 +20047,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(async blob => {
@@ -20055,10 +20055,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       }, 'image/png');
@@ -20082,7 +20082,7 @@ ${selector} .arrowheadPath {
     a.click();
     URL.revokeObjectURL(url);
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    btn.innerHTML = '<i class="lucide lucide-check"></i>';
     setTimeout(() => { btn.innerHTML = original; }, 1500);
   }
 
@@ -20091,7 +20091,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(blob => {
@@ -20101,7 +20101,7 @@ ${selector} .arrowheadPath {
         a.download = `diagram-${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       }, 'image/png');
     } catch (e) {
@@ -20115,7 +20115,7 @@ ${selector} .arrowheadPath {
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const canvas = await svgToCanvas(svgEl);
       canvas.toBlob(async blob => {
@@ -20123,10 +20123,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       }, 'image/png');
@@ -20150,7 +20150,7 @@ ${selector} .arrowheadPath {
     a.click();
     URL.revokeObjectURL(url);
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    btn.innerHTML = '<i class="lucide lucide-check"></i>';
     setTimeout(() => { btn.innerHTML = original; }, 1500);
   }
 
@@ -20312,7 +20312,7 @@ ${selector} .arrowheadPath {
     if (!modalCurrentSvgEl) return;
     const btn = this;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       if (modalCurrentSvgEl.tagName.toLowerCase() === 'img') {
         const pngUrl = modalCurrentSvgEl.src.replace('/svg/', '/png/');
@@ -20322,7 +20322,7 @@ ${selector} .arrowheadPath {
         const a = document.createElement('a');
         a.href = url; a.download = `diagram-${Date.now()}.png`; a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
       } else {
         // Use the original SVG (with dimensions) for proper PNG rendering
@@ -20332,7 +20332,7 @@ ${selector} .arrowheadPath {
           const a = document.createElement('a');
           a.href = url; a.download = `diagram-${Date.now()}.png`; a.click();
           URL.revokeObjectURL(url);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-check"></i>';
           setTimeout(() => { btn.innerHTML = original; }, 1500);
         }, 'image/png');
       }
@@ -20346,7 +20346,7 @@ ${selector} .arrowheadPath {
     if (!modalCurrentSvgEl) return;
     const btn = this;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       if (modalCurrentSvgEl.tagName.toLowerCase() === 'img') {
         const pngUrl = modalCurrentSvgEl.src.replace('/svg/', '/png/');
@@ -20356,10 +20356,10 @@ ${selector} .arrowheadPath {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
         } catch (clipErr) {
           console.error('Clipboard write failed:', clipErr);
-          btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+          btn.innerHTML = '<i class="lucide lucide-x"></i>';
         }
         setTimeout(() => { btn.innerHTML = original; }, 1800);
       } else {
@@ -20369,10 +20369,10 @@ ${selector} .arrowheadPath {
             await navigator.clipboard.write([
               new ClipboardItem({ 'image/png': blob })
             ]);
-            btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+            btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
           } catch (clipErr) {
             console.error('Clipboard write failed:', clipErr);
-            btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+            btn.innerHTML = '<i class="lucide lucide-x"></i>';
           }
           setTimeout(() => { btn.innerHTML = original; }, 1800);
         }, 'image/png');
@@ -20557,7 +20557,7 @@ ${selector} .arrowheadPath {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
     } catch (e) {
       console.warn('SVG fetch download failed, attempting fallback direct link download:', e);
@@ -20567,10 +20567,10 @@ ${selector} .arrowheadPath {
         a.download = filename;
         a.target = '_blank';
         a.click();
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-check"></i>';
       } catch (err) {
         console.error('SVG download completely failed:', err);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
     }
@@ -20581,7 +20581,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20591,7 +20591,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('PlantUML PNG export failed:', e);
@@ -20604,7 +20604,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20612,10 +20612,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -20629,7 +20629,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -20674,7 +20674,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20684,7 +20684,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('D2 PNG export failed:', e);
@@ -20697,7 +20697,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20705,10 +20705,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -20722,7 +20722,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -20767,7 +20767,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20777,7 +20777,7 @@ ${selector} .arrowheadPath {
       a.download = `diagram-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+      btn.innerHTML = '<i class="lucide lucide-check"></i>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
     } catch (e) {
       console.error('Graphviz PNG export failed:', e);
@@ -20790,7 +20790,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     try {
       const pngUrl = imgEl.src.replace('/svg/', '/png/');
       const blob = await getDiagramPngBlob(imgEl, pngUrl);
@@ -20798,10 +20798,10 @@ ${selector} .arrowheadPath {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.innerHTML = '<i class="lucide lucide-check"></i> Copied!';
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
-        btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        btn.innerHTML = '<i class="lucide lucide-x"></i>';
       }
       setTimeout(() => { btn.innerHTML = original; }, 1800);
     } catch (e) {
@@ -20815,7 +20815,7 @@ ${selector} .arrowheadPath {
     const imgEl = container.querySelector('img');
     if (!imgEl) return;
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.innerHTML = '<i class="lucide lucide-hourglass"></i>';
     await downloadSvgHelper(imgEl, `diagram-${Date.now()}.svg`, btn, original);
   }
 
@@ -21568,7 +21568,7 @@ ${selector} .arrowheadPath {
     const mobileToggleSyncEl = document.getElementById('mobile-toggle-sync');
     if (mobileToggleSyncEl) {
       const isSyncActive = mobileToggleSyncEl.classList.contains('sync-active');
-      mobileToggleSyncEl.innerHTML = `<i class="bi bi-arrow-repeat" aria-hidden="true"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
+      mobileToggleSyncEl.innerHTML = `<i class="lucide lucide-refresh-cw" aria-hidden="true"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
     }
 
     // Import buttons
@@ -21583,9 +21583,9 @@ ${selector} .arrowheadPath {
     if (importGithubEl) updateMenuLabel(importGithubEl, dict.importGithub);
 
     const mImportFileEl = document.getElementById('mobile-import-button');
-    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="bi bi-upload me-2"></i>${dict.importFile}`;
+    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload me-2"></i>${dict.importFile}`;
     const mImportGithubEl = document.getElementById('mobile-import-github-button');
-    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github me-2"></i>${dict.importGithub}`;
+    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="lucide lucide-git-fork me-2"></i>${dict.importGithub}`;
 
     // Export buttons
     const exportDropEl = document.getElementById('exportDropdown');
@@ -21603,13 +21603,13 @@ ${selector} .arrowheadPath {
     if (exportPngEl) updateMenuLabel(exportPngEl, dict.exportPng);
 
     const mExportMdEl = document.getElementById('mobile-export-md');
-    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${dict.exportMd}`;
+    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportMd}`;
     const mExportHtmlEl = document.getElementById('mobile-export-html');
-    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="bi bi-file-earmark-code me-2"></i>${dict.exportHtml}`;
+    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2 me-2"></i>${dict.exportHtml}`;
     const mExportPdfEl = document.getElementById('mobile-export-pdf');
-    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="bi bi-file-earmark-pdf me-2"></i>${dict.exportPdf}`;
+    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportPdf}`;
     const mExportPngEl = document.getElementById('mobile-export-png');
-    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="bi bi-file-earmark-image me-2"></i>${dict.exportPng}`;
+    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image me-2"></i>${dict.exportPng}`;
 
     // Copy / Share
     if (copyMarkdownButton) {
@@ -21617,7 +21617,7 @@ ${selector} .arrowheadPath {
       if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
     }
     const mCopyBtn = document.getElementById('mobile-copy-markdown');
-    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="bi bi-copy me-2" aria-hidden="true"></i>${dict.copy}`;
+    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="lucide lucide-copy me-2" aria-hidden="true"></i>${dict.copy}`;
 
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
@@ -21628,14 +21628,14 @@ ${selector} .arrowheadPath {
       if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
     }
     const mShareBtn = document.getElementById('mobile-share-button');
-    if (mShareBtn) mShareBtn.innerHTML = `<i class="bi bi-share me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
+    if (mShareBtn) mShareBtn.innerHTML = `<i class="lucide lucide-share-2 me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
     const mLiveShareBtn = document.getElementById('mobile-live-share-button');
     if (mLiveShareBtn) {
       const mobileLiveShareLabel = document.getElementById('mobile-live-share-label');
       if (mobileLiveShareLabel) {
         mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
       } else {
-        mLiveShareBtn.innerHTML = `<i class="bi bi-broadcast-pin me-2"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio-tower me-2"></i>${dict.liveShare || 'Live Share'}`;
       }
     }
 
@@ -21643,7 +21643,7 @@ ${selector} .arrowheadPath {
     const tabResetBtn = document.getElementById('tab-reset-btn');
     if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
     const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
-    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> ${dict.reset} all files`;
+    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="lucide lucide-undo-2"></i> ${dict.reset} all files`;
 
     // View toggle buttons title tooltips
     document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = dict.editor);
@@ -21684,7 +21684,7 @@ ${selector} .arrowheadPath {
     const mThemeToggle = document.getElementById('mobile-theme-toggle');
     if (mThemeToggle) {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      mThemeToggle.innerHTML = `<i class="bi bi-${currentTheme === 'dark' ? 'sun' : 'moon'} me-2"></i> ${currentTheme === 'dark' ? dict.lightMode : dict.darkMode}`;
+      mThemeToggle.innerHTML = `<i class="lucide lucide-${currentTheme === 'dark' ? 'sun' : 'moon'} me-2"></i> ${currentTheme === 'dark' ? dict.lightMode : dict.darkMode}`;
     }
 
     // Stats Labels

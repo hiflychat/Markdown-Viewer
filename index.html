@@ -115,7 +115,7 @@
     <!-- Updated libraries to latest versions with Subresource Integrity (SRI) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown.min.css" integrity="sha384-hZuxRjC/Dsr4zEx1JlUhDQqkvqBPp2VLHsgXfnxPq1ULDy1eIdWCiux7nvO1RIZP" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/lucide-icons.css">
     <link rel="stylesheet" href="styles.css">
     
     <!-- Loading order optimized - ensure libraries are loaded asynchronously using defer -->
@@ -135,7 +135,7 @@
                 <div class="d-flex align-items-center header-left">
                     <h1 class="h4 mb-0 me-2">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
                     <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer">
-                        <i class="bi bi-github"></i>
+                        <i class="lucide lucide-git-fork"></i>
                     </a>
                 </div>
 
@@ -143,46 +143,57 @@
                 <div class="toolbar d-none d-md-flex header-right">
                     <div class="dropdown header-new-dropdown">
                         <button class="tool-button header-command-btn dropdown-toggle" type="button" id="importDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Create or import a document" aria-label="Open new document menu">
-                            <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="btn-text">New</span>
+                            <i class="lucide lucide-plus" aria-hidden="true"></i><span class="btn-text">New</span>
                         </button>
                         <ul class="dropdown-menu app-command-menu header-command-menu header-new-menu" aria-labelledby="importDropdown">
-                            <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span class="app-menu-label">New document</span></a></li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="bi bi-upload" aria-hidden="true"></i><span class="app-menu-label">From files</span></a></li>
-                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="bi bi-github" aria-hidden="true"></i><span class="app-menu-label">From GitHub</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="header-new-document"><i class="lucide lucide-file-plus-2" aria-hidden="true"></i><span class="app-menu-label">New document</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-file"><i class="lucide lucide-upload" aria-hidden="true"></i><span class="app-menu-label">From files</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="import-from-github"><i class="lucide lucide-git-fork" aria-hidden="true"></i><span class="app-menu-label">From GitHub</span></a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown header-export-dropdown">
+                        <button class="tool-button header-command-btn dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Export document" aria-label="Open export menu">
+                            <i class="lucide lucide-download" aria-hidden="true"></i><span class="btn-text">Export</span>
+                        </button>
+                        <ul class="dropdown-menu app-command-menu header-command-menu header-export-menu" aria-labelledby="exportDropdown">
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-md"><i class="lucide lucide-file-text" aria-hidden="true"></i><span class="app-menu-label">Markdown (.md)</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-html"><i class="lucide lucide-file-code-2" aria-hidden="true"></i><span class="app-menu-label">HTML</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-pdf"><i class="lucide lucide-file-text" aria-hidden="true"></i><span class="app-menu-label">PDF</span></a></li>
+                            <li><a class="dropdown-item app-menu-item" href="#" id="export-png"><i class="lucide lucide-file-image" aria-hidden="true"></i><span class="app-menu-label">Image (.png)</span></a></li>
                         </ul>
                     </div>
                     <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown" multiple>
 
                     <button id="share-button" class="tool-button header-command-btn" title="Share Snapshot" aria-label="Share snapshot">
-                        <i class="bi bi-share" aria-hidden="true"></i><span class="btn-text">Share</span>
+                        <i class="lucide lucide-share-2" aria-hidden="true"></i><span class="btn-text">Share</span>
                     </button>
 
                     <button id="live-share-button" class="tool-button header-command-btn" title="Live Share">
-                        <i class="bi bi-broadcast-pin" aria-hidden="true"></i><span class="btn-text">Live Share</span>
+                        <i class="lucide lucide-radio-tower" aria-hidden="true"></i><span class="btn-text">Live Share</span>
                     </button>
                     <div id="live-share-toolbar-participants" class="live-share-toolbar-participants" aria-label="Live Share participants" hidden></div>
 
                     <a class="header-icon-command" href="https://github.com/ThisIs-Developer/Markdown-Viewer/issues/new" target="_blank" rel="noopener noreferrer" title="Report an issue" aria-label="Report an issue">
-                        <i class="bi bi-bug" aria-hidden="true"></i>
+                        <i class="lucide lucide-bug" aria-hidden="true"></i>
                     </a>
                     <button id="header-about-button" class="header-icon-command" type="button" data-md-action="info" title="About Markdown Viewer" aria-label="About Markdown Viewer">
-                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        <i class="lucide lucide-info" aria-hidden="true"></i>
                     </button>
 
                     <div class="dropdown settings-dropdown">
                         <button class="header-icon-command" type="button" id="workspaceSettingsDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Workspace settings" aria-label="Open workspace settings">
-                            <i class="bi bi-gear" aria-hidden="true"></i>
+                            <i class="lucide lucide-settings" aria-hidden="true"></i>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end settings-menu" aria-labelledby="workspaceSettingsDropdown">
                             <div class="settings-menu-header">
                                 <strong>Workspace settings</strong>
                             </div>
                             <button id="theme-toggle" class="settings-menu-item app-menu-item" type="button" title="Toggle appearance">
-                                <i class="bi bi-moon" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Appearance</span><span id="theme-toggle-description" class="app-menu-description">Switch to dark appearance</span></span>
+                                <i class="lucide lucide-moon" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Appearance</span><span id="theme-toggle-description" class="app-menu-description">Switch to dark appearance</span></span>
                             </button>
                             <div class="dropdown dropstart settings-language-dropdown">
                                 <button class="settings-menu-item app-menu-item dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Switch language">
-                                    <i class="bi bi-translate" aria-hidden="true"></i><span class="app-menu-copy"><span id="current-lang-label" class="app-menu-label">English</span><span class="app-menu-description">Application language</span></span>
+                                    <i class="lucide lucide-languages" aria-hidden="true"></i><span class="app-menu-copy"><span id="current-lang-label" class="app-menu-label">English</span><span class="app-menu-description">Application language</span></span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">English</a></li>
@@ -203,11 +214,11 @@
                             </div>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button id="private-mode-toggle" class="settings-menu-item app-menu-item settings-menu-item--toggle" type="button" aria-pressed="false" title="Toggle private mode">
-                                <i class="bi bi-incognito" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Data is stored locally</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
+                                <i class="lucide lucide-venetian-mask" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Private mode</span><span id="private-mode-description" class="app-menu-description">Data is stored locally</span></span><span class="settings-switch" aria-hidden="true"><span></span></span>
                             </button>
                             <div class="settings-menu-divider" role="separator"></div>
                             <button class="settings-menu-item app-menu-item settings-menu-reset" id="tab-reset-btn" type="button" title="Reset all files" aria-label="Reset all files">
-                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Reset workspace</span><span class="app-menu-description">Remove all files and review data</span></span>
+                                <i class="lucide lucide-undo-2" aria-hidden="true"></i><span class="app-menu-copy"><span class="app-menu-label">Reset workspace</span><span class="app-menu-description">Remove all files and review data</span></span>
                             </button>
                         </div>
                     </div>
@@ -216,111 +227,111 @@
                 <!-- Hamburger menu for mobile -->
                 <div class="mobile-menu d-md-none">
                     <button id="mobile-menu-toggle" class="tool-button" title="Menu">
-                        <i class="bi bi-list"></i>
+                        <i class="lucide lucide-menu"></i>
                     </button>
                     
                     <div id="mobile-menu-panel" class="mobile-menu-panel">
                         <div class="mobile-menu-header">
                             <h2 class="h5 m-0">Menu</h2>
                             <button id="close-mobile-menu" class="tool-button" aria-label="Close menu">
-                                <i class="bi bi-x-lg"></i>
+                                <i class="lucide lucide-x"></i>
                             </button>
                         </div>
 
                         <!-- Mobile Document Tabs Section -->
                         <div class="mobile-tabs-section mb-3">
                             <div class="mobile-tabs-header">
-                                <span class="mobile-tabs-label"><i class="bi bi-files me-1" aria-hidden="true"></i> Open documents</span>
+                                <span class="mobile-tabs-label"><i class="lucide lucide-files me-1" aria-hidden="true"></i> Open documents</span>
                                 <button id="mobile-new-tab-btn" class="mobile-new-tab-btn" title="New file" aria-label="New file">
-                                    <i class="bi bi-filetype-md"></i>
+                                    <i class="lucide lucide-file-text"></i>
                                 </button>
                             </div>
                             <div id="mobile-tab-list" class="mobile-tab-list" role="tablist" aria-label="Document tabs">
                                 <!-- Dynamically populated by JavaScript -->
                             </div>
                             <button id="mobile-tab-reset-btn" class="tab-reset-btn mt-2 w-100" title="Reset all files" aria-label="Reset all files">
-                                <i class="bi bi-arrow-counterclockwise"></i> Reset all files
+                                <i class="lucide lucide-undo-2"></i> Reset all files
                             </button>
                         </div>
 
                         <!-- Story 1.4: Mobile View Mode Buttons -->
                         <div class="mobile-view-mode-group mb-3" role="group" aria-label="View mode">
                             <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Markdown editor only">
-                                <i class="bi bi-pencil-square"></i>
+                                <i class="lucide lucide-square-pen"></i>
                                 <span>Editor</span>
                             </button>
                             <button class="mobile-view-mode-btn active" data-mode="split" aria-pressed="true" title="Split editor and live preview">
-                                <i class="bi bi-layout-split"></i>
+                                <i class="lucide lucide-columns-2"></i>
                                 <span>Split</span>
                             </button>
                             <button class="mobile-view-mode-btn" data-mode="preview" aria-pressed="false" title="Markdown preview only">
-                                <i class="bi bi-eye"></i>
+                                <i class="lucide lucide-eye"></i>
                                 <span>Preview</span>
                             </button>
                         </div>
 
                         <div class="mobile-stats-container mb-3">
                             <div class="stat-item mb-2">
-                                <i class="bi bi-clock me-1"></i> <span id="mobile-reading-time">0</span> <span id="lbl-mobile-min-read">Min Read</span>
+                                <i class="lucide lucide-clock-3 me-1"></i> <span id="mobile-reading-time">0</span> <span id="lbl-mobile-min-read">Min Read</span>
                             </div>
                             <div class="stat-item mb-2">
-                                <i class="bi bi-text-paragraph me-1"></i> <span id="mobile-word-count">0</span> <span id="lbl-mobile-words">Words</span>
+                                <i class="lucide lucide-pilcrow me-1"></i> <span id="mobile-word-count">0</span> <span id="lbl-mobile-words">Words</span>
                             </div>
                             <div class="stat-item">
-                                <i class="bi bi-fonts me-1"></i> <span id="mobile-char-count">0</span> <span id="lbl-mobile-chars">Chars</span>
+                                <i class="lucide lucide-case-sensitive me-1"></i> <span id="mobile-char-count">0</span> <span id="lbl-mobile-chars">Chars</span>
                             </div>
                         </div>
 
                         <div class="mobile-menu-items">
                             <button id="mobile-toggle-sync" class="mobile-menu-item tool-button sync-enabled sync-active" title="Toggle Sync Scrolling">
-                                <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Sync Off
+                                <i class="lucide lucide-refresh-cw" aria-hidden="true"></i> Sync Off
                             </button>
                             
                             <button id="mobile-import-button" class="mobile-menu-item" title="Import from files">
-                                <i class="bi bi-upload me-2"></i> Import from files
+                                <i class="lucide lucide-upload me-2"></i> Import from files
                             </button>
                             
                             <button id="mobile-import-github-button" class="mobile-menu-item" title="Import from GitHub">
-                                <i class="bi bi-github me-2"></i> Import from GitHub
+                                <i class="lucide lucide-git-fork me-2"></i> Import from GitHub
                             </button>
                             
                             <button id="mobile-export-md" class="mobile-menu-item" title="Export as Markdown">
-                                <i class="bi bi-file-earmark-text me-2"></i> Export as Markdown
+                                <i class="lucide lucide-file-text me-2"></i> Export as Markdown
                             </button>
                             
                             <button id="mobile-export-html" class="mobile-menu-item" title="Export as HTML">
-                                <i class="bi bi-file-earmark-code me-2"></i> Export as HTML
+                                <i class="lucide lucide-file-code-2 me-2"></i> Export as HTML
                             </button>
                             
                             <button id="mobile-export-pdf" class="mobile-menu-item" title="Export as PDF">
-                                <i class="bi bi-file-earmark-pdf me-2"></i> Export as PDF
+                                <i class="lucide lucide-file-text me-2"></i> Export as PDF
                             </button>
 
                             <button id="mobile-export-png" class="mobile-menu-item" title="Export as Image">
-                                <i class="bi bi-file-earmark-image me-2"></i> Export as Image
+                                <i class="lucide lucide-file-image me-2"></i> Export as Image
                             </button>
                             
                             <button id="mobile-copy-markdown" class="mobile-menu-item" title="Copy Markdown">
-                                <i class="bi bi-copy me-2" aria-hidden="true"></i> Copy
+                                <i class="lucide lucide-copy me-2" aria-hidden="true"></i> Copy
                             </button>
                             
                             <button id="mobile-share-button" class="mobile-menu-item" title="Share Snapshot">
-                                <i class="bi bi-share me-2"></i> Share Snapshot
+                                <i class="lucide lucide-share-2 me-2"></i> Share Snapshot
                             </button>
 
                             <button id="mobile-live-share-button" class="mobile-menu-item mobile-live-share-item" title="Live Share">
-                                <span class="mobile-menu-item-label"><i class="bi bi-broadcast-pin me-2"></i><span id="mobile-live-share-label">Live Share</span></span>
+                                <span class="mobile-menu-item-label"><i class="lucide lucide-radio-tower me-2"></i><span id="mobile-live-share-label">Live Share</span></span>
                                 <span id="mobile-live-share-participants" class="live-share-toolbar-participants mobile-live-share-participants" aria-label="Live Share participants" hidden></span>
                             </button>
 
                             <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-                                <span><i class="bi bi-chat-square-text me-2"></i>Review</span>
+                                <span><i class="lucide lucide-message-square-text me-2"></i>Review</span>
                                 <span id="mobile-review-count-badge" class="mobile-review-count-badge" aria-hidden="true" hidden>0</span>
                             </button>
                             
                             <div class="mobile-menu-item dropdown w-100 p-0 border-0">
                                 <button class="mobile-menu-item w-100 text-start dropdown-toggle" type="button" id="mobileLanguageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
-                                    <i class="bi bi-translate me-2"></i> Language: <span id="mobile-current-lang-label">English</span>
+                                    <i class="lucide lucide-languages me-2"></i> Language: <span id="mobile-current-lang-label">English</span>
                                 </button>
                                 <ul class="dropdown-menu w-100" aria-labelledby="mobileLanguageDropdown">
                                     <li><a class="dropdown-item lang-select-item active" href="#" data-lang="en">English</a></li>
@@ -340,13 +351,13 @@
                                 </ul>
                             </div>
                             <button id="mobile-theme-toggle" class="mobile-menu-item" title="Toggle Dark Mode">
-                                <i class="bi bi-moon me-2"></i> Dark Mode
+                                <i class="lucide lucide-moon me-2"></i> Dark Mode
                             </button>
                             <button id="mobile-private-mode-toggle" class="mobile-menu-item mobile-settings-item" type="button" aria-pressed="false" title="Toggle private mode">
-                                <span class="mobile-menu-item-label"><i class="bi bi-incognito me-2" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
+                                <span class="mobile-menu-item-label"><i class="lucide lucide-venetian-mask me-2" aria-hidden="true"></i>Private mode</span><span id="mobile-private-mode-status" class="mobile-menu-item-status">Off</span>
                             </button>
                             <button id="mobile-about-button" class="mobile-menu-item" type="button" title="About Markdown Viewer">
-                                <i class="bi bi-info-circle me-2" aria-hidden="true"></i>About Markdown Viewer
+                                <i class="lucide lucide-info me-2" aria-hidden="true"></i>About Markdown Viewer
                             </button>
                         </div>
                     </div>
@@ -365,38 +376,38 @@
               </div>
               <div class="document-sidebar-actions" role="toolbar" aria-label="File actions">
                 <button id="sidebar-new-document" class="document-sidebar-icon-btn" type="button" aria-label="Create a Markdown file" title="New Markdown file">
-                  <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                  <i class="lucide lucide-file-plus-2" aria-hidden="true"></i>
                 </button>
                 <button id="sidebar-new-folder" class="document-sidebar-icon-btn" type="button" aria-label="Create a folder" title="New folder">
-                  <i class="bi bi-folder-plus" aria-hidden="true"></i>
+                  <i class="lucide lucide-folder-plus" aria-hidden="true"></i>
                 </button>
                 <button id="document-sidebar-collapse-all" class="document-sidebar-icon-btn" type="button" aria-label="Collapse all folders" title="Collapse all">
-                  <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+                  <i class="lucide lucide-fold-vertical" aria-hidden="true"></i>
                 </button>
                 <button id="document-sidebar-close" class="document-sidebar-icon-btn document-sidebar-close" type="button" aria-label="Close Explorer" title="Close Explorer">
-                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                  <i class="lucide lucide-x" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
 
             <label class="visually-hidden" for="document-sidebar-search">Search files</label>
             <div class="document-sidebar-search-wrap">
-              <i class="bi bi-search" aria-hidden="true"></i>
+              <i class="lucide lucide-search" aria-hidden="true"></i>
               <input id="document-sidebar-search" type="search" autocomplete="off" placeholder="Search files" />
               <button id="document-sidebar-search-clear" type="button" aria-label="Clear document search" title="Clear search" hidden>
-                <i class="bi bi-x" aria-hidden="true"></i>
+                <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
 
             <nav class="document-sidebar-filters" aria-label="Document views">
               <button class="document-filter-btn is-active" type="button" data-document-filter="all" aria-current="page">
-                <i class="bi bi-files" aria-hidden="true"></i><span>All</span>
+                <i class="lucide lucide-files" aria-hidden="true"></i><span>All</span>
               </button>
               <button class="document-filter-btn" type="button" data-document-filter="recent">
-                <i class="bi bi-clock-history" aria-hidden="true"></i><span>Recent</span>
+                <i class="lucide lucide-history" aria-hidden="true"></i><span>Recent</span>
               </button>
               <button class="document-filter-btn" type="button" data-document-filter="favorites">
-                <i class="bi bi-star" aria-hidden="true"></i><span>Favs</span>
+                <i class="lucide lucide-star" aria-hidden="true"></i><span>Favs</span>
               </button>
             </nav>
 
@@ -419,25 +430,25 @@
             <!-- Tab Bar -->
             <div class="tab-bar" id="tab-bar">
               <button id="document-sidebar-open" class="tool-button document-sidebar-open" type="button" title="Close Explorer" aria-label="Close Explorer" aria-controls="document-sidebar" aria-expanded="true">
-                <i class="bi bi-layout-sidebar" aria-hidden="true"></i>
+                <i class="lucide lucide-panel-left-close" aria-hidden="true"></i>
               </button>
               <span class="document-sidebar-tab-divider" aria-hidden="true"></span>
               <div class="tab-list" id="tab-list" role="tablist" aria-label="Open document tabs"></div>
               <button class="tab-new-btn" id="tab-new-btn" title="New file (Ctrl+T)" aria-label="Create new file">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <i class="lucide lucide-plus" aria-hidden="true"></i>
               </button>
             </div>
 
         <!-- Markdown Formatting Toolbar -->
         <div class="markdown-format-toolbar" id="markdown-format-toolbar" role="toolbar" aria-label="Markdown formatting toolbar for plain-text editing">
           <div class="markdown-toolbar-group" role="group" aria-label="History">
-            <button type="button" class="markdown-tool-btn" data-md-action="undo" title="Undo" aria-label="Undo"><i class="bi bi-arrow-counterclockwise"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="redo" title="Redo" aria-label="Redo"><i class="bi bi-arrow-clockwise"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="undo" title="Undo" aria-label="Undo"><i class="lucide lucide-undo-2"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="redo" title="Redo" aria-label="Redo"><i class="lucide lucide-redo-2"></i></button>
           </div>
           <div class="markdown-toolbar-group" role="group" aria-label="Common formatting">
             <div class="markdown-tool-dropdown">
               <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--heading" data-toolbar-menu-toggle="heading" aria-haspopup="menu" aria-expanded="false" title="Text style" aria-label="Choose text style">
-                <span class="markdown-tool-select-label">H</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+                <span class="markdown-tool-select-label">H</span><i class="lucide lucide-chevron-down" aria-hidden="true"></i>
               </button>
               <div class="markdown-tool-menu markdown-tool-menu--heading" data-toolbar-menu="heading" role="menu" aria-label="Heading levels">
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="1"><span class="markdown-tool-menu-symbol">H1</span><span>Heading 1</span></button>
@@ -448,13 +459,13 @@
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="heading" data-md-level="6"><span class="markdown-tool-menu-symbol">H6</span><span>Heading 6</span></button>
               </div>
             </div>
-            <button type="button" class="markdown-tool-btn" data-md-action="bold" title="Bold" aria-label="Bold"><i class="bi bi-type-bold"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="italic" title="Italic" aria-label="Italic"><i class="bi bi-type-italic"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="strike" title="Strikethrough" aria-label="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="bold" title="Bold" aria-label="Bold"><i class="lucide lucide-bold"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="italic" title="Italic" aria-label="Italic"><i class="lucide lucide-italic"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="strike" title="Strikethrough" aria-label="Strikethrough"><i class="lucide lucide-strikethrough"></i></button>
           </div>
           <div class="markdown-toolbar-group" role="group" aria-label="Text layout">
             <div class="markdown-tool-dropdown">
-              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--compact" data-toolbar-menu-toggle="case" aria-haspopup="menu" aria-expanded="false" title="Change text case" aria-label="Change text case"><span>Aa</span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--compact" data-toolbar-menu-toggle="case" aria-haspopup="menu" aria-expanded="false" title="Change text case" aria-label="Change text case"><span>Aa</span><i class="lucide lucide-chevron-down" aria-hidden="true"></i></button>
               <div class="markdown-tool-menu" data-toolbar-menu="case" role="menu" aria-label="Text case">
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="title-case"><span class="markdown-tool-menu-symbol">Aa</span><span>Title case</span></button>
                 <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="uppercase"><span class="markdown-tool-menu-symbol">AA</span><span>UPPERCASE</span></button>
@@ -462,72 +473,61 @@
               </div>
             </div>
             <div class="markdown-tool-dropdown">
-              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--icon" data-toolbar-menu-toggle="alignment" aria-haspopup="menu" aria-expanded="false" title="Alignment and direction" aria-label="Alignment and direction"><i class="bi bi-text-left" aria-hidden="true"></i><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--icon" data-toolbar-menu-toggle="alignment" aria-haspopup="menu" aria-expanded="false" title="Alignment and direction" aria-label="Alignment and direction"><i class="lucide lucide-align-left" aria-hidden="true"></i><i class="lucide lucide-chevron-down" aria-hidden="true"></i></button>
               <div class="markdown-tool-menu" data-toolbar-menu="alignment" role="menu" aria-label="Alignment and direction">
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-left"><i class="bi bi-text-left" aria-hidden="true"></i><span>Align left</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-center"><i class="bi bi-text-center" aria-hidden="true"></i><span>Align center</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-right"><i class="bi bi-text-right" aria-hidden="true"></i><span>Align right</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-left"><i class="lucide lucide-align-left" aria-hidden="true"></i><span>Align left</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-center"><i class="lucide lucide-align-center" aria-hidden="true"></i><span>Align center</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="align-right"><i class="lucide lucide-align-right" aria-hidden="true"></i><span>Align right</span></button>
                 <div class="markdown-tool-menu-separator" role="separator"></div>
-                <button type="button" id="direction-toggle" class="markdown-tool-menu-item" role="menuitem" title="Switch to RTL" aria-label="Switch to RTL" aria-pressed="false"><i class="bi bi-text-paragraph" aria-hidden="true"></i><span>Right-to-left text</span></button>
+                <button type="button" id="direction-toggle" class="markdown-tool-menu-item" role="menuitem" title="Switch to RTL" aria-label="Switch to RTL" aria-pressed="false"><i class="lucide lucide-pilcrow" aria-hidden="true"></i><span>Right-to-left text</span></button>
               </div>
             </div>
           </div>
           <div class="markdown-toolbar-group" role="group" aria-label="Content structure">
-            <button type="button" class="markdown-tool-btn" data-md-action="quote" title="Blockquote" aria-label="Blockquote"><i class="bi bi-blockquote-left" aria-hidden="true"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="unordered-list" title="Bulleted list" aria-label="Bulleted list"><i class="bi bi-list-ul"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="ordered-list" title="Numbered list" aria-label="Numbered list"><i class="bi bi-list-ol"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="inline-code" title="Inline code" aria-label="Inline code"><i class="bi bi-code-slash" aria-hidden="true"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="table" title="Table" aria-label="Table"><i class="bi bi-table" aria-hidden="true"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="link" title="Link" aria-label="Link"><i class="bi bi-link-45deg"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="image" title="Image" aria-label="Image"><i class="bi bi-image" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="quote" title="Blockquote" aria-label="Blockquote"><i class="lucide lucide-quote" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="unordered-list" title="Bulleted list" aria-label="Bulleted list"><i class="lucide lucide-list"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="ordered-list" title="Numbered list" aria-label="Numbered list"><i class="lucide lucide-list-ordered"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="inline-code" title="Inline code" aria-label="Inline code"><i class="lucide lucide-code-2" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="table" title="Table" aria-label="Table"><i class="lucide lucide-table-2" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="link" title="Link" aria-label="Link"><i class="lucide lucide-link-2"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="image" title="Image" aria-label="Image"><i class="lucide lucide-image" aria-hidden="true"></i></button>
           </div>
           <div class="markdown-toolbar-group" role="group" aria-label="Advanced insertion">
-            <button type="button" class="markdown-tool-btn" data-md-action="diagram" title="Diagram and more" aria-label="Diagram and more"><i class="bi bi-diagram-3" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="diagram" title="Diagram and more" aria-label="Diagram and more"><i class="lucide lucide-workflow" aria-hidden="true"></i></button>
             <div class="markdown-tool-dropdown">
-              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--insert" data-toolbar-menu-toggle="insert" aria-haspopup="menu" aria-expanded="false" title="Insert" aria-label="Insert"><i class="bi bi-plus-square" aria-hidden="true"></i><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
-              <div class="markdown-tool-menu markdown-tool-menu--wide" data-toolbar-menu="insert" role="menu" aria-label="Insert">
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="reference"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Reference</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="code-block"><i class="bi bi-code-square" aria-hidden="true"></i><span>Code block</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="terminal-block"><i class="bi bi-terminal" aria-hidden="true"></i><span>Terminal block</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="horizontal-rule"><i class="bi bi-dash-lg" aria-hidden="true"></i><span>Horizontal rule</span></button>
+              <button type="button" class="markdown-tool-btn markdown-tool-select markdown-tool-select--insert" data-toolbar-menu-toggle="insert" aria-haspopup="menu" aria-expanded="false" title="More tools" aria-label="More tools"><i class="lucide lucide-ellipsis" aria-hidden="true"></i></button>
+              <div class="markdown-tool-menu markdown-tool-menu--wide" data-toolbar-menu="insert" role="menu" aria-label="More tools">
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="reference"><i class="lucide lucide-bookmark" aria-hidden="true"></i><span>Reference</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="code-block"><i class="lucide lucide-square-code" aria-hidden="true"></i><span>Code block</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="terminal-block"><i class="lucide lucide-square-terminal" aria-hidden="true"></i><span>Terminal block</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="horizontal-rule"><i class="lucide lucide-minus" aria-hidden="true"></i><span>Horizontal rule</span></button>
                 <div class="markdown-tool-menu-separator" role="separator"></div>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="date-time"><i class="bi bi-clock" aria-hidden="true"></i><span>Date and time</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="emoji"><i class="bi bi-emoji-smile" aria-hidden="true"></i><span>Emoji shortcode</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="symbols"><i class="bi bi-braces" aria-hidden="true"></i><span>Symbols &amp; entities</span></button>
-                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="alert"><i class="bi bi-exclamation-square" aria-hidden="true"></i><span>Markdown alert</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="date-time"><i class="lucide lucide-clock-3" aria-hidden="true"></i><span>Date and time</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="emoji"><i class="lucide lucide-smile" aria-hidden="true"></i><span>Emoji shortcode</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="symbols"><i class="lucide lucide-braces" aria-hidden="true"></i><span>Symbols &amp; entities</span></button>
+                <button type="button" class="markdown-tool-menu-item" role="menuitem" data-md-action="alert"><i class="lucide lucide-badge-alert" aria-hidden="true"></i><span>Markdown alert</span></button>
               </div>
             </div>
           </div>
           <div class="markdown-toolbar-group workspace-format-actions" role="group" aria-label="Workspace actions">
-            <button type="button" class="markdown-tool-btn" data-md-action="find" title="Find and replace" aria-label="Find and replace"><i class="bi bi-search" aria-hidden="true"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="fullscreen" title="Fullscreen" aria-label="Enter fullscreen"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i></button>
-            <div class="dropdown document-export-dropdown">
-              <button class="markdown-tool-btn markdown-tool-select markdown-tool-select--icon" type="button" id="exportDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="Export document" aria-label="Export document">
-                <i class="bi bi-download" aria-hidden="true"></i><i class="bi bi-chevron-down" aria-hidden="true"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end app-command-menu header-command-menu header-export-menu" aria-labelledby="exportDropdown">
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-md"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="app-menu-label">Markdown (.md)</span></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-html"><i class="bi bi-file-earmark-code" aria-hidden="true"></i><span class="app-menu-label">HTML</span></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-pdf"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="app-menu-label">PDF</span></a></li>
-                <li><a class="dropdown-item app-menu-item" href="#" id="export-png"><i class="bi bi-file-earmark-image" aria-hidden="true"></i><span class="app-menu-label">Image (.png)</span></a></li>
-              </ul>
-            </div>
+            <button type="button" class="markdown-tool-btn" data-md-action="find" title="Find and replace" aria-label="Find and replace"><i class="lucide lucide-search" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="fullscreen" title="Fullscreen" aria-label="Enter fullscreen"><i class="lucide lucide-maximize" aria-hidden="true"></i></button>
           </div>
           <div class="markdown-toolbar-group markdown-toolbar-group--document markdown-toolbar-group--utilities" role="group" aria-label="Document utilities and view mode">
             <button id="toggle-sync" class="tool-button document-command-btn sync-enabled sync-active" type="button" title="Disable synchronized scrolling" aria-label="Disable synchronized scrolling" aria-pressed="true">
-              <i class="bi bi-arrow-repeat" aria-hidden="true"></i><span class="btn-text">Sync Off</span>
+              <i class="lucide lucide-refresh-cw" aria-hidden="true"></i><span class="btn-text">Sync Off</span>
             </button>
             <button id="copy-markdown-button" class="tool-button document-command-btn" type="button" title="Copy Markdown" aria-label="Copy Markdown">
-              <i class="bi bi-copy" aria-hidden="true"></i><span class="btn-text">Copy Markdown</span>
+              <i class="lucide lucide-copy" aria-hidden="true"></i><span class="btn-text">Copy Markdown</span>
             </button>
             <button id="review-toggle" class="tool-button document-command-btn" type="button" title="Open comments and suggestions" aria-label="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-              <i class="bi bi-chat-square-text" aria-hidden="true"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span>
+              <i class="lucide lucide-message-square-text" aria-hidden="true"></i><span id="review-toolbar-count" class="review-toolbar-count" aria-hidden="true" hidden>0</span>
             </button>
             <span class="document-command-divider" aria-hidden="true"></span>
             <div class="view-toolbar markdown-view-toolbar" role="group" aria-label="View mode">
-              <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Markdown editor only" aria-label="Markdown editor only"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
-              <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Markdown preview only" aria-label="Markdown preview only"><i class="bi bi-eye" aria-hidden="true"></i></button>
-              <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split editor and live preview" aria-label="Split editor and live preview"><i class="bi bi-layout-split" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn" data-view-mode="editor" aria-pressed="false" title="Edit" aria-label="Edit Markdown"><i class="lucide lucide-square-pen" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn is-active" data-view-mode="split" aria-pressed="true" title="Split" aria-label="Split editor and preview"><i class="lucide lucide-columns-2" aria-hidden="true"></i></button>
+              <button class="tool-button view-toggle-btn" data-view-mode="preview" aria-pressed="false" title="Preview" aria-label="Preview Markdown"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
@@ -538,7 +538,7 @@
             <div class="modal-header">
               <p id="reset-modal-title" class="reset-modal-message">Reset all files?</p>
               <button type="button" class="modal-close-btn" id="reset-modal-close" aria-label="Close reset confirmation dialog">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
             <p id="reset-modal-description" class="modal-subtext">This will remove all files and review items. Unsaved changes cannot be recovered.</p>
@@ -555,7 +555,7 @@
             <div class="modal-header">
               <p id="review-delete-title" class="reset-modal-message">Delete review item?</p>
               <button type="button" class="modal-close-btn" id="review-delete-close" aria-label="Close review deletion dialog">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
             <p id="review-delete-description" class="modal-subtext">This comment or suggestion will be permanently deleted.</p>
@@ -572,7 +572,7 @@
             <div class="modal-header">
               <p id="clear-formatting-title" class="reset-modal-message">Clear active document?</p>
               <button type="button" class="modal-close-btn" id="clear-formatting-close" aria-label="Close clear document dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <p class="modal-subtext">Are you sure you want to clear the content of the active document? The document itself will not be deleted.</p>
@@ -589,7 +589,7 @@
             <div class="modal-header">
               <p id="pdf-export-title" class="reset-modal-message">Export PDF Options</p>
               <button type="button" class="modal-close-btn" id="pdf-export-close" aria-label="Close PDF export dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -597,21 +597,21 @@
               <div class="share-mode-cards">
                 <label class="share-mode-card is-selected" id="pdf-export-card-vector" for="pdf-export-mode-vector">
                   <input type="radio" id="pdf-export-mode-vector" name="pdf-export-mode" value="vector" checked />
-                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf"></i></span>
+                  <span class="share-card-icon"><i class="lucide lucide-file-text"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">Browser Print (Recommended)</span>
                     <span class="share-card-desc">Faster, suggested for large documents. Note: images, diagrams, etc. might break.</span>
                   </span>
-                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                  <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
                 <label class="share-mode-card" id="pdf-export-card-raster" for="pdf-export-mode-raster">
                   <input type="radio" id="pdf-export-mode-raster" name="pdf-export-mode" value="raster" />
-                  <span class="share-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></span>
+                  <span class="share-card-icon"><i class="lucide lucide-file-text"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">Legacy Raster PDF</span>
                     <span class="share-card-desc">Intelligently plans page breaks to keep images, tables, equations, and diagrams together. Blocks move to the next page when there is not enough space. Recommended for short documents.</span>
                   </span>
-                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                  <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
               </div>
             </div>
@@ -626,11 +626,11 @@
         <!-- Find & Replace Floating Panel -->
         <div id="find-replace-modal" class="find-replace-panel" role="region" aria-label="Find and Replace" style="display:none;">
           <div class="find-replace-header" id="find-replace-drag-handle">
-            <span class="find-replace-title"><i class="bi bi-search me-1"></i> Find &amp; Replace</span>
+            <span class="find-replace-title"><i class="lucide lucide-search me-1"></i> Find &amp; Replace</span>
             <div class="find-replace-header-actions">
-              <button type="button" class="panel-icon-btn" id="find-replace-reset" title="Reset Position" aria-label="Reset Position"><i class="bi bi-arrow-counterclockwise"></i></button>
-              <button type="button" class="panel-icon-btn" id="find-replace-dock" title="Toggle Dock Mode" aria-label="Toggle Dock Mode"><i class="bi bi-layout-sidebar-reverse"></i></button>
-              <button type="button" class="panel-icon-btn" id="find-replace-close-icon" aria-label="Close find and replace panel"><i class="bi bi-x-lg"></i></button>
+              <button type="button" class="panel-icon-btn" id="find-replace-reset" title="Reset Position" aria-label="Reset Position"><i class="lucide lucide-undo-2"></i></button>
+              <button type="button" class="panel-icon-btn" id="find-replace-dock" title="Toggle Dock Mode" aria-label="Toggle Dock Mode"><i class="lucide lucide-panel-right"></i></button>
+              <button type="button" class="panel-icon-btn" id="find-replace-close-icon" aria-label="Close find and replace panel"><i class="lucide lucide-x"></i></button>
             </div>
           </div>
           <div class="find-replace-body">
@@ -642,14 +642,14 @@
                   <button type="button" class="find-option-btn" id="find-case" title="Match Case (Aa)" aria-label="Match Case">Aa</button>
                   <button type="button" class="find-option-btn" id="find-word" title="Match Whole Word (W)" aria-label="Match Whole Word">W</button>
                   <button type="button" class="find-option-btn" id="find-regex" title="Use Regular Expression (.*)" aria-label="Use Regular Expression">.*</button>
-                  <button type="button" class="find-option-btn" id="find-sel" title="Find in Selection (Sel)" aria-label="Find in Selection"><i class="bi bi-align-start"></i></button>
+                  <button type="button" class="find-option-btn" id="find-sel" title="Find in Selection (Sel)" aria-label="Find in Selection"><i class="lucide lucide-scan-text"></i></button>
                 </div>
               </div>
             </div>
             
             <!-- Real-time Regex Error Box -->
             <div id="find-replace-error" class="find-error-drawer" style="display:none;">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="regex-error-msg"></span>
+              <i class="lucide lucide-triangle-alert me-1"></i> <span id="regex-error-msg"></span>
             </div>
 
             <!-- Replace Row -->
@@ -668,10 +668,10 @@
               <span id="find-replace-count" class="find-match-count" role="status" aria-live="polite">0 of 0 matches</span>
               <div class="find-nav-group">
                 <button type="button" class="find-nav-arrow-btn" id="find-prev" title="Previous match (Shift+Enter)" aria-label="Previous match" disabled>
-                  <i class="bi bi-chevron-up"></i>
+                  <i class="lucide lucide-chevron-up"></i>
                 </button>
                 <button type="button" class="find-nav-arrow-btn" id="find-next" title="Next match (Enter)" aria-label="Next match" disabled>
-                  <i class="bi bi-chevron-down"></i>
+                  <i class="lucide lucide-chevron-down"></i>
                 </button>
               </div>
             </div>
@@ -679,7 +679,7 @@
             <!-- Advanced Drawer Toggle -->
             <div class="find-drawer-toggle-row">
               <button type="button" class="drawer-toggle-btn" id="fr-drawer-toggle" aria-expanded="false">
-                <i class="bi bi-chevron-right me-1"></i> Advanced Options
+                <i class="lucide lucide-chevron-right me-1"></i> Advanced Options
               </button>
             </div>
 
@@ -724,7 +724,7 @@
             <div class="modal-header">
               <p id="diff-modal-title" class="reset-modal-message">Replace All Diff Preview</p>
               <button type="button" class="modal-close-btn" id="find-replace-diff-close-icon" aria-label="Close diff preview dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body diff-preview-body">
@@ -747,7 +747,7 @@
             <div class="modal-header">
               <p id="help-modal-title" class="reset-modal-message">Markdown Viewer Help</p>
               <button type="button" class="modal-close-btn" id="help-modal-close-icon" aria-label="Close help dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -800,7 +800,7 @@
             <div class="modal-header">
               <p id="about-modal-title" class="reset-modal-message">About Markdown Viewer</p>
               <button type="button" class="modal-close-btn" id="about-modal-close-icon" aria-label="Close about dialog">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <i class="lucide lucide-x" aria-hidden="true"></i>
               </button>
             </div>
             <div class="modal-body about-modal-body">
@@ -838,6 +838,7 @@
                 <h3 id="about-stack-title" class="modal-section-title">Technology stack</h3>
                 <ul class="modal-list">
                   <li>HTML, CSS, and JavaScript with Bootstrap 5 for layout and styling.</li>
+                  <li><a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide Icons</a> supplies the lightweight interface icon system.</li>
                   <li>Marked, DOMPurify, Highlight.js, Mermaid, MathJax, and Emoji Toolkit for rendering.</li>
                 </ul>
               </section>
@@ -864,7 +865,7 @@
             <div class="modal-header">
               <p id="share-modal-title" class="reset-modal-message">Share Snapshot</p>
               <button type="button" class="modal-close-btn" id="share-modal-close-icon" aria-label="Close share dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -873,21 +874,21 @@
               <div class="share-mode-cards">
                 <label class="share-mode-card" id="share-card-view" for="share-mode-view">
                   <input type="radio" id="share-mode-view" name="share-mode" value="view" checked />
-                  <span class="share-card-icon"><i class="bi bi-eye"></i></span>
+                  <span class="share-card-icon"><i class="lucide lucide-eye"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">View only</span>
                     <span class="share-card-desc">Preview-only link. Hides editing controls, but content is still delivered to the browser.</span>
                   </span>
-                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                  <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
                 <label class="share-mode-card" id="share-card-edit" for="share-mode-edit">
                   <input type="radio" id="share-mode-edit" name="share-mode" value="edit" />
-                  <span class="share-card-icon"><i class="bi bi-pencil-square"></i></span>
+                  <span class="share-card-icon"><i class="lucide lucide-square-pen"></i></span>
                   <span class="share-card-body">
                     <span class="share-card-title">Can edit</span>
                     <span class="share-card-desc">Editable link. Opens the document with both editor and preview controls available.</span>
                   </span>
-                  <span class="share-card-check"><i class="bi bi-check-lg"></i></span>
+                  <span class="share-card-check"><i class="lucide lucide-check"></i></span>
                 </label>
               </div>
               <div class="live-share-invite share-snapshot-invite" id="share-invite-section" hidden>
@@ -898,7 +899,7 @@
                 <div class="share-url-row live-share-link-row">
                   <input type="text" id="share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Share link appears here" aria-label="Share URL" />
                   <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="share-copy-btn" title="Copy link">
-                    <i class="bi bi-copy"></i>
+                    <i class="lucide lucide-copy"></i>
                     <span>Copy</span>
                   </button>
                 </div>
@@ -916,7 +917,7 @@
             <div class="modal-header">
               <p id="share-error-title" class="reset-modal-message">Share link failed</p>
               <button type="button" class="modal-close-btn" id="share-error-close-icon" aria-label="Close share error dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -940,7 +941,7 @@
                 </span>
               </div>
               <button type="button" class="modal-close-btn" id="live-share-modal-close-icon" aria-label="Close live share dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -970,7 +971,7 @@
               </div>
               <div class="live-share-access-status" id="live-share-access-status" hidden>
                 <span class="live-share-access-icon" aria-hidden="true">
-                  <i class="bi bi-key"></i>
+                  <i class="lucide lucide-key-round"></i>
                 </span>
                 <span class="live-share-access-title">Access: <strong id="live-share-access-label">Can edit</strong></span>
                 <span id="live-share-access-note">Collaborators can edit this document.</span>
@@ -991,7 +992,7 @@
                 <div class="share-url-row live-share-link-row">
                   <input type="text" id="live-share-url-input" class="rename-modal-input share-url-input" readonly placeholder="Start a session to create an invite link" aria-label="Live Share invite link" />
                   <button class="reset-modal-btn share-copy-btn live-share-copy-btn" id="live-share-copy-btn" title="Copy invite link" disabled>
-                    <i class="bi bi-copy"></i>
+                    <i class="lucide lucide-copy"></i>
                     <span>Copy</span>
                   </button>
                 </div>
@@ -1009,7 +1010,7 @@
             <div class="modal-header">
               <p id="live-share-expired-title" class="reset-modal-message">Live Share room expired</p>
               <button type="button" class="modal-close-btn" id="live-share-expired-close-icon" aria-label="Close expired live share dialog">
-                <i class="bi bi-x-lg"></i>
+                <i class="lucide lucide-x"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -1179,7 +1180,7 @@
           <div class="reset-modal-box reset-modal-box--wide reset-modal-box--xl diagram-modal-box">
             <div class="modal-header">
               <p id="diagram-modal-title" class="reset-modal-message">Insert Diagram &amp; More</p>
-              <button class="modal-close-btn" id="diagram-modal-close" aria-label="Close diagram dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+              <button class="modal-close-btn" id="diagram-modal-close" aria-label="Close diagram dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
             
             <div class="diagram-modal-body">
@@ -1246,7 +1247,7 @@
         <!-- Full-screen drag overlay (shown when a file is dragged over the window) -->
         <div id="drag-overlay" class="drag-overlay" aria-hidden="true">
             <div class="drag-overlay-inner">
-                <i class="bi bi-cloud-arrow-up drag-overlay-icon"></i>
+                <i class="lucide lucide-cloud-upload drag-overlay-icon"></i>
                 <p class="drag-overlay-text">Drop your Markdown files anywhere</p>
                 <p class="drag-overlay-sub">.md or .markdown files supported</p>
             </div>
@@ -1254,10 +1255,10 @@
 
         <main class="content-container">
             <div id="no-open-document" class="no-open-document" role="status" hidden>
-                <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                <i class="lucide lucide-file-text" aria-hidden="true"></i>
                 <p class="no-open-document-title">No file open</p>
                 <p class="no-open-document-copy">Choose a file from the sidebar or create a new Markdown file.</p>
-                <button id="no-open-document-new" class="reset-modal-btn reset-modal-confirm" type="button"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i> New file</button>
+                <button id="no-open-document-new" class="reset-modal-btn reset-modal-confirm" type="button"><i class="lucide lucide-file-plus-2" aria-hidden="true"></i> New file</button>
             </div>
             <div class="editor-pane is-loading">
                 <div id="line-numbers" class="line-numbers" aria-hidden="true" inert></div>
@@ -1276,7 +1277,7 @@
                 </div>
                 <textarea id="markdown-editor" placeholder="Type, paste, or import Markdown here..." aria-label="Markdown editor input with live preview"></textarea>
                 <div class="drop-hint" aria-hidden="true">
-                    <i class="bi bi-cloud-arrow-up me-1"></i>Drop .md files anywhere to open them
+                    <i class="lucide lucide-cloud-upload me-1"></i>Drop .md files anywhere to open them
                 </div>
             </div>
             <!-- Resize Divider - Story 1.3 -->
@@ -1313,7 +1314,7 @@
                         <p id="review-panel-summary" class="review-panel-summary">No open feedback</p>
                     </div>
                     <button id="review-panel-close" class="review-icon-btn" type="button" aria-label="Close comments and suggestions" title="Close review mode">
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        <i class="lucide lucide-x" aria-hidden="true"></i>
                     </button>
                 </div>
 
@@ -1325,13 +1326,13 @@
                     </div>
                     <div class="review-panel-actions" role="group" aria-label="Review actions">
                         <button id="review-copy-summary" class="review-icon-btn" type="button" aria-label="Copy review summary" title="Copy review summary" disabled>
-                            <i class="bi bi-copy" aria-hidden="true"></i>
+                            <i class="lucide lucide-copy" aria-hidden="true"></i>
                         </button>
                         <button id="review-resolve-all" class="review-icon-btn" type="button" aria-label="Resolve all open review items" title="Resolve all open review items" disabled>
-                            <i class="bi bi-check2-all" aria-hidden="true"></i>
+                            <i class="lucide lucide-check-check" aria-hidden="true"></i>
                         </button>
                         <button id="review-delete-all" class="review-icon-btn is-danger" type="button" aria-label="Delete all review items" title="Delete all review items" disabled>
-                            <i class="bi bi-trash3" aria-hidden="true"></i>
+                            <i class="lucide lucide-trash-2" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -1339,7 +1340,7 @@
                 <div class="review-panel-body">
                     <div id="review-list" class="review-list" aria-live="polite"></div>
                     <div id="review-empty-state" class="review-empty-state">
-                        <i class="bi bi-chat-square-dots" aria-hidden="true"></i>
+                        <i class="lucide lucide-message-square-more" aria-hidden="true"></i>
                         <h3>No open feedback</h3>
                         <p>Select a comment pin in the preview to add feedback.</p>
                     </div>
@@ -1351,16 +1352,16 @@
                                 <h3 id="review-composer-title">Add feedback</h3>
                             </div>
                             <button id="review-composer-cancel" class="review-icon-btn" type="button" aria-label="Cancel feedback" title="Cancel">
-                                <i class="bi bi-x" aria-hidden="true"></i>
+                                <i class="lucide lucide-x" aria-hidden="true"></i>
                             </button>
                         </div>
                         <p id="review-composer-anchor" class="review-anchor-preview"></p>
                         <div class="review-kind-group" role="group" aria-label="Feedback type">
                             <button class="review-kind-btn is-active" type="button" data-review-kind="comment" aria-pressed="true">
-                                <i class="bi bi-chat-left-text" aria-hidden="true"></i> Comment
+                                <i class="lucide lucide-message-square-text" aria-hidden="true"></i> Comment
                             </button>
                             <button class="review-kind-btn" type="button" data-review-kind="suggestion" aria-pressed="false">
-                                <i class="bi bi-pencil-square" aria-hidden="true"></i> Suggestion
+                                <i class="lucide lucide-square-pen" aria-hidden="true"></i> Suggestion
                             </button>
                         </div>
                         <label id="review-feedback-label" class="review-feedback-label" for="review-feedback-input">Comment</label>
@@ -1378,24 +1379,24 @@
         <footer class="app-status-bar" aria-label="Document statistics and save status">
           <div id="stats-container" class="stats-container d-flex align-items-center d-none d-md-flex" aria-label="Document statistics">
             <div class="stat-item me-3">
-              <i class="bi bi-clock me-1" aria-hidden="true"></i><span id="reading-time">0</span> <span id="lbl-min-read">Min Read</span>
+              <i class="lucide lucide-clock-3 me-1" aria-hidden="true"></i><span id="reading-time">0</span> <span id="lbl-min-read">Min Read</span>
             </div>
             <div class="stat-item me-3">
-              <i class="bi bi-text-paragraph me-1" aria-hidden="true"></i><span id="word-count">0</span> <span id="lbl-words">Words</span>
+              <i class="lucide lucide-pilcrow me-1" aria-hidden="true"></i><span id="word-count">0</span> <span id="lbl-words">Words</span>
             </div>
             <div class="stat-item">
-              <i class="bi bi-fonts me-1" aria-hidden="true"></i><span id="char-count">0</span> <span id="lbl-chars">Chars</span>
+              <i class="lucide lucide-case-sensitive me-1" aria-hidden="true"></i><span id="char-count">0</span> <span id="lbl-chars">Chars</span>
             </div>
           </div>
           <div id="save-status" class="app-save-status is-saved" data-state="saved" role="status" aria-live="polite" aria-atomic="true">
-            <i id="save-status-icon" class="bi bi-check2" aria-hidden="true"></i>
+            <i id="save-status-icon" class="lucide lucide-check" aria-hidden="true"></i>
             <span id="save-status-text">All changes saved</span>
           </div>
         </footer>
     </div>
 
     <div id="import-progress-toast" class="import-progress-toast" role="status" aria-live="polite" hidden>
-      <i class="bi bi-filetype-md import-progress-icon" aria-hidden="true"></i>
+      <i class="lucide lucide-file-text import-progress-icon" aria-hidden="true"></i>
       <div class="import-progress-content">
         <div class="import-progress-copy">
           <span id="import-progress-title">Importing files</span>
@@ -1411,7 +1412,7 @@
       <div class="reset-modal-box reset-modal-box--wide modal-box">
         <div class="modal-header">
           <p id="document-name-modal-title" class="reset-modal-message">Name item</p>
-          <button type="button" class="modal-close-btn" id="document-name-modal-close" aria-label="Close dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+          <button type="button" class="modal-close-btn" id="document-name-modal-close" aria-label="Close dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
         <p id="document-name-modal-description" class="modal-subtext"></p>
         <label id="document-name-modal-label" class="reset-modal-label" for="document-name-modal-input">Name</label>
@@ -1428,22 +1429,22 @@
       <div class="reset-modal-box reset-modal-box--wide modal-box">
         <div class="modal-header">
           <div class="secret-workspace-modal-heading">
-            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <i class="lucide lucide-shield" aria-hidden="true"></i>
             <p id="secret-workspace-modal-title" class="reset-modal-message">Unlock Secret Workspace</p>
           </div>
-          <button type="button" class="modal-close-btn" id="secret-workspace-modal-close" aria-label="Close secret workspace dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+          <button type="button" class="modal-close-btn" id="secret-workspace-modal-close" aria-label="Close secret workspace dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
         <p id="secret-workspace-modal-description" class="modal-subtext">Enter the local access key used to encrypt this workspace on this device.</p>
         <label class="reset-modal-label" for="secret-workspace-key">Access key</label>
         <div class="secret-password-field">
           <input type="text" id="secret-workspace-key" name="local-vault-key" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-describedby="secret-workspace-key-guidance" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-          <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key" aria-label="Show access key" title="Show access key"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key" aria-label="Show access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
         </div>
         <div id="secret-workspace-confirm-group" class="secret-password-confirm-group" hidden>
           <label class="reset-modal-label" for="secret-workspace-key-confirm">Confirm access key</label>
           <div class="secret-password-field">
             <input type="text" id="secret-workspace-key-confirm" name="local-vault-key-confirmation" class="rename-modal-input secret-access-key-input is-masked" minlength="8" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" />
-            <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key-confirm" aria-label="Show confirmation access key" title="Show access key"><i class="bi bi-eye" aria-hidden="true"></i></button>
+            <button type="button" class="secret-password-toggle" data-secret-key-toggle="secret-workspace-key-confirm" aria-label="Show confirmation access key" title="Show access key"><i class="lucide lucide-eye" aria-hidden="true"></i></button>
           </div>
         </div>
         <p id="secret-workspace-key-guidance" class="secret-password-guidance" hidden>Use at least 8 characters.</p>
@@ -1463,14 +1464,14 @@
             <p id="document-split-modal-title" class="reset-modal-message">Open split view</p>
             <p id="document-split-modal-description" class="modal-subtext">Choose a second document to edit beside the current one.</p>
           </div>
-          <button type="button" class="modal-close-btn" id="document-split-modal-close" aria-label="Close split view dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+          <button type="button" class="modal-close-btn" id="document-split-modal-close" aria-label="Close split view dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
         <label class="reset-modal-label" for="document-split-destination">Second document</label>
         <select id="document-split-destination" class="rename-modal-input"></select>
         <p id="document-split-modal-error" class="document-modal-error" role="alert" hidden></p>
         <div class="reset-modal-actions">
           <button type="button" class="reset-modal-btn reset-modal-cancel" id="document-split-modal-cancel">Cancel</button>
-          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-split-modal-confirm"><i class="bi bi-layout-split" aria-hidden="true"></i> Open split view</button>
+          <button type="button" class="reset-modal-btn reset-modal-confirm" id="document-split-modal-confirm"><i class="lucide lucide-columns-2" aria-hidden="true"></i> Open split view</button>
         </div>
       </div>
     </div>
@@ -1479,7 +1480,7 @@
       <div class="reset-modal-box reset-modal-box--wide modal-box">
         <div class="modal-header">
           <p id="document-move-modal-title" class="reset-modal-message">Move document</p>
-          <button type="button" class="modal-close-btn" id="document-move-modal-close" aria-label="Close move dialog"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+          <button type="button" class="modal-close-btn" id="document-move-modal-close" aria-label="Close move dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
         <label class="reset-modal-label" for="document-move-destination">Destination</label>
         <select id="document-move-destination" class="rename-modal-input"></select>
@@ -1494,7 +1495,7 @@
       <div class="reset-modal-box modal-box">
         <div class="modal-header">
           <p id="document-confirm-modal-title" class="reset-modal-message">Confirm action</p>
-          <button type="button" class="modal-close-btn" id="document-confirm-modal-close" aria-label="Close confirmation"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+          <button type="button" class="modal-close-btn" id="document-confirm-modal-close" aria-label="Close confirmation"><i class="lucide lucide-x" aria-hidden="true"></i></button>
         </div>
         <p id="document-confirm-modal-description" class="modal-subtext"></p>
         <div class="reset-modal-actions">
@@ -1505,36 +1506,36 @@
     </div>
 
     <!-- Shared Diagram Viewer Modal -->
-    <div id="mermaid-zoom-modal" role="dialog" aria-modal="true" aria-label="Diagram zoom view" aria-hidden="true">
+    <div id="mermaid-zoom-modal" role="dialog" aria-modal="true" aria-labelledby="diagram-viewer-modal-title" aria-hidden="true">
         <div class="mermaid-modal-content">
             <div class="mermaid-modal-header">
-                <span id="diagram-modal-title">Diagram Viewer</span>
+                <span id="diagram-viewer-modal-title">Diagram Viewer</span>
                 <button class="mermaid-modal-close" id="mermaid-modal-close" title="Close" aria-label="Close diagram modal">
-                    <i class="bi bi-x-lg"></i>
+                    <i class="lucide lucide-x"></i>
                 </button>
             </div>
             <div class="mermaid-modal-diagram" id="mermaid-modal-diagram"></div>
             <div class="mermaid-modal-controls">
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-zoom-in" title="Zoom in">
-                    <i class="bi bi-zoom-in"></i> Zoom In
+                    <i class="lucide lucide-zoom-in"></i> Zoom In
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-zoom-out" title="Zoom out">
-                    <i class="bi bi-zoom-out"></i> Zoom Out
+                    <i class="lucide lucide-zoom-out"></i> Zoom Out
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-zoom-reset" title="Reset zoom">
-                    <i class="bi bi-arrows-angle-contract"></i> Reset
+                    <i class="lucide lucide-minimize-2"></i> Reset
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-zoom-fit" title="Fit diagram to screen">
-                    <i class="bi bi-aspect-ratio"></i> Fit
+                    <i class="lucide lucide-scan"></i> Fit
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-copy" title="Copy image">
-                    <i class="bi bi-copy"></i> Copy
+                    <i class="lucide lucide-copy"></i> Copy
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-download-png" title="Download PNG">
-                    <i class="bi bi-file-image"></i> PNG
+                    <i class="lucide lucide-file-image"></i> PNG
                 </button>
                 <button class="mermaid-toolbar-btn" id="mermaid-modal-download-svg" title="Download SVG">
-                    <i class="bi bi-filetype-svg"></i> SVG
+                    <i class="lucide lucide-file-code-2"></i> SVG
                 </button>
             </div>
         </div>
@@ -1546,36 +1547,36 @@
             <div class="stl-modal-header">
                 <span>3D Model Viewer</span>
                 <button class="stl-modal-close" id="stl-zoom-modal-close" title="Close" aria-label="Close 3D modal">
-                    <i class="bi bi-x-lg"></i>
+                    <i class="lucide lucide-x"></i>
                 </button>
             </div>
             <div class="stl-modal-viewer" id="stl-modal-viewer"></div>
             <div class="stl-modal-controls">
                 <button class="stl-toolbar-btn" id="stl-modal-btn-solid" title="Solid Mode">
-                    <i class="bi bi-circle-fill"></i> Solid
+                    <i class="lucide lucide-circle-filled"></i> Solid
                 </button>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-angle" title="Surface Angle Mode">
-                    <i class="bi bi-circle-half"></i> Surface Angle
+                    <i class="lucide lucide-circle-dot"></i> Surface Angle
                 </button>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-wireframe" title="Wireframe Mode">
-                    <i class="bi bi-grid-3x3"></i> Wireframe
+                    <i class="lucide lucide-grid-3x3"></i> Wireframe
                 </button>
                 <div class="stl-divider"></div>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-zoom-in" title="Zoom in">
-                    <i class="bi bi-zoom-in"></i> Zoom In
+                    <i class="lucide lucide-zoom-in"></i> Zoom In
                 </button>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-zoom-out" title="Zoom out">
-                    <i class="bi bi-zoom-out"></i> Zoom Out
+                    <i class="lucide lucide-zoom-out"></i> Zoom Out
                 </button>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-zoom-reset" title="Reset view">
-                    <i class="bi bi-arrows-angle-contract"></i> Reset
+                    <i class="lucide lucide-minimize-2"></i> Reset
                 </button>
                 <div class="stl-divider"></div>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-copy" title="Copy Image">
-                    <i class="bi bi-copy"></i> Copy
+                    <i class="lucide lucide-copy"></i> Copy
                 </button>
                 <button class="stl-toolbar-btn" id="stl-modal-btn-png" title="Download PNG">
-                    <i class="bi bi-file-image"></i> PNG
+                    <i class="lucide lucide-file-image"></i> PNG
                 </button>
             </div>
         </div>
