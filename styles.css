@@ -24,7 +24,6 @@
   --ui-font-xl: 16px;
   --ui-icon-size-sm: 12px;
   --ui-icon-size-md: 14px;
-  --ui-icon-color: #667085;
   --icon-size-md: var(--ui-icon-size-md);
   --toolbar-control-hover: color-mix(in srgb, var(--text-color) 7%, transparent);
   --toolbar-control-pressed: color-mix(in srgb, var(--text-color) 11%, transparent);
@@ -80,7 +79,6 @@
   --menu-surface: #161b22;
   --menu-border: #3d444d;
   --menu-shadow: 0 12px 32px rgba(0, 0, 0, 0.46);
-  --ui-icon-color: #9aa4b2;
   --toolbar-control-hover: rgba(240, 246, 252, 0.09);
   --toolbar-control-pressed: rgba(240, 246, 252, 0.14);
   --segmented-bg: #0d1117;
@@ -569,7 +567,7 @@ body {
 
 .document-tree-main > i {
   flex: 0 0 var(--ui-icon-size-md);
-  color: var(--ui-icon-color);
+  color: var(--text-secondary);
   font-size: var(--document-sidebar-icon-size);
   line-height: 1;
   text-align: center;
@@ -4295,21 +4293,7 @@ a:focus {
   .modal-close-btn,
   .reset-modal-btn
 ) .lucide {
-  color: var(--ui-icon-color);
   font-size: var(--ui-icon-size-md);
-}
-
-:where(
-  .tool-button.is-active,
-  .tool-button.is-live-active,
-  .tool-button.sync-active,
-  .markdown-tool-btn.is-active,
-  .document-filter-btn.is-active,
-  .mobile-menu-item.is-live-active,
-  .mobile-menu-item.sync-active,
-  .tab-menu-item-danger
-) .lucide {
-  color: inherit;
 }
 
 .document-menu-context {
@@ -4594,7 +4578,6 @@ a:focus {
 }
 
 .about-action > i {
-  color: var(--ui-icon-color);
   font-size: var(--ui-icon-size-md);
 }
 
