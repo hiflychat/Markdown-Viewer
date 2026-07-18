@@ -1985,6 +1985,17 @@ body.document-sidebar-collapsed .document-sidebar {
   color: var(--color-danger-fg, #d73a49);
 }
 
+.header-icon-command.report-command:hover,
+.header-icon-command.report-command:focus-visible,
+.mobile-menu-command.report-command:hover,
+.mobile-menu-command.report-command:focus-visible,
+.mobile-menu-command.report-command:active {
+  border-color: color-mix(in srgb, var(--color-danger-fg, #d73a49) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--color-danger-fg, #d73a49) 10%, transparent);
+  color: var(--color-danger-fg, #d73a49);
+  text-decoration: none;
+}
+
 .file-input {
   display: none;
 }
