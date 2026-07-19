@@ -236,41 +236,38 @@
                         <i class="lucide lucide-menu"></i>
                     </button>
                     
-                    <div id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" aria-hidden="true">
+                    <div id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" aria-hidden="true" tabindex="-1" inert>
                         <div class="mobile-menu-header">
                             <h2 id="mobile-menu-title" class="h5 m-0">Menu</h2>
-                            <button id="close-mobile-menu" class="tool-button" aria-label="Close menu">
+                            <button id="close-mobile-menu" class="tool-button" type="button" aria-label="Close menu">
                                 <i class="lucide lucide-x"></i>
                             </button>
                         </div>
 
-                        <!-- Mobile Document Tabs Section -->
-                        <div class="mobile-tabs-section">
-                            <div class="mobile-tabs-header">
-                                <span class="mobile-tabs-label"><i class="lucide lucide-files me-1" aria-hidden="true"></i> Open documents</span>
+                        <div class="mobile-menu-scroll">
+                            <div class="mobile-menu-overview">
+                                <div class="mobile-view-mode-group" role="group" aria-label="View mode">
+                                    <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Edit Markdown">
+                                        <i class="lucide lucide-square-pen" aria-hidden="true"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="mobile-view-mode-btn active" data-mode="split" aria-pressed="true" title="Split editor and live preview">
+                                        <i class="lucide lucide-columns-2" aria-hidden="true"></i>
+                                        <span>Split</span>
+                                    </button>
+                                    <button class="mobile-view-mode-btn" data-mode="preview" aria-pressed="false" title="Markdown preview only">
+                                        <i class="lucide lucide-eye" aria-hidden="true"></i>
+                                        <span>Preview</span>
+                                    </button>
+                                </div>
+                                <div id="mobile-stats-container" class="mobile-stats-container" aria-label="Document statistics">
+                                    <div class="stat-item"><i class="lucide lucide-clock-3" aria-hidden="true"></i><span id="mobile-reading-time">0</span><span id="mobile-lbl-min-read">Min Read</span></div>
+                                    <div class="stat-item"><i class="lucide lucide-pilcrow" aria-hidden="true"></i><span id="mobile-word-count">0</span><span id="mobile-lbl-words">Words</span></div>
+                                    <div class="stat-item"><i class="lucide lucide-case-sensitive" aria-hidden="true"></i><span id="mobile-char-count">0</span><span id="mobile-lbl-chars">Chars</span></div>
+                                </div>
                             </div>
-                            <div id="mobile-tab-list" class="mobile-tab-list" role="tablist" aria-label="Document tabs">
-                                <!-- Dynamically populated by JavaScript -->
-                            </div>
-                        </div>
 
-                        <!-- Story 1.4: Mobile View Mode Buttons -->
-                        <div class="mobile-view-mode-group" role="group" aria-label="View mode">
-                            <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Markdown editor only">
-                                <i class="lucide lucide-square-pen"></i>
-                                <span>Editor</span>
-                            </button>
-                            <button class="mobile-view-mode-btn active" data-mode="split" aria-pressed="true" title="Split editor and live preview">
-                                <i class="lucide lucide-columns-2"></i>
-                                <span>Split</span>
-                            </button>
-                            <button class="mobile-view-mode-btn" data-mode="preview" aria-pressed="false" title="Markdown preview only">
-                                <i class="lucide lucide-eye"></i>
-                                <span>Preview</span>
-                            </button>
-                        </div>
-
-                        <div class="mobile-menu-items">
+                        <nav class="mobile-menu-items" aria-label="Application menu">
                             <div class="mobile-menu-accordion" data-mobile-menu-accordion>
                                 <section class="mobile-menu-section">
                                     <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-new-panel" data-mobile-menu-section-toggle>
@@ -331,16 +328,6 @@
                                         <span><i class="lucide lucide-settings" aria-hidden="true"></i>Settings</span><i class="lucide lucide-chevron-down mobile-menu-section-chevron" aria-hidden="true"></i>
                                     </button>
                                     <div id="mobile-menu-settings-panel" class="mobile-menu-section-panel" data-mobile-menu-section hidden>
-                                        <button id="mobile-toggle-sync" class="mobile-menu-item tool-button sync-enabled sync-active" title="Toggle Sync Scrolling">
-                                            <i class="lucide lucide-refresh-cw" aria-hidden="true"></i> Sync Off
-                                        </button>
-                                        <button id="mobile-copy-markdown" class="mobile-menu-item" title="Copy Markdown">
-                                            <i class="lucide lucide-copy" aria-hidden="true"></i> Copy Markdown
-                                        </button>
-                                        <button id="mobile-review-toggle" class="mobile-menu-item" type="button" title="Open comments and suggestions" aria-controls="review-panel" aria-expanded="false" aria-pressed="false">
-                                            <span><i class="lucide lucide-message-square-text" aria-hidden="true"></i>Review</span>
-                                            <span id="mobile-review-count-badge" class="mobile-review-count-badge" aria-hidden="true" hidden>0</span>
-                                        </button>
                                         <div class="mobile-menu-language dropdown w-100">
                                             <button class="mobile-menu-item w-100 text-start dropdown-toggle" type="button" id="mobileLanguageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Switch Language">
                                                 <i class="lucide lucide-languages" aria-hidden="true"></i> Language: <span id="mobile-current-lang-label">English</span>
@@ -374,6 +361,7 @@
                                     </div>
                                 </section>
                             </div>
+                        </nav>
                         </div>
                     </div>
                     
@@ -1434,11 +1422,6 @@
             <div class="stat-item">
               <i class="lucide lucide-case-sensitive me-1" aria-hidden="true"></i><span id="char-count">0</span> <span id="lbl-chars">Chars</span>
             </div>
-          </div>
-          <div id="mobile-stats-container" class="mobile-stats-container" aria-label="Document statistics">
-            <div class="stat-item"><i class="lucide lucide-clock-3" aria-hidden="true"></i><span id="mobile-reading-time">0</span><span id="mobile-lbl-min-read">Min Read</span></div>
-            <div class="stat-item"><i class="lucide lucide-pilcrow" aria-hidden="true"></i><span id="mobile-word-count">0</span><span id="mobile-lbl-words">Words</span></div>
-            <div class="stat-item"><i class="lucide lucide-case-sensitive" aria-hidden="true"></i><span id="mobile-char-count">0</span><span id="mobile-lbl-chars">Chars</span></div>
           </div>
           <div id="save-status" class="app-save-status is-saved" data-state="saved" role="status" aria-live="polite" aria-atomic="true">
             <i id="save-status-icon" class="lucide lucide-check" aria-hidden="true"></i>

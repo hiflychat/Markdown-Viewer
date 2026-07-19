@@ -348,9 +348,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const wordCountElement = document.getElementById("word-count");
   const charCountElement = document.getElementById("char-count");
   const reviewToggle = document.getElementById('review-toggle');
-  const mobileReviewToggle = document.getElementById('mobile-review-toggle');
   const reviewToolbarCount = document.getElementById('review-toolbar-count');
-  const mobileReviewCountBadge = document.getElementById('mobile-review-count-badge');
   const reviewPanel = document.getElementById('review-panel');
   const reviewPanelBackdrop = document.getElementById('review-panel-backdrop');
   const reviewPanelClose = document.getElementById('review-panel-close');
@@ -491,14 +489,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileReadingTime   = document.getElementById("mobile-reading-time");
   const mobileWordCount     = document.getElementById("mobile-word-count");
   const mobileCharCount     = document.getElementById("mobile-char-count");
-  const mobileToggleSync    = document.getElementById("mobile-toggle-sync");
   const mobileImportBtn     = document.getElementById("mobile-import-button");
   const mobileImportGithubBtn = document.getElementById("mobile-import-github-button");
   const mobileExportMd      = document.getElementById("mobile-export-md");
   const mobileExportHtml    = document.getElementById("mobile-export-html");
   const mobileExportPdf     = document.getElementById("mobile-export-pdf");
   const mobileExportPng     = document.getElementById("mobile-export-png");
-  const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
   const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
   const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
@@ -4351,6 +4347,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function openDocumentSidebar() {
     if (!documentOrganization) return;
     if (isDocumentSidebarMobile()) {
+      if (mobileMenuPanel?.classList.contains('active')) closeMobileMenu(false);
       document.body.classList.add('document-sidebar-mobile-open');
       updateDocumentSidebarVisibility();
       return;
@@ -5127,7 +5124,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       ? openCount
       : getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
     if (reviewToggle) reviewToggle.classList.toggle('is-active', reviewModeActive || count > 0);
-    if (mobileReviewToggle) mobileReviewToggle.classList.toggle('is-active', reviewModeActive);
   }
 
   function updateReviewCountBadges() {
@@ -5137,11 +5133,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       reviewToolbarCount.textContent = String(openCount);
       reviewToolbarCount.hidden = openCount === 0;
     }
-    if (mobileReviewCountBadge) {
-      mobileReviewCountBadge.textContent = String(openCount);
-      mobileReviewCountBadge.hidden = openCount === 0;
-      mobileReviewCountBadge.title = countLabel;
-    }
     if (reviewToggle) {
       reviewToggle.setAttribute('aria-label', openCount > 0
         ? 'Open comments and suggestions. ' + countLabel + '.'
@@ -5149,11 +5140,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       reviewToggle.title = openCount > 0
         ? 'Open comments and suggestions (' + countLabel + ')'
         : 'Open comments and suggestions';
-    }
-    if (mobileReviewToggle) {
-      mobileReviewToggle.setAttribute('aria-label', openCount > 0
-        ? 'Open comments and suggestions. ' + openCount + ' open review item' + (openCount === 1 ? '' : 's') + '.'
-        : 'Open comments and suggestions');
     }
     updateReviewToggleActiveState(openCount);
   }
@@ -5715,7 +5701,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewPanel) reviewPanel.hidden = !reviewModeActive;
     if (reviewPinsLayer) reviewPinsLayer.hidden = !reviewModeActive;
     if (contentContainer) contentContainer.classList.toggle('is-reviewing', reviewModeActive);
-    [reviewToggle, mobileReviewToggle].forEach(function(button) {
+    [reviewToggle].forEach(function(button) {
       if (!button) return;
       button.setAttribute('aria-expanded', reviewModeActive ? 'true' : 'false');
       button.setAttribute('aria-pressed', reviewModeActive ? 'true' : 'false');
@@ -5753,12 +5739,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (reviewToggle) {
       reviewToggle.addEventListener('click', function() {
-        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
-      });
-    }
-    if (mobileReviewToggle) {
-      mobileReviewToggle.addEventListener('click', function() {
-        closeMobileMenu();
         setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
       });
     }
@@ -6570,7 +6550,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     };
 
-    renderMobileTabList(tabsArr, currentActiveTabId);
     renderDocumentSidebar();
     if (typeof tabList.dispatchEvent === 'function') {
       tabList.dispatchEvent(new Event('scroll'));
@@ -6657,47 +6636,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         updateOverflowState();
       }
     }, { passive: false });
-  }
-
-  function renderMobileTabList(tabsArr, currentActiveTabId) {
-    const mobileTabList = document.getElementById('mobile-tab-list');
-    if (!mobileTabList) return;
-    // PERF-007: Clear element content using textContent instead of innerHTML
-    mobileTabList.textContent = '';
-    tabsArr.filter(function(tab) {
-      return isTabOpen(tab) && (!secondarySplitTabId || tab.id !== secondarySplitTabId);
-    }).forEach(function(tab) {
-      const item = document.createElement('div');
-      const splitPartner = tab.id === currentActiveTabId
-        ? tabs.find(function(candidate) { return candidate.id === secondarySplitTabId && isTabOpen(candidate); })
-        : null;
-      item.className = 'mobile-tab-item' + (tab.id === currentActiveTabId ? ' active' : '') + (splitPartner ? ' is-document-split' : '');
-      item.setAttribute('role', 'tab');
-      item.setAttribute('aria-selected', tab.id === currentActiveTabId ? 'true' : 'false');
-      item.setAttribute('data-tab-id', tab.id);
-
-      const titleSpan = document.createElement('span');
-      titleSpan.className = 'mobile-tab-title';
-      titleSpan.textContent = splitPartner
-        ? (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled')
-        : (tab.title || 'Untitled');
-      titleSpan.title = titleSpan.textContent;
-
-      const tabMenu = createTabActionMenu(tab, {
-        isMobileMenu: true,
-        menuIdPrefix: 'mobile-tab-menu'
-      });
-
-      item.appendChild(titleSpan);
-      item.appendChild(tabMenu.button);
-
-      item.addEventListener('click', function() {
-        switchTab(tab.id);
-        closeMobileMenu();
-      });
-
-      mobileTabList.appendChild(item);
-    });
   }
 
   // Close any open tab dropdown when clicking elsewhere in the document
@@ -10234,13 +10172,6 @@ ${selector} .arrowheadPath {
       toggleSyncButton.removeAttribute('aria-hidden');
     }
 
-    // Mobile sync toggle
-    if (mobileToggleSync) {
-      mobileToggleSync.style.display = '';
-      mobileToggleSync.disabled = !isSplitView;
-      mobileToggleSync.setAttribute('aria-disabled', String(!isSplitView));
-      mobileToggleSync.removeAttribute('aria-hidden');
-    }
   }
 
   function replaceEditorRange(start, end, replacement, selectStart, selectEnd) {
@@ -14978,6 +14909,9 @@ ${selector} .arrowheadPath {
   }
 
   function openMobileMenu() {
+    closeDocumentSidebarOnMobile();
+    resetMobileMenuState();
+    mobileMenuPanel.removeAttribute('inert');
     mobileMenuPanel.classList.add("active");
     mobileMenuOverlay.classList.add("active");
     document.body.classList.add("mobile-menu-open");
@@ -14990,6 +14924,7 @@ ${selector} .arrowheadPath {
     });
   }
   function closeMobileMenu(restoreFocus) {
+    resetMobileMenuState();
     mobileMenuPanel.classList.remove("active");
     mobileMenuOverlay.classList.remove("active");
     document.body.classList.remove("mobile-menu-open");
@@ -14997,14 +14932,40 @@ ${selector} .arrowheadPath {
     mobileMenuToggle.setAttribute("aria-label", "Open menu");
     mobileMenuPanel.setAttribute("aria-hidden", "true");
     mobileMenuOverlay.setAttribute("aria-hidden", "true");
-    if (restoreFocus === true) mobileMenuToggle.focus({ preventScroll: true });
+    mobileMenuPanel.setAttribute('inert', '');
+    if (restoreFocus !== false && mobileMenuToggle.offsetParent !== null) {
+      mobileMenuToggle.focus({ preventScroll: true });
+    }
   }
-  mobileMenuToggle.addEventListener("click", openMobileMenu);
+  mobileMenuToggle.addEventListener("click", function() {
+    if (mobileMenuPanel.classList.contains('active')) closeMobileMenu(true);
+    else openMobileMenu();
+  });
   mobileCloseMenu.addEventListener("click", function() { closeMobileMenu(true); });
   mobileMenuOverlay.addEventListener("click", function() { closeMobileMenu(true); });
 
   const mobileMenuSectionToggles = Array.from(mobileMenuPanel.querySelectorAll('[data-mobile-menu-section-toggle]'));
+  const mobileLanguageDropdown = document.getElementById('mobileLanguageDropdown');
+  const mobileLanguageMenu = mobileMenuPanel.querySelector('[aria-labelledby="mobileLanguageDropdown"]');
+
+  function closeMobileLanguageDropdown() {
+    if (!mobileLanguageDropdown || !mobileLanguageMenu) return;
+    const dropdownInstance = window.bootstrap?.Dropdown?.getInstance(mobileLanguageDropdown);
+    if (dropdownInstance && mobileLanguageDropdown.getAttribute('aria-expanded') === 'true') {
+      dropdownInstance.hide();
+    }
+    mobileLanguageDropdown.classList.remove('show');
+    mobileLanguageDropdown.setAttribute('aria-expanded', 'false');
+    mobileLanguageMenu.classList.remove('show');
+    mobileLanguageMenu.removeAttribute('data-popper-placement');
+    mobileLanguageMenu.style.removeProperty('position');
+    mobileLanguageMenu.style.removeProperty('inset');
+    mobileLanguageMenu.style.removeProperty('margin');
+    mobileLanguageMenu.style.removeProperty('transform');
+  }
+
   function setMobileMenuSection(activeToggle) {
+    closeMobileLanguageDropdown();
     mobileMenuSectionToggles.forEach(function(toggle) {
       const isOpen = toggle === activeToggle;
       const panel = document.getElementById(toggle.getAttribute('aria-controls'));
@@ -15013,21 +14974,63 @@ ${selector} .arrowheadPath {
       if (panel) panel.hidden = !isOpen;
     });
   }
+
+  function resetMobileMenuState() {
+    setMobileMenuSection(null);
+    closeMobileLanguageDropdown();
+  }
+
   mobileMenuSectionToggles.forEach(function(toggle) {
     toggle.addEventListener('click', function() {
       setMobileMenuSection(toggle.getAttribute('aria-expanded') === 'true' ? null : toggle);
     });
   });
+
+  mobileLanguageDropdown?.addEventListener('show.bs.dropdown', function() {
+    mobileLanguageMenu?.classList.add('show');
+  });
+
   document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape' && mobileMenuPanel.classList.contains('active')) {
+    if (!mobileMenuPanel.classList.contains('active')) return;
+    if (event.key === 'Escape') {
       event.preventDefault();
       closeMobileMenu(true);
+      return;
+    }
+    if (event.key === 'Tab') {
+      const focusableItems = Array.from(mobileMenuPanel.querySelectorAll(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter(function(element) {
+        return element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true';
+      });
+      if (!focusableItems.length) {
+        event.preventDefault();
+        mobileMenuPanel.focus({ preventScroll: true });
+        return;
+      }
+      const firstItem = focusableItems[0];
+      const lastItem = focusableItems[focusableItems.length - 1];
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem.focus();
+      }
     }
   });
   const mobileMenuMedia = window.matchMedia('(max-width: 1079px)');
-  mobileMenuMedia.addEventListener?.('change', function(event) {
-    if (!event.matches && mobileMenuPanel.classList.contains('active')) closeMobileMenu(false);
-  });
+  const handleMobileMenuBreakpointChange = function(event) {
+    if (!event.matches) {
+      if (mobileMenuPanel.classList.contains('active')) closeMobileMenu(false);
+      else resetMobileMenuState();
+    }
+  };
+  if (typeof mobileMenuMedia.addEventListener === 'function') {
+    mobileMenuMedia.addEventListener('change', handleMobileMenuBreakpointChange);
+  } else {
+    mobileMenuMedia.addListener(handleMobileMenuBreakpointChange);
+  }
 
   function updateMobileStats() {
     if (mobileCharCount) mobileCharCount.textContent = charCountElement.textContent;
@@ -15041,20 +15044,6 @@ ${selector} .arrowheadPath {
     updateMobileStats();
   };
 
-  mobileToggleSync.addEventListener("click", () => {
-    toggleSyncScrolling();
-    if (syncScrollingEnabled) {
-      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync Off';
-      mobileToggleSync.classList.add("sync-disabled");
-      mobileToggleSync.classList.remove("sync-enabled");
-      mobileToggleSync.classList.add("sync-active");
-    } else {
-      mobileToggleSync.innerHTML = '<i class="lucide lucide-refresh-cw me-2" aria-hidden="true"></i> Sync On';
-      mobileToggleSync.classList.add("sync-enabled");
-      mobileToggleSync.classList.remove("sync-disabled");
-      mobileToggleSync.classList.remove("sync-active");
-    }
-  });
   mobileImportBtn.addEventListener("click", () => {
     closeMobileMenu();
     if (typeof Neutralino !== 'undefined') {
@@ -15071,7 +15060,6 @@ ${selector} .arrowheadPath {
   mobileExportHtml.addEventListener("click", () => { closeMobileMenu(); exportHtml.click(); });
   mobileExportPdf.addEventListener("click", () => { closeMobileMenu(); exportPdf.click(); });
   mobileExportPng.addEventListener("click", () => { closeMobileMenu(); exportPng.click(); });
-  mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
   });
@@ -18122,7 +18110,7 @@ ${selector} .arrowheadPath {
       }
     });
 
-    [exportMd, mobileExportMd, copyMarkdownButton, mobileCopyMarkdown].forEach(function(button) {
+    [exportMd, mobileExportMd, copyMarkdownButton].forEach(function(button) {
       if (!button) return;
       if (snapshotViewOnly) {
         if (button.dataset.shareSnapshotSourceDisabled !== 'true') {
@@ -22002,11 +21990,6 @@ ${selector} .arrowheadPath {
       const textSpan = toggleSyncEl.querySelector('.btn-text');
       if (textSpan) textSpan.textContent = isSyncActive ? dict.syncOff : dict.syncOn;
     }
-    const mobileToggleSyncEl = document.getElementById('mobile-toggle-sync');
-    if (mobileToggleSyncEl) {
-      const isSyncActive = mobileToggleSyncEl.classList.contains('sync-active');
-      mobileToggleSyncEl.innerHTML = `<i class="lucide lucide-refresh-cw" aria-hidden="true"></i> ${isSyncActive ? dict.syncOff : dict.syncOn}`;
-    }
 
     // Import buttons
     const importDropEl = document.getElementById('importDropdown');
@@ -22053,9 +22036,6 @@ ${selector} .arrowheadPath {
       const copyButtonText = copyMarkdownButton.querySelector('.btn-text');
       if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
     }
-    const mCopyBtn = document.getElementById('mobile-copy-markdown');
-    if (mCopyBtn) mCopyBtn.innerHTML = `<i class="lucide lucide-copy me-2" aria-hidden="true"></i>${dict.copy}`;
-
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
       if (shareButtonText) shareButtonText.textContent = dict.share || 'Share';

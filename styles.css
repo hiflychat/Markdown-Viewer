@@ -2954,11 +2954,11 @@ a:focus {
 #mobile-export-html,
 #mobile-export-pdf,
 #mobileLanguageDropdown {
-  font-size: 0.9rem !important;
+  font-size: var(--ui-font-md) !important;
 }
 
 [aria-labelledby="mobileLanguageDropdown"] .dropdown-item {
-  font-size: 0.9rem;
+  font-size: var(--ui-font-md);
 }
 
 .editor-pane {
@@ -2977,25 +2977,24 @@ a:focus {
 /* slide‑in panel */
 .mobile-menu-panel {
   position: fixed;
-  top: 0;
-  right: -300px;
-  width: 280px;
-  height: fit-content;
-  max-height: 100vh;
-  max-height: 100dvh;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(88vw, 340px);
+  height: 100vh;
+  height: 100dvh;
   box-sizing: border-box;
   background-color: var(--bg-color);
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
-  transition: right 0.3s ease;
-  overflow-y: auto;
-  padding: 1rem 1rem 0.35rem;
+  box-shadow: -12px 0 32px rgba(31, 35, 40, 0.2);
+  transform: translateX(102%);
+  transition: transform 0.2s ease-out;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   z-index: 1002;
 }
 
 .mobile-menu-panel.active {
-  right: 0;
+  transform: translateX(0);
 }
 
 .mobile-menu-panel> :last-child,
@@ -3006,10 +3005,9 @@ a:focus {
 /* translucent overlay behind panel */
 .mobile-menu-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
+  inset: 0;
   height: 100vh;
+  height: 100dvh;
   background-color: rgba(0, 0, 0, 0.5);
   opacity: 0;
   visibility: hidden;
@@ -3029,7 +3027,6 @@ a:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
 }
 
 .mobile-menu-header h5 {
@@ -3111,6 +3108,7 @@ a:focus {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  gap: 8px;
 }
 
 .mobile-live-share-participants {
@@ -3123,78 +3121,6 @@ a:focus {
 #close-mobile-menu.tool-button {
   padding: 0.25rem 0.5rem;
   font-size: 1rem;
-}
-
-/* Mobile document tabs section */
-.mobile-tabs-section {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.75rem;
-}
-
-.mobile-tabs-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.mobile-tabs-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-color);
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.mobile-tab-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.mobile-tab-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: var(--button-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.9rem;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  gap: 0.5rem;
-}
-
-.mobile-tab-item:hover {
-  background-color: var(--button-hover);
-}
-
-.mobile-tab-item.active {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-  background-color: var(--bg-color);
-}
-
-.mobile-tab-title {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.mobile-tab-item .tab-menu-btn {
-  opacity: 0.6;
-}
-
-.mobile-tab-item:hover .tab-menu-btn,
-.mobile-tab-item.active .tab-menu-btn {
-  opacity: 0.8;
 }
 
 #mobile-tab-reset-btn {
@@ -8605,40 +8531,10 @@ html[data-theme="dark"] .mermaid svg {
   display: none !important;
 }
 
-.mobile-review-count-badge {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  padding: 0;
-  border: 2px solid var(--header-bg);
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--bg-color);
-  background: var(--accent-color);
-  box-shadow: 0 0 0 1px var(--border-color);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.mobile-review-count-badge[hidden],
 .review-panel[hidden],
 .review-panel-backdrop[hidden],
 .review-composer[hidden] {
   display: none !important;
-}
-
-#mobile-review-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .review-panel {
@@ -9535,29 +9431,39 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .mobile-menu-panel {
-  top: 8px;
-  right: 8px;
-  width: min(312px, calc(100vw - 16px));
-  height: auto;
-  max-height: calc(100dvh - 16px);
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--menu-surface);
-  box-shadow: var(--menu-shadow);
-  transform: translateX(calc(100% + 16px));
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(88vw, 340px);
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  border: 0;
+  border-inline-start: 1px solid var(--border-color);
+  border-radius: 0;
+  background: var(--header-bg);
+  box-shadow: -12px 0 32px rgba(31, 35, 40, 0.2);
+  transform: translateX(102%);
   transition: transform 0.2s ease-out;
 }
 
 .mobile-menu-panel.active {
-  right: 8px;
+  transform: translateX(0);
+}
+
+[dir="rtl"] .mobile-menu-panel {
+  transform: translateX(-102%);
+}
+
+[dir="rtl"] .mobile-menu-panel.active {
   transform: translateX(0);
 }
 
 .mobile-menu-header {
-  min-height: 34px;
-  margin-bottom: 6px;
-  padding: 0 2px 6px 6px;
+  min-height: 48px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 4px 6px 4px 14px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -9569,48 +9475,47 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 #close-mobile-menu.tool-button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 7px;
+  width: 40px;
+  height: 40px;
+  padding: 7px 7px;
+  border-radius: 8px;
   font-size: var(--ui-icon-size-md);
 }
 
-.mobile-tabs-section {
-  padding: 4px 2px 8px;
+.mobile-menu-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  scrollbar-gutter: stable;
 }
 
-.mobile-tabs-header {
-  margin-bottom: 4px;
-}
-
-.mobile-tabs-label {
-  font-size: var(--ui-font-sm);
-  letter-spacing: 0.03em;
-}
-
-.mobile-tab-list {
-  max-height: 104px;
-  gap: 3px;
-}
-
-.mobile-tab-item {
-  min-height: 36px;
-  padding: 5px 8px;
-  border-radius: 7px;
-  font-size: var(--ui-font-md);
+.mobile-menu-overview {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-color);
 }
 
 .mobile-view-mode-group {
   gap: 3px;
   margin: 0;
-  padding: 8px 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--button-bg) 82%, var(--border-color));
 }
 
 .mobile-view-mode-btn,
 .mobile-view-mode-btn:first-child,
 .mobile-view-mode-btn:last-child {
-  min-height: 44px;
+  min-height: 42px;
   padding: 5px 7px;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -9637,7 +9542,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .mobile-menu-items {
-  gap: 6px;
+  gap: 0;
 }
 
 .mobile-menu-accordion {
@@ -9648,9 +9553,9 @@ html[data-theme="dark"] .mermaid svg {
 
 .mobile-menu-section {
   overflow: visible;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-color);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
 }
 
 .mobile-menu-section-toggle {
@@ -9660,7 +9565,7 @@ html[data-theme="dark"] .mermaid svg {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 7px 9px;
   border: 0;
   background: transparent;
   color: var(--text-color);
@@ -9684,6 +9589,7 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-section-toggle:active,
 .mobile-menu-section.is-open .mobile-menu-section-toggle {
   background: var(--button-hover);
+  border-radius: 7px;
 }
 
 .mobile-menu-section-toggle:focus-visible,
@@ -9704,8 +9610,10 @@ html[data-theme="dark"] .mermaid svg {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px;
-  border-top: 1px solid var(--border-color);
+  margin: 2px 0 4px 12px;
+  padding: 3px 0 3px 8px;
+  border: 0;
+  border-inline-start: 1px solid var(--border-color);
 }
 
 .mobile-menu-section-panel[hidden] {
@@ -9724,9 +9632,9 @@ html[data-theme="dark"] .mermaid svg {
 
 .mobile-menu-command {
   width: 100%;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-color);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-color);
   font-weight: 600;
   text-align: start;
@@ -9750,6 +9658,18 @@ html[data-theme="dark"] .mermaid svg {
   border: 0;
 }
 
+.mobile-language-menu.dropdown-menu {
+  position: static !important;
+  inset: auto !important;
+  width: 100%;
+  max-height: 210px;
+  margin: 3px 0 2px;
+  overflow-y: auto;
+  transform: none !important;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
 .mobile-menu-reset {
   border-color: color-mix(in srgb, var(--color-danger-fg) 24%, var(--border-color));
   color: var(--color-danger-fg);
@@ -9762,12 +9682,17 @@ html[data-theme="dark"] .mermaid svg {
 @media (max-width: 1079px) {
   body.mobile-menu-open {
     overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .tool-button {
+    padding: 7px 7px;
   }
 
   .app-status-bar {
     position: sticky;
     inset-block-end: 0;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 8px;
   }
 
@@ -9778,13 +9703,17 @@ html[data-theme="dark"] .mermaid svg {
   .mobile-stats-container {
     display: flex;
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
+    justify-content: center;
+    gap: 5px 12px;
+    margin-top: 6px;
+    padding: 7px 4px 1px;
+    border-top: 1px solid var(--border-color);
     color: var(--text-secondary);
     font-size: var(--ui-font-xs);
-    white-space: nowrap;
+    line-height: 1.25;
   }
 
   .mobile-stats-container .stat-item {
@@ -9792,6 +9721,7 @@ html[data-theme="dark"] .mermaid svg {
     align-items: center;
     gap: 3px;
     margin: 0 !important;
+    white-space: nowrap;
   }
 
   .tab-new-btn {
