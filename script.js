@@ -504,8 +504,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileExportPng     = document.getElementById("mobile-export-png");
   const mobileExportToggle  = document.querySelector('[aria-controls="mobile-menu-export-panel"]');
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
+  const mobileThemeIcon = document.getElementById("mobile-theme-icon");
+  const mobileThemeStatus = document.getElementById("mobile-theme-status");
   const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
-  const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
+  const mobileToggleSyncButton = document.getElementById("mobile-toggle-sync");
+  const mobileSyncStatus = document.getElementById("mobile-sync-status");
+  const mobileCopyMarkdownButton = document.getElementById("mobile-copy-markdown");
+  const mobileReviewToggle = document.getElementById("mobile-review-toggle");
+  const mobileReviewStatus = document.getElementById("mobile-review-status");
   const mobileAboutButton = document.getElementById("mobile-about-button");
   const mobileReportButton = document.getElementById("mobile-report-button");
   const shareButton         = document.getElementById("share-button");
@@ -666,11 +672,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         : 'Data is stored locally';
     }
     if (mobilePrivateModeToggle) {
+      mobilePrivateModeToggle.classList.toggle('is-active', enabled);
       mobilePrivateModeToggle.setAttribute('aria-pressed', String(enabled));
       mobilePrivateModeToggle.setAttribute('aria-label', enabled ? 'Turn private mode off' : 'Turn private mode on');
       mobilePrivateModeToggle.setAttribute('title', enabled ? 'Turn private mode off' : 'Turn private mode on');
     }
-    if (mobilePrivateModeStatus) mobilePrivateModeStatus.textContent = enabled ? 'On' : 'Off';
   }
 
   async function clearDocumentStorage() {
@@ -735,8 +741,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       themeToggle.setAttribute('title', useLightAppearance ? 'Use light appearance' : 'Use dark appearance');
     }
     if (mobileThemeToggle) {
-      mobileThemeToggle.innerHTML = '<i class="lucide lucide-' + (useLightAppearance ? 'sun' : 'moon') + ' me-2" aria-hidden="true"></i>' + (useLightAppearance ? 'Light Mode' : 'Dark Mode');
-      mobileThemeToggle.setAttribute('title', useLightAppearance ? 'Use Light Mode' : 'Use Dark Mode');
+      const darkModeEnabled = theme === 'dark';
+      mobileThemeToggle.classList.toggle('is-active', darkModeEnabled);
+      mobileThemeToggle.setAttribute('aria-pressed', String(darkModeEnabled));
+      mobileThemeToggle.setAttribute('aria-label', darkModeEnabled ? 'Use light mode' : 'Use dark mode');
+      mobileThemeToggle.setAttribute('title', darkModeEnabled ? 'Use light mode' : 'Use dark mode');
+      if (mobileThemeIcon) mobileThemeIcon.className = 'lucide lucide-' + (darkModeEnabled ? 'moon' : 'sun');
+      if (mobileThemeStatus) mobileThemeStatus.textContent = darkModeEnabled ? 'Dark mode' : 'Light mode';
     }
   }
 
@@ -5132,6 +5143,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       ? openCount
       : getActiveReviewThreads().filter(function(thread) { return !thread.resolved; }).length;
     if (reviewToggle) reviewToggle.classList.toggle('is-active', reviewModeActive || count > 0);
+    if (mobileReviewToggle) mobileReviewToggle.classList.toggle('is-active', reviewModeActive || count > 0);
+    if (mobileReviewStatus) mobileReviewStatus.textContent = reviewModeActive ? 'On' : 'Off';
   }
 
   function updateReviewCountBadges() {
@@ -5709,7 +5722,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (reviewPanel) reviewPanel.hidden = !reviewModeActive;
     if (reviewPinsLayer) reviewPinsLayer.hidden = !reviewModeActive;
     if (contentContainer) contentContainer.classList.toggle('is-reviewing', reviewModeActive);
-    [reviewToggle].forEach(function(button) {
+    [reviewToggle, mobileReviewToggle].forEach(function(button) {
       if (!button) return;
       button.setAttribute('aria-expanded', reviewModeActive ? 'true' : 'false');
       button.setAttribute('aria-pressed', reviewModeActive ? 'true' : 'false');
@@ -5747,6 +5760,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (reviewToggle) {
       reviewToggle.addEventListener('click', function() {
+        setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
+      });
+    }
+    if (mobileReviewToggle) {
+      mobileReviewToggle.addEventListener('click', function() {
+        closeMobileMenu(false);
         setReviewMode(!reviewModeActive, { focusPanel: !reviewModeActive });
       });
     }
@@ -6112,7 +6131,10 @@ document.addEventListener("DOMContentLoaded", async function () {
       mobileExportPdf,
       mobileExportPng,
       mobileShareButton,
-      mobileLiveShareButton
+      mobileLiveShareButton,
+      mobileToggleSyncButton,
+      mobileCopyMarkdownButton,
+      mobileReviewToggle
     ], hasActiveDocument);
 
     if (!hasActiveDocument && markdownFormatToolbar) {
@@ -10175,6 +10197,13 @@ ${selector} .arrowheadPath {
     toggleSyncButton.setAttribute('aria-pressed', String(syncScrollingEnabled));
     toggleSyncButton.setAttribute('aria-label', syncActionLabel);
     toggleSyncButton.setAttribute('title', syncActionLabel);
+    if (mobileToggleSyncButton) {
+      mobileToggleSyncButton.classList.toggle('is-active', syncScrollingEnabled);
+      mobileToggleSyncButton.setAttribute('aria-pressed', String(syncScrollingEnabled));
+      mobileToggleSyncButton.setAttribute('aria-label', syncActionLabel);
+      mobileToggleSyncButton.setAttribute('title', syncActionLabel);
+    }
+    if (mobileSyncStatus) mobileSyncStatus.textContent = syncScrollingEnabled ? 'On' : 'Off';
     saveGlobalState({ syncScrollingEnabled });
   }
 
@@ -15160,6 +15189,17 @@ ${selector} .arrowheadPath {
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
   });
+  if (mobileToggleSyncButton) {
+    mobileToggleSyncButton.addEventListener('click', function() {
+      toggleSyncButton.click();
+    });
+  }
+  if (mobileCopyMarkdownButton) {
+    mobileCopyMarkdownButton.addEventListener('click', function() {
+      closeMobileMenu(false);
+      copyMarkdownButton.click();
+    });
+  }
   if (mobileAboutButton) {
     mobileAboutButton.addEventListener('click', function() {
       closeMobileMenu();
@@ -22107,9 +22147,9 @@ ${selector} .arrowheadPath {
     if (importGithubEl) updateMenuLabel(importGithubEl, dict.importGithub);
 
     const mImportFileEl = document.getElementById('mobile-import-button');
-    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload me-2"></i>${dict.importFile}`;
+    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload"></i>${dict.importFile}`;
     const mImportGithubEl = document.getElementById('mobile-import-github-button');
-    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github me-2" aria-hidden="true"></i>${dict.importGithub}`;
+    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github" aria-hidden="true"></i>${dict.importGithub}`;
 
     // Export buttons
     const exportDropEl = document.getElementById('exportDropdown');
@@ -22127,13 +22167,13 @@ ${selector} .arrowheadPath {
     if (exportPngEl) updateMenuLabel(exportPngEl, dict.exportPng);
 
     const mExportMdEl = document.getElementById('mobile-export-md');
-    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportMd}`;
+    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text"></i>${dict.exportMd}`;
     const mExportHtmlEl = document.getElementById('mobile-export-html');
-    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2 me-2"></i>${dict.exportHtml}`;
+    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2"></i>${dict.exportHtml}`;
     const mExportPdfEl = document.getElementById('mobile-export-pdf');
-    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text me-2"></i>${dict.exportPdf}`;
+    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text"></i>${dict.exportPdf}`;
     const mExportPngEl = document.getElementById('mobile-export-png');
-    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image me-2"></i>${dict.exportPng}`;
+    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image"></i>${dict.exportPng}`;
 
     // Copy / Share
     if (copyMarkdownButton) {
@@ -22148,23 +22188,23 @@ ${selector} .arrowheadPath {
       const liveShareButtonText = liveShareButton.querySelector('.btn-text');
       if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
     }
-    const mShareBtn = document.getElementById('mobile-share-button');
-    if (mShareBtn) mShareBtn.innerHTML = `<i class="lucide lucide-share-2 me-2"></i>${dict.shareSnapshot || 'Share Snapshot'}`;
+    const mShareLabel = document.getElementById('mobile-share-label');
+    if (mShareLabel) mShareLabel.textContent = dict.shareSnapshot || 'Share Snapshot';
     const mLiveShareBtn = document.getElementById('mobile-live-share-button');
     if (mLiveShareBtn) {
       const mobileLiveShareLabel = document.getElementById('mobile-live-share-label');
       if (mobileLiveShareLabel) {
         mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
       } else {
-        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio me-2" data-lucide="radio" aria-hidden="true"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i>${dict.liveShare || 'Live Share'}`;
       }
     }
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
     if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
-    const mTabResetBtn = document.getElementById('mobile-tab-reset-btn');
-    if (mTabResetBtn) mTabResetBtn.innerHTML = `<i class="lucide lucide-power"></i> ${dict.reset} all files`;
+    const mTabResetLabel = document.getElementById('mobile-reset-label');
+    if (mTabResetLabel) mTabResetLabel.textContent = `${dict.reset} workspace`;
 
     // View toggle buttons title tooltips
     document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = dict.editor);
@@ -22205,7 +22245,7 @@ ${selector} .arrowheadPath {
     const mThemeToggle = document.getElementById('mobile-theme-toggle');
     if (mThemeToggle) {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      mThemeToggle.innerHTML = `<i class="lucide lucide-${currentTheme === 'dark' ? 'sun' : 'moon'} me-2"></i> ${currentTheme === 'dark' ? dict.lightMode : dict.darkMode}`;
+      updateThemeToggleUI(currentTheme);
     }
 
     // Stats Labels
