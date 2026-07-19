@@ -459,6 +459,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function getEditorReadOnlyMessage() {
+    if (!hasActiveOpenDocument()) {
+      return 'Open or create a document to use editing tools.';
+    }
     if (reviewModeActive) {
       return 'Review mode keeps the Markdown source read only.';
     }
@@ -6057,19 +6060,62 @@ document.addEventListener("DOMContentLoaded", async function () {
     return tabs.filter(isTabOpen);
   }
 
+  function getActiveOpenDocument() {
+    return tabs.find(function(tab) {
+      return tab.id === activeTabId && isTabOpen(tab);
+    }) || null;
+  }
+
+  function hasActiveOpenDocument() {
+    return Boolean(getActiveOpenDocument());
+  }
+
   function getTabBarTabs() {
     return getOpenTabs().filter(function(tab) {
       return !secondarySplitTabId || tab.id !== secondarySplitTabId;
     });
   }
 
+  function updateDocumentToolbarAvailability(hasActiveDocument) {
+    if (!markdownFormatToolbar) return;
+    markdownFormatToolbar.classList.toggle('is-no-active-document', !hasActiveDocument);
+    markdownFormatToolbar.setAttribute('aria-disabled', hasActiveDocument ? 'false' : 'true');
+
+    markdownFormatToolbar.querySelectorAll('button').forEach(function(button) {
+      if (!hasActiveDocument) {
+        if (!button.disabled) {
+          button.dataset.noDocumentDisabled = 'true';
+          button.disabled = true;
+          button.setAttribute('aria-disabled', 'true');
+        }
+      } else if (button.dataset.noDocumentDisabled === 'true') {
+        delete button.dataset.noDocumentDisabled;
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+      }
+    });
+
+    if (!hasActiveDocument) {
+      markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
+        toggle.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      });
+      document.querySelectorAll('[data-toolbar-menu].open').forEach(function(menu) {
+        menu.classList.remove('open');
+      });
+    }
+  }
+
   function updateNoOpenDocumentState() {
-    const activeTab = tabs.find(function(tab) { return tab.id === activeTabId && isTabOpen(tab); });
-    const hasActiveTab = Boolean(activeTab);
-    if (contentContainer) contentContainer.classList.toggle('no-active-document', !hasActiveTab);
-    if (noOpenDocument) noOpenDocument.hidden = hasActiveTab;
-    if (!hasActiveTab) {
+    const hasOpenDocuments = getOpenTabs().length > 0;
+    const hasActiveDocument = hasActiveOpenDocument();
+    const showEmptyState = !hasOpenDocuments;
+    if (contentContainer) contentContainer.classList.toggle('no-active-document', showEmptyState);
+    if (noOpenDocument) noOpenDocument.hidden = !showEmptyState;
+    updateDocumentToolbarAvailability(hasActiveDocument);
+    if (showEmptyState) {
       markdownEditor.value = '';
+      updateDocumentStats();
       if (secondarySplitTabId) closeDocumentSplitView({ silent: true, renderTabs: false });
     }
   }
@@ -10024,7 +10070,7 @@ ${selector} .arrowheadPath {
   }
 
   function updateDocumentStats() {
-    const text = markdownEditor.value;
+    const text = hasActiveOpenDocument() ? markdownEditor.value : '';
 
     const charCount = text.length;
     charCountElement.textContent = charCount.toLocaleString();
@@ -10187,12 +10233,13 @@ ${selector} .arrowheadPath {
   // Story 1.2: Update sync toggle visibility
   function updateSyncToggleVisibility(mode) {
     const isSplitView = mode === 'split' || Boolean(secondarySplitTabId);
+    const shouldDisableSync = !isSplitView || !hasActiveOpenDocument();
 
     // Desktop sync toggle
     if (toggleSyncButton) {
       toggleSyncButton.style.display = '';
-      toggleSyncButton.disabled = !isSplitView;
-      toggleSyncButton.setAttribute('aria-disabled', String(!isSplitView));
+      toggleSyncButton.disabled = shouldDisableSync;
+      toggleSyncButton.setAttribute('aria-disabled', String(shouldDisableSync));
       toggleSyncButton.removeAttribute('aria-hidden');
     }
 
@@ -15193,7 +15240,7 @@ ${selector} .arrowheadPath {
       const activeTab = tabs.find(function(tab) { return tab.id === activeTabId; });
       const restoredMarkdown = liveCollaboration
         ? (liveCollaboration.lastMarkdown || '')
-        : (activeTab && typeof activeTab.content === 'string' ? activeTab.content : markdownEditor.value || '');
+        : (activeTab && typeof activeTab.content === 'string' ? activeTab.content : '');
       if (markdownEditor.value !== restoredMarkdown) {
         markdownEditor.value = restoredMarkdown;
         lastPushedValue = restoredMarkdown;
@@ -18057,7 +18104,7 @@ ${selector} .arrowheadPath {
   }
 
   function canMutateEditor() {
-    return !reviewModeActive && !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
+    return hasActiveOpenDocument() && !reviewModeActive && !isLiveViewOnlyParticipant() && !isShareSnapshotViewOnlyActive();
   }
 
   function isLiveMutatingAction(action) {
