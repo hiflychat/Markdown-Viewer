@@ -3327,7 +3327,7 @@ a:focus {
   height: auto;
   padding: 0.45rem 0.75rem;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: var(--ui-font-md);
 }
 
 /* ==========================================
@@ -3369,6 +3369,15 @@ a:focus {
   }
 
   .markdown-format-toolbar {
+    height: 40px !important;
+  }
+
+  .tab-bar,
+  .tab-list {
+    height: 40px !important;
+  }
+
+  .tab-item {
     height: 40px !important;
   }
 
@@ -4449,6 +4458,14 @@ a:focus {
     height: 20px !important;
     font-size: 13px !important;
     opacity: 0.8 !important;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 1079px) {
+  .tab-bar,
+  .tab-list,
+  .tab-item {
+    height: 40px !important;
   }
 }
 
@@ -9843,6 +9860,21 @@ html[data-theme="dark"] .mermaid svg {
   color: var(--text-secondary);
   font-size: var(--ui-icon-size-sm) !important;
   transition: transform 0.16s ease;
+}
+
+.mobile-menu-section-toggle:disabled,
+.mobile-menu-section-toggle[aria-disabled="true"] {
+  opacity: 0.45;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.mobile-menu-section-toggle:disabled:hover,
+.mobile-menu-section-toggle:disabled:active,
+.mobile-menu-section-toggle[aria-disabled="true"]:hover,
+.mobile-menu-section-toggle[aria-disabled="true"]:active {
+  background: transparent;
 }
 
 .mobile-menu-section.is-open .mobile-menu-section-chevron {

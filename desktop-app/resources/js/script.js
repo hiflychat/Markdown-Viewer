@@ -22067,12 +22067,211 @@ ${selector} .arrowheadPath {
   };
 
   let activeLang = 'en';
+  let activeUiCatalog = Object.create(null);
+  let activeUiReverseCatalog = new Map();
+  let activeUiTemplates = [];
+  let activeTranslationRequest = 0;
+  let uiTranslationObserver = null;
+  let isApplyingUiTranslations = false;
+  const uiCatalogCache = new Map();
+  const uiTextSources = new WeakMap();
+  const uiAttributeSources = new WeakMap();
+  const initialDocumentTitle = document.title;
+  const UI_TRANSLATABLE_ATTRIBUTES = ['title', 'aria-label', 'placeholder', 'aria-description'];
+  const UI_TRANSLATION_SKIP_SELECTOR = [
+    'script', 'style', 'code', 'pre', 'textarea', '[translate="no"]', '[data-i18n-skip]',
+    '.editor-pane', '.preview-pane', '#markdown-editor', '#markdown-preview',
+    '.lang-select-item', '.document-tree-label', '.tab-title', '.review-comment-body',
+    '.github-import-tree-name'
+  ].join(',');
+  const UI_TRANSLATION_ATTRIBUTE_SKIP_SELECTOR = [
+    'script', 'style', '[translate="no"]', '[data-i18n-skip]', '.preview-pane', '#markdown-preview',
+    '.lang-select-item', '.document-tree-label', '.tab-title', '.review-comment-body',
+    '.github-import-tree-name'
+  ].join(',');
 
-  function applyTranslations(lang) {
-    activeLang = lang;
+  function normalizeUiTranslationText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isUiTranslationTarget(node, attributes = false) {
+    const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    const skipSelector = attributes ? UI_TRANSLATION_ATTRIBUTE_SKIP_SELECTOR : UI_TRANSLATION_SKIP_SELECTOR;
+    return Boolean(element && !element.closest(skipSelector));
+  }
+
+  function buildUiTranslationTemplates(catalog) {
+    return Object.entries(catalog).flatMap(([source, translated]) => {
+      if (!/\{\{\d+\}\}/.test(source)) return [];
+      const captureIndexes = [];
+      let cursor = 0;
+      let pattern = '^';
+      const tokenPattern = /\{\{(\d+)\}\}/g;
+      let match;
+      while ((match = tokenPattern.exec(source))) {
+        pattern += source.slice(cursor, match.index).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        pattern += '(.+?)';
+        captureIndexes.push(Number(match[1]));
+        cursor = match.index + match[0].length;
+      }
+      pattern += source.slice(cursor).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
+      return [{ regex: new RegExp(pattern, 'i'), translated, captureIndexes }];
+    }).sort((a, b) => b.regex.source.length - a.regex.source.length);
+  }
+
+  async function loadUiTranslationCatalog(lang) {
+    if (uiCatalogCache.has(lang)) return uiCatalogCache.get(lang);
+    if (lang === 'en') {
+      const englishCatalog = Object.create(null);
+      uiCatalogCache.set(lang, englishCatalog);
+      return englishCatalog;
+    }
+    try {
+      const response = await fetch(`assets/i18n/${lang}.json`, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const catalog = await response.json();
+      uiCatalogCache.set(lang, catalog);
+      return catalog;
+    } catch (error) {
+      console.warn(`Unable to load the ${lang} interface catalog.`, error);
+      return Object.create(null);
+    }
+  }
+
+  function translateUiString(value) {
+    const source = normalizeUiTranslationText(value);
+    if (!source || activeLang === 'en') return source;
+    if (activeUiCatalog[source]) return activeUiCatalog[source];
+
+    for (const template of activeUiTemplates) {
+      const match = source.match(template.regex);
+      if (!match) continue;
+      const values = [];
+      template.captureIndexes.forEach((captureIndex, index) => {
+        values[captureIndex] = match[index + 1];
+      });
+      return template.translated.replace(/\{\{(\d+)\}\}/g, (_, index) => values[Number(index)] ?? '');
+    }
+
+    const colonIndex = source.indexOf(':');
+    if (colonIndex > 1) {
+      const prefix = source.slice(0, colonIndex + 1);
+      const translatedPrefix = activeUiCatalog[prefix];
+      if (translatedPrefix) return translatedPrefix + source.slice(colonIndex + 1);
+    }
+    return source;
+  }
+
+  function recoverEnglishUiSource(value) {
+    const current = normalizeUiTranslationText(value);
+    if (!current || activeLang === 'en') return current;
+    return activeUiReverseCatalog.get(current) || current;
+  }
+
+  function preserveUiTextWhitespace(original, translated) {
+    if (!original || !translated) return translated;
+    const leading = original.match(/^\s*/)?.[0] || '';
+    const trailing = original.match(/\s*$/)?.[0] || '';
+    return `${leading}${translated}${trailing}`;
+  }
+
+  function localizeUiTextNode(node) {
+    if (!node?.nodeValue || !isUiTranslationTarget(node)) return;
+    const current = node.nodeValue;
+    const normalized = normalizeUiTranslationText(current);
+    if (!normalized || !/\p{L}/u.test(normalized)) return;
+
+    let record = uiTextSources.get(node);
+    if (!record || (!isApplyingUiTranslations && current !== record.lastApplied)) {
+      record = { source: recoverEnglishUiSource(current), lastApplied: current };
+      uiTextSources.set(node, record);
+    }
+    const translated = preserveUiTextWhitespace(current, translateUiString(record.source));
+    record.lastApplied = translated;
+    if (current !== translated) node.nodeValue = translated;
+  }
+
+  function localizeUiAttributes(element) {
+    if (!isUiTranslationTarget(element, true)) return;
+    let records = uiAttributeSources.get(element);
+    if (!records) {
+      records = new Map();
+      uiAttributeSources.set(element, records);
+    }
+    UI_TRANSLATABLE_ATTRIBUTES.forEach(attribute => {
+      const current = element.getAttribute(attribute);
+      if (!current || !/\p{L}/u.test(current)) return;
+      let record = records.get(attribute);
+      if (!record || (!isApplyingUiTranslations && current !== record.lastApplied)) {
+        record = { source: recoverEnglishUiSource(current), lastApplied: current };
+        records.set(attribute, record);
+      }
+      const translated = translateUiString(record.source);
+      record.lastApplied = translated;
+      if (current !== translated) element.setAttribute(attribute, translated);
+    });
+  }
+
+  function translateUiTree(root = document.body) {
+    if (!root) return;
+    isApplyingUiTranslations = true;
+    try {
+      if (root.nodeType === Node.TEXT_NODE) {
+        localizeUiTextNode(root);
+        return;
+      }
+      if (root.nodeType !== Node.ELEMENT_NODE) return;
+      localizeUiAttributes(root);
+      if (root.closest('.preview-pane, #markdown-preview')) return;
+      root.querySelectorAll('*').forEach(localizeUiAttributes);
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) localizeUiTextNode(node);
+    } finally {
+      isApplyingUiTranslations = false;
+    }
+  }
+
+  function startUiTranslationObserver() {
+    if (uiTranslationObserver || !document.body) return;
+    translateUiTree(document.body);
+    uiTranslationObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'characterData') {
+          localizeUiTextNode(mutation.target);
+          return;
+        }
+        if (mutation.type === 'attributes') {
+          localizeUiAttributes(mutation.target);
+          return;
+        }
+        mutation.addedNodes.forEach(node => translateUiTree(node));
+      });
+    });
+    uiTranslationObserver.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: UI_TRANSLATABLE_ATTRIBUTES
+    });
+  }
+
+  async function applyTranslations(lang) {
+    const requestedLang = I18N_DICTS[lang] ? lang : 'en';
+    const requestId = ++activeTranslationRequest;
+    startUiTranslationObserver();
+    const catalog = await loadUiTranslationCatalog(requestedLang);
+    if (requestId !== activeTranslationRequest) return;
+    activeLang = requestedLang;
+    activeUiCatalog = catalog;
+    activeUiReverseCatalog = new Map(
+      Object.entries(catalog).map(([source, translated]) => [normalizeUiTranslationText(translated), source])
+    );
+    activeUiTemplates = buildUiTranslationTemplates(catalog);
+    lang = requestedLang;
+    isApplyingUiTranslations = true;
     document.documentElement.setAttribute('lang', lang === 'zh' ? 'zh-Hans' : (lang === 'tw' ? 'zh-Hant' : lang));
-    const dict = I18N_DICTS[lang] || I18N_DICTS.en;
-
     function updateMenuLabel(element, text) {
       if (!element) return false;
       const label = element.querySelector('.app-menu-label');
@@ -22083,7 +22282,7 @@ ${selector} .arrowheadPath {
 
     // Update main logo and header elements
     const logoEl = document.querySelector('.app-header h1');
-    if (logoEl) logoEl.textContent = dict.title;
+    if (logoEl) logoEl.textContent = translateUiString('Markdown Viewer');
 
     // Update dynamic current language labels in drop menus
     const labelEl = document.getElementById('current-lang-label');
@@ -22132,114 +22331,114 @@ ${selector} .arrowheadPath {
     if (toggleSyncEl) {
       const isSyncActive = toggleSyncEl.classList.contains('sync-active');
       const textSpan = toggleSyncEl.querySelector('.btn-text');
-      if (textSpan) textSpan.textContent = isSyncActive ? dict.syncOff : dict.syncOn;
+      if (textSpan) textSpan.textContent = translateUiString(isSyncActive ? 'Sync Off' : 'Sync On');
     }
 
     // Import buttons
     const importDropEl = document.getElementById('importDropdown');
     if (importDropEl) {
       const importText = importDropEl.querySelector('.btn-text');
-      if (importText) importText.textContent = 'New';
+      if (importText) importText.textContent = translateUiString('New');
     }
     const importFileEl = document.getElementById('import-from-file');
-    if (importFileEl) updateMenuLabel(importFileEl, dict.importFile);
+    if (importFileEl) updateMenuLabel(importFileEl, translateUiString('From files'));
     const importGithubEl = document.getElementById('import-from-github');
-    if (importGithubEl) updateMenuLabel(importGithubEl, dict.importGithub);
+    if (importGithubEl) updateMenuLabel(importGithubEl, translateUiString('From GitHub'));
 
     const mImportFileEl = document.getElementById('mobile-import-button');
-    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload"></i>${dict.importFile}`;
+    if (mImportFileEl) mImportFileEl.innerHTML = `<i class="lucide lucide-upload"></i>${translateUiString('From files')}`;
     const mImportGithubEl = document.getElementById('mobile-import-github-button');
-    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github" aria-hidden="true"></i>${dict.importGithub}`;
+    if (mImportGithubEl) mImportGithubEl.innerHTML = `<i class="bi bi-github" aria-hidden="true"></i>${translateUiString('From GitHub')}`;
 
     // Export buttons
     const exportDropEl = document.getElementById('exportDropdown');
     if (exportDropEl) {
       const exportText = exportDropEl.querySelector('.btn-text');
-      if (exportText) exportText.textContent = dict.export;
+      if (exportText) exportText.textContent = translateUiString('Export');
     }
     const exportMdEl = document.getElementById('export-md');
-    if (exportMdEl) updateMenuLabel(exportMdEl, dict.exportMd);
+    if (exportMdEl) updateMenuLabel(exportMdEl, translateUiString('Markdown (.md)'));
     const exportHtmlEl = document.getElementById('export-html');
-    if (exportHtmlEl) updateMenuLabel(exportHtmlEl, dict.exportHtml);
+    if (exportHtmlEl) updateMenuLabel(exportHtmlEl, translateUiString('HTML'));
     const exportPdfEl = document.getElementById('export-pdf');
-    if (exportPdfEl) updateMenuLabel(exportPdfEl, dict.exportPdf);
+    if (exportPdfEl) updateMenuLabel(exportPdfEl, translateUiString('PDF'));
     const exportPngEl = document.getElementById('export-png');
-    if (exportPngEl) updateMenuLabel(exportPngEl, dict.exportPng);
+    if (exportPngEl) updateMenuLabel(exportPngEl, translateUiString('Image (.png)'));
 
     const mExportMdEl = document.getElementById('mobile-export-md');
-    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text"></i>${dict.exportMd}`;
+    if (mExportMdEl) mExportMdEl.innerHTML = `<i class="lucide lucide-file-text"></i>${translateUiString('Markdown (.md)')}`;
     const mExportHtmlEl = document.getElementById('mobile-export-html');
-    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2"></i>${dict.exportHtml}`;
+    if (mExportHtmlEl) mExportHtmlEl.innerHTML = `<i class="lucide lucide-file-code-2"></i>${translateUiString('HTML')}`;
     const mExportPdfEl = document.getElementById('mobile-export-pdf');
-    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text"></i>${dict.exportPdf}`;
+    if (mExportPdfEl) mExportPdfEl.innerHTML = `<i class="lucide lucide-file-text"></i>${translateUiString('PDF')}`;
     const mExportPngEl = document.getElementById('mobile-export-png');
-    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image"></i>${dict.exportPng}`;
+    if (mExportPngEl) mExportPngEl.innerHTML = `<i class="lucide lucide-file-image"></i>${translateUiString('Image (.png)')}`;
 
     // Copy / Share
     if (copyMarkdownButton) {
       const copyButtonText = copyMarkdownButton.querySelector('.btn-text');
-      if (copyButtonText) copyButtonText.textContent = `${dict.copy} Markdown`;
+      if (copyButtonText) copyButtonText.textContent = translateUiString('Copy Markdown');
     }
     if (shareButton) {
       const shareButtonText = shareButton.querySelector('.btn-text');
-      if (shareButtonText) shareButtonText.textContent = dict.share || 'Share';
+      if (shareButtonText) shareButtonText.textContent = translateUiString('Share');
     }
     if (liveShareButton) {
       const liveShareButtonText = liveShareButton.querySelector('.btn-text');
-      if (liveShareButtonText) liveShareButtonText.textContent = dict.liveShare || 'Live Share';
+      if (liveShareButtonText) liveShareButtonText.textContent = translateUiString('Live Share');
     }
     const mShareLabel = document.getElementById('mobile-share-label');
-    if (mShareLabel) mShareLabel.textContent = dict.shareSnapshot || 'Share Snapshot';
+    if (mShareLabel) mShareLabel.textContent = translateUiString('Share Snapshot');
     const mLiveShareBtn = document.getElementById('mobile-live-share-button');
     if (mLiveShareBtn) {
       const mobileLiveShareLabel = document.getElementById('mobile-live-share-label');
       if (mobileLiveShareLabel) {
-        mobileLiveShareLabel.textContent = dict.liveShare || 'Live Share';
+        mobileLiveShareLabel.textContent = translateUiString('Live Share');
       } else {
-        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i>${dict.liveShare || 'Live Share'}`;
+        mLiveShareBtn.innerHTML = `<i class="lucide lucide-radio" data-lucide="radio" aria-hidden="true"></i>${translateUiString('Live Share')}`;
       }
     }
 
     // Document Reset
     const tabResetBtn = document.getElementById('tab-reset-btn');
-    if (tabResetBtn) updateMenuLabel(tabResetBtn, `${dict.reset} workspace`);
+    if (tabResetBtn) updateMenuLabel(tabResetBtn, translateUiString('Reset workspace'));
     const mTabResetLabel = document.getElementById('mobile-reset-label');
-    if (mTabResetLabel) mTabResetLabel.textContent = `${dict.reset} workspace`;
+    if (mTabResetLabel) mTabResetLabel.textContent = translateUiString('Reset workspace');
 
     // View toggle buttons title tooltips
-    document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = dict.editor);
-    document.querySelectorAll('[data-view-mode="split"]').forEach(b => b.title = dict.split);
-    document.querySelectorAll('[data-view-mode="preview"]').forEach(b => b.title = dict.preview);
-    document.querySelectorAll('.mobile-view-mode-btn[data-mode="editor"] span').forEach(s => s.textContent = dict.editor);
-    document.querySelectorAll('.mobile-view-mode-btn[data-mode="split"] span').forEach(s => s.textContent = dict.split);
-    document.querySelectorAll('.mobile-view-mode-btn[data-mode="preview"] span').forEach(s => s.textContent = dict.preview);
+    document.querySelectorAll('[data-view-mode="editor"]').forEach(b => b.title = translateUiString('Edit Markdown'));
+    document.querySelectorAll('[data-view-mode="split"]').forEach(b => b.title = translateUiString('Split editor and live preview'));
+    document.querySelectorAll('[data-view-mode="preview"]').forEach(b => b.title = translateUiString('Markdown preview only'));
+    document.querySelectorAll('.mobile-view-mode-btn[data-mode="editor"] span').forEach(s => s.textContent = translateUiString('Edit'));
+    document.querySelectorAll('.mobile-view-mode-btn[data-mode="split"] span').forEach(s => s.textContent = translateUiString('Split'));
+    document.querySelectorAll('.mobile-view-mode-btn[data-mode="preview"] span').forEach(s => s.textContent = translateUiString('Preview'));
 
     // Direction Toggle
     const dirToggle = document.getElementById('direction-toggle');
     if (dirToggle) {
       const isRtl = document.body.style.direction === 'rtl';
-      dirToggle.title = isRtl ? dict.switchLtr : dict.switchRtl;
+      dirToggle.title = translateUiString(isRtl ? 'Switch to LTR' : 'Switch to RTL');
     }
 
     // Modal Titles
     const modalHelpTitle = document.getElementById('help-modal-title');
-    if (modalHelpTitle) modalHelpTitle.textContent = dict.helpTitle;
+    if (modalHelpTitle) modalHelpTitle.textContent = translateUiString('Markdown Viewer Help');
     const modalAboutTitle = document.getElementById('about-modal-title');
-    if (modalAboutTitle) modalAboutTitle.textContent = dict.aboutTitle;
+    if (modalAboutTitle) modalAboutTitle.textContent = translateUiString('About Markdown Viewer');
     const modalShareTitle = document.getElementById('share-modal-title');
-    if (modalShareTitle) modalShareTitle.textContent = dict.shareSnapshot || 'Share Snapshot';
+    if (modalShareTitle) modalShareTitle.textContent = translateUiString('Share Snapshot');
     const modalRenameTitle = document.getElementById('rename-modal-title');
-    if (modalRenameTitle) modalRenameTitle.textContent = dict.renameTitle;
+    if (modalRenameTitle) modalRenameTitle.textContent = translateUiString('Rename file');
     const modalLinkTitle = document.getElementById('link-modal-title');
-    if (modalLinkTitle) modalLinkTitle.textContent = dict.insertLink;
+    if (modalLinkTitle) modalLinkTitle.textContent = translateUiString('Insert link');
     const modalRefTitle = document.getElementById('reference-modal-title');
-    if (modalRefTitle) modalRefTitle.textContent = dict.insertRef;
+    if (modalRefTitle) modalRefTitle.textContent = translateUiString('Insert reference');
     const modalImgTitle = document.getElementById('image-modal-title');
-    if (modalImgTitle) modalImgTitle.textContent = dict.insertImg;
+    if (modalImgTitle) modalImgTitle.textContent = translateUiString('Insert image');
     const modalTableTitle = document.getElementById('table-modal-title');
-    if (modalTableTitle) modalTableTitle.textContent = dict.insertTable;
+    if (modalTableTitle) modalTableTitle.textContent = translateUiString('Insert table');
     const modalFindTitle = document.getElementById('find-replace-title');
-    if (modalFindTitle) modalFindTitle.textContent = dict.findReplace;
+    if (modalFindTitle) modalFindTitle.textContent = translateUiString('Find & Replace');
 
     // Theme titles
     const mThemeToggle = document.getElementById('mobile-theme-toggle');
@@ -22250,22 +22449,22 @@ ${selector} .arrowheadPath {
 
     // Stats Labels
     const minReadEl = document.getElementById('lbl-min-read');
-    if (minReadEl) minReadEl.textContent = dict.minRead;
+    if (minReadEl) minReadEl.textContent = translateUiString('Min Read');
     const wordsEl = document.getElementById('lbl-words');
-    if (wordsEl) wordsEl.textContent = dict.words;
+    if (wordsEl) wordsEl.textContent = translateUiString('Words');
     const charsEl = document.getElementById('lbl-chars');
-    if (charsEl) charsEl.textContent = dict.chars;
+    if (charsEl) charsEl.textContent = translateUiString('Chars');
 
     const mMinReadEl = document.getElementById('lbl-mobile-min-read');
-    if (mMinReadEl) mMinReadEl.textContent = dict.minRead;
+    if (mMinReadEl) mMinReadEl.textContent = translateUiString('Min Read');
     const mWordsEl = document.getElementById('lbl-mobile-words');
-    if (mWordsEl) mWordsEl.textContent = dict.words;
+    if (mWordsEl) mWordsEl.textContent = translateUiString('Words');
     const mCharsEl = document.getElementById('lbl-mobile-chars');
-    if (mCharsEl) mCharsEl.textContent = dict.chars;
+    if (mCharsEl) mCharsEl.textContent = translateUiString('Chars');
 
     // Placeholder
     if (markdownEditor) {
-      markdownEditor.placeholder = dict.placeholder;
+      markdownEditor.placeholder = translateUiString('Type your markdown here...');
     }
 
     // Trigger state tracking update
@@ -22279,9 +22478,13 @@ ${selector} .arrowheadPath {
         item.classList.remove('active');
       }
     });
+
+    isApplyingUiTranslations = false;
+    translateUiTree(document.body);
+    document.title = activeLang === 'en' ? initialDocumentTitle : translateUiString(initialDocumentTitle);
   }
 
-  function detectAndInitLanguage() {
+  async function detectAndInitLanguage() {
     const urlParams = new URLSearchParams(window.location.search);
     let lang = urlParams.get('lang');
 
@@ -22316,16 +22519,16 @@ ${selector} .arrowheadPath {
       lang = 'en';
     }
 
-    applyTranslations(lang);
+    await applyTranslations(lang);
   }
 
   // Language selectors click event listeners
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', async function(e) {
     const item = e.target.closest('.lang-select-item');
     if (item) {
       e.preventDefault();
       const lang = item.getAttribute('data-lang');
-      applyTranslations(lang);
+      await applyTranslations(lang);
       saveStorageItem('app-lang', lang);
       
       // Update browser search parameters dynamically without page reload
@@ -22334,6 +22537,13 @@ ${selector} .arrowheadPath {
       window.history.replaceState({}, '', url.toString());
     }
   });
+
+  const nativeAlert = window.alert.bind(window);
+  const nativeConfirm = window.confirm.bind(window);
+  const nativePrompt = window.prompt.bind(window);
+  window.alert = message => nativeAlert(translateUiString(message));
+  window.confirm = message => nativeConfirm(translateUiString(message));
+  window.prompt = (message, defaultValue) => nativePrompt(translateUiString(message), defaultValue);
 
   // Accessibility dynamic screen reader announcer helper
   function announceToScreenReader(message) {
@@ -22428,7 +22638,7 @@ ${selector} .arrowheadPath {
   }
 
   // Run detection
-  detectAndInitLanguage();
+  await detectAndInitLanguage();
 
   // Intercept all link clicks in the preview pane to open them securely and prevent page navigation
   if (markdownPreview) {
