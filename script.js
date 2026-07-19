@@ -7306,10 +7306,20 @@ document.addEventListener("DOMContentLoaded", async function () {
       return total + (Array.isArray(tab.reviewThreads) ? tab.reviewThreads.length : 0);
     }, 0);
     if (description) {
-      const fileSummary = fileCount + ' file' + (fileCount === 1 ? '' : 's');
-      const reviewSummary = reviewCount + ' review item' + (reviewCount === 1 ? '' : 's');
-      const reviewDetails = reviewCount > 0 ? ' and ' + reviewSummary : '';
-      description.textContent = 'This will remove ' + fileSummary + reviewDetails + ' and end any active Live Share session. Unsaved changes cannot be recovered.';
+      const fillTemplate = function(source, values) {
+        return translateUiString(source).replace(/\{\{(\d+)\}\}/g, function(_, index) {
+          return values[Number(index)] ?? '';
+        });
+      };
+      const fileSummary = fillTemplate(fileCount === 1 ? '{{0}} file' : '{{0}} files', [fileCount]);
+      const reviewSummary = fillTemplate(reviewCount === 1 ? '{{0}} review item' : '{{0}} review items', [reviewCount]);
+      const removalSummary = reviewCount > 0
+        ? fillTemplate('{{0}} and {{1}}', [fileSummary, reviewSummary])
+        : fileSummary;
+      description.textContent = fillTemplate(
+        'This will remove {{0}} and end any active Live Share session. Unsaved changes cannot be recovered.',
+        [removalSummary]
+      );
     }
 
     async function doReset() {
@@ -16021,10 +16031,10 @@ ${selector} .arrowheadPath {
   function formatPdfExportEta(ms) {
     if (!Number.isFinite(ms) || ms <= 0) return "Calculating...";
     const seconds = Math.ceil(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 60) return translateUiString(`${seconds}s`);
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
-    return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+    return translateUiString(remainder ? `${minutes}m ${remainder}s` : `${minutes}m`);
   }
 
   function createPdfProgressState(exportType = "pdf") {
@@ -22082,7 +22092,8 @@ ${selector} .arrowheadPath {
     'script', 'style', 'code', 'pre', 'textarea', '[translate="no"]', '[data-i18n-skip]',
     '.editor-pane', '.preview-pane', '#markdown-editor', '#markdown-preview',
     '.lang-select-item', '.document-tree-label', '.tab-title', '.review-comment-body',
-    '.github-import-tree-name'
+    '.github-import-tree-name', '.markdown-tool-menu-symbol',
+    '[data-toolbar-menu-toggle="case"] > span', '#find-case'
   ].join(',');
   const UI_TRANSLATION_ATTRIBUTE_SKIP_SELECTOR = [
     'script', 'style', '[translate="no"]', '[data-i18n-skip]', '.preview-pane', '#markdown-preview',
@@ -22464,7 +22475,7 @@ ${selector} .arrowheadPath {
 
     // Placeholder
     if (markdownEditor) {
-      markdownEditor.placeholder = translateUiString('Type your markdown here...');
+      markdownEditor.placeholder = translateUiString('Type, paste, or import Markdown here...');
     }
 
     // Trigger state tracking update

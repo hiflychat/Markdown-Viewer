@@ -36,7 +36,7 @@ const PROTECTED_TERMS = [
 const CURATED_OVERRIDES = {
   de: {
     'Report': 'Melden', 'Light mode': 'Heller Modus', 'Use light mode': 'Hellen Modus verwenden',
-    'Use dark mode': 'Dunklen Modus verwenden'
+    'Use dark mode': 'Dunklen Modus verwenden', 'Protect Secret Workspace': 'Geheimen Arbeitsbereich schützen'
   },
   es: {
     'Report': 'Informar', 'Light mode': 'Modo claro', 'Use light mode': 'Usar modo claro'
@@ -50,7 +50,26 @@ const CURATED_OVERRIDES = {
     'Close menu': 'Chiudi il menu'
   },
   ja: { 'Settings': '設定', 'About': '情報' },
-  ko: { 'Explorer': '탐색기' },
+  ko: {
+    'Explorer': '탐색기',
+    'Protect Secret Workspace': '비밀 작업 공간 보호',
+    'Unlock Secret Workspace': '비밀 작업 공간 잠금 해제',
+    'Create a local access key to encrypt files and folder names stored in this workspace. The key cannot be recovered.': '이 작업 공간에 저장된 파일 및 폴더 이름을 암호화할 로컬 액세스 키를 만드세요. 이 키는 복구할 수 없습니다.',
+    'Enter the local access key used to encrypt this workspace on this device.': '이 기기에서 이 작업 공간을 암호화하는 데 사용한 로컬 액세스 키를 입력하세요.',
+    'Create access key': '액세스 키 만들기',
+    'Lock workspace': '작업 공간 잠그기',
+    'Title case': '제목 형식',
+    'UPPERCASE': '대문자',
+    'lowercase': '소문자',
+    'Left-to-right text': '왼쪽에서 오른쪽으로 쓰기',
+    'Right-to-left text': '오른쪽에서 왼쪽으로 쓰기',
+    'This will remove {{0}} and end any active Live Share session. Unsaved changes cannot be recovered.': '{{0}}를 삭제하고 활성 Live Share 세션을 종료합니다. 저장하지 않은 변경 사항은 복구할 수 없습니다.',
+    'Type, paste, or import Markdown here...': '여기에 Markdown을 입력하거나 붙여넣거나 가져오세요...',
+    '{{0}} file': '파일 {{0}}개', '{{0}} files': '파일 {{0}}개',
+    '{{0}} review item': '리뷰 항목 {{0}}개', '{{0}} review items': '리뷰 항목 {{0}}개',
+    '{{0}} and {{1}}': '{{0}} 및 {{1}}', 'Estimated remaining': '예상 남은 시간', '{{0}}s': '{{0}}초',
+    '{{0}}m': '{{0}}분', '{{0}}m {{1}}s': '{{0}}분 {{1}}초'
+  },
   pl: {
     'New': 'Nowy', 'Report': 'Zgłoś', 'Theme': 'Motyw', 'Light mode': 'Tryb jasny'
   },
@@ -69,7 +88,19 @@ const CURATED_OVERRIDES = {
     'View': '檢視', 'Split': '分割', 'Actions': '操作', 'New': '新增', 'New document': '新增文件',
     'From files': '從檔案', 'From GitHub': '從 GitHub', 'Export': '匯出', 'Live Share': '即時共享',
     'Report': '回報問題', 'Theme': '外觀', 'Light mode': '淺色模式', 'Use light mode': '使用淺色模式',
-    'Private mode': '隱私模式', 'Reset workspace': '重設工作區', 'Explorer': '檔案總管'
+    'Private mode': '隱私模式', 'Reset workspace': '重設工作區', 'Explorer': '檔案總管',
+    'Choose an alert style to insert into the document.': '選擇要插入文件的提示樣式。',
+    'Recent files': '最近使用的檔案', 'Favorites': '我的最愛',
+    'No documents to show.': '沒有可顯示的文件。', 'No favorite documents yet.': '尚無最愛文件。',
+    'Generating PDF': '正在產生 PDF', 'Generating Image': '正在產生圖片',
+    'Current Step': '目前步驟', 'Estimated remaining': '預估剩餘時間',
+    'Optimizing page breaks': '正在最佳化分頁', 'Select All': '全選', 'Clear All': '取消全選',
+    'Select Markdown file(s) to import': '選擇要匯入的 Markdown 檔案',
+    'Title case': '字首大寫',
+    '{{0}} file': '{{0}} 個檔案', '{{0}} files': '{{0}} 個檔案',
+    '{{0}} review item': '{{0}} 個審閱項目', '{{0}} review items': '{{0}} 個審閱項目',
+    '{{0}} and {{1}}': '{{0}}和{{1}}',
+    '{{0}}s': '{{0}} 秒', '{{0}}m': '{{0}} 分鐘', '{{0}}m {{1}}s': '{{0}} 分 {{1}} 秒'
   },
   uk: {
     'View': 'Вигляд', 'Split': 'Розділити', 'Review mode': 'Режим рецензування', 'New': 'Новий',
@@ -81,7 +112,19 @@ const CURATED_OVERRIDES = {
     'View': '视图', 'Split': '分屏', 'Actions': '操作', 'New': '新建', 'New document': '新建文档',
     'From files': '从文件', 'From GitHub': '从 GitHub', 'Live Share': '实时共享', 'Report': '报告问题',
     'Theme': '外观', 'Light mode': '浅色模式', 'Use light mode': '使用浅色模式',
-    'Private mode': '隐私模式', 'Explorer': '文件资源管理器'
+    'Private mode': '隐私模式', 'Explorer': '文件资源管理器',
+    'Choose an alert style to insert into the document.': '选择要插入文档的提示样式。',
+    'Recent files': '最近文件', 'Favorites': '收藏',
+    'No documents to show.': '没有可显示的文档。', 'No favorite documents yet.': '还没有收藏的文档。',
+    'Generating PDF': '正在生成 PDF', 'Generating Image': '正在生成图片',
+    'Current Step': '当前步骤', 'Estimated remaining': '预计剩余时间',
+    'Optimizing page breaks': '正在优化分页', 'Select All': '全选', 'Clear All': '取消全选',
+    'Select Markdown file(s) to import': '选择要导入的 Markdown 文件',
+    'Title case': '首字母大写',
+    '{{0}} file': '{{0}} 个文件', '{{0}} files': '{{0}} 个文件',
+    '{{0}} review item': '{{0}} 个审阅项', '{{0}} review items': '{{0}} 个审阅项',
+    '{{0}} and {{1}}': '{{0}}和{{1}}',
+    '{{0}}s': '{{0}} 秒', '{{0}}m': '{{0}} 分钟', '{{0}}m {{1}}s': '{{0}} 分 {{1}} 秒'
   }
 };
 
@@ -108,7 +151,50 @@ const EXTRA_STRINGS = [
   '{{0}} file selected', '{{0}} files selected', '{{0}} words', '{{0}} characters',
   '{{0}} Min Read', 'Welcome, {{0}}', 'Importing {{0}}', '{{0}} imported',
   'Failed to import {{0}}', 'Move {{0}} selected items', 'Rename {{0}}',
-  'Close {{0}}', 'Download {{0}}', 'Duplicate {{0}}'
+  'Close {{0}}', 'Download {{0}}', 'Duplicate {{0}}',
+  'Protect Secret Workspace', 'Unlock Secret Workspace',
+  'Create a local access key to encrypt files and folder names stored in this workspace. The key cannot be recovered.',
+  'Enter the local access key used to encrypt this workspace on this device.',
+  'Create access key', 'Lock workspace', 'Unlock workspace', 'Set password',
+  'Title case', 'UPPERCASE', 'lowercase', 'Left-to-right text', 'Right-to-left text',
+  'This will remove {{0}} and end any active Live Share session. Unsaved changes cannot be recovered.',
+  'Type, paste, or import Markdown here...',
+  'Choose an alert style to insert into the document.',
+  'Recent files', 'Favorites', 'No documents to show.', 'No favorite documents yet.',
+  'Generating PDF', 'Generating Image', 'Generating PDF...', 'Generating Image...',
+  'Cancel PDF generation', 'Cancel Image generation', 'PDF generation progress', 'Image generation progress',
+  'Current Step', 'Estimated remaining', 'Preparing', 'Calculating...', 'Complete',
+  'Loading PDF libraries', 'Preparing document', 'Rendering diagrams', 'Rendering music notation',
+  'Rendering math', 'Loading document assets', 'Optimizing page breaks', 'Rendering pages',
+  'Rendering page {{0}} of {{1}}', 'Preparing download',
+  '{{0}}s', '{{0}}m', '{{0}}m {{1}}s', '{{0}} selected',
+  '{{0}} file', '{{0}} files', '{{0}} review item', '{{0}} review items', '{{0}} and {{1}}',
+  'Select All', 'Clear All', 'Select all', 'Select Markdown file(s) to import',
+  'A folder with this name already exists in the workspace.',
+  'Changes not saved', 'Copy command was unsuccessful',
+  'Click Start session to create a temporary room and generate an invite link.',
+  'Collaborators can view updates but cannot edit.',
+  'Copy this link and send it to collaborators. New participants appear above when they join.',
+  'Could not protect this workspace. Try again.',
+  'Incorrect access key or unreadable Secret Workspace data.',
+  'Secret Workspace has not been set up yet.',
+  'Delete folder', 'Delete selected items', 'Enter a folder name.', 'Enter a name.',
+  'No documents match your search.', 'Open or create a document to use editing tools.',
+  'Add another review item', 'Add feedback', 'Add suggestion', 'Edit comment', 'Edit suggestion',
+  'All feedback resolved', 'Everything has been resolved. Switch to Resolved or All to review earlier feedback.',
+  'Review item deleted.', 'Review item reopened.', 'Review item resolved.', 'Review item updated.',
+  'Review mode keeps the Markdown source read only.',
+  'Creating link', 'Creating snapshot link...', 'Room active - waiting for collaborators',
+  'Ending live room...', 'Live room disconnected', 'Live room ended by the host',
+  'This Live Share session is view only.', 'This document is read only.',
+  'This shared document is read-only for you.',
+  'This share link has expired or does not exist.',
+  'This Live Share room has ended, expired, or no active host is available.',
+  'No Markdown files were found at that GitHub location.',
+  'The provided URL does not point to a Markdown file.',
+  'Please enter a GitHub URL.', 'Please enter a valid GitHub URL.',
+  'Please select at least one file to import.', 'Maximum document limit reached',
+  'GitHub import finished.', 'Your file is ready.', 'Your files are ready.', 'Save changes'
 ];
 
 function normalize(value) {
@@ -121,7 +207,7 @@ function isTranslatable(value) {
   if (!/\p{L}/u.test(text)) return false;
   if (/^(?:https?:\/\/|data:|blob:|#[0-9a-f]{3,8}$)/i.test(text)) return false;
   if (/<[^>]*>|(?:class|aria-hidden|data-[\w-]+)=|\\u200b/i.test(text)) return false;
-  if (/[{}]=>|document\.|window\.|console\.|function\s*\(/.test(text)) return false;
+  if (/[{}]=>|\b(?:document|window|console)\.[A-Za-z_$]|function\s*\(/.test(text)) return false;
   if (/^[-+*/=<>()[\]{}.,:;!?\\|_`~]+$/.test(text)) return false;
   return true;
 }
@@ -153,7 +239,34 @@ function extractScriptStrings(source) {
       if (isTranslatable(value)) values.add(value);
     });
   }
+
+  // Pick up same-line ternaries and configuration labels that are applied to
+  // UI later. Keeping this line-scoped prevents source examples and rendering
+  // templates from being mistaken for interface copy.
+  const addQuotedValues = segment => {
+    const quotedPattern = /(?:'((?:\\.|[^'\\\r\n])*)'|"((?:\\.|[^"\\\r\n])*)")/g;
+    let match;
+    while ((match = quotedPattern.exec(segment))) {
+      const value = normalize((match[1] ?? match[2] ?? '')
+        .replace(/\\(['"\\])/g, '$1')
+        .replace(/\\n/g, ' '));
+      if (isLikelyUiLiteral(value)) values.add(value);
+    }
+  };
+  const uiLinePattern = /(?:\.(?:textContent|innerHTML|title|placeholder)\s*=|\b(?:label|title|subtitle|description|detail|message|placeholder|heading|tooltip|ariaLabel|titleText|labelText|progressLabelText|cancelLabelText|generatingLabel)\s*[:=]|\b(?:alert|confirm|prompt|(?:show|set|update|announce|open)[A-Z][\w$]*)\s*\()/;
+  source.split(/\r?\n/).filter(line => uiLinePattern.test(line)).forEach(addQuotedValues);
   return values;
+}
+
+function isLikelyUiLiteral(value) {
+  const text = normalize(value);
+  if (!isTranslatable(text)) return false;
+  if (/^(?:https?:|wss?:|data:|blob:|[.#/]|\$\d|\(|```|M\s*\d)/i.test(text)) return false;
+  if (/\b(?:lucide|skeleton|modal-|document-|tab-|github-|live-share-|markdown-|pdf-|preview-)\S*/i.test(text)) return false;
+  if (/[<>]|(?:^|\s)(?:display|width|height|padding|margin|color|background|grid|flex)[-\w]*\s*:/i.test(text)) return false;
+  if (/\\[sSdDwWbB]|\$\{|=>|\btypeof\b|\bquerySelector\b|\bgetElementById\b/.test(text)) return false;
+  if (/^[\w.-]+\.(?:js|css|html|json|md|png|jpe?g|svg|wasm)$/i.test(text)) return false;
+  return /\s|[.!?…:]/.test(text) || /^(?:Open|Close|Cancel|Delete|Rename|Duplicate|Download|Move|Create|Import|Export|Share|Copy|Save|Reset|Unlock|Lock|Preparing|Complete|Favorites)$/i.test(text);
 }
 
 function decodeHtml(value) {
@@ -269,7 +382,8 @@ async function collectDomStrings() {
       const values = new Set();
       const skipSelector = [
         'script', 'style', 'code', 'pre', 'textarea', '.editor-pane', '.preview-pane',
-        '#markdown-editor', '#markdown-preview', '.lang-select-item', '[data-i18n-skip]'
+        '#markdown-editor', '#markdown-preview', '.lang-select-item', '[data-i18n-skip]',
+        '.markdown-tool-menu-symbol', '[data-toolbar-menu-toggle="case"] > span', '#find-case'
       ].join(',');
       const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
       const add = value => {
@@ -311,17 +425,19 @@ async function main() {
 
   for (const [locale, targetLanguage] of Object.entries(LOCALES)) {
     const outputUrl = new URL(`${locale}.json`, OUTPUT_DIR);
+    let catalog = {};
     if (!FORCE) {
       try {
         await access(outputUrl);
-        console.log(`Keeping existing ${locale} catalog.`);
-        continue;
+        const currentCatalog = JSON.parse(await readFile(outputUrl, 'utf8'));
+        const sourceSet = new Set(strings);
+        catalog = Object.fromEntries(Object.entries(currentCatalog).filter(([source]) => sourceSet.has(source)));
       } catch (_) {}
     }
 
-    const catalog = {};
-    const chunks = chunkStrings(strings);
-    console.log(`Translating ${locale}: ${chunks.length} batches...`);
+    const stringsToTranslate = FORCE ? strings : strings.filter(source => !catalog[source]);
+    const chunks = chunkStrings(stringsToTranslate);
+    console.log(`Translating ${locale}: ${stringsToTranslate.length} new strings in ${chunks.length} batches...`);
     for (let index = 0; index < chunks.length; index += 4) {
       const group = chunks.slice(index, index + 4);
       const translatedGroup = await Promise.all(group.map(chunk => translateChunk(chunk, targetLanguage)));
