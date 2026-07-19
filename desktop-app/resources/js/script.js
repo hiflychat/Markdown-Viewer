@@ -383,6 +383,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const documentSplitPreview = document.getElementById('document-split-preview');
   const noOpenDocument = document.getElementById('no-open-document');
   const noOpenDocumentNew = document.getElementById('no-open-document-new');
+  const noOpenDocumentOpenFile = document.getElementById('no-open-document-open-file');
+  const noOpenDocumentGithub = document.getElementById('no-open-document-github');
+  const noOpenDocumentWelcome = document.getElementById('no-open-document-welcome');
 
   // Mobile View Mode Elements - Story 1.4
   const mobileViewModeButtons = document.querySelectorAll(".mobile-view-mode-btn");
@@ -7361,6 +7364,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     if (noOpenDocumentNew) {
       noOpenDocumentNew.onclick = function() { newTab(); };
+    }
+    if (noOpenDocumentOpenFile) {
+      noOpenDocumentOpenFile.onclick = function() {
+        if (importFromFileButton) importFromFileButton.click();
+        else fileInput.click();
+      };
+    }
+    if (noOpenDocumentGithub) {
+      noOpenDocumentGithub.onclick = function() {
+        if (importFromGithubButton) importFromGithubButton.click();
+        else openGitHubImportModal();
+      };
+    }
+    if (noOpenDocumentWelcome) {
+      noOpenDocumentWelcome.onclick = function() {
+        const welcome = tabs.find(function(tab) {
+          return !isTabOpen(tab) && tab.title === 'Welcome to Markdown' && tab.workspaceId !== SECRET_WORKSPACE_ID;
+        });
+        if (welcome) switchTab(welcome.id);
+        else newTab(sampleMarkdown, 'Welcome to Markdown');
+      };
     }
   }
 

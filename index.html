@@ -1289,11 +1289,40 @@
         </div>
 
         <main class="content-container">
-            <div id="no-open-document" class="no-open-document" role="status" hidden>
-                <i class="lucide lucide-file-text" aria-hidden="true"></i>
-                <p class="no-open-document-title">No file open</p>
-                <p class="no-open-document-copy">Choose a file from the sidebar or create a new Markdown file.</p>
-                <button id="no-open-document-new" class="reset-modal-btn reset-modal-confirm" type="button"><i class="lucide lucide-file-plus-2" aria-hidden="true"></i> New file</button>
+            <div id="no-open-document" class="no-open-document" role="region" aria-labelledby="no-open-document-title" hidden>
+                <div class="no-open-document-layout">
+                    <section class="no-open-document-intro">
+                        <img class="no-open-document-logo" src="assets/icon.jpg" width="112" height="112" alt="">
+                        <h2 id="no-open-document-title" class="no-open-document-title">No file open</h2>
+                        <p class="no-open-document-copy">Create a Markdown file or open one from your device, GitHub, or the welcome template.</p>
+                    </section>
+
+                    <section class="no-open-document-start" aria-labelledby="no-open-document-start-title">
+                        <h3 id="no-open-document-start-title">Get Started</h3>
+                        <div class="no-open-document-actions">
+                            <button id="no-open-document-new" class="tool-button header-command-btn no-open-document-action" type="button">
+                                <i class="lucide lucide-file-plus-2" aria-hidden="true"></i>
+                                <span>Create New File</span>
+                                <i class="lucide lucide-chevron-right no-open-document-action-arrow" aria-hidden="true"></i>
+                            </button>
+                            <button id="no-open-document-open-file" class="tool-button header-command-btn no-open-document-action" type="button">
+                                <i class="lucide lucide-upload" aria-hidden="true"></i>
+                                <span>Open File from Device</span>
+                                <i class="lucide lucide-chevron-right no-open-document-action-arrow" aria-hidden="true"></i>
+                            </button>
+                            <button id="no-open-document-github" class="tool-button header-command-btn no-open-document-action" type="button">
+                                <i class="bi bi-github" aria-hidden="true"></i>
+                                <span>Import from GitHub</span>
+                                <i class="lucide lucide-chevron-right no-open-document-action-arrow" aria-hidden="true"></i>
+                            </button>
+                            <button id="no-open-document-welcome" class="tool-button header-command-btn no-open-document-action" type="button">
+                                <i class="lucide lucide-panels-top-left" aria-hidden="true"></i>
+                                <span>Use Welcome Template</span>
+                                <i class="lucide lucide-chevron-right no-open-document-action-arrow" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </section>
+                </div>
             </div>
             <div class="editor-pane is-loading">
                 <div id="line-numbers" class="line-numbers" aria-hidden="true" inert></div>
