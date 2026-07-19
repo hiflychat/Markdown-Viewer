@@ -3,6 +3,21 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## v3.9.3
+
+- **Description:** Redesigned the Markdown Viewer workspace around a professional document Explorer, streamlined toolbar, responsive navigation, consistent icon system, and complete interface localization.
+- **Explorer & Documents:** Added workspace, folder, file, favorite, recent-document, secret-workspace, drag-and-drop, multi-selection, context-menu, bulk-delete, and GitHub repository import workflows. Closing tabs remains separate from deleting documents, and repository imports are grouped into repository-named folders with background progress.
+- **Tabs, Editing & Split View:** Added complete tab-closing commands, synchronized two-document split view, compact long-title handling, shared Edit or Preview modes, save-state feedback, and reliable empty-document behavior.
+- **Toolbar, Icons & Overlays:** Reorganized document and formatting actions, standardized dropdowns, introduced a lightweight local Lucide icon subset with consistent 1.5px strokes, refined the empty state, and unified application dialogs and modal accessibility.
+- **Responsive UI:** Replaced the mobile floating menu with a compact workspace drawer, aligned mobile toolbar and tab sizing with desktop, and improved responsive status, settings, and action layouts.
+- **Localization:** Added complete interface catalogs for 14 languages, covering static and dynamic menus, dialogs, Explorer states, progress messages, validation feedback, titles, and accessibility labels while preserving user-authored Markdown and filenames.
+- **Desktop:** Synchronized the Neutralino desktop application with the redesigned web interface and retained seven standalone Linux, macOS, and Windows release targets.
+- **Date:** 2026-07-20
+- **Commits:** `a7572d682db557563f24ff5f5873267639c19cc6` through `4c04ef7706bb356cecedd388c1c455c9a36f113e`
+- **URL:** https://github.com/ThisIs-Developer/Markdown-Viewer/releases/tag/v3.9.3
+
+---
+
 ## v3.9.2
 
 - **Description:** Added a complete comments-and-suggestions review workflow with responsive controls, lifecycle tracking, and Live Share synchronization.
