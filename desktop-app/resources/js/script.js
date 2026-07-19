@@ -327,6 +327,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const importFromFileButton = document.getElementById("import-from-file");
   const importFromGithubButton = document.getElementById("import-from-github");
   const fileInput = document.getElementById("file-input");
+  const exportDropdown = document.getElementById("exportDropdown");
   const exportMd = document.getElementById("export-md");
   const exportHtml = document.getElementById("export-html");
   const exportPdf = document.getElementById("export-pdf");
@@ -501,6 +502,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const mobileExportHtml    = document.getElementById("mobile-export-html");
   const mobileExportPdf     = document.getElementById("mobile-export-pdf");
   const mobileExportPng     = document.getElementById("mobile-export-png");
+  const mobileExportToggle  = document.querySelector('[aria-controls="mobile-menu-export-panel"]');
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
   const mobilePrivateModeToggle = document.getElementById("mobile-private-mode-toggle");
   const mobilePrivateModeStatus = document.getElementById("mobile-private-mode-status");
@@ -6076,12 +6078,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
-  function updateDocumentToolbarAvailability(hasActiveDocument) {
-    if (!markdownFormatToolbar) return;
-    markdownFormatToolbar.classList.toggle('is-no-active-document', !hasActiveDocument);
-    markdownFormatToolbar.setAttribute('aria-disabled', hasActiveDocument ? 'false' : 'true');
-
-    markdownFormatToolbar.querySelectorAll('button').forEach(function(button) {
+  function updateMissingDocumentControlState(controls, hasActiveDocument) {
+    controls.forEach(function(button) {
+      if (!button) return;
       if (!hasActiveDocument) {
         if (!button.disabled) {
           button.dataset.noDocumentDisabled = 'true';
@@ -6094,8 +6093,29 @@ document.addEventListener("DOMContentLoaded", async function () {
         button.setAttribute('aria-disabled', 'false');
       }
     });
+  }
 
-    if (!hasActiveDocument) {
+  function updateDocumentToolbarAvailability(hasActiveDocument) {
+    if (markdownFormatToolbar) {
+      markdownFormatToolbar.classList.toggle('is-no-active-document', !hasActiveDocument);
+      markdownFormatToolbar.setAttribute('aria-disabled', hasActiveDocument ? 'false' : 'true');
+      updateMissingDocumentControlState(Array.from(markdownFormatToolbar.querySelectorAll('button')), hasActiveDocument);
+    }
+
+    updateMissingDocumentControlState([
+      exportDropdown,
+      shareButton,
+      liveShareButton,
+      mobileExportToggle,
+      mobileExportMd,
+      mobileExportHtml,
+      mobileExportPdf,
+      mobileExportPng,
+      mobileShareButton,
+      mobileLiveShareButton
+    ], hasActiveDocument);
+
+    if (!hasActiveDocument && markdownFormatToolbar) {
       markdownFormatToolbar.querySelectorAll('[data-toolbar-menu-toggle]').forEach(function(toggle) {
         toggle.classList.remove('open');
         toggle.setAttribute('aria-expanded', 'false');
@@ -7302,9 +7322,15 @@ document.addEventListener("DOMContentLoaded", async function () {
       const welcome = createTab(sampleMarkdown, 'Welcome to Markdown');
       tabs.push(welcome);
       activeTabId = welcome.id;
+      selectedDocumentId = welcome.id;
       saveActiveTabId(activeTabId);
       saveTabsToStorage(tabs);
       markdownEditor.value = sampleMarkdown;
+      initTabHistory(activeTabId, sampleMarkdown);
+      lastPushedValue = sampleMarkdown;
+      currentHistoryTabId = activeTabId;
+      updateNoOpenDocumentState();
+      updateUndoRedoButtons();
       restoreViewMode('split');
       refreshLiveEditorUi();
       renderMarkdown();
@@ -7372,6 +7398,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     migrateDocumentsToOrganization();
     const activeTab = tabs.find(function(t) { return t.id === activeTabId; });
     selectedDocumentId = activeTabId;
+    updateNoOpenDocumentState();
     if (activeTab) {
       markdownEditor.value = activeTab.content;
       initTabHistory(activeTabId, activeTab.content);
@@ -7382,7 +7409,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else {
       markdownEditor.value = '';
       updateUndoRedoButtons();
-      updateNoOpenDocumentState();
     }
     const editorPane = document.querySelector('.editor-pane');
     if (editorPane) {
@@ -15532,6 +15558,7 @@ ${selector} .arrowheadPath {
   });
 
   exportMd.addEventListener("click", function () {
+    if (!hasActiveOpenDocument()) return;
     if (blockShareSnapshotSourceAccess()) return;
     if (typeof Neutralino !== 'undefined') {
       nativeSaveMarkdown();
@@ -15549,6 +15576,7 @@ ${selector} .arrowheadPath {
   });
 
   exportHtml.addEventListener("click", function () {
+    if (!hasActiveOpenDocument()) return;
     try {
       const { frontmatter, body } = parseFrontmatter(markdownEditor.value);
       const tableHtml = frontmatter ? renderFrontmatterTable(frontmatter) : '';
@@ -16910,6 +16938,7 @@ ${selector} .arrowheadPath {
 
   exportPdf.addEventListener("click", function (event) {
     event.preventDefault();
+    if (!hasActiveOpenDocument()) return;
     openAppModal(pdfExportModal);
   });
 
@@ -17261,6 +17290,7 @@ ${selector} .arrowheadPath {
 
   exportPng.addEventListener("click", async function (event) {
     event.preventDefault();
+    if (!hasActiveOpenDocument()) return;
     logPdfExportDebug("PNG export button clicked!");
     if (activePdfExport) {
       logPdfExportDebug("Export already active, ignoring click");
@@ -17763,6 +17793,7 @@ ${selector} .arrowheadPath {
   }
 
   function openShareModal() {
+    if (!hasActiveOpenDocument()) return;
     if (blockTemporarySnapshotShare()) return;
     if (blockLiveDocumentShareSnapshot()) return;
     // PERF-002: Lazy-load pako on first share
@@ -18280,6 +18311,7 @@ ${selector} .arrowheadPath {
         updateUndoRedoButtons();
       }
     }
+    updateDocumentToolbarAvailability(hasActiveOpenDocument());
   }
 
   function getLiveRoomSocketUrl(roomId, secret, auth) {
@@ -19780,6 +19812,7 @@ ${selector} .arrowheadPath {
   }
 
   function openLiveShareModal() {
+    if (!hasActiveOpenDocument()) return;
     if (!liveShareModal) return;
     if (blockTemporarySnapshotLiveShare()) return;
     if (liveShareDisplayName && !liveShareDisplayName.value) {
