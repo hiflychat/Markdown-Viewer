@@ -238,14 +238,21 @@
                     
                     <div id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" aria-hidden="true" tabindex="-1" inert>
                         <div class="mobile-menu-header">
-                            <h2 id="mobile-menu-title" class="h5 m-0">Menu</h2>
+                            <div class="mobile-menu-brand">
+                                <span class="mobile-menu-brand-mark" aria-hidden="true">M</span>
+                                <span class="mobile-menu-brand-copy">
+                                    <h2 id="mobile-menu-title" class="h5 m-0">Markdown Viewer</h2>
+                                    <span>Workspace menu</span>
+                                </span>
+                            </div>
                             <button id="close-mobile-menu" class="tool-button" type="button" aria-label="Close menu">
                                 <i class="lucide lucide-x"></i>
                             </button>
                         </div>
 
                         <div class="mobile-menu-scroll">
-                            <div class="mobile-menu-overview">
+                            <section class="mobile-menu-overview" aria-labelledby="mobile-menu-view-heading">
+                                <h3 id="mobile-menu-view-heading" class="mobile-menu-group-label">View</h3>
                                 <div class="mobile-view-mode-group" role="group" aria-label="View mode">
                                     <button class="mobile-view-mode-btn" data-mode="editor" aria-pressed="false" title="Edit Markdown">
                                         <i class="lucide lucide-square-pen" aria-hidden="true"></i>
@@ -265,9 +272,10 @@
                                     <div class="stat-item"><i class="lucide lucide-pilcrow" aria-hidden="true"></i><span id="mobile-word-count">0</span><span id="mobile-lbl-words">Words</span></div>
                                     <div class="stat-item"><i class="lucide lucide-case-sensitive" aria-hidden="true"></i><span id="mobile-char-count">0</span><span id="mobile-lbl-chars">Chars</span></div>
                                 </div>
-                            </div>
+                            </section>
 
                         <nav class="mobile-menu-items" aria-label="Application menu">
+                            <h3 class="mobile-menu-group-label">Actions</h3>
                             <div class="mobile-menu-accordion" data-mobile-menu-accordion>
                                 <section class="mobile-menu-section">
                                     <button class="mobile-menu-section-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu-new-panel" data-mobile-menu-section-toggle>

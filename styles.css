@@ -3345,44 +3345,48 @@ a:focus {
     display: none !important;
   }
 
-  /* Expand touch target sizes to meet WCAG mobile guidelines */
+  /* Keep the horizontally scrollable Markdown toolbar optically identical
+     across desktop and small screens. */
   .markdown-tool-btn {
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 16px !important;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: var(--ui-font-lg) !important;
   }
 
   .markdown-tool-select {
     width: auto !important;
-    padding-inline: 8px !important;
+    padding-inline: 7px !important;
   }
 
   .markdown-tool-select--heading {
-    min-width: 48px;
+    min-width: 44px;
   }
 
   .markdown-tool-select--insert {
-    min-width: 44px;
+    width: 30px !important;
+    min-width: 30px;
+    padding-inline: 0 !important;
   }
 
   .markdown-format-toolbar {
-    height: 52px !important;
+    height: 40px !important;
   }
 
   .markdown-toolbar-group--document .tool-button {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    padding: 0;
   }
 
   .markdown-view-toolbar {
-    height: 48px;
+    height: 32px;
   }
 
   .markdown-toolbar-group--document .markdown-view-toolbar .view-toggle-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 27px;
+    height: 26px;
+    min-width: 27px;
   }
 
   .document-action-item {
@@ -3726,8 +3730,8 @@ a:focus {
 
 @media (max-width: 767px) {
   .markdown-format-toolbar {
-    padding-inline: 4px;
-    scroll-padding-inline: 4px;
+    padding-inline: 6px;
+    scroll-padding-inline: 6px;
   }
 
   .markdown-toolbar-group--utilities {
@@ -3736,7 +3740,7 @@ a:focus {
   }
 
   .markdown-tool-select--insert {
-    min-width: 48px;
+    min-width: 30px;
   }
 
   .markdown-tool-menu-item,
@@ -9632,7 +9636,8 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-panel {
   inset-block: 0;
   inset-inline-end: 0;
-  width: min(88vw, 340px);
+  width: min(84vw, 312px);
+  max-width: calc(100vw - 40px);
   height: 100vh;
   height: 100dvh;
   max-height: none;
@@ -9640,8 +9645,8 @@ html[data-theme="dark"] .mermaid svg {
   border: 0;
   border-inline-start: 1px solid var(--border-color);
   border-radius: 0;
-  background: var(--header-bg);
-  box-shadow: -12px 0 32px rgba(31, 35, 40, 0.2);
+  background: var(--menu-surface);
+  box-shadow: -16px 0 40px rgba(31, 35, 40, 0.18);
   transform: translateX(102%);
   transition: transform 0.2s ease-out;
 }
@@ -9659,26 +9664,74 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .mobile-menu-header {
-  min-height: 48px;
+  min-height: 58px;
   flex: 0 0 auto;
   margin: 0;
-  padding: 4px 6px 4px 14px;
+  padding: 7px 8px 7px 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
-.mobile-menu-header h2 {
+.mobile-menu-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.mobile-menu-brand-mark {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: #0d1117;
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.mobile-menu-brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-menu-brand-copy h2 {
+  overflow: hidden;
   margin: 0;
   color: var(--text-color);
   font-size: var(--ui-font-lg);
   font-weight: 650;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-menu-brand-copy > span {
+  color: var(--text-secondary);
+  font-size: var(--ui-font-xs);
+  line-height: 1.15;
 }
 
 #close-mobile-menu.tool-button {
-  width: 40px;
-  height: 40px;
-  padding: 7px 7px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
   border-radius: 8px;
   font-size: var(--ui-icon-size-md);
+}
+
+#close-mobile-menu.tool-button:hover,
+#close-mobile-menu.tool-button:focus-visible {
+  border-color: var(--border-color);
+  background: var(--button-hover);
 }
 
 .mobile-menu-scroll {
@@ -9689,33 +9742,43 @@ html[data-theme="dark"] .mermaid svg {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 10px;
+  padding: 12px;
   scrollbar-gutter: stable;
 }
 
 .mobile-menu-overview {
   flex: 0 0 auto;
-  margin-bottom: 8px;
-  padding: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg-color);
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.mobile-menu-group-label {
+  margin: 0 0 6px;
+  padding-inline: 2px;
+  color: var(--text-secondary);
+  font-size: var(--ui-font-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .mobile-view-mode-group {
-  gap: 3px;
+  gap: 2px;
   margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--button-bg) 82%, var(--border-color));
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--button-bg);
 }
 
 .mobile-view-mode-btn,
 .mobile-view-mode-btn:first-child,
 .mobile-view-mode-btn:last-child {
-  min-height: 42px;
-  padding: 5px 7px;
+  min-height: 36px;
+  padding: 4px 7px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -9727,9 +9790,10 @@ html[data-theme="dark"] .mermaid svg {
 
 .mobile-view-mode-btn.active,
 .mobile-view-mode-btn.active:not(:last-child) {
-  padding: 5px 7px;
-  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color));
-  background: color-mix(in srgb, var(--accent-color) 9%, var(--button-bg));
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 20%, var(--border-color));
+  background: var(--menu-surface);
+  box-shadow: var(--segmented-shadow);
 }
 
 .mobile-view-mode-btn i {
@@ -9747,13 +9811,18 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-accordion {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--menu-surface);
 }
 
 .mobile-menu-section {
   overflow: visible;
   border: 0;
-  border-radius: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 0;
   background: transparent;
 }
 
@@ -9764,13 +9833,13 @@ html[data-theme="dark"] .mermaid svg {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 9px;
+  padding: 7px 11px;
   border: 0;
   background: transparent;
   color: var(--text-color);
   font: inherit;
   font-size: var(--ui-font-md);
-  font-weight: 600;
+  font-weight: 500;
   text-align: start;
   cursor: pointer;
 }
@@ -9788,7 +9857,7 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-section-toggle:active,
 .mobile-menu-section.is-open .mobile-menu-section-toggle {
   background: var(--button-hover);
-  border-radius: 7px;
+  border-radius: 0;
 }
 
 .mobile-menu-section-toggle:focus-visible,
@@ -9798,6 +9867,8 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .mobile-menu-section-chevron {
+  color: var(--text-secondary);
+  font-size: var(--ui-icon-size-sm) !important;
   transition: transform 0.16s ease;
 }
 
@@ -9809,10 +9880,11 @@ html[data-theme="dark"] .mermaid svg {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 2px 0 4px 12px;
-  padding: 3px 0 3px 8px;
+  margin: 0;
+  padding: 4px;
   border: 0;
-  border-inline-start: 1px solid var(--border-color);
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  background: color-mix(in srgb, var(--button-bg) 72%, var(--menu-surface));
 }
 
 .mobile-menu-section-panel[hidden] {
@@ -9822,9 +9894,9 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-item {
   min-height: 44px;
   gap: 8px;
-  padding: 7px 9px;
+  padding: 7px 11px;
   border-color: transparent;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   font-size: var(--ui-font-md);
 }
@@ -9832,10 +9904,11 @@ html[data-theme="dark"] .mermaid svg {
 .mobile-menu-command {
   width: 100%;
   border: 0;
-  border-radius: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 0;
   background: transparent;
   color: var(--text-color);
-  font-weight: 600;
+  font-weight: 500;
   text-align: start;
   text-decoration: none;
 }
@@ -9847,10 +9920,38 @@ html[data-theme="dark"] .mermaid svg {
   text-decoration: none;
 }
 
+.mobile-menu-accordion > :last-child,
+.mobile-menu-accordion > :last-child > .mobile-menu-section-toggle {
+  border-bottom: 0;
+}
+
+.mobile-menu-section-panel .mobile-menu-item {
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-weight: 450;
+}
+
+.mobile-menu-section-panel .mobile-menu-item:hover,
+.mobile-menu-section-panel .mobile-menu-item:focus-visible {
+  background: var(--button-hover);
+  color: var(--text-color);
+}
+
 .mobile-menu-item > i,
 .mobile-menu-item-label > i,
 .mobile-menu-section-toggle i {
+  flex: 0 0 var(--ui-icon-size-md);
+  color: var(--text-secondary);
   font-size: var(--ui-icon-size-md);
+}
+
+.mobile-menu-section.is-open > .mobile-menu-section-toggle > span > i,
+.mobile-menu-item.is-live-active > i,
+.mobile-menu-item.is-live-active .mobile-menu-item-label > i {
+  color: var(--accent-color);
 }
 
 .mobile-menu-language {
@@ -9870,7 +9971,7 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 .mobile-menu-reset {
-  border-color: color-mix(in srgb, var(--color-danger-fg) 24%, var(--border-color));
+  border-color: transparent;
   color: var(--color-danger-fg);
 }
 
@@ -9906,10 +10007,10 @@ html[data-theme="dark"] .mermaid svg {
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 5px 12px;
+    gap: 5px 10px;
     margin-top: 6px;
-    padding: 7px 4px 1px;
-    border-top: 1px solid var(--border-color);
+    padding: 7px 2px 0;
+    border-top: 0;
     color: var(--text-secondary);
     font-size: var(--ui-font-xs);
     line-height: 1.25;
