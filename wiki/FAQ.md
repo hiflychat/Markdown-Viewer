@@ -62,7 +62,7 @@ No end-to-end encryption is implemented. The room id and secret are included in 
 
 ### How do I clear local data?
 
-Use **Clear local data** in the About dialog, or use the app's Reset button to clear saved documents. Private mode also clears document/workspace state and prevents it from being saved. Clearing site data from browser settings/developer tools removes cached app assets and any saved settings for that origin.
+Use **Reset workspace** in Workspace settings to clear saved files and review data. Private mode also clears document/workspace state and prevents it from being saved. Clearing site data from browser settings/developer tools removes cached app assets and any saved settings for that origin.
 
 ### What security protections are enabled?
 

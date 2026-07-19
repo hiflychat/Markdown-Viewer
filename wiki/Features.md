@@ -10,8 +10,10 @@ Most work happens in the browser or desktop webview. Markdown parsing, syntax hi
 
 ## Main Workspace
 
-The app opens with a header, document tab bar, formatting toolbar, editor pane, resize divider, and preview pane.
+The app opens with a header, Files sidebar, document tab bar, formatting toolbar, editor pane, resize divider, preview pane, and bottom status bar.
 
+- The left **Files** sidebar organizes Markdown files into fixed Default and Secret workspaces with one-level folders, All files, Recent, Favorites, and search views.
+- The sidebar is resizable and collapsible on desktop, narrower on tablet, and becomes a full-height drawer on mobile.
 - Editor mode shows only the textarea.
 - Split mode shows the editor and preview side by side.
 - Preview mode shows only the rendered document.
@@ -19,17 +21,23 @@ The app opens with a header, document tab bar, formatting toolbar, editor pane, 
 - A draggable divider resizes editor and preview in split mode and keeps both panes above 20% width.
 - The divider also supports keyboard adjustment with left and right arrow keys while split view is active.
 - The GitHub link in the header opens the source repository.
+- The bottom status bar centers reading time, word count, and character count, while its right edge reports Saving or All changes saved.
 
 The editor includes line numbers, wrapped-line height handling, a highlight layer for find results, live cursor overlays during Live Share, and skeleton placeholders during initial or heavy rendering. Line-number calculations are cached so large documents do not force a full layout measurement on every keystroke.
 
-## Document Tabs and Local Workspace Storage
+## Files Sidebar, Tabs, and Local Workspace Storage
 
 Users can work with multiple documents at once.
 
-- New tabs can be created from the tab bar, mobile menu, imports, shared snapshots, and Live Share joins.
+- Every existing saved document is migrated into **Workspace**. Workspaces are fixed; users create one level of folders inside Workspace or the password-protected **Secret Workspace**.
+- Secret Workspace encrypts its files and folder names locally with a password-derived AES-GCM key. It remains locked after reload, the key stays in memory only while unlocked, and a forgotten password cannot be recovered. Resetting Secret Workspace permanently deletes its encrypted payload.
+- The sidebar has explicit **New file** and **New folder** actions for the selected location. Files can be dragged onto another folder or workspace; the Move dialog remains available for keyboard and touch workflows.
+- Deleting a folder moves its files to the workspace root so container deletion does not discard content.
+- New files can be created from the sidebar, tab bar, mobile menu, imports, shared snapshots, and Live Share joins. Multi-file imports show a compact bottom progress indicator.
+- The sidebar supports file open, rename, duplicate, favorite, move, Markdown download, and delete actions. Recent and Favorites are filtered references to the original files, not copies.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
-- The app enforces a practical tab limit of 20 tabs. Shared snapshots refuse to open when this limit has been reached.
-- Each normal tab stores a title, content, scroll position, view mode, local review threads, and creation time.
+- The app enforces a consistent limit of 50 open documents. New documents, duplication, local/GitHub imports, Share Snapshot, and Live Share joins all use this limit.
+- Each normal tab stores a title, content, workspace/folder location, favorite state, recent activity metadata, scroll position, view mode, local review threads, and creation time.
 - The active tab id and untitled-document counter are stored separately.
 - Temporary Share Snapshot and Live Share tabs are deliberately excluded from persistent tab storage.
 - The Reset button clears the current saved workspace and returns the app to a clean starting state.
@@ -38,7 +46,9 @@ Storage keys used by the current implementation include:
 
 | Key | What It Stores |
 | :--- | :--- |
-| `markdownViewerTabs` | Normal saved document tabs, including local comments and suggestions. Temporary shared/live tabs are stripped before saving. |
+| `markdownViewerTabs` | Normal Workspace tabs, including local comments and suggestions. Secret and temporary shared/live tabs are stripped before saving. |
+| `markdownViewerDocumentOrganization` | Fixed workspace state, non-secret folders, active sidebar filter, sidebar width/collapse state, and the last non-secret creation location. |
+| `markdownViewerSecretWorkspace` | Password-encrypted Secret Workspace files and folder names plus the PBKDF2 salt, AES-GCM IV, and non-sensitive item counts. |
 | `markdownViewerActiveTab` | The active tab id. |
 | `markdownViewerUntitledCounter` | Counter used for new Untitled tab names. |
 | `markdownViewerGlobalState` | Theme, direction, view preferences, scroll sync, and similar global UI state. |
@@ -47,10 +57,7 @@ Storage keys used by the current implementation include:
 
 On the web, these values live in browser `localStorage`. In the desktop app, the code mirrors selected localStorage values into Neutralino storage, so preferences and workspace state survive desktop restarts.
 
-The About dialog includes two storage controls:
-
-- **Private mode** removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload.
-- **Clear local data** removes saved document tabs, active-tab state, the untitled-tab counter, global workspace preferences, and their desktop storage mirrors. It does not revoke links that were already shared.
+Workspace settings includes **Private mode**, which removes saved document/workspace state and prevents normal document-state keys from being written while it is enabled. The private-mode preference itself remains so the behavior survives a reload. **Reset workspace** removes files and review data and returns the application to a clean workspace. The About dialog describes storage privacy but does not duplicate these controls.
 
 ## Comments and Suggestion Mode
 
@@ -58,7 +65,7 @@ Review mode adds structured feedback to the rendered document without inserting 
 
 User flow:
 
-- Open **Review** from the desktop header or mobile menu.
+- Open **Review** from the desktop document toolbar or mobile menu.
 - Select the plus beside a rendered YAML table, heading, paragraph, code block, or diagram.
 - Add a comment or suggestion. Reviewed blocks show one control for reading existing feedback and a separate plus for adding another item.
 - Edit, resolve, reopen, or delete individual threads. The panel can also copy a Markdown summary, resolve all open items, or delete all feedback after confirmation.
@@ -66,7 +73,7 @@ User flow:
 
 Storage and sharing:
 
-- Review threads stay with normal local tabs and survive reloads. Private mode, Clear local data, and Reset cover the same stored data.
+- Review threads stay with normal local tabs and survive reloads. Private mode and Reset workspace cover the same stored data.
 - Feedback is excluded from Markdown, HTML, PDF, PNG, print, duplicated tabs, and Share Snapshot links.
 - If the related source block changes, the thread remains visible as unanchored feedback instead of moving to the wrong block.
 - Live Share synchronizes Review threads through a separate Yjs document. View-only participants can review without receiving Markdown edit permission.
@@ -88,7 +95,7 @@ The formatting toolbar inserts or transforms Markdown at the current selection. 
 - Link, image, reference, table, emoji, symbol, alert, and diagram buttons open focused modals.
 - Date/time inserts a local timestamp.
 - Fullscreen uses the browser Fullscreen API when available.
-- Help and About buttons open informational modals.
+- Find and Replace and Fullscreen are direct formatting-toolbar actions. About Markdown Viewer opens from the header or mobile menu.
 
 View-only Share Snapshot tabs and view-only Live Share participant tabs block mutating tools and announce that the editor is read-only. Non-mutating actions such as fullscreen, find, help, and info remain available.
 
@@ -479,7 +486,7 @@ Important protections:
 - Canvas exports use `allowTaint: false`.
 - STL rendering validates source size, finite vertex coordinates, and geometry vertex count before creating a WebGL view.
 - The desktop native API allowlist follows least privilege for the app's current features.
-- Private mode and Clear local data provide explicit controls over local document persistence.
+- Private mode and Reset workspace provide explicit controls over local document persistence.
 - Share and live endpoints return no-store responses for dynamic content.
 - The app does not include analytics, telemetry scripts, ad pixels, accounts, cookies, or subscription code.
 

@@ -99,14 +99,14 @@ Markdown Viewer handles the usual Markdown basics, but its real value is helping
 5. **Share Snapshot Links**: create view-only or editable point-in-time links when you need to send a document state quickly. Large stored snapshots expire after 90 days.
 6. **LaTeX Math Notation**: render inline and display formulas with MathJax, useful for math-heavy notes, papers, and technical explanations.
 7. **Markdown to PDF, HTML & PNG Export**: export Markdown, HTML, PNG, Browser Print / Save as PDF, or Legacy Raster PDF for documents that need sharing, printing, or archiving.
-8. **Privacy and Security Controls**: use Private mode to prevent document persistence, clear saved local data, and rely on sanitized previews, hardened export HTML, and restricted desktop native APIs.
+8. **Privacy and Security Controls**: enable Private mode from Workspace settings to keep document and review data session-only, and rely on sanitized previews, hardened export HTML, and restricted desktop native APIs.
 
 For the full feature list, details, limitations, and privacy notes, see the [features reference](wiki/Features.md#product-summary).
 
 ## Markdown Editing and Live Preview
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
-- Work with multiple Markdown documents in tabs, rename or duplicate tabs, import local Markdown files, and keep normal workspace state in browser storage.
+- Organize up to 50 Markdown files in a closable, responsive left sidebar with a persistent tab-strip toggle, fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, single-click opening, and drag-and-drop moves. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 
@@ -271,11 +271,12 @@ Some advanced diagram engines use remote renderers such as PlantUML, Kroki, or m
 
 Markdown Viewer is not a cloud workspace. Normal typing, preview rendering, local file import, tab autosave, theme settings, and most exports happen on your device. No login is required, and the app does not implement analytics, telemetry, ads, or tracking cookies.
 
-Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode stops saving document content and workspace state locally; the About dialog also provides a Clear local data action. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
+Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode in Workspace settings keeps document content, workspace state, and review feedback session-only while editing and review tools remain available. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
 
 ## Security and Privacy Controls
 
 - Preview HTML is sanitized before insertion, and exported HTML includes a restrictive CSP plus SRI metadata for its external assets.
+- Secret Workspace derives a local encryption key from the user's password with PBKDF2-SHA-256 and encrypts its files and folder names with AES-GCM. The key is kept only for the unlocked browser session, and forgotten passwords cannot be recovered.
 - Cloudflare Pages deployments use `_headers` for CSP, clickjacking protection, referrer and permissions policies, and no-sniff protection; sensitive paths are redirected to 404 responses.
 - Stored Share Snapshot API CORS is limited to the production app, `null`, and local development origins. Stored responses are `no-store`, and creators receive a deletion token from the API.
 - STL rendering rejects oversized sources, non-finite geometry, and excessive vertex counts before WebGL rendering.

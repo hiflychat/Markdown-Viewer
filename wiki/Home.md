@@ -49,7 +49,7 @@ Run local web builds through `localhost` or another HTTP(S) server. Opening `ind
 - No accounts, cookies, analytics, ads, or telemetry are implemented.
 - Normal documents and settings are stored in browser localStorage or local desktop storage.
 - Comments and suggestions stay with normal local tabs, are excluded from exports and Share Snapshot, and synchronize only during an active Live Share room.
-- Private mode clears document state and prevents normal document-state persistence until it is turned off; the About dialog also provides Clear local data.
+- Private mode in Workspace settings clears document state and prevents normal document-state persistence until it is turned off; Reset workspace removes files and review data without enabling Private mode.
 - Small Share Snapshot links keep compressed content in the URL hash.
 - Large Share Snapshot links upload the snapshot to Cloudflare KV for up to 90 days and remain bearer links for anyone who has the URL.
 - Live Share sends real-time updates, display names, cursors, and presence through a Cloudflare Durable Object while the room is active.

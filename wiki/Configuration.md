@@ -6,7 +6,9 @@ This page documents the runtime, storage, dependency, Docker, Cloudflare, and de
 
 | Key | Location | Purpose |
 | :--- | :--- | :--- |
-| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal saved tabs, including local review threads. Temporary share/live tabs are excluded. |
+| `markdownViewerTabs` | `localStorage`, mirrored to Neutralino storage in desktop | Normal Workspace tabs, including local review threads. Secret and temporary share/live tabs are excluded. |
+| `markdownViewerDocumentOrganization` | `localStorage`, mirrored to Neutralino storage in desktop | Fixed workspace expansion state, non-secret folders, sidebar filter, sidebar width/collapse state, and last non-secret creation location. |
+| `markdownViewerSecretWorkspace` | `localStorage`, mirrored to Neutralino storage in desktop | Secret Workspace files and folder names encrypted with AES-GCM using a PBKDF2-SHA-256 password-derived key. The salt, IV, and non-sensitive counts are stored with the ciphertext; the key is session-only. |
 | `markdownViewerActiveTab` | `localStorage`, mirrored in desktop | Active tab id. |
 | `markdownViewerUntitledCounter` | `localStorage`, mirrored in desktop | Next Untitled document number. |
 | `markdownViewerGlobalState` | `localStorage`, mirrored in desktop | Theme, direction, view mode, scroll sync, and other global UI preferences. |
@@ -19,9 +21,9 @@ The desktop app starts by copying known Neutralino storage values back into `loc
 Temporary shared content is intentionally not persisted:
 
 - Share Snapshot tabs have `kind: "share-snapshot"`.
-- Live Share participant/host tabs are stripped or restored when leaving the session.
+- Live Share participant tabs use `kind: "live-share"` plus `temporary: true`; host documents are restored when leaving the session.
 
-Private mode clears the normal document-state keys (`markdownViewerTabs`, `markdownViewerActiveTab`, `markdownViewerUntitledCounter`, and `markdownViewerGlobalState`) when enabled and prevents them from being written until the mode is turned off. Use **Clear local data** in the About dialog to clear the same local state without enabling private mode.
+Private mode in Workspace settings clears the normal document-state keys (`markdownViewerTabs`, `markdownViewerDocumentOrganization`, `markdownViewerActiveTab`, `markdownViewerUntitledCounter`, and `markdownViewerGlobalState`) when enabled and prevents them from being written until the mode is turned off. Use **Reset workspace** in Workspace settings to remove files and review data without enabling private mode.
 
 ## Client Libraries
 

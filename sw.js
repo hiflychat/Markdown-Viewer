@@ -1,4 +1,4 @@
-const CACHE_NAME = 'markdown-viewer-cache-v3.9.2';
+const CACHE_NAME = 'markdown-viewer-cache-v3.9.2-i18n2';
 
 // PERF-011: Split precache into critical (local files) and lazy (CDN libraries)
 // Critical assets are precached during SW install for instant offline startup
@@ -8,6 +8,7 @@ const CRITICAL_ASSETS = [
   './script.js',
   './preview-worker.js',
   './styles.css',
+  './assets/lucide-icons.css',
   './sample.md',
   './assets/icon.jpg',
   './manifest.json'
@@ -26,6 +27,7 @@ const NETWORK_FIRST_LOCAL_PATHS = new Set([
   '/script.js',
   '/preview-worker.js',
   '/styles.css',
+  '/assets/lucide-icons.css',
   '/sw.js'
 ]);
 
@@ -57,7 +59,9 @@ self.addEventListener('fetch', event => {
   if (isLocal) {
     const localPath = url.pathname.endsWith('/') ? '/' : url.pathname;
     const shouldUseNetworkFirst =
-      event.request.mode === 'navigate' || NETWORK_FIRST_LOCAL_PATHS.has(localPath);
+      event.request.mode === 'navigate' ||
+      NETWORK_FIRST_LOCAL_PATHS.has(localPath) ||
+      localPath.startsWith('/assets/i18n/');
 
     if (shouldUseNetworkFirst) {
       event.respondWith(
