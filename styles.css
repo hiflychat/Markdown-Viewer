@@ -1141,9 +1141,14 @@ body.document-sidebar-collapsed .document-sidebar {
   z-index: 30;
   display: grid;
   place-items: center;
-  padding: clamp(28px, 5vw, 64px);
+  padding: clamp(24px, 5vw, 56px);
   overflow: auto;
+  scrollbar-width: none;
   background: var(--bg-color);
+}
+
+.no-open-document::-webkit-scrollbar {
+  display: none;
 }
 
 .no-open-document[hidden] {
@@ -1151,21 +1156,19 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .no-open-document-layout {
-  width: min(100%, 760px);
-  padding: clamp(22px, 3.5vw, 30px);
-  border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--header-bg) 58%, var(--bg-color));
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--text-color) 8%, transparent);
+  display: grid;
+  width: min(100%, 820px);
+  grid-template-columns: minmax(0, 0.9fr) minmax(300px, 1.1fr);
+  align-items: center;
+  gap: clamp(40px, 7vw, 72px);
 }
 
 .no-open-document-intro {
   display: flex;
   min-width: 0;
-  align-items: center;
-  gap: 18px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 74%, transparent);
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .no-open-document-logo {
@@ -1183,7 +1186,6 @@ body.document-sidebar-collapsed .document-sidebar {
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.055em;
-  box-shadow: 0 7px 20px color-mix(in srgb, var(--text-color) 12%, transparent);
 }
 
 .no-open-document-intro-copy {
@@ -1222,7 +1224,7 @@ body.document-sidebar-collapsed .document-sidebar {
 .no-open-document-start {
   width: 100%;
   max-width: none;
-  padding: 22px 0 0;
+  padding: 0;
   border: 0;
 }
 
@@ -1249,43 +1251,28 @@ body.document-sidebar-collapsed .document-sidebar {
 
 .no-open-document-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .no-open-document-action.tool-button {
   display: grid;
   width: 100%;
-  min-height: 76px;
-  grid-template-columns: 34px minmax(0, 1fr) 14px;
+  min-height: 56px;
+  grid-template-columns: 18px minmax(0, 1fr) 14px;
   justify-content: stretch;
-  gap: 11px;
-  padding: 11px 12px;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--button-bg) 84%, var(--bg-color));
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.3;
+  gap: 10px;
+  padding: 9px 11px;
   text-align: start;
   touch-action: manipulation;
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.no-open-document-action.tool-button:hover {
-  border-color: color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
-  background: color-mix(in srgb, var(--accent-color) 6%, var(--bg-color));
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--text-color) 7%, transparent);
 }
 
 .no-open-document-action-icon {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 18px;
+  height: 18px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent-color) 18%, var(--border-color));
-  border-radius: 8px;
-  color: var(--accent-color);
-  background: color-mix(in srgb, var(--accent-color) 7%, var(--bg-color));
+  color: var(--text-secondary);
 }
 
 .no-open-document-action-icon i {
@@ -1293,9 +1280,7 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .no-open-document-action-icon--github {
-  border-color: var(--border-color);
   color: var(--text-secondary);
-  background: var(--bg-color);
 }
 
 .no-open-document-action-copy {
@@ -1339,19 +1324,18 @@ body.document-sidebar-collapsed .document-sidebar {
 @media (max-width: 767.98px) {
   .no-open-document {
     place-items: start center;
-    padding: 28px clamp(16px, 6vw, 36px) 40px;
+    padding: 24px clamp(16px, 6vw, 36px) 32px;
   }
 
   .no-open-document-layout {
     width: min(100%, 520px);
-    padding: 20px;
-    border-radius: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
 
   .no-open-document-intro {
     align-items: flex-start;
     gap: 14px;
-    padding-bottom: 20px;
   }
 
   .no-open-document-logo {
@@ -1363,7 +1347,7 @@ body.document-sidebar-collapsed .document-sidebar {
   }
 
   .no-open-document-start {
-    padding-top: 20px;
+    padding-top: 0;
   }
 
   .no-open-document-start-heading {
@@ -1377,7 +1361,7 @@ body.document-sidebar-collapsed .document-sidebar {
   }
 
   .no-open-document-action.tool-button {
-    min-height: 70px;
+    min-height: 54px;
   }
 }
 
