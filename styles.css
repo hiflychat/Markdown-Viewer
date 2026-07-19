@@ -3491,14 +3491,14 @@ a:focus {
 
 .app-brand {
   min-width: 0;
-  gap: 8px;
+  gap: 9px;
 }
 
 .app-brand-icon {
   display: block;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
   border-radius: 8px;
   object-fit: cover;
@@ -3509,35 +3509,57 @@ a:focus {
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 1px;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .app-brand-title-row {
   display: flex;
   min-width: 0;
-  height: 18px;
+  min-height: 18px;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .app-brand-title-row h1 {
   overflow: hidden;
   color: var(--text-color);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   line-height: 1.1;
+  letter-spacing: -0.015em;
   text-overflow: ellipsis;
 }
 
-.app-brand > .github-link {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  color: inherit;
+.app-brand-title-row .github-link {
+  display: inline-flex;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 6px;
+  color: var(--text-secondary);
   line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.app-brand > .github-link i {
+.app-brand-title-row .github-link::before {
+  position: absolute;
+  inset: -4px;
+  content: "";
+}
+
+.app-brand-title-row .github-link:hover {
+  color: var(--text-color);
+  background: var(--button-hover);
+}
+
+.app-brand-title-row .github-link:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.app-brand-title-row .github-link i {
   font-size: 20px;
   line-height: 1;
 }
@@ -3548,9 +3570,10 @@ a:focus {
   color: var(--text-secondary);
   font-size: var(--ui-font-xs);
   line-height: 1.05;
-  width: 100%;
-  text-align: center;
+  max-width: 100%;
+  text-align: start;
   text-overflow: ellipsis;
+  opacity: 0.82;
 }
 
 .header-right {
@@ -10092,10 +10115,6 @@ html[data-theme="dark"] .mermaid svg {
 }
 
 @media (max-width: 479.98px) {
-  .app-brand > .github-link {
-    display: inline-flex;
-  }
-
   .app-save-status {
     min-width: 108px;
     font-size: var(--ui-font-xs);

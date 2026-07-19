@@ -383,6 +383,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const documentSplitEditor = document.getElementById('document-split-editor');
   const documentSplitPreview = document.getElementById('document-split-preview');
   const noOpenDocument = document.getElementById('no-open-document');
+  const noOpenDocumentExplorer = document.getElementById('no-open-document-explorer');
   const noOpenDocumentNew = document.getElementById('no-open-document-new');
   const noOpenDocumentOpenFile = document.getElementById('no-open-document-open-file');
   const noOpenDocumentGithub = document.getElementById('no-open-document-github');
@@ -7465,6 +7466,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         event.preventDefault();
         newTab();
       };
+    }
+    if (noOpenDocumentExplorer) {
+      noOpenDocumentExplorer.onclick = function() { openDocumentSidebar(); };
     }
     if (noOpenDocumentNew) {
       noOpenDocumentNew.onclick = function() { newTab(); };

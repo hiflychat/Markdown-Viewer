@@ -133,16 +133,16 @@
             <div class="container-fluid d-flex justify-content-between align-items-center header-container">
                 <!-- Left section: Application identity and GitHub -->
                 <div class="d-flex align-items-center header-left app-brand">
-                    <img class="app-brand-icon" src="assets/icon.jpg" width="32" height="32" alt="" aria-hidden="true" />
+                    <img class="app-brand-icon" src="assets/icon.jpg" width="30" height="30" alt="" aria-hidden="true" />
                     <div class="app-brand-copy">
                         <div class="app-brand-title-row">
                             <h1 class="h4 mb-0">Markdown Viewer<span class="visually-hidden"> - Online Markdown Editor with Live Preview</span></h1>
+                            <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer" aria-label="View Markdown Viewer on GitHub">
+                                <i class="bi bi-github" aria-hidden="true"></i>
+                            </a>
                         </div>
                         <p class="app-brand-subtitle">Write. Preview. Share.</p>
                     </div>
-                    <a href="https://github.com/ThisIs-Developer/Markdown-Viewer/" class="github-link" title="View on GitHub" target="_blank" rel="noopener noreferrer" aria-label="View Markdown Viewer on GitHub">
-                        <i class="bi bi-github" aria-hidden="true"></i>
-                    </a>
                 </div>
 
                 <!-- Right section: Toolbar -->
@@ -1324,6 +1324,11 @@
                             <p>Choose how you want to begin.</p>
                         </div>
                         <div class="no-open-document-actions">
+                            <button id="no-open-document-explorer" class="tool-button header-command-btn no-open-document-action" type="button" aria-controls="document-sidebar">
+                                <span class="no-open-document-action-icon"><i class="lucide lucide-panel-left-open" aria-hidden="true"></i></span>
+                                <span class="no-open-document-action-copy"><strong>Open Explorer</strong><small>Workspaces, folders, and Markdown files</small></span>
+                                <i class="lucide lucide-chevron-right no-open-document-action-arrow" aria-hidden="true"></i>
+                            </button>
                             <button id="no-open-document-new" class="tool-button header-command-btn no-open-document-action" type="button">
                                 <span class="no-open-document-action-icon"><i class="lucide lucide-file-plus-2" aria-hidden="true"></i></span>
                                 <span class="no-open-document-action-copy"><strong>New document</strong><small>Start with a clean Markdown file</small></span>
