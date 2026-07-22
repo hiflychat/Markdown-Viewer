@@ -82,6 +82,7 @@ Add new keys to every locale when introducing new visible UI text. If a key is m
 
 ## Contributor Checklist
 
+- Regenerate interface catalogs from the repository root with `node generate-ui-locales.mjs`.
 - Update `I18N_DICTS` for all supported locales.
 - Update desktop resources by running the desktop prepare step.
 - Check desktop and mobile menus.

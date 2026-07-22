@@ -254,10 +254,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   const PREVIEW_WORKER_TIMEOUT = 12000;
   const PREVIEW_SEGMENT_MIN_BLOCKS = 8;
   const PREVIEW_BLOCK_REUSE_LIMIT = 12000;
+  const SAFE_MARKDOWN_URI_REGEXP = /^(?:(?:https?|mailto|tel|blob):|data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
   const PREVIEW_SANITIZE_OPTIONS = {
     ADD_TAGS: ['mjx-container', 'input'],
     ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code', 'role', 'aria-labelledby', 'aria-describedby'],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
   };
   const RENDER_DELAY = 100;
   const LARGE_RENDER_DELAY = 160;
@@ -569,8 +570,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   // ========================================
   const GLOBAL_STATE_KEY = 'markdownViewerGlobalState';
   let referenceCounter = 1;
-  const imageObjectUrls = new Set();
   const MAX_LOCAL_IMAGE_BYTES = 25 * 1024 * 1024;
+  const EMBEDDED_IMAGE_TARGET_BYTES = 180 * 1024;
+  const EMBEDDED_IMAGE_MAX_BYTES = 280 * 1024;
+  const EMBEDDED_IMAGE_MAX_DIMENSION = 1600;
+  const MAX_NORMAL_WORKSPACE_STORAGE_CHARS = 4 * 1024 * 1024;
+  const MAX_SECRET_WORKSPACE_STORAGE_CHARS = 3 * 1024 * 1024;
   const EMOJI_API_URL = 'https://api.github.com/emojis';
   let emojiLoadPromise = null;
   let emojiEntries = [];
@@ -2502,6 +2507,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let documentSidebarInitialized = false;
   let isDocumentSidebarResizing = false;
   let draggedSidebarDocumentId = null;
+  let activeDocumentDragPreview = null;
   let documentTreeDragExpandTimer = null;
   let documentTreeDragExpandRow = null;
   let documentTreeAutoScrollFrame = null;
@@ -4019,6 +4025,42 @@ document.addEventListener("DOMContentLoaded", async function () {
     stopDocumentTreeAutoScroll();
   }
 
+  function removeDocumentDragPreview() {
+    if (activeDocumentDragPreview && activeDocumentDragPreview.parentNode) {
+      activeDocumentDragPreview.parentNode.removeChild(activeDocumentDragPreview);
+    }
+    activeDocumentDragPreview = null;
+  }
+
+  function createDocumentDragPreview(title) {
+    removeDocumentDragPreview();
+    const normalizedTitle = String(title || 'Untitled').trim() || 'Untitled';
+    const filename = /\.md$/i.test(normalizedTitle) ? normalizedTitle : normalizedTitle + '.md';
+    const preview = document.createElement('div');
+    preview.className = 'document-drag-preview';
+    preview.setAttribute('aria-hidden', 'true');
+
+    const page = document.createElement('span');
+    page.className = 'document-drag-preview-page';
+    const icon = document.createElement('i');
+    icon.className = 'lucide lucide-download';
+    icon.setAttribute('aria-hidden', 'true');
+    const badge = document.createElement('span');
+    badge.className = 'document-drag-preview-badge';
+    badge.textContent = 'MD';
+    page.appendChild(icon);
+    page.appendChild(badge);
+
+    const label = document.createElement('span');
+    label.className = 'document-drag-preview-label';
+    label.textContent = filename;
+    preview.appendChild(page);
+    preview.appendChild(label);
+    document.body.appendChild(preview);
+    activeDocumentDragPreview = preview;
+    return preview;
+  }
+
   function attachDocumentDropTarget(row, location) {
     if (!row || !location) return;
     row.setAttribute('data-drop-workspace-id', location.workspaceId);
@@ -4172,11 +4214,16 @@ document.addEventListener("DOMContentLoaded", async function () {
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('application/x-markdown-viewer-document', options.documentId);
           event.dataTransfer.setData('text/plain', options.documentId);
+          const preview = createDocumentDragPreview(options.label);
+          try {
+            event.dataTransfer.setDragImage(preview, 36, 34);
+          } catch (_) {}
         }
       });
       row.addEventListener('dragend', function() {
         draggedSidebarDocumentId = null;
         row.classList.remove('is-dragging');
+        removeDocumentDragPreview();
         resetDocumentTreeDragFeedback();
       });
     }
@@ -9332,7 +9379,6 @@ ${selector} .arrowheadPath {
     decorateReviewTargets();
     updateDocumentStats();
     updateFindHighlights();
-    cleanupImageObjectUrls();
     scheduleLineNumberUpdate();
     scheduleAdvancedPostProcessRecovery(rawVal, context);
   }
@@ -10436,13 +10482,167 @@ ${selector} .arrowheadPath {
     return total > 1 ? label + ' ' + (index + 1) : label;
   }
 
-  function createLocalImageMarkdown(file, altText) {
-    const objectUrl = URL.createObjectURL(file);
-    imageObjectUrls.add(objectUrl);
-    return '![' + altText + '](' + objectUrl + ')';
+  function getEmbeddedRasterMime(file) {
+    const suppliedType = String(file && file.type ? file.type : '').toLowerCase();
+    const normalizedType = suppliedType === 'image/jpg' ? 'image/jpeg' : suppliedType;
+    if (/^image\/(?:avif|bmp|gif|jpeg|png|webp)$/.test(normalizedType)) return normalizedType;
+    const extension = String(file && file.name ? file.name : '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return {
+      avif: 'image/avif',
+      bmp: 'image/bmp',
+      gif: 'image/gif',
+      jpeg: 'image/jpeg',
+      jpg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp'
+    }[extension ? extension[1] : ''] || '';
   }
 
-  function insertImageFilesIntoEditor(fileList, options) {
+  function readFileAsDataUrl(file) {
+    return new Promise(function(resolve, reject) {
+      const reader = new FileReader();
+      reader.addEventListener('load', function() { resolve(String(reader.result || '')); }, { once: true });
+      reader.addEventListener('error', function() { reject(reader.error || new Error('Image could not be read.')); }, { once: true });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function getEmbeddedDataByteLength(dataUrl) {
+    const separatorIndex = String(dataUrl || '').indexOf(',');
+    if (separatorIndex === -1) return Number.POSITIVE_INFINITY;
+    const encodedLength = dataUrl.length - separatorIndex - 1;
+    return Math.ceil(encodedLength * 0.75);
+  }
+
+  function loadImageForEmbedding(file) {
+    if (typeof createImageBitmap === 'function') {
+      return createImageBitmap(file).then(function(bitmap) {
+        return {
+          source: bitmap,
+          width: bitmap.width,
+          height: bitmap.height,
+          release: function() { bitmap.close(); }
+        };
+      }).catch(function() {
+        return loadImageElementForEmbedding(file);
+      });
+    }
+    return loadImageElementForEmbedding(file);
+  }
+
+  function loadImageElementForEmbedding(file) {
+    return new Promise(function(resolve, reject) {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.addEventListener('load', function() {
+        resolve({
+          source: image,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+          release: function() { URL.revokeObjectURL(objectUrl); }
+        });
+      }, { once: true });
+      image.addEventListener('error', function() {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('The selected file is not a supported image.'));
+      }, { once: true });
+      image.src = objectUrl;
+    });
+  }
+
+  async function createEmbeddedImageDataUrl(file) {
+    const rasterMime = getEmbeddedRasterMime(file);
+    if (rasterMime && file.size <= EMBEDDED_IMAGE_TARGET_BYTES) {
+      const originalDataUrl = await readFileAsDataUrl(file);
+      const encoded = originalDataUrl.slice(originalDataUrl.indexOf(',') + 1);
+      if (encoded && getEmbeddedDataByteLength(originalDataUrl) <= EMBEDDED_IMAGE_MAX_BYTES) {
+        return 'data:' + rasterMime + ';base64,' + encoded;
+      }
+    }
+
+    const decoded = await loadImageForEmbedding(file);
+    try {
+      if (!decoded.width || !decoded.height) throw new Error('The selected image has no visible pixels.');
+      const initialScale = Math.min(1, EMBEDDED_IMAGE_MAX_DIMENSION / Math.max(decoded.width, decoded.height));
+      let width = Math.max(1, Math.round(decoded.width * initialScale));
+      let height = Math.max(1, Math.round(decoded.height * initialScale));
+      let quality = 0.84;
+      let dataUrl = '';
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { alpha: true });
+      if (!context) throw new Error('This browser cannot prepare the image.');
+
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(decoded.source, 0, 0, width, height);
+        dataUrl = canvas.toDataURL('image/webp', quality);
+        const preparedBytes = getEmbeddedDataByteLength(dataUrl);
+        if (preparedBytes <= EMBEDDED_IMAGE_TARGET_BYTES) break;
+
+        if (quality > 0.58) {
+          quality = Math.max(0.58, quality - 0.08);
+        } else {
+          const reduction = Math.max(0.68, Math.min(0.86, Math.sqrt(EMBEDDED_IMAGE_TARGET_BYTES / preparedBytes) * 0.96));
+          width = Math.max(1, Math.round(width * reduction));
+          height = Math.max(1, Math.round(height * reduction));
+          quality = 0.76;
+        }
+      }
+
+      if (!/^data:image\/webp;base64,/i.test(dataUrl) || getEmbeddedDataByteLength(dataUrl) > EMBEDDED_IMAGE_MAX_BYTES) {
+        throw new Error('The image remains too large after optimization.');
+      }
+      return dataUrl;
+    } finally {
+      decoded.release();
+    }
+  }
+
+  function canPersistImageInsertion(targetTabId, nextContent) {
+    if (isPrivateStorageMode() || (liveCollaboration && liveCollaboration.tabId === targetTabId)) return true;
+    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
+    if (!targetTab || isTemporaryDocument(targetTab)) return true;
+
+    if (targetTab.workspaceId === SECRET_WORKSPACE_ID) {
+      const payload = getSecretWorkspacePayload();
+      payload.documents = payload.documents.map(function(tab) {
+        return tab.id === targetTabId ? Object.assign({}, tab, { content: nextContent }) : tab;
+      });
+      return JSON.stringify(payload).length <= MAX_SECRET_WORKSPACE_STORAGE_CHARS;
+    }
+
+    const storageTabs = getTabsForStorage(tabs).map(function(tab) {
+      return tab.id === targetTabId ? Object.assign({}, tab, { content: nextContent }) : tab;
+    });
+    return JSON.stringify(storageTabs).length <= MAX_NORMAL_WORKSPACE_STORAGE_CHARS;
+  }
+
+  async function persistImageInsertion(targetTabId) {
+    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
+    if (!targetTab || isTemporaryDocument(targetTab) || isPrivateStorageMode()) return true;
+    if (liveCollaboration && liveCollaboration.tabId === targetTabId) return true;
+    saveCurrentTabState();
+    if (targetTab.workspaceId === SECRET_WORKSPACE_ID) {
+      await flushSecretWorkspaceToStorage();
+      return true;
+    }
+    return _flushTabsToStorage(tabs);
+  }
+
+  function restoreEditorAfterFailedImageInsertion(targetTabId, originalValue, selectionStart, selectionEnd) {
+    if (activeTabId !== targetTabId) return;
+    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
+    markdownEditor.value = originalValue;
+    markdownEditor.setSelectionRange(selectionStart, selectionEnd);
+    lastPushedValue = originalValue;
+    if (targetTab) targetTab.content = originalValue;
+    renderMarkdown({ reason: 'image-storage-rollback', force: true });
+    updateDocumentStats();
+    scheduleLineNumberUpdate({ force: true });
+  }
+
+  async function insertImageFilesIntoEditor(fileList, options) {
     const settings = options || {};
     const imageFiles = Array.from(fileList || []).filter(isImageFile);
     if (!imageFiles.length) return 0;
@@ -10459,15 +10659,54 @@ ${selector} .arrowheadPath {
     }
     if (!acceptedFiles.length) return 0;
 
+    const targetTabId = activeTabId;
+    const originalValue = markdownEditor.value;
     const start = Number.isFinite(settings.selectionStart) ? settings.selectionStart : markdownEditor.selectionStart;
     const end = Number.isFinite(settings.selectionEnd) ? settings.selectionEnd : markdownEditor.selectionEnd;
     const source = settings.source === 'clipboard' ? 'clipboard' : 'drop';
-    const markdown = acceptedFiles.map(function(file, index) {
-      return createLocalImageMarkdown(file, getLocalImageAltText(file, source, index, acceptedFiles.length));
-    }).join('\n\n');
-    replaceEditorRange(start, end, markdown, start + markdown.length, start + markdown.length);
-    announceToScreenReader(acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' inserted.');
-    return acceptedFiles.length;
+    let didInsert = false;
+    announceToScreenReader('Preparing ' + acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + '.');
+
+    try {
+      const preparedImages = [];
+      for (const file of acceptedFiles) {
+        preparedImages.push(await createEmbeddedImageDataUrl(file));
+      }
+      if (activeTabId !== targetTabId || markdownEditor.value !== originalValue || !canMutateEditor()) {
+        announceToScreenReader('Image insertion was cancelled because the document changed.');
+        return 0;
+      }
+
+      const markdown = preparedImages.map(function(dataUrl, index) {
+        const file = acceptedFiles[index];
+        const altText = typeof settings.altText === 'string' && acceptedFiles.length === 1
+          ? (settings.altText.trim() || 'alt text')
+          : getLocalImageAltText(file, source, index, acceptedFiles.length);
+        if (typeof settings.markdownFactory === 'function') {
+          return settings.markdownFactory(dataUrl, altText, file, index, acceptedFiles.length);
+        }
+        return '![' + altText + '](' + dataUrl + ')';
+      }).join('\n\n');
+      const nextValue = originalValue.slice(0, start) + markdown + originalValue.slice(end);
+      if (!canPersistImageInsertion(targetTabId, nextValue)) {
+        alert('These images would exceed safe local browser storage. Insert fewer images, use smaller files, or use external image URLs.');
+        return 0;
+      }
+
+      replaceEditorRange(start, end, markdown, start + markdown.length, start + markdown.length);
+      didInsert = true;
+      const persisted = await persistImageInsertion(targetTabId);
+      if (!persisted) throw new Error('The browser could not save the embedded image.');
+      announceToScreenReader(acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' inserted and saved with the document.');
+      return acceptedFiles.length;
+    } catch (error) {
+      if (didInsert) {
+        restoreEditorAfterFailedImageInsertion(targetTabId, originalValue, start, end);
+      }
+      console.warn('Image insertion failed:', error);
+      alert(error && error.message ? error.message : 'The image could not be inserted.');
+      return 0;
+    }
   }
 
   function wrapEditorSelection(prefix, suffix, placeholder) {
@@ -11103,25 +11342,6 @@ ${selector} .arrowheadPath {
       const after = text.slice(lastIndex);
       if (after) fragment.appendChild(document.createTextNode(after));
       node.parentNode.replaceChild(fragment, node);
-    });
-  }
-
-  function cleanupImageObjectUrls() {
-    if (imageObjectUrls.size === 0) return;
-    const contents = [markdownEditor.value];
-    if (Array.isArray(tabs)) {
-      tabs.forEach(function(tab) {
-        if (tab && typeof tab.content === 'string' && tab.content) {
-          contents.push(tab.content);
-        }
-      });
-    }
-    const snapshot = contents.join('\n');
-    Array.from(imageObjectUrls).forEach(function(url) {
-      if (!snapshot.includes(url)) {
-        URL.revokeObjectURL(url);
-        imageObjectUrls.delete(url);
-      }
     });
   }
 
@@ -13142,6 +13362,8 @@ ${selector} .arrowheadPath {
     urlOption.checked = true;
     uploadOption.checked = false;
     modal.style.display = 'flex';
+    let isProcessing = false;
+    const confirmButtonLabel = confirmBtn.textContent;
 
     function buildImageMarkdown(url) {
       const titleText = altInput.value.trim();
@@ -13159,10 +13381,33 @@ ${selector} .arrowheadPath {
       replaceEditorRange(start, end, replacement, start + replacement.length, start + replacement.length);
     }
 
-    function insertFromFile(file) {
-      const objectUrl = URL.createObjectURL(file);
-      imageObjectUrls.add(objectUrl);
-      insertImage(objectUrl);
+    function setProcessing(processing) {
+      isProcessing = processing;
+      modal.setAttribute('aria-busy', processing ? 'true' : 'false');
+      confirmBtn.disabled = processing;
+      confirmBtn.textContent = processing ? translateUiString('Preparing') + '…' : confirmButtonLabel;
+      cancelBtn.disabled = processing;
+      uploadOption.disabled = processing;
+      urlOption.disabled = processing;
+      fileInput.disabled = processing;
+      urlInput.disabled = processing;
+      altInput.disabled = processing;
+    }
+
+    async function insertFromFile(file) {
+      if (isProcessing) return;
+      setProcessing(true);
+      const insertedCount = await insertImageFilesIntoEditor([file], {
+        source: 'upload',
+        selectionStart: start,
+        selectionEnd: end,
+        altText: altInput.value,
+        markdownFactory: function(dataUrl) {
+          return buildImageMarkdown(dataUrl);
+        }
+      });
+      setProcessing(false);
+      if (insertedCount) closeModal();
     }
 
     function updateMode(shouldFocus) {
@@ -13193,6 +13438,10 @@ ${selector} .arrowheadPath {
     }
 
     function onKey(e) {
+      if (isProcessing) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         if (uploadOption.checked) {
@@ -13209,7 +13458,9 @@ ${selector} .arrowheadPath {
     }
 
     function closeModal() {
+      if (isProcessing) return;
       modal.style.display = 'none';
+      modal.removeAttribute('aria-busy');
       cleanup();
     }
 
@@ -15493,7 +15744,7 @@ ${selector} .arrowheadPath {
     });
   });
 
-  markdownEditor.addEventListener('paste', function(event) {
+  markdownEditor.addEventListener('paste', async function(event) {
     const clipboard = event.clipboardData;
     if (!clipboard) return;
     const itemFiles = Array.from(clipboard.items || []).map(function(item) {
@@ -15506,7 +15757,7 @@ ${selector} .arrowheadPath {
       announceToScreenReader(getEditorReadOnlyMessage());
       return;
     }
-    insertImageFilesIntoEditor(imageFiles, {
+    await insertImageFilesIntoEditor(imageFiles, {
       source: 'clipboard',
       selectionStart: markdownEditor.selectionStart,
       selectionEnd: markdownEditor.selectionEnd
@@ -15802,7 +16053,7 @@ ${selector} .arrowheadPath {
       const sanitizedHtml = DOMPurify.sanitize(html, {
         ADD_TAGS: ['mjx-container', 'input'], 
         ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       const tempContainer = document.createElement("div");
       tempContainer.innerHTML = sanitizedHtml;
@@ -17218,7 +17469,7 @@ ${selector} .arrowheadPath {
       const sanitizedHtml = DOMPurify.sanitize(html, {
         ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input'],
         ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       throwIfPdfExportAborted(progressState.signal);
 
@@ -17535,7 +17786,7 @@ ${selector} .arrowheadPath {
       const sanitizedHtml = DOMPurify.sanitize(html, {
         ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input'],
         ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       throwIfPdfExportAborted(progressState.signal);
 
@@ -20322,7 +20573,7 @@ ${selector} .arrowheadPath {
   loadFromShareHash();
   loadFromLiveHash();
 
-  // Full-window drag-and-drop: track nesting level for reliable enter/leave detection
+  // Document-wide drag-and-drop: track nesting level for reliable enter/leave detection
   let dragDepth = 0;
 
   document.addEventListener("dragenter", function(e) {
@@ -20378,7 +20629,7 @@ ${selector} .arrowheadPath {
     let handledCount = 0;
 
     if (imageFiles.length) {
-      const insertedCount = insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
+      const insertedCount = await insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
       handledCount += insertedCount;
       if (!insertedCount && !markdownFiles.length) {
         alert('Open an editable Markdown file before inserting images.');

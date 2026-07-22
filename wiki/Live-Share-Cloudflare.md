@@ -48,7 +48,7 @@ The Durable Object:
 
 | Limit | Value |
 | :--- | :--- |
-| Max live message size | 1 MB |
+| Max live message size | 8 MB |
 | Max WebSocket participants per room | 64 |
 | Participant stale timeout in client UI | 45 seconds |
 | Client join timeout | 8 seconds |

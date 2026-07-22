@@ -540,6 +540,79 @@ body {
   opacity: 0.45;
 }
 
+.document-drag-preview {
+  position: fixed;
+  top: -160px;
+  left: -160px;
+  z-index: var(--layer-notice);
+  display: flex;
+  width: 88px;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.document-drag-preview-page {
+  position: relative;
+  display: grid;
+  width: 48px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid #b8c0cc;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(31, 35, 40, 0.2);
+  color: #52606f;
+}
+
+.document-drag-preview-page::after {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 13px;
+  height: 13px;
+  border-bottom: 1px solid #b8c0cc;
+  border-left: 1px solid #b8c0cc;
+  background: linear-gradient(225deg, var(--editor-bg) 49%, #ffffff 51%);
+  content: '';
+}
+
+.document-drag-preview-page > i {
+  margin-top: 2px;
+  color: var(--accent-color);
+  font-size: 22px;
+}
+
+.document-drag-preview-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: var(--accent-color);
+  color: #ffffff;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+}
+
+.document-drag-preview-label {
+  overflow: hidden;
+  max-width: 88px;
+  padding: 2px 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--toolbar-surface);
+  box-shadow: 0 2px 5px rgba(31, 35, 40, 0.14);
+  color: var(--text-color);
+  font-size: var(--ui-font-xs);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .document-tree-row.is-drop-target {
   background: color-mix(in srgb, var(--accent-color) 14%, var(--button-bg));
   box-shadow: inset 0 0 0 1px var(--accent-color);

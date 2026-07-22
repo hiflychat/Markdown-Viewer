@@ -231,9 +231,16 @@ Local file import:
 
 - Accepts `.md`, `.markdown`, and `text/markdown`.
 - Extension checks are case-insensitive.
-- Dragging a file over the app shows a full-window drop overlay.
+- Dragging files over the app shows a compact drop notice. Explorer document drags use a Markdown file preview, folders expand on hover, and the Explorer scrolls near its top and bottom edges.
 - The first 8 KB of a file are scanned for null bytes to avoid loading binary files as text.
 - Imported local files open in the active tab or a new tab depending on the action.
+
+Image insertion:
+
+- Uploading from the image dialog, pasting from the clipboard, and dropping an image all use the same insertion pipeline.
+- Small raster files are embedded directly; larger images are resized and converted to WebP with a bounded embedded size.
+- Embedded image data is stored inside the Markdown, so it survives refreshes and is included in Share Snapshot and Live Share document content.
+- Individual source images are limited to 25 MiB, and the app rejects an insertion before it would exceed a conservative browser-storage budget.
 
 GitHub import:
 
@@ -308,7 +315,7 @@ Storage behavior:
 - If the encoded legacy URL is too long, or if the Markdown is at least 3,000 bytes, the app stores the snapshot through `/api/share`.
 - Stored snapshots receive an id in `#id=...` form.
 - Stored snapshots are saved in Cloudflare KV for 90 days.
-- The server accepts up to 500,000 characters per stored snapshot.
+- The server accepts up to 8,000,000 characters per stored snapshot.
 - Snapshot ids are random 10-character values using a reduced alphabet and must match the app's id pattern.
 - Stored snapshot responses use `Cache-Control: no-store`.
 - The Share API allows CORS only for the production app, `null`, and `localhost`/`127.0.0.1` development origins; unsupported origins are rejected.
@@ -352,7 +359,7 @@ Implementation:
 
 Limits:
 
-- A live message can be at most 1 MB.
+- A live message can be at most 8 MB so optimized embedded images can synchronize with the Markdown.
 - A live room can have at most 64 WebSocket participants.
 - Participant presence is considered stale after 45 seconds without updates.
 - Join waits up to 8 seconds for initial room state before showing an expired/unavailable room message.
@@ -522,7 +529,7 @@ Security limitations:
 
 - Browser storage quotas can reject very large saved workspaces.
 - The GitHub importer shows a maximum of 30 Markdown files.
-- Stored Share Snapshot content is limited to 500,000 characters.
+- Stored Share Snapshot content is limited to 8,000,000 characters so optimized embedded images can travel with the Markdown.
 - STL source is limited to 2 MiB and parsed geometry to 300,000 vertices.
 - Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
 - Remote renderer availability depends on third-party services and network conditions.

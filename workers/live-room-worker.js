@@ -1,4 +1,4 @@
-const MAX_MESSAGE_BYTES = 1024 * 1024;
+const MAX_MESSAGE_BYTES = 8 * 1024 * 1024;
 const MAX_PARTICIPANTS = 64;
 const AUTH_STORAGE_KEY = "live-room-auth-v1";
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{24,160}$/;

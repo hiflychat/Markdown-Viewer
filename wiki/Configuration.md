@@ -73,10 +73,10 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 | Share URL warning ceiling | 32,000 characters |
 | Legacy share URL ceiling | 4,096 characters |
 | Server share threshold | 3,000 bytes |
-| Stored Share Snapshot max content | 500,000 characters |
+| Stored Share Snapshot max content | 8,000,000 characters |
 | Stored Share Snapshot TTL | 90 days |
 | Live Share max participants | 64 |
-| Live Share max message | 1 MB |
+| Live Share max message | 8 MB |
 | STL source limit | 2 MiB |
 | STL geometry limit | 300,000 vertices |
 
@@ -86,7 +86,7 @@ The main preview path calls DOMPurify with additional tags and attributes needed
 
 - Additional tags include `mjx-container` and `input`.
 - Additional attributes include `id`, `class`, `style`, `align`, `type`, `checked`, `disabled`, `data-original-code`, `role`, `aria-labelledby`, and `aria-describedby`.
-- Allowed URI schemes include HTTP(S), `mailto:`, `tel:`, `blob:`, relative URLs, and safe non-script values.
+- Allowed URI schemes include HTTP(S), `mailto:`, `tel:`, `blob:`, relative URLs, safe non-script values, and base64 raster image data for AVIF, BMP, GIF, JPEG, PNG, and WebP. SVG data URLs remain blocked.
 
 Export paths use similar expanded sanitizer settings for SVG/math capture. Scripts and unsafe event handlers are still removed.
 

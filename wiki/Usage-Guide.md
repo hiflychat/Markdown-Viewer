@@ -136,7 +136,7 @@ Use Share Snapshot when you want to send a point-in-time copy.
 
 View only opens the document in preview mode and hides editing. Editable opens the copy in split mode so the recipient can edit their own local copy. It is not real-time collaboration.
 
-Small documents are compressed into the URL hash as `#share=...`. Large documents, or documents whose encoded URL would be too long, are stored through `/api/share` and opened with `#id=...`. Stored snapshots use Cloudflare KV for up to 90 days and can contain up to 500,000 characters. They are bearer links: anyone with the URL can open the snapshot. The creator-side API response includes a deletion token; keep it separate from the share URL if you need to delete the stored record before expiry.
+Small documents are compressed into the URL hash as `#share=...`. Large documents, or documents whose encoded URL would be too long, are stored through `/api/share` and opened with `#id=...`. Stored snapshots use Cloudflare KV for up to 90 days and can contain up to 8,000,000 characters, including optimized images embedded in the Markdown. They are bearer links: anyone with the URL can open the snapshot. The creator-side API response includes a deletion token; keep it separate from the share URL if you need to delete the stored record before expiry.
 
 Shared snapshot tabs are temporary and are not saved into the recipient's workspace.
 
@@ -152,7 +152,7 @@ Use Live Share when you want a temporary real-time room.
 
 Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role. Markdown and Review data use separate Yjs documents, so view-only participants can synchronize comments and suggestions without being allowed to edit Markdown.
 
-Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 1 MB live messages.
+Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 8 MB live messages so optimized embedded images can synchronize with the Markdown.
 
 ## Rendering Diagrams, Maps, Math, STL, and ABC Notation
 
