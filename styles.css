@@ -1050,12 +1050,10 @@ body.document-sidebar-collapsed .document-sidebar {
 }
 
 .import-progress-toast {
-  position: fixed;
-  inset-inline-end: max(16px, env(safe-area-inset-right, 0px));
-  inset-block-end: max(16px, env(safe-area-inset-bottom, 0px));
+  position: relative;
   display: flex;
   align-items: flex-start;
-  width: min(360px, calc(100vw - 32px));
+  width: 100%;
   min-height: 82px;
   gap: 12px;
   padding: 13px 14px;
@@ -1064,7 +1062,7 @@ body.document-sidebar-collapsed .document-sidebar {
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
   color: var(--text-color);
-  z-index: 3000;
+  pointer-events: auto;
   animation: import-progress-toast-in 0.2s ease-out;
 }
 
@@ -1179,17 +1177,14 @@ body.document-sidebar-collapsed .document-sidebar {
   to { transform: rotate(360deg); }
 }
 
-.media-progress-toast {
-  inset-block-end: max(112px, calc(env(safe-area-inset-bottom, 0px) + 112px));
-}
-
 .app-toast-region {
   position: fixed;
-  inset-block-start: max(16px, env(safe-area-inset-top, 0px));
+  inset-block-end: max(16px, env(safe-area-inset-bottom, 0px));
   inset-inline-end: max(16px, env(safe-area-inset-right, 0px));
   z-index: 3100;
   display: flex;
-  width: min(380px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
   flex-direction: column;
   gap: 10px;
   pointer-events: none;
@@ -1206,6 +1201,7 @@ body.document-sidebar-collapsed .document-sidebar {
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
   color: var(--text-color);
+  width: 100%;
   pointer-events: auto;
   animation: import-progress-toast-in 0.2s ease-out;
 }
@@ -1317,20 +1313,14 @@ body.document-sidebar-collapsed .document-sidebar {
 
 @media (max-width: 767px) {
   .import-progress-toast {
-    inset-inline: 12px;
-    inset-block-end: max(46px, calc(env(safe-area-inset-bottom, 0px) + 46px));
-    width: auto;
     min-height: 78px;
   }
 
-  .media-progress-toast {
-    inset-block-end: max(142px, calc(env(safe-area-inset-bottom, 0px) + 142px));
-  }
-
   .app-toast-region {
-    inset-block-start: max(12px, env(safe-area-inset-top, 0px));
+    inset-block-end: max(46px, calc(env(safe-area-inset-bottom, 0px) + 46px));
     inset-inline: 12px;
     width: auto;
+    max-height: calc(100dvh - 58px - env(safe-area-inset-bottom, 0px));
   }
 
   .app-toast {

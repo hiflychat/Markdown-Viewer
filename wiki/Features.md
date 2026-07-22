@@ -248,8 +248,8 @@ Media insertion:
 
 Application feedback:
 
-- GitHub imports and media uploads use compact progress toasts with item counts, status details, and a progress bar.
-- User-facing errors, warnings, and informational alerts use the same accessible toast surface instead of blocking browser alert dialogs.
+- GitHub imports, media uploads, and general notifications use one shared bottom-corner toast position. Progress toasts include item counts, status details, and a progress bar.
+- User-facing errors, warnings, and informational alerts use the same accessible toast surface instead of blocking browser alert dialogs. Unsupported files use a red alert icon, a "File not supported" title, and format or size recovery guidance.
 - Toasts include text and Lucide icons rather than relying on color alone, and respect reduced-motion preferences.
 
 GitHub import:

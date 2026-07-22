@@ -9593,7 +9593,8 @@ ${selector} .arrowheadPath {
     if (existing) {
       existing.remove();
     }
-    while (region.children.length >= 4) region.firstElementChild.remove();
+    const activeToasts = Array.from(region.querySelectorAll('.app-toast'));
+    while (activeToasts.length >= 4) activeToasts.shift().remove();
 
     const toast = document.createElement('section');
     toast.className = 'app-toast';
@@ -9606,12 +9607,12 @@ ${selector} .arrowheadPath {
     iconShell.className = 'app-toast-icon-shell';
     iconShell.setAttribute('aria-hidden', 'true');
     const icon = document.createElement('i');
-    icon.className = 'lucide ' + ({
+    icon.className = 'lucide ' + (settings.icon || ({
       error: 'lucide-circle-alert',
       warning: 'lucide-triangle-alert',
       success: 'lucide-circle-check',
       info: 'lucide-info'
-    }[tone] || 'lucide-info');
+    }[tone] || 'lucide-info'));
     iconShell.appendChild(icon);
 
     const copy = document.createElement('div');
@@ -9707,6 +9708,19 @@ ${selector} .arrowheadPath {
         onDismiss: function() { finish(false); }
       });
     });
+  }
+
+  function showUnsupportedFileToast(message) {
+    return showAppToast(
+      message || 'This file type is not supported. Use Markdown, image, GIF, MP4, WebM, or Ogg files.',
+      {
+        title: 'File not supported',
+        tone: 'error',
+        icon: 'lucide-triangle-alert',
+        dedupeKey: 'unsupported-file:' + String(message || 'generic'),
+        duration: 5200
+      }
+    );
   }
 
   function showImportProgress(total, options) {
@@ -9826,7 +9840,7 @@ ${selector} .arrowheadPath {
       }
 
       if (file.size > 10 * 1024 * 1024) {
-        alert('File is too large (maximum 10MB supported).');
+        showUnsupportedFileToast('This Markdown file is too large. The maximum supported size is 10 MB.');
         resolve(false);
         return;
       }
@@ -9839,7 +9853,7 @@ ${selector} .arrowheadPath {
         const checkLength = Math.min(text.length, 8000);
         for (let i = 0; i < checkLength; i++) {
           if (text.charCodeAt(i) === 0) {
-            alert('Cannot import: The selected file appears to be a binary file.');
+            showUnsupportedFileToast('This file appears to be binary. Choose a Markdown file (.md or .markdown).');
             resolve(false);
             return;
           }
@@ -9862,9 +9876,12 @@ ${selector} .arrowheadPath {
 
     if (!markdownFiles.length) {
       if (settings.showInvalidAlert !== false) {
-        alert("Please upload Markdown files (.md or .markdown)");
+        showUnsupportedFileToast('Choose a Markdown file (.md or .markdown).');
       }
       return 0;
+    }
+    if (markdownFiles.length !== files.length && settings.showInvalidAlert !== false) {
+      showUnsupportedFileToast('Some files were skipped. Choose Markdown files (.md or .markdown).');
     }
 
     const remainingCapacity = Math.max(0, MAX_DOCUMENTS - getDocumentCountForLimit());
@@ -11031,7 +11048,11 @@ ${selector} .arrowheadPath {
 
   async function insertImageFilesIntoEditor(fileList, options) {
     const settings = options || {};
-    const mediaFiles = Array.from(fileList || []).filter(isMediaFile);
+    const suppliedFiles = Array.from(fileList || []);
+    const mediaFiles = suppliedFiles.filter(isMediaFile);
+    if (mediaFiles.length !== suppliedFiles.length) {
+      showUnsupportedFileToast('Choose an image, GIF, MP4, WebM, or Ogg video file.');
+    }
     if (!mediaFiles.length) return 0;
     if (!hasActiveOpenDocument() || !canMutateEditor()) {
       announceToScreenReader(getEditorReadOnlyMessage());
@@ -11039,10 +11060,13 @@ ${selector} .arrowheadPath {
     }
 
     const acceptedFiles = mediaFiles.filter(function(file) {
-      return !Number.isFinite(file.size) || file.size <= MAX_LOCAL_IMAGE_BYTES;
+      if (!Number.isFinite(file.size)) return true;
+      if (isVideoFile(file)) return file.size <= MANAGED_VIDEO_MAX_BYTES;
+      if (getEmbeddedRasterMime(file) === 'image/gif') return file.size <= MANAGED_GIF_MAX_BYTES;
+      return file.size <= MAX_LOCAL_IMAGE_BYTES;
     });
     if (acceptedFiles.length !== mediaFiles.length) {
-      alert('Media files larger than 25MB cannot be inserted.');
+      showUnsupportedFileToast('This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.');
     }
     if (!acceptedFiles.length) return 0;
     if (!(await requestManagedImageUploadConsent())) {
@@ -16164,7 +16188,12 @@ ${selector} .arrowheadPath {
     const itemFiles = Array.from(clipboard.items || []).map(function(item) {
       return item.kind === 'file' ? item.getAsFile() : null;
     }).filter(Boolean);
-    const mediaFiles = (itemFiles.length ? itemFiles : Array.from(clipboard.files || [])).filter(isMediaFile);
+    const clipboardFiles = itemFiles.length ? itemFiles : Array.from(clipboard.files || []);
+    const mediaFiles = clipboardFiles.filter(isMediaFile);
+    if (clipboardFiles.length !== mediaFiles.length) {
+      event.preventDefault();
+      showUnsupportedFileToast('Clipboard files must be an image, GIF, MP4, WebM, or Ogg video.');
+    }
     if (!mediaFiles.length) return;
     event.preventDefault();
     if (!canMutateEditor()) {
@@ -21040,7 +21069,14 @@ ${selector} .arrowheadPath {
     const files = Array.from(fileList || []);
     const imageFiles = files.filter(isMediaFile);
     const markdownFiles = files.filter(isMarkdownFile);
+    const supportedFileCount = files.filter(function(file) {
+      return isMediaFile(file) || isMarkdownFile(file);
+    }).length;
     let handledCount = 0;
+
+    if (supportedFileCount !== files.length) {
+      showUnsupportedFileToast('Dropped files must be Markdown, image, GIF, MP4, WebM, or Ogg files.');
+    }
 
     if (imageFiles.length) {
       const insertedCount = await insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
@@ -21054,9 +21090,6 @@ ${selector} .arrowheadPath {
         location: settings.location || { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null },
         showInvalidAlert: false
       });
-    }
-    if (!imageFiles.length && !markdownFiles.length) {
-      alert('Drop Markdown files, images, GIFs, or videos to add them.');
     }
     return handledCount;
   }
