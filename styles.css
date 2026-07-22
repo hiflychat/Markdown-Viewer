@@ -1085,11 +1085,11 @@ body.document-sidebar-collapsed .document-sidebar {
 .import-progress-icon-shell {
   flex: 0 0 auto;
   display: inline-flex;
-  align-self: center;
   align-items: center;
   justify-content: center;
   width: 34px;
   height: 34px;
+  margin-block-start: 1px;
   border-radius: 9px;
   background: color-mix(in srgb, var(--accent-color) 11%, transparent);
   color: var(--accent-color);
@@ -1222,7 +1222,6 @@ body.document-sidebar-collapsed .document-sidebar {
   display: inline-flex;
   width: 34px;
   height: 34px;
-  align-self: center;
   align-items: center;
   justify-content: center;
   border-radius: 9px;
