@@ -358,7 +358,6 @@
   "Folder renamed": "Pasta renomeada",
   "Folder renamed to": "Pasta renomeada para\npasta",
   "folders": "pastas",
-  "Folders stay one level deep inside a workspace.": "As pastas ficam um nível dentro de uma área de trabalho.",
   "Folk & Lyrics": "Folclore e Letras",
   "for this block.": "para este bloco.",
   "Forgot access key? Reset Secret Workspace": "Esqueceu a chave de acesso? Redefinir espaço de trabalho secreto",
@@ -1025,8 +1024,6 @@
   "MD": "Médico",
   "Open an editable Markdown file before inserting images.": "Abra um arquivo Markdown editável antes de inserir imagens.",
   "uploaded and inserted with short links.": "carregado e inserido com links curtos.",
-  "Mermaid diagram": "Diagrama de sereia",
-  "Mermaid diagram actions": "Ações do diagrama sereia",
   "\" aria-label=\"": "\"aria-label=\"",
   "cancel": "cancelar",
   "Description": "Descrição",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Alguns arquivos foram ignorados. Escolha arquivos Markdown (.md ou .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Este arquivo parece ser binário. Escolha um arquivo Markdown (.md ou .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Este arquivo Markdown é muito grande. O tamanho máximo suportado é 10 MB.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Este arquivo de mídia excede o limite suportado: imagens estáticas 25 MB antes da otimização, GIFs 5 MB e vídeos 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Este arquivo de mídia excede o limite suportado: imagens estáticas 25 MB antes da otimização, GIFs 5 MB e vídeos 10 MB.",
+  "Create a folder inside": "Crie uma pasta dentro",
+  "Create a folder inside this workspace.": "Crie uma pasta dentro deste espaço de trabalho."
 }

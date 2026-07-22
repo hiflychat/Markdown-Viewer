@@ -358,7 +358,6 @@
   "Folder renamed": "フォルダーの名前が変更されました",
   "Folder renamed to": "フォルダーの名前が変更されました",
   "folders": "フォルダー",
-  "Folders stay one level deep inside a workspace.": "フォルダーはワークスペース内の 1 レベル奥に留まります。",
   "Folk & Lyrics": "フォーク＆リリック\nこのブロックの",
   "for this block.": "。",
   "Forgot access key? Reset Secret Workspace": "アクセスキーをお忘れですか?シークレットワークスペースをリセット",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "画像を挿入する前に、編集可能な Markdown ファイルを開いてください。",
   "uploaded and inserted with short links.": "がアップロードされ、短いリンクが挿入されました。",
-  "Mermaid diagram": "マーメイドダイアグラム",
-  "Mermaid diagram actions": "マーメイドダイアグラムのアクション",
   "\" aria-label=\"": "\" aria-label=\"",
   "cancel": "キャンセル",
   "Description": "説明",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "一部のファイルがスキップされました。 Markdown ファイル (.md または .markdown) を選択します。",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "このファイルはバイナリのようです。 Markdown ファイル (.md または .markdown) を選択します。",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "この Markdown ファイルは大きすぎます。サポートされる最大サイズは 10 MB です。",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "このメディア ファイルはサポートされている制限を超えています: 最適化前の静止画は 25 MB、GIF は 5 MB、ビデオは 10 MB です。"
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "このメディア ファイルはサポートされている制限を超えています: 最適化前の静止画は 25 MB、GIF は 5 MB、ビデオは 10 MB です。",
+  "Create a folder inside": "内にフォルダーを作成",
+  "Create a folder inside this workspace.": "このワークスペース内にフォルダーを作成します。"
 }

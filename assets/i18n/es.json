@@ -358,7 +358,6 @@
   "Folder renamed": "Carpeta renombrada",
   "Folder renamed to": "Carpeta renombrada a\ncarpeta",
   "folders": "carpetas",
-  "Folders stay one level deep inside a workspace.": "Las carpetas permanecen en un nivel de profundidad dentro de un espacio de trabajo.",
   "Folk & Lyrics": "Folk y letras",
   "for this block.": "para este bloque.",
   "Forgot access key? Reset Secret Workspace": "¿Olvidaste la clave de acceso? Restablecer el espacio de trabajo secreto",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Abra un archivo Markdown editable antes de insertar imágenes.",
   "uploaded and inserted with short links.": "subido e insertado con enlaces cortos.",
-  "Mermaid diagram": "Diagrama de sirena",
-  "Mermaid diagram actions": "Acciones del diagrama de sirena",
   "\" aria-label=\"": "\"aria-label=\"",
   "cancel": "cancelar",
   "Description": "Descripción",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Se omitieron algunos archivos. Elija archivos Markdown (.md o .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Este archivo parece ser binario. Elija un archivo Markdown (.md o .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Este archivo Markdown es demasiado grande. El tamaño máximo admitido es 10 MB.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Este archivo multimedia excede el límite admitido: imágenes fijas 25 MB antes de la optimización, GIF 5 MB y videos 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Este archivo multimedia excede el límite admitido: imágenes fijas 25 MB antes de la optimización, GIF 5 MB y videos 10 MB.",
+  "Create a folder inside": "Crea una carpeta dentro",
+  "Create a folder inside this workspace.": "Crea una carpeta dentro de este espacio de trabajo."
 }

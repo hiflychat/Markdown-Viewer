@@ -358,7 +358,6 @@
   "Folder renamed": "폴더 이름이 변경되었습니다.",
   "Folder renamed to": "폴더 이름이 다음으로 변경되었습니다.",
   "folders": "폴더",
-  "Folders stay one level deep inside a workspace.": "폴더는 작업 공간 내부의 한 수준 깊이에 유지됩니다.",
   "Folk & Lyrics": "포크 & 가사\n이 블록에 대한",
   "for this block.": "입니다.",
   "Forgot access key? Reset Secret Workspace": "접속키를 잊으셨나요? 비밀 작업 공간 재설정",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "이미지를 삽입하기 전에 편집 가능한 Markdown 파일을 엽니다.",
   "uploaded and inserted with short links.": "짧은 링크와 함께 업로드 및 삽입되었습니다.",
-  "Mermaid diagram": "인어 다이어그램",
-  "Mermaid diagram actions": "인어 다이어그램 액션",
   "\" aria-label=\"": "\" 아리아-라벨=\"",
   "cancel": "취소",
   "Description": "설명",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "일부 파일을 건너뛰었습니다. Markdown 파일(.md 또는 .markdown)을 선택합니다.",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "이 파일은 바이너리인 것 같습니다. Markdown 파일(.md 또는 .markdown)을 선택합니다.",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "이 Markdown 파일이 너무 큽니다. 지원되는 최대 크기는 10MB입니다.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "이 미디어 파일은 지원되는 제한(최적화 전 정지 이미지 25MB, GIF 5MB, 비디오 10MB)을 초과합니다."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "이 미디어 파일은 지원되는 제한(최적화 전 정지 이미지 25MB, GIF 5MB, 비디오 10MB)을 초과합니다.",
+  "Create a folder inside": "폴더를 생성하세요",
+  "Create a folder inside this workspace.": "이 작업 공간 내에 폴더를 만듭니다."
 }

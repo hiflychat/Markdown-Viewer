@@ -358,7 +358,6 @@
   "Folder renamed": "Zmieniono nazwę folderu",
   "Folder renamed to": "Zmieniono nazwę folderu na\nfolderze",
   "folders": "foldery",
-  "Folders stay one level deep inside a workspace.": "Foldery pozostają jeden poziom głęboko w obszarze roboczym.",
   "Folk & Lyrics": "Folk i teksty",
   "for this block.": "dla tego bloku.",
   "Forgot access key? Reset Secret Workspace": "Zapomniałeś klucza dostępu? Zresetuj tajny obszar roboczy",
@@ -1025,8 +1024,6 @@
   "MD": "Lek",
   "Open an editable Markdown file before inserting images.": "Otwórz edytowalny plik Markdown przed wstawieniem obrazów.",
   "uploaded and inserted with short links.": "przesłano i wstawiono z krótkimi linkami.",
-  "Mermaid diagram": "Schemat syreny",
-  "Mermaid diagram actions": "Działania na diagramie syreny",
   "\" aria-label=\"": "\" aria-label=\"",
   "cancel": "anuluj",
   "Description": "Opis",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Niektóre pliki zostały pominięte. Wybierz pliki Markdown (.md lub .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Ten plik wygląda na binarny. Wybierz plik Markdown (.md lub .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Ten plik Markdown jest za duży. Maksymalny obsługiwany rozmiar to 10 MB.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Ten plik multimedialny przekracza obsługiwany limit: zdjęcia 25 MB przed optymalizacją, pliki GIF 5 MB i filmy 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Ten plik multimedialny przekracza obsługiwany limit: zdjęcia 25 MB przed optymalizacją, pliki GIF 5 MB i filmy 10 MB.",
+  "Create a folder inside": "Utwórz folder w środku",
+  "Create a folder inside this workspace.": "Utwórz folder w tym obszarze roboczym."
 }

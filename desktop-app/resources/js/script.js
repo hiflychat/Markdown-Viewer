@@ -2488,7 +2488,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const UNTITLED_COUNTER_KEY = 'markdownViewerUntitledCounter';
   const DOCUMENT_ORGANIZATION_KEY = 'markdownViewerDocumentOrganization';
   const SECRET_WORKSPACE_STORAGE_KEY = 'markdownViewerSecretWorkspace';
-  const DOCUMENT_ORGANIZATION_VERSION = 2;
+  const DOCUMENT_ORGANIZATION_VERSION = 3;
   const SECRET_WORKSPACE_VERSION = 1;
   const SECRET_KDF_ITERATIONS = 250000;
   const MAX_DOCUMENTS = 50;
@@ -2591,11 +2591,31 @@ document.addEventListener("DOMContentLoaded", async function () {
       return {
         id: id,
         workspaceId: workspaceId,
+        parentFolderId: String(folder.parentFolderId || '').slice(0, 120) || null,
         name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
         expanded: folder.expanded !== false,
         createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
       };
     }).filter(Boolean);
+
+    const foldersById = new Map(folders.map(function(folder) { return [folder.id, folder]; }));
+    folders.forEach(function(folder) {
+      const parent = foldersById.get(folder.parentFolderId);
+      if (!parent || parent.workspaceId !== folder.workspaceId || parent.id === folder.id) {
+        folder.parentFolderId = null;
+        return;
+      }
+      const visited = new Set([folder.id]);
+      let ancestor = parent;
+      while (ancestor) {
+        if (visited.has(ancestor.id)) {
+          folder.parentFolderId = null;
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = foldersById.get(ancestor.parentFolderId);
+      }
+    });
 
     const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
     const allowedFilters = new Set(['all', 'recent', 'favorites']);
@@ -2824,10 +2844,32 @@ document.addEventListener("DOMContentLoaded", async function () {
       documentOrganization.folders.push({
         id: id,
         workspaceId: SECRET_WORKSPACE_ID,
+        parentFolderId: String(folder.parentFolderId || '').slice(0, 120) || null,
         name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
         expanded: folder.expanded !== false,
         createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
       });
+    });
+
+    const secretFoldersById = new Map(documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(folder) { return [folder.id, folder]; }));
+    secretFoldersById.forEach(function(folder) {
+      const parent = secretFoldersById.get(folder.parentFolderId);
+      if (!parent || parent.id === folder.id) {
+        folder.parentFolderId = null;
+        return;
+      }
+      const visited = new Set([folder.id]);
+      let ancestor = parent;
+      while (ancestor) {
+        if (visited.has(ancestor.id)) {
+          folder.parentFolderId = null;
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = secretFoldersById.get(ancestor.parentFolderId);
+      }
     });
 
     const existingTabIds = new Set(tabs.map(function(tab) { return tab.id; }));
@@ -3132,19 +3174,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
   }
 
-  function ensureWorkspaceFolder(workspaceId, folderName) {
+  function ensureWorkspaceFolder(workspaceId, folderName, parentFolderId) {
     if (!documentOrganization) return null;
     const workspace = getWorkspaceById(workspaceId);
     const normalizedName = String(folderName || '').trim();
     if (!workspace || !normalizedName) return null;
 
+    const parent = getFolderById(parentFolderId);
+    const normalizedParentId = parent && parent.workspaceId === workspace.id ? parent.id : null;
     let folder = documentOrganization.folders.find(function(item) {
-      return item.workspaceId === workspace.id && String(item.name || '').trim().toLowerCase() === normalizedName.toLowerCase();
+      return item.workspaceId === workspace.id
+        && (item.parentFolderId || null) === normalizedParentId
+        && String(item.name || '').trim().toLowerCase() === normalizedName.toLowerCase();
     });
     if (!folder) {
       folder = {
         id: createDocumentEntityId('folder'),
         workspaceId: workspace.id,
+        parentFolderId: normalizedParentId,
         name: normalizedName,
         expanded: true,
         createdAt: Date.now()
@@ -3155,11 +3202,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     workspace.expanded = true;
+    getFolderAncestors(folder.id).forEach(function(ancestor) { ancestor.expanded = true; });
     documentOrganization.ui.lastWorkspaceId = workspace.id;
     documentOrganization.ui.lastFolderId = folder.id;
     saveDocumentOrganization();
     renderDocumentSidebar();
     return folder;
+  }
+
+  function getFolderAncestors(folderId) {
+    const ancestors = [];
+    const visited = new Set();
+    let folder = getFolderById(folderId);
+    while (folder && !visited.has(folder.id)) {
+      ancestors.unshift(folder);
+      visited.add(folder.id);
+      folder = getFolderById(folder.parentFolderId);
+    }
+    return ancestors;
+  }
+
+  function getFolderDescendantIds(folderIds) {
+    const descendantIds = new Set(folderIds || []);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      documentOrganization.folders.forEach(function(folder) {
+        if (!descendantIds.has(folder.id) && descendantIds.has(folder.parentFolderId)) {
+          descendantIds.add(folder.id);
+          changed = true;
+        }
+      });
+    }
+    return descendantIds;
+  }
+
+  function getFolderPath(folderId) {
+    return getFolderAncestors(folderId).map(function(folder) { return folder.name; }).join(' / ');
   }
 
   function normalizeTabDocumentMetadata(tab, options) {
@@ -3209,6 +3288,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentOrganization.ui.lastFolderId = tab.folderId;
     workspace.expanded = true;
     if (folder) folder.expanded = true;
+    if (folder) getFolderAncestors(folder.id).forEach(function(ancestor) { ancestor.expanded = true; });
     saveDocumentOrganization();
     return true;
   }
@@ -3329,30 +3409,35 @@ document.addEventListener("DOMContentLoaded", async function () {
     openAppModal(modal, { focusTarget: cancelButton, onClose: cancel });
   }
 
-  function createFolder(workspaceId) {
+  function createFolder(workspaceId, parentFolderId) {
     const workspace = getWorkspaceById(workspaceId);
     if (!workspace) return;
+    const parentFolder = getFolderById(parentFolderId);
+    const normalizedParentId = parentFolder && parentFolder.workspaceId === workspaceId ? parentFolder.id : null;
     if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
-      withUnlockedSecretWorkspace(function() { createFolder(workspaceId); });
+      withUnlockedSecretWorkspace(function() { createFolder(workspaceId, parentFolderId); });
       return;
     }
     openDocumentNameDialog({
       title: 'Create folder',
-      description: 'Folders stay one level deep inside a workspace.',
+      description: normalizedParentId ? 'Create a folder inside ' + getFolderPath(normalizedParentId) + '.' : 'Create a folder inside this workspace.',
       label: 'Folder name',
       placeholder: 'Research',
       confirmText: 'Create folder',
       validate: function(value) {
         if (!value) return 'Enter a folder name.';
         if (documentOrganization.folders.some(function(folder) {
-          return folder.workspaceId === workspaceId && folder.name.toLowerCase() === value.toLowerCase();
-        })) return 'A folder with this name already exists in the workspace.';
+          return folder.workspaceId === workspaceId
+            && (folder.parentFolderId || null) === normalizedParentId
+            && folder.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in this location.';
         return '';
       },
       onConfirm: function(value) {
         const folder = {
           id: createDocumentEntityId('folder'),
           workspaceId: workspaceId,
+          parentFolderId: normalizedParentId,
           name: value,
           expanded: true,
           createdAt: Date.now()
@@ -3379,8 +3464,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       validate: function(value) {
         if (!value) return 'Enter a folder name.';
         if (documentOrganization.folders.some(function(item) {
-          return item.id !== folderId && item.workspaceId === folder.workspaceId && item.name.toLowerCase() === value.toLowerCase();
-        })) return 'A folder with this name already exists in the workspace.';
+          return item.id !== folderId
+            && item.workspaceId === folder.workspaceId
+            && (item.parentFolderId || null) === (folder.parentFolderId || null)
+            && item.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in this location.';
         return '';
       },
       onConfirm: function(value) {
@@ -3395,17 +3483,18 @@ document.addEventListener("DOMContentLoaded", async function () {
   function deleteFolder(folderId) {
     const folder = getFolderById(folderId);
     if (!folder) return;
-    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.folderId === folderId; });
+    const folderIds = getFolderDescendantIds([folderId]);
+    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && folderIds.has(tab.folderId); });
     openDocumentConfirmation({
       title: 'Delete folder?',
       description: documents.length
-        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' will move to the workspace root so no content is lost.'
-        : 'This empty folder will be removed.',
+        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' in this folder tree will move to the workspace root so no content is lost.'
+        : 'This empty folder tree will be removed.',
       confirmText: 'Delete folder',
       onConfirm: function() {
         documents.forEach(function(tab) { tab.folderId = null; });
-        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return item.id !== folderId; });
-        if (documentOrganization.ui.lastFolderId === folderId) documentOrganization.ui.lastFolderId = null;
+        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return !folderIds.has(item.id); });
+        if (folderIds.has(documentOrganization.ui.lastFolderId)) documentOrganization.ui.lastFolderId = null;
         saveDocumentOrganization();
         saveTabsToStorage(tabs);
         renderTabBar(tabs, activeTabId);
@@ -3436,10 +3525,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (locked) return;
       documentOrganization.folders.filter(function(folder) {
         return folder.workspaceId === workspace.id;
+      }).sort(function(left, right) {
+        return getFolderPath(left.id).localeCompare(getFolderPath(right.id));
       }).forEach(function(folder) {
         const option = document.createElement('option');
         option.value = workspace.id + '|' + folder.id;
-        option.textContent = workspace.name + ' / ' + folder.name;
+        option.textContent = workspace.name + ' / ' + getFolderPath(folder.id);
         select.appendChild(option);
       });
     });
@@ -3788,7 +3879,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getFolderMenuActions(folder) {
     return [
       { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
-      { id: 'new-folder', icon: 'lucide-folder-plus', label: 'New folder', run: function() { createFolder(folder.workspaceId); } },
+      { id: 'new-folder', icon: 'lucide-folder-plus', label: 'New folder', run: function() { createFolder(folder.workspaceId, folder.id); } },
       { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
       { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
@@ -3835,13 +3926,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const entities = getSelectedDocumentTreeEntities();
     if (entities.length < 2) return;
     const documentIds = entities.filter(function(entity) { return entity.type === 'document'; }).map(function(entity) { return entity.id; });
-    const folderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const selectedFolderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const folderIds = getFolderDescendantIds(selectedFolderIds);
     const movedDocumentCount = tabs.filter(function(tab) {
       return !isTemporaryDocument(tab) && folderIds.has(tab.folderId) && !documentIds.includes(tab.id);
     }).length;
     const consequences = [];
     if (documentIds.length) consequences.push('permanently deletes ' + documentIds.length + ' file' + (documentIds.length === 1 ? '' : 's'));
-    if (folderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
+    if (selectedFolderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
     let description = 'This ' + consequences.join(' and ') + '.';
     if (movedDocumentCount) {
       description += ' ' + movedDocumentCount + ' file' + (movedDocumentCount === 1 ? '' : 's') + ' inside selected folders will move to the workspace root.';
@@ -4290,7 +4382,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getDocumentLocationLabel(tab) {
     const workspace = getWorkspaceById(tab.workspaceId);
     const folder = getFolderById(tab.folderId);
-    if (folder && workspace) return workspace.name + ' / ' + folder.name;
+    if (folder && workspace) return workspace.name + ' / ' + getFolderPath(folder.id);
     return workspace ? workspace.name : 'Workspace';
   }
 
@@ -4385,17 +4477,24 @@ document.addEventListener("DOMContentLoaded", async function () {
       workspaceGroup.setAttribute('role', 'group');
       workspaceGroup.hidden = !expanded;
 
-      folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); }).forEach(function(folder) {
+      const sortedFolders = folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); });
+      const folderSubtreeMatches = function(folder) {
         const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
-        const folderMatchesSearch = !documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
-        if (documentSidebarSearch && !folderMatchesSearch && !folderDocuments.length) return;
+        if (!documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase()) || folderDocuments.length) return true;
+        return sortedFolders.some(function(child) {
+          return child.parentFolderId === folder.id && folderSubtreeMatches(child);
+        });
+      };
+      const appendFolderBranch = function(folder, container, depth) {
+        const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
+        if (!folderSubtreeMatches(folder)) return;
         const folderExpanded = documentSidebarSearch ? true : folder.expanded !== false;
         const folderRow = createDocumentTreeRow({
           type: 'folder',
           id: folder.id,
           label: folder.name,
           icon: folderExpanded ? 'lucide-folder-open' : 'lucide-folder',
-          depth: 1,
+          depth: depth,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
           dropLocation: { workspaceId: workspace.id, folderId: folder.id },
@@ -4413,16 +4512,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             renderDocumentSidebar();
           }
         });
-        workspaceGroup.appendChild(folderRow);
+        container.appendChild(folderRow);
         const folderGroup = document.createElement('div');
         folderGroup.className = 'document-tree-group document-tree-group--folder';
         folderGroup.setAttribute('role', 'group');
         folderGroup.hidden = !folderExpanded;
+        sortedFolders.filter(function(child) { return child.parentFolderId === folder.id; }).forEach(function(child) {
+          appendFolderBranch(child, folderGroup, depth + 1);
+        });
         folderDocuments.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); }).forEach(function(tab) {
-          appendDocumentTreeItem(folderGroup, tab, 2);
+          appendDocumentTreeItem(folderGroup, tab, depth + 1);
           renderedDocuments++;
         });
-        workspaceGroup.appendChild(folderGroup);
+        container.appendChild(folderGroup);
+      };
+      sortedFolders.filter(function(folder) { return !folder.parentFolderId; }).forEach(function(folder) {
+        appendFolderBranch(folder, workspaceGroup, 1);
       });
 
       matchingDocuments.filter(function(tab) { return !tab.folderId; }).sort(function(left, right) {
@@ -9931,6 +10036,16 @@ ${selector} .arrowheadPath {
     return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(ref)}/${encodedPath}`;
   }
 
+  function ensureGitHubFolderPath(workspaceId, repositoryFolder, filePath) {
+    const directorySegments = String(filePath || '').split('/').filter(Boolean);
+    directorySegments.pop();
+    let parentFolder = repositoryFolder;
+    directorySegments.forEach(function(segment) {
+      parentFolder = ensureWorkspaceFolder(workspaceId, segment, parentFolder && parentFolder.id);
+    });
+    return parentFolder || repositoryFolder;
+  }
+
   async function importGitHubFilesInBackground(owner, repo, ref, filePaths) {
     const paths = Array.from(filePaths || []).filter(Boolean);
     if (!paths.length) return 0;
@@ -9943,7 +10058,6 @@ ${selector} .arrowheadPath {
       return 0;
     }
 
-    const destination = { workspaceId: DEFAULT_WORKSPACE_ID, folderId: folder.id };
     showImportProgress(paths.length, {
       title: 'Importing from GitHub',
       detail: 'Saving to Workspace / ' + folder.name
@@ -9955,6 +10069,8 @@ ${selector} .arrowheadPath {
       updateImportProgress(index, paths.length, 'Importing ' + getFileName(filePath));
       try {
         const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, filePath));
+        const destinationFolder = ensureGitHubFolderPath(DEFAULT_WORKSPACE_ID, folder, filePath);
+        const destination = { workspaceId: DEFAULT_WORKSPACE_ID, folderId: destinationFolder.id };
         if (newTab(markdown, getFileName(filePath).replace(/\.(md|markdown)$/i, ''), destination)) {
           imported++;
         }
@@ -10189,7 +10305,9 @@ ${selector} .arrowheadPath {
       githubImportSubmitBtn.dataset.loadingText = githubImportSubmitBtn.textContent;
       githubImportSubmitBtn.textContent = "Importing...";
     } else if (githubImportSubmitBtn.dataset.loadingText) {
-      githubImportSubmitBtn.textContent = githubImportSubmitBtn.dataset.loadingText;
+      githubImportSubmitBtn.textContent = githubImportSubmitBtn.dataset.step === "select"
+        ? "Import Selected"
+        : githubImportSubmitBtn.dataset.loadingText;
       delete githubImportSubmitBtn.dataset.loadingText;
     }
   }
@@ -16188,6 +16306,7 @@ ${selector} .arrowheadPath {
     const itemFiles = Array.from(clipboard.items || []).map(function(item) {
       return item.kind === 'file' ? item.getAsFile() : null;
     }).filter(Boolean);
+
     const clipboardFiles = itemFiles.length ? itemFiles : Array.from(clipboard.files || []);
     const mediaFiles = clipboardFiles.filter(isMediaFile);
     if (clipboardFiles.length !== mediaFiles.length) {

@@ -358,7 +358,6 @@
   "Folder renamed": "Папка переименована",
   "Folder renamed to": "Папка переименована в",
   "folders": "Папки",
-  "Folders stay one level deep inside a workspace.": "Папки располагаются на одном уровне внутри рабочей области.",
   "Folk & Lyrics": "Фолк и тексты песен",
   "for this block.": "для этого блока.",
   "Forgot access key? Reset Secret Workspace": "Забыли ключ доступа? Сбросить секретное рабочее пространство",
@@ -1025,8 +1024,6 @@
   "MD": "Доктор медицины",
   "Open an editable Markdown file before inserting images.": "Прежде чем вставлять изображения, откройте редактируемый файл Markdown.",
   "uploaded and inserted with short links.": "загружено и вставлено с короткими ссылками.",
-  "Mermaid diagram": "Схема русалки",
-  "Mermaid diagram actions": "Действия на диаграмме русалки",
   "\" aria-label=\"": "\" aria-label=\"",
   "cancel": "отменить",
   "Description": "Описание",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Некоторые файлы были пропущены. Выберите файлы Markdown (.md или .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Этот файл выглядит двоичным. Выберите файл Markdown (.md или .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Этот файл Markdown слишком велик. Максимальный поддерживаемый размер — 10 МБ.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Этот медиафайл превышает поддерживаемый лимит: неподвижные изображения 25 МБ до оптимизации, GIF-файлы 5 МБ и видео 10 МБ."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Этот медиафайл превышает поддерживаемый лимит: неподвижные изображения 25 МБ до оптимизации, GIF-файлы 5 МБ и видео 10 МБ.",
+  "Create a folder inside": "Создайте папку внутри",
+  "Create a folder inside this workspace.": "Создайте папку внутри этого рабочего пространства."
 }

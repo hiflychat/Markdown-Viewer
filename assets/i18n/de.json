@@ -358,7 +358,6 @@
   "Folder renamed": "Ordner umbenannt",
   "Folder renamed to": "Ordner umbenannt in",
   "folders": "-Ordner",
-  "Folders stay one level deep inside a workspace.": "Ordner bleiben eine Ebene tief in einem Arbeitsbereich.",
   "Folk & Lyrics": "Folk & Texte",
   "for this block.": "für diesen Block.",
   "Forgot access key? Reset Secret Workspace": "Zugangsschlüssel vergessen? Geheimen Arbeitsbereich zurücksetzen",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Öffnen Sie eine bearbeitbare Markdown-Datei, bevor Sie Bilder einfügen.",
   "uploaded and inserted with short links.": "hochgeladen und mit Kurzlinks eingefügt.",
-  "Mermaid diagram": "Meerjungfrau-Diagramm",
-  "Mermaid diagram actions": "Meerjungfrau-Diagrammaktionen",
   "\" aria-label=\"": "\" aria-label=\"",
   "cancel": "abbrechen",
   "Description": "Beschreibung",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Einige Dateien wurden übersprungen. Wählen Sie Markdown-Dateien (.md oder .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Diese Datei scheint binär zu sein. Wählen Sie eine Markdown-Datei (.md oder .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Diese Markdown-Datei ist zu groß. Die maximal unterstützte Größe beträgt 10 MB.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Diese Mediendatei überschreitet den unterstützten Grenzwert: Standbilder 25 MB vor der Optimierung, GIFs 5 MB und Videos 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Diese Mediendatei überschreitet den unterstützten Grenzwert: Standbilder 25 MB vor der Optimierung, GIFs 5 MB und Videos 10 MB.",
+  "Create a folder inside": "Erstellen Sie darin einen Ordner",
+  "Create a folder inside this workspace.": "Erstellen Sie einen Ordner in diesem Arbeitsbereich."
 }

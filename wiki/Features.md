@@ -258,6 +258,7 @@ GitHub import:
 - Direct Markdown file URLs import immediately.
 - Repository or folder URLs query GitHub's public API to find Markdown files.
 - The modal shows a tree and supports selecting multiple files.
+- Imports create a repository-named folder and reproduce each selected file's nested GitHub directory path inside it.
 - Only the first 30 Markdown files are shown if a repository contains more.
 - Requests are rate-limited by the app to avoid hammering GitHub.
 - Selected files are fetched as raw content and opened as separate tabs.

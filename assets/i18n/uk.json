@@ -358,7 +358,6 @@
   "Folder renamed": "Папку перейменовано",
   "Folder renamed to": "Папку перейменовано на\nпапку",
   "folders": ".",
-  "Folders stay one level deep inside a workspace.": "Папки знаходяться на одному рівні всередині робочої області.",
   "Folk & Lyrics": "Фольк і лірика",
   "for this block.": "для цього блоку.",
   "Forgot access key? Reset Secret Workspace": "Забули ключ доступу? Скинути секретну робочу область",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Відкрийте редагований файл Markdown перед вставленням зображень.",
   "uploaded and inserted with short links.": "завантажено та вставлено з короткими посиланнями.",
-  "Mermaid diagram": "Діаграма русалки",
-  "Mermaid diagram actions": "Дії діаграми русалок",
   "\" aria-label=\"": "\"аріа-мітка=\"",
   "cancel": "скасувати",
   "Description": "Опис",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Деякі файли було пропущено. Виберіть файли Markdown (.md або .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Здається, цей файл двійковий. Виберіть файл Markdown (.md або .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Цей файл Markdown завеликий. Максимальний підтримуваний розмір становить 10 МБ.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Цей медіафайл перевищує підтримуваний ліміт: нерухомі зображення 25 МБ до оптимізації, GIF-файли 5 МБ і відео 10 МБ."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Цей медіафайл перевищує підтримуваний ліміт: нерухомі зображення 25 МБ до оптимізації, GIF-файли 5 МБ і відео 10 МБ.",
+  "Create a folder inside": "Створіть папку всередині",
+  "Create a folder inside this workspace.": "Створіть папку в цьому робочому просторі."
 }

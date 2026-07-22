@@ -358,7 +358,6 @@
   "Folder renamed": "文件夹已重命名",
   "Folder renamed to": "文件夹重命名为",
   "folders": "文件夹",
-  "Folders stay one level deep inside a workspace.": "文件夹保留在工作区深处的一层。",
   "Folk & Lyrics": "民谣和歌词",
   "for this block.": "该块。",
   "Forgot access key? Reset Secret Workspace": "忘记访问密钥？重置秘密工作空间",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "在插入图像之前打开可编辑的 Markdown 文件。",
   "uploaded and inserted with short links.": "已上传并插入短链接。",
-  "Mermaid diagram": "美人鱼图",
-  "Mermaid diagram actions": "人鱼图动作",
   "\" aria-label=\"": "“咏叹调标签=”",
   "cancel": "取消",
   "Description": "说明",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "一些文件被跳过。选择 Markdown 文件（.md 或 .markdown）。",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "该文件似乎是二进制文件。选择 Markdown 文件（.md 或 .markdown）。",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "此 Markdown 文件太大。支持的最大大小为 10 MB。",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "此媒体文件超出了支持的限制：优化前静态图像 25 MB、GIF 5 MB 和视频 10 MB。"
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "此媒体文件超出了支持的限制：优化前静态图像 25 MB、GIF 5 MB 和视频 10 MB。",
+  "Create a folder inside": "里面创建一个文件夹",
+  "Create a folder inside this workspace.": "在此工作区中创建一个文件夹。"
 }

@@ -358,7 +358,6 @@
   "Folder renamed": "Cartella rinominata",
   "Folder renamed to": "Cartella rinominata in\ncartella",
   "folders": "cartelle",
-  "Folders stay one level deep inside a workspace.": "Le cartelle rimangono ad un livello di profondità all'interno di uno spazio di lavoro.",
   "Folk & Lyrics": "Folk e testi",
   "for this block.": "per questo blocco.",
   "Forgot access key? Reset Secret Workspace": "Hai dimenticato la chiave di accesso? Reimposta l'area di lavoro segreta",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Apri un file modificabile Markdown prima di inserire le immagini.",
   "uploaded and inserted with short links.": "caricato e inserito con collegamenti brevi.",
-  "Mermaid diagram": "Schema della sirena",
-  "Mermaid diagram actions": "Azioni del diagramma della sirena",
   "\" aria-label=\"": "\" aria-etichetta=\"",
   "cancel": "annulla",
   "Description": "Descrizione",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Alcuni file sono stati saltati. Scegli i file Markdown (.md o .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Questo file sembra essere binario. Scegli un file Markdown (.md o .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Questo file Markdown è troppo grande. La dimensione massima supportata è 10 MB.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Questo file multimediale supera il limite supportato: immagini fisse 25 MB prima dell'ottimizzazione, GIF 5 MB e video 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Questo file multimediale supera il limite supportato: immagini fisse 25 MB prima dell'ottimizzazione, GIF 5 MB e video 10 MB.",
+  "Create a folder inside": "Crea una cartella al suo interno",
+  "Create a folder inside this workspace.": "Crea una cartella all'interno di questo spazio di lavoro."
 }

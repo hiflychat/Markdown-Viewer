@@ -358,7 +358,6 @@
   "Folder renamed": "Klasör yeniden adlandırıldı",
   "Folder renamed to": "Klasör şu şekilde yeniden adlandırıldı:",
   "folders": "klasörleri",
-  "Folders stay one level deep inside a workspace.": "Klasörler çalışma alanının bir seviye derinliğinde kalır.",
   "Folk & Lyrics": "Folk ve Şarkı Sözleri\nBu blok için",
   "for this block.": ".",
   "Forgot access key? Reset Secret Workspace": "Erişim anahtarınızı mı unuttunuz? Gizli Çalışma Alanını Sıfırla",
@@ -1025,8 +1024,6 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Görüntüleri eklemeden önce düzenlenebilir bir Markdown dosyasını açın.",
   "uploaded and inserted with short links.": "kısa bağlantılarla yüklendi ve eklendi.",
-  "Mermaid diagram": "Denizkızı diyagramı",
-  "Mermaid diagram actions": "Denizkızı diyagramı eylemleri",
   "\" aria-label=\"": "\" aria-label = \"",
   "cancel": "iptal et",
   "Description": "Açıklama",
@@ -1063,5 +1060,7 @@
   "Some files were skipped. Choose Markdown files (.md or .markdown).": "Bazı dosyalar atlandı. Markdown dosyalarını seçin (.md veya .markdown).",
   "This file appears to be binary. Choose a Markdown file (.md or .markdown).": "Bu dosya ikili dosya gibi görünüyor. Bir Markdown dosyası seçin (.md veya .markdown).",
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Bu Markdown dosyası çok büyük. Desteklenen maksimum boyut 10 MB'tır.",
-  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Bu medya dosyası desteklenen sınırı aşıyor: optimizasyondan önce hareketsiz görüntüler 25 MB, GIF'ler 5 MB ve videolar 10 MB."
+  "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Bu medya dosyası desteklenen sınırı aşıyor: optimizasyondan önce hareketsiz görüntüler 25 MB, GIF'ler 5 MB ve videolar 10 MB.",
+  "Create a folder inside": "İçinde bir klasör oluştur",
+  "Create a folder inside this workspace.": "Bu çalışma alanının içinde bir klasör oluşturun."
 }
