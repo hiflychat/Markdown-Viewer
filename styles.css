@@ -945,6 +945,18 @@ body.document-sidebar-collapsed .document-sidebar {
   }
 }
 
+@media (max-width: 767px) {
+  .document-sidebar-filters {
+    block-size: 44px;
+    padding-block: 0;
+  }
+
+  .document-sidebar-filters .document-filter-btn {
+    min-height: 0;
+    block-size: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .document-sidebar,
   .document-sidebar-icon-btn,
