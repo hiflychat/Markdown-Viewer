@@ -10605,7 +10605,7 @@ ${selector} .arrowheadPath {
   function requestManagedImageUploadConsent() {
     if (loadGlobalState().managedImageUploadAcknowledged === true) return true;
     const accepted = confirm(
-      'To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?'
+      'To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?'
     );
     if (accepted) saveGlobalState({ managedImageUploadAcknowledged: true });
     return accepted;

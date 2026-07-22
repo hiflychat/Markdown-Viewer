@@ -1027,7 +1027,6 @@
   "Collapse": "접기",
   "converted to short links.": "이 짧은 링크로 변환되었습니다.",
   "Converting embedded images to short links.": "삽입된 이미지를 짧은 링크로 변환하는 중입니다.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "장치 이미지가 최적화되어 업로드되어 짧은 공개 링크가 생성됩니다. 이미지 URL이 있는 사람은 누구나 볼 수 있습니다.",
   "Drop Markdown files or images to add them.": "Markdown 파일이나 이미지를 드롭하여 추가하세요.",
   "Drop to import or insert": "가져오기 또는 삽입하려면 드롭하세요.",
   "embedded image": "삽입된 이미지",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "이미지를 삽입하기 전에 편집 가능한 Markdown 파일을 엽니다.",
   "The image could not be inserted.": "이미지를 삽입할 수 없습니다.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "짧은 영구 링크를 생성하기 위해 이미지가 최적화되어 Markdown Viewer 공개 이미지 저장소에 업로드됩니다. 이미지 URL이 있는 사람은 누구나 볼 수 있습니다. 계속하다?",
   "uploaded and inserted with short links.": "짧은 링크와 함께 업로드 및 삽입되었습니다.",
-  "Uploading": "업로드 중"
+  "Uploading": "업로드 중",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "장치 이미지는 90일 후에 만료되는 짧은 공개 링크를 생성하기 위해 최적화 및 업로드됩니다. 그 전까지는 이미지 URL이 있는 사람은 누구나 볼 수 있습니다.",
+  "Mermaid diagram": "인어 다이어그램",
+  "Mermaid diagram actions": "인어 다이어그램 액션",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "짧은 링크를 만들기 위해 이미지가 최적화되어 최대 90일 동안 Markdown Viewer 공개 이미지 저장소에 업로드됩니다. 이미지 URL이 있는 사람은 누구나 볼 수 있습니다. 계속하다?"
 }

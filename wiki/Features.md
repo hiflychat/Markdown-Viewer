@@ -241,6 +241,7 @@ Image insertion:
 - Small raster files retain their safe raster format; larger images are resized and converted to WebP with a bounded upload size.
 - After first-use consent, optimized images are stored in Cloudflare KV under a content-derived id and inserted as short HTTPS URLs. Identical content reuses the same id.
 - Anyone with a managed image URL can retrieve the image. The URL is unguessable but is not an access-control boundary.
+- Managed images expire 90 days after their most recent upload. After expiry, the Markdown link remains but the image no longer renders.
 - Existing inline base64 raster images are detected when a normal document opens and can be converted to managed short links without changing alt text or titles.
 - Individual source images are limited to 25 MiB and managed image payloads are limited to 300 KiB after optimization.
 
@@ -517,7 +518,7 @@ Security limitations:
 | Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
-| Managed image upload | Yes, after first-use consent | Cloudflare KV, content-addressed | Publicly retrievable by its unguessable HTTPS URL; raster formats only, 300 KiB optimized limit. |
+| Managed image upload | Yes, after first-use consent | Cloudflare KV, content-addressed, 90-day TTL | Publicly retrievable by its unguessable HTTPS URL until expiry; raster formats only, 300 KiB optimized limit. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
 | GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
 | Emoji lookup | Yes | GitHub emoji API response in memory | Used for shortcode picker/lookup. |

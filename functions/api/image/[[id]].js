@@ -1,5 +1,7 @@
 const MAX_IMAGE_BYTES = 300 * 1024;
 const MAX_DATA_URL_CHARS = 420000;
+const IMAGE_TTL_SECONDS = 60 * 60 * 24 * 90;
+const IMAGE_TTL_MILLISECONDS = IMAGE_TTL_SECONDS * 1000;
 const IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{20,32}$/;
 const IMAGE_KEY_PREFIX = "managed-image-v1:";
 const ALLOWED_ORIGINS = new Set([
@@ -152,21 +154,23 @@ export async function onRequest({ request, env, params }) {
     const imageId = await createImageId(image.mimeType, image.bytes);
     const storageKey = IMAGE_KEY_PREFIX + imageId;
     const existing = await env.SHARE_KV.get(storageKey);
-    if (!existing) {
-      await env.SHARE_KV.put(storageKey, JSON.stringify({
-        version: 1,
-        mimeType: image.mimeType,
-        base64: image.base64,
-        size: image.bytes.byteLength,
-        createdAt: Date.now()
-      }));
-    }
+    const createdAt = Date.now();
+    const expiresAt = createdAt + IMAGE_TTL_MILLISECONDS;
+    await env.SHARE_KV.put(storageKey, JSON.stringify({
+      version: 2,
+      mimeType: image.mimeType,
+      base64: image.base64,
+      size: image.bytes.byteLength,
+      createdAt,
+      expiresAt
+    }), { expirationTtl: IMAGE_TTL_SECONDS });
 
     return jsonResponse({
       id: imageId,
       url: getPublicImageUrl(request, imageId),
       mimeType: image.mimeType,
-      size: image.bytes.byteLength
+      size: image.bytes.byteLength,
+      expiresAt
     }, { status: existing ? 200 : 201 }, request);
   }
 
@@ -182,6 +186,24 @@ export async function onRequest({ request, env, params }) {
     if (!record || !ALLOWED_IMAGE_TYPES.has(record.mimeType)) {
       return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
     }
+    const createdAt = Number(record.createdAt);
+    const storedExpiresAt = Number(record.expiresAt);
+    const expiresAt = Number.isFinite(storedExpiresAt) && storedExpiresAt > 0
+      ? storedExpiresAt
+      : createdAt + IMAGE_TTL_MILLISECONDS;
+    if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt)) {
+      return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
+    }
+    const remainingTtl = Math.floor((expiresAt - Date.now()) / 1000);
+    if (remainingTtl < 60) {
+      await env.SHARE_KV.delete(IMAGE_KEY_PREFIX + id);
+      return jsonResponse({ error: "image expired" }, { status: 404 }, request);
+    }
+    if (!Number.isFinite(storedExpiresAt) || storedExpiresAt <= 0) {
+      record.version = 2;
+      record.expiresAt = expiresAt;
+      await env.SHARE_KV.put(IMAGE_KEY_PREFIX + id, JSON.stringify(record), { expirationTtl: remainingTtl });
+    }
     const bytes = decodeBase64(record.base64);
     if (!bytes || bytes.byteLength > MAX_IMAGE_BYTES || !hasValidImageSignature(record.mimeType, bytes)) {
       return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
@@ -189,7 +211,7 @@ export async function onRequest({ request, env, params }) {
     const headers = new Headers({
       "Content-Type": record.mimeType,
       "Content-Length": String(bytes.byteLength),
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "public, max-age=" + remainingTtl + ", immutable",
       "Access-Control-Allow-Origin": "*",
       "Cross-Origin-Resource-Policy": "cross-origin"
     });

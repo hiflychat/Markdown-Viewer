@@ -1027,7 +1027,6 @@
   "Collapse": "Reduzieren",
   "converted to short links.": "in Kurzlinks umgewandelt.",
   "Converting embedded images to short links.": "Eingebettete Bilder in Kurzlinks umwandeln.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Gerätebilder werden optimiert und hochgeladen, um einen kurzen öffentlichen Link zu erstellen. Jeder mit der Bild-URL kann es ansehen.",
   "Drop Markdown files or images to add them.": "Legen Sie Markdown-Dateien oder Bilder ab, um sie hinzuzufügen.",
   "Drop to import or insert": "Zum Importieren oder Einfügen ablegen",
   "embedded image": "eingebettetes Bild",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Öffnen Sie eine bearbeitbare Markdown-Datei, bevor Sie Bilder einfügen.",
   "The image could not be inserted.": "Das Bild konnte nicht eingefügt werden.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Um kurze dauerhafte Links zu erstellen, werden Bilder optimiert und in den öffentlichen Bildspeicher Markdown Viewer hochgeladen. Jeder mit einer Bild-URL kann es ansehen. Weitermachen?",
   "uploaded and inserted with short links.": "hochgeladen und mit Kurzlinks eingefügt.",
-  "Uploading": "Hochladen"
+  "Uploading": "Hochladen",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Gerätebilder werden optimiert und hochgeladen, um einen kurzen öffentlichen Link zu erstellen, der nach 90 Tagen abläuft. Bis dahin kann jeder mit der Bild-URL es ansehen.",
+  "Mermaid diagram": "Meerjungfrau-Diagramm",
+  "Mermaid diagram actions": "Meerjungfrau-Diagrammaktionen",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Um Kurzlinks zu erstellen, werden Bilder optimiert und für bis zu 90 Tage in den öffentlichen Bildspeicher Markdown Viewer hochgeladen. Jeder mit einer Bild-URL kann es ansehen. Weitermachen?"
 }

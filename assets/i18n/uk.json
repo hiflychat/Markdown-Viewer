@@ -1027,7 +1027,6 @@
   "Collapse": "Згорнути",
   "converted to short links.": "перетворено на короткі посилання.",
   "Converting embedded images to short links.": "Перетворення вбудованих зображень на короткі посилання.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Зображення пристроїв оптимізовано та завантажено для створення короткого загальнодоступного посилання. Будь-хто, хто має URL-адресу зображення, може його переглянути.",
   "Drop Markdown files or images to add them.": "Перетягніть Markdown файли або зображення, щоб додати їх.",
   "Drop to import or insert": "Перетягніть, щоб імпортувати або вставити",
   "embedded image": "вбудоване зображення",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Відкрийте редагований файл Markdown перед вставленням зображень.",
   "The image could not be inserted.": "Не вдалося вставити зображення.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Для створення коротких постійних посилань зображення оптимізовано та завантажено до загальнодоступного сховища зображень Markdown Viewer. Будь-хто, хто має URL-адресу зображення, може його переглянути. Продовжити?",
   "uploaded and inserted with short links.": "завантажено та вставлено з короткими посиланнями.",
-  "Uploading": "Завантаження"
+  "Uploading": "Завантаження",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Зображення пристроїв оптимізовано та завантажено для створення короткого загальнодоступного посилання, термін дії якого закінчується через 90 днів. Будь-хто, хто має URL-адресу зображення, може переглянути його до того часу.",
+  "Mermaid diagram": "Діаграма русалки",
+  "Mermaid diagram actions": "Дії діаграми русалок",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Для створення коротких посилань зображення оптимізуються та завантажуються до загальнодоступного сховища зображень Markdown Viewer на термін до 90 днів. Будь-хто, хто має URL-адресу зображення, може його переглянути. Продовжити?"
 }

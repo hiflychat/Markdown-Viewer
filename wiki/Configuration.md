@@ -77,6 +77,7 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 | Stored Share Snapshot TTL | 90 days |
 | Managed image max source file | 25 MiB |
 | Managed image max optimized payload | 300 KiB |
+| Managed image TTL | 90 days from the most recent upload of that content |
 | Live Share max participants | 64 |
 | Live Share max message | 8 MB |
 | STL source limit | 2 MiB |
@@ -131,7 +132,7 @@ class_name = "LiveRoom"
 script_name = "markdown-viewer-live-room"
 ```
 
-`SHARE_KV` stores large Share Snapshot records for 90 days and content-addressed managed images without an automatic expiry. The two record types use separate key prefixes. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot, managed image storage, and Live Share are separate data paths.
+`SHARE_KV` stores large Share Snapshot records and content-addressed managed images for 90 days. Re-uploading identical image content refreshes that image's 90-day expiry. The two record types use separate key prefixes. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot, managed image storage, and Live Share are separate data paths.
 
 `wrangler.live-room.toml` deploys `workers/live-room-worker.js` with the `LiveRoom` Durable Object migration.
 
@@ -154,7 +155,7 @@ Responses set `Cache-Control: no-store` and vary CORS by request origin. The all
 - `GET /api/image/<id>` and `HEAD /api/image/<id>` to serve the image through its content-addressed public URL.
 - `OPTIONS` for CORS preflight.
 
-Uploads accept AVIF, BMP, GIF, JPEG, PNG, and WebP data URLs up to 300 KiB after client-side optimization. The API validates both the declared media type and file signature, derives an unguessable 24-character id from SHA-256 content, and stores the record under a managed-image key prefix in `SHARE_KV`. Duplicate content returns the existing id. Image responses are public, immutable, cross-origin raster responses; possession of the URL is sufficient to view an image.
+Uploads accept AVIF, BMP, GIF, JPEG, PNG, and WebP data URLs up to 300 KiB after client-side optimization. The API validates both the declared media type and file signature, derives an unguessable 24-character id from SHA-256 content, and stores the record under a managed-image key prefix in `SHARE_KV` with a 90-day TTL. Duplicate content returns the existing id and refreshes its TTL. Image responses are public, immutable, cross-origin raster responses until expiry; possession of the URL is sufficient to view an image.
 
 ## Live Room API
 

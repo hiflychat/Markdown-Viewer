@@ -1027,7 +1027,6 @@
   "Collapse": "折疊",
   "converted to short links.": "轉換為短連結。",
   "Converting embedded images to short links.": "將嵌入影像轉換為短連結。",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "設備圖像經過最佳化並上傳以建立簡短的公共連結。知道圖像 URL 的任何人都可以查看它。",
   "Drop Markdown files or images to add them.": "刪除 Markdown 檔案或影像以新增它們。",
   "Drop to import or insert": "拖曳以匯入或插入",
   "embedded image": "嵌入影像",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "在插入影像之前開啟可編輯的 Markdown 檔案。",
   "The image could not be inserted.": "無法插入影像。",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "為了創建短的持久鏈接，圖像經過優化並上傳到 Markdown Viewer 公共圖像存儲。任何擁有圖像 URL 的人都可以查看它。繼續？",
   "uploaded and inserted with short links.": "已上傳並插入短連結。",
-  "Uploading": "上傳中"
+  "Uploading": "上傳中",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "設備圖像經過最佳化並上傳，以創建一個簡短的公共鏈接，該鏈接將在 90 天後過期。在此之前，任何知道該圖像 URL 的人都可以查看該圖像。",
+  "Mermaid diagram": "美人魚圖",
+  "Mermaid diagram actions": "人魚圖動作",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "為了創建短鏈接，圖像經過優化並上傳到 Markdown Viewer 公共圖像存儲，保存時間長達 90 天。任何擁有圖像 URL 的人都可以查看它。繼續？"
 }

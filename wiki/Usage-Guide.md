@@ -91,7 +91,7 @@ Scope matching uses Marked's lexer and is best-effort for unusual Markdown.
 
 Use Import > From files, the mobile import button, or drag and drop to open local Markdown files. Dropping a file on an Explorer folder imports it there; dropping it elsewhere imports it at the default workspace root. Folders expand after a short drag hover, and the Explorer scrolls automatically near its top and bottom edges.
 
-Paste an image from the clipboard, drop an image file, or use the image dialog to insert it at the current editor cursor. The app optimizes the raster image and uploads it to managed public image storage after first-use consent, then inserts a short HTTPS Markdown image link. Anyone with that unguessable image URL can view it. Documents containing older inline base64 raster images offer to convert them to short links without changing their alt text or title.
+Paste an image from the clipboard, drop an image file, or use the image dialog to insert it at the current editor cursor. The app optimizes the raster image and uploads it to managed public image storage after first-use consent, then inserts a short HTTPS Markdown image link. Anyone with that unguessable image URL can view it for up to 90 days; after expiry the link remains in Markdown but the image stops rendering. Documents containing older inline base64 raster images offer to convert them to short links without changing their alt text or title.
 
 - Supported file types are `.md`, `.markdown`, and `text/markdown`.
 - Extension matching is case-insensitive.
@@ -152,7 +152,7 @@ Use Live Share when you want a temporary real-time room.
 
 Live Share sends real-time Yjs updates through a Cloudflare Durable Object. It does not store the document in KV or a database. The invite URL contains a room id, room secret, access role/capability, and title, not the full document body. The server authenticates host, editable, and view-only capabilities and filters message types by role. Markdown and Review data use separate Yjs documents, so view-only participants can synchronize comments and suggestions without being allowed to edit Markdown.
 
-Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 8 MB live messages. Managed images travel as short HTTPS links rather than binary Live Share messages.
+Participants get a temporary live tab, presence avatars, and live cursor indicators. The host can end the session for everyone. Rooms are limited to 64 WebSocket participants and 8 MB live messages. Managed images travel as short HTTPS links rather than binary Live Share messages and stop rendering when their 90-day storage TTL expires.
 
 ## Rendering Diagrams, Maps, Math, STL, and ABC Notation
 

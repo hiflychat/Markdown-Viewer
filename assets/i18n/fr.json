@@ -1027,7 +1027,6 @@
   "Collapse": "Réduire",
   "converted to short links.": "converti en liens courts.",
   "Converting embedded images to short links.": "Conversion d'images intégrées en liens courts.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Les images des appareils sont optimisées et téléchargées pour créer un court lien public. Toute personne disposant de l’URL de l’image peut la voir.",
   "Drop Markdown files or images to add them.": "Déposez les fichiers ou images Markdown pour les ajouter.",
   "Drop to import or insert": "Déposer pour importer ou insérer",
   "embedded image": "image intégrée",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Ouvrez un fichier Markdown modifiable avant d'insérer des images.",
   "The image could not be inserted.": "L'image n'a pas pu être insérée.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Pour créer des liens persistants courts, les images sont optimisées et téléchargées vers le stockage d'images public Markdown Viewer. Toute personne disposant d’une URL d’image peut la voir. Continuer?",
   "uploaded and inserted with short links.": "téléchargé et inséré avec des liens courts.",
-  "Uploading": "Téléchargement"
+  "Uploading": "Téléchargement",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Les images des appareils sont optimisées et téléchargées pour créer un court lien public qui expire après 90 jours. D’ici là, toute personne disposant de l’URL de l’image peut la voir.",
+  "Mermaid diagram": "Diagramme de la sirène",
+  "Mermaid diagram actions": "Actions du diagramme de sirène",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Pour créer des liens courts, les images sont optimisées et téléchargées sur le stockage d'images public Markdown Viewer pendant 90 jours maximum. Toute personne disposant d’une URL d’image peut la voir. Continuer?"
 }

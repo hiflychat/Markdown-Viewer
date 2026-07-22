@@ -1027,7 +1027,6 @@
   "Collapse": "Zwiń",
   "converted to short links.": "przekonwertowane na krótkie linki.",
   "Converting embedded images to short links.": "Konwersja osadzonych obrazów na krótkie linki.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Obrazy urządzeń są optymalizowane i przesyłane w celu utworzenia krótkiego łącza publicznego. Każdy, kto zna adres URL obrazu, może go wyświetlić.",
   "Drop Markdown files or images to add them.": "Usuń Markdown plików lub obrazów, aby je dodać.",
   "Drop to import or insert": "Upuść, aby zaimportować lub wstawić",
   "embedded image": "osadzony obraz",
@@ -1042,7 +1041,10 @@
   "MD": "Lek",
   "Open an editable Markdown file before inserting images.": "Otwórz edytowalny plik Markdown przed wstawieniem obrazów.",
   "The image could not be inserted.": "Nie można wstawić obrazu.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Aby utworzyć krótkie, trwałe łącza, obrazy są optymalizowane i przesyłane do publicznego magazynu obrazów Markdown Viewer. Każdy, kto ma adres URL obrazu, może go wyświetlić. Kontynuować?",
   "uploaded and inserted with short links.": "przesłano i wstawiono z krótkimi linkami.",
-  "Uploading": "Przesyłanie"
+  "Uploading": "Przesyłanie",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Obrazy urządzeń są optymalizowane i przesyłane w celu utworzenia krótkiego łącza publicznego, które wygasa po 90 dniach. Do tego czasu każdy, kto zna adres URL obrazu, będzie mógł go wyświetlić.",
+  "Mermaid diagram": "Schemat syreny",
+  "Mermaid diagram actions": "Działania na diagramie syreny",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Aby utworzyć krótkie linki, obrazy są optymalizowane i przesyłane do publicznego magazynu obrazów Markdown Viewer na okres do 90 dni. Każdy, kto ma adres URL obrazu, może go wyświetlić. Kontynuować?"
 }

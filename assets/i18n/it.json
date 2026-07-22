@@ -1027,7 +1027,6 @@
   "Collapse": "Comprimi",
   "converted to short links.": "convertito in collegamenti brevi.",
   "Converting embedded images to short links.": "Conversione di immagini incorporate in collegamenti brevi.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Le immagini del dispositivo vengono ottimizzate e caricate per creare un breve collegamento pubblico. Chiunque abbia l'URL dell'immagine può visualizzarla.",
   "Drop Markdown files or images to add them.": "Rilascia Markdown file o immagini per aggiungerli.",
   "Drop to import or insert": "Rilascia per importare o inserire",
   "embedded image": "immagine incorporata",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Apri un file modificabile Markdown prima di inserire le immagini.",
   "The image could not be inserted.": "Impossibile inserire l'immagine.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Per creare collegamenti brevi e persistenti, le immagini vengono ottimizzate e caricate nell'archivio pubblico di immagini Markdown Viewer. Chiunque abbia un URL di immagine può visualizzarlo. Continuare?",
   "uploaded and inserted with short links.": "caricato e inserito con collegamenti brevi.",
-  "Uploading": "Caricamento"
+  "Uploading": "Caricamento",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Le immagini del dispositivo vengono ottimizzate e caricate per creare un breve collegamento pubblico che scade dopo 90 giorni. Chiunque abbia l'URL dell'immagine potrà visualizzarla fino ad allora.",
+  "Mermaid diagram": "Schema della sirena",
+  "Mermaid diagram actions": "Azioni del diagramma della sirena",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Per creare collegamenti brevi, le immagini vengono ottimizzate e caricate nell'archivio pubblico di immagini Markdown Viewer per un massimo di 90 giorni. Chiunque abbia un URL di immagine può visualizzarlo. Continuare?"
 }

@@ -55,7 +55,7 @@ Small snapshots keep compressed content inside the URL hash. Large snapshots use
 
 ### Are uploaded image links private?
 
-No. Device images are optimized and uploaded only after first-use consent, then referenced by a short content-addressed HTTPS link. The id is difficult to guess, but anyone who receives the image URL can view it. Managed images do not currently expire automatically. Duplicate image content reuses the same link, and legacy inline raster data can be converted to managed links after the same consent.
+No. Device images are optimized and uploaded only after first-use consent, then referenced by a short content-addressed HTTPS link. The id is difficult to guess, but anyone who receives the image URL can view it for up to 90 days. Cloudflare KV deletes the image after that TTL, so the link stops rendering. Duplicate image content reuses the same link and refreshes its 90-day expiry; legacy inline raster data can be converted to managed links after the same consent.
 
 ### Is Live Share saved permanently?
 

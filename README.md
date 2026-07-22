@@ -107,7 +107,7 @@ For the full feature list, details, limitations, and privacy notes, see the [fea
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
 - Organize up to 50 Markdown files in a closable, responsive left sidebar with a persistent tab-strip toggle, fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, single-click opening, precise drag-and-drop moves, hover-to-expand folders, and edge auto-scrolling. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
-- Paste, upload, or drop image files to insert optimized, content-addressed HTTPS image links at the editor cursor. The app explains on first use that managed images are publicly retrievable by their unguessable link; links remain short across refreshes, Share Snapshot, Live Share, and Markdown export. Existing inline raster data can be converted after the same consent.
+- Paste, upload, or drop image files to insert optimized, content-addressed HTTPS image links at the editor cursor. The app explains on first use that managed images are publicly retrievable by their unguessable link and expire after 90 days; links remain short across refreshes, Share Snapshot, Live Share, and Markdown export until expiry. Existing inline raster data can be converted after the same consent.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 
@@ -280,7 +280,7 @@ Network use is user-triggered for features such as consented managed-image uploa
 - Preview HTML is sanitized before insertion, and exported HTML includes a restrictive CSP plus SRI metadata for its external assets.
 - Secret Workspace derives a local encryption key from the user's password with PBKDF2-SHA-256 and encrypts its files and folder names with AES-GCM. The key is kept only for the unlocked browser session, and forgotten passwords cannot be recovered.
 - Cloudflare Pages deployments use `_headers` for CSP, clickjacking protection, referrer and permissions policies, and no-sniff protection; sensitive paths are redirected to 404 responses.
-- Managed image and stored Share Snapshot API uploads are limited to the production app, previews, `null`, and local development origins. Managed images are public through unguessable immutable links; stored snapshot responses are `no-store`, and snapshot creators receive a deletion token from the API.
+- Managed image and stored Share Snapshot API uploads are limited to the production app, previews, `null`, and local development origins. Managed images are public through unguessable immutable links for 90 days; stored snapshot responses are `no-store`, and snapshot creators receive a deletion token from the API.
 - STL rendering rejects oversized sources, non-finite geometry, and excessive vertex counts before WebGL rendering.
 - The Neutralino desktop build removes the default `os.execCommand` exposure and keeps native APIs on an explicit allowlist. See the [security model](wiki/Features.md#security-model) and [configuration reference](wiki/Configuration.md#share-api).
 

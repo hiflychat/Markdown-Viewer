@@ -1027,7 +1027,6 @@
   "Collapse": "Daralt",
   "converted to short links.": "kısa bağlantılara dönüştürüldü.",
   "Converting embedded images to short links.": "Gömülü görüntüleri kısa bağlantılara dönüştürme.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Cihaz görüntüleri, kısa bir genel bağlantı oluşturmak için optimize edildi ve yüklendi. Resim URL'sine sahip olan herkes onu görüntüleyebilir.",
   "Drop Markdown files or images to add them.": "Eklemek için Markdown dosya veya görseli bırakın.",
   "Drop to import or insert": "İçe aktarmak veya eklemek için bırakın",
   "embedded image": "gömülü görüntü",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Görüntüleri eklemeden önce düzenlenebilir bir Markdown dosyasını açın.",
   "The image could not be inserted.": "Resim eklenemedi.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Kısa kalıcı bağlantılar oluşturmak için resimler optimize edilir ve Markdown Viewer genel resim deposuna yüklenir. Resim URL'sine sahip olan herkes bunu görüntüleyebilir. Devam etmek?",
   "uploaded and inserted with short links.": "kısa bağlantılarla yüklendi ve eklendi.",
-  "Uploading": "Yükleniyor"
+  "Uploading": "Yükleniyor",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Cihaz görüntüleri, süresi 90 gün sonra dolacak kısa bir genel bağlantı oluşturacak şekilde optimize edilir ve yüklenir. O zamana kadar resmin URL'sine sahip olan herkes resmi görebilir.",
+  "Mermaid diagram": "Denizkızı diyagramı",
+  "Mermaid diagram actions": "Denizkızı diyagramı eylemleri",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Kısa bağlantılar oluşturmak için resimler optimize edilir ve 90 güne kadar Markdown Viewer genel resim deposuna yüklenir. Resim URL'sine sahip olan herkes bunu görüntüleyebilir. Devam etmek?"
 }

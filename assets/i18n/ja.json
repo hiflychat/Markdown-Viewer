@@ -1027,7 +1027,6 @@
   "Collapse": "崩壊",
   "converted to short links.": "は短いリンクに変換されました。",
   "Converting embedded images to short links.": "埋め込まれた画像を短いリンクに変換します。",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "デバイス画像は最適化され、短いパブリック リンクを作成するためにアップロードされます。画像のURLがわかれば誰でも閲覧できます。",
   "Drop Markdown files or images to add them.": "Markdown ファイルまたは画像をドロップして追加します。",
   "Drop to import or insert": "ドロップしてインポートまたは挿入します",
   "embedded image": "埋め込み画像",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "画像を挿入する前に、編集可能な Markdown ファイルを開いてください。",
   "The image could not be inserted.": "画像を挿入できませんでした。",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "短い永続リンクを作成するために、画像が最適化され、Markdown Viewer パブリック画像ストレージにアップロードされます。画像の URL を知っている人は誰でも閲覧できます。続く？",
   "uploaded and inserted with short links.": "がアップロードされ、短いリンクが挿入されました。",
-  "Uploading": "アップロード中"
+  "Uploading": "アップロード中",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "デバイス イメージは最適化され、90 日後に期限切れになる短いパブリック リンクを作成するようにアップロードされます。それまでは、画像の URL を知っている人は誰でも閲覧できます。",
+  "Mermaid diagram": "マーメイドダイアグラム",
+  "Mermaid diagram actions": "マーメイドダイアグラムのアクション",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "短いリンクを作成するために、画像は最適化され、Markdown Viewer パブリック画像ストレージに最大 90 日間アップロードされます。画像の URL を知っている人は誰でも閲覧できます。続く？"
 }

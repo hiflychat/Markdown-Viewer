@@ -1027,7 +1027,6 @@
   "Collapse": "Colapso",
   "converted to short links.": "convertido a enlaces cortos.",
   "Converting embedded images to short links.": "Conversión de imágenes incrustadas en enlaces cortos.",
-  "Device images are optimized and uploaded to create a short public link. Anyone with the image URL can view it.": "Las imágenes del dispositivo se optimizan y se cargan para crear un enlace público breve. Cualquiera que tenga la URL de la imagen puede verla.",
   "Drop Markdown files or images to add them.": "Suelta Markdown archivos o imágenes para agregarlos.",
   "Drop to import or insert": "Soltar para importar o insertar",
   "embedded image": "imagen incrustada",
@@ -1042,7 +1041,10 @@
   "MD": "MD",
   "Open an editable Markdown file before inserting images.": "Abra un archivo Markdown editable antes de insertar imágenes.",
   "The image could not be inserted.": "No se pudo insertar la imagen.",
-  "To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?": "Para crear enlaces cortos persistentes, las imágenes se optimizan y se cargan en el almacenamiento público de imágenes Markdown Viewer. Cualquiera que tenga una URL de imagen puede verla. ¿Continuar?",
   "uploaded and inserted with short links.": "subido e insertado con enlaces cortos.",
-  "Uploading": "Subiendo"
+  "Uploading": "Subiendo",
+  "Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.": "Las imágenes del dispositivo se optimizan y se cargan para crear un enlace público breve que caduca después de 90 días. Cualquiera que tenga la URL de la imagen podrá verla hasta entonces.",
+  "Mermaid diagram": "Diagrama de sirena",
+  "Mermaid diagram actions": "Acciones del diagrama de sirena",
+  "To create short links, images are optimized and uploaded to Markdown Viewer public image storage for up to 90 days. Anyone with an image URL can view it. Continue?": "Para crear enlaces cortos, las imágenes se optimizan y se cargan en el almacenamiento público de imágenes Markdown Viewer por hasta 90 días. Cualquiera que tenga una URL de imagen puede verla. ¿Continuar?"
 }
