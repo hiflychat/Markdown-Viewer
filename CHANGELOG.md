@@ -3,6 +3,10 @@
 All notable code changes to **Markdown Viewer** are documented here.
 Non-code commits (documentation, planning, README-only updates) are excluded.
 
+## Unreleased
+
+- **File and image drag-and-drop:** Replaced the blocking full-window drop overlay with a compact notice, made folder-targeted Markdown imports land in the selected folder, kept untargeted imports at the default workspace root, added hover-to-expand folders and Explorer edge auto-scrolling, and added clipboard-paste and drag-and-drop image insertion.
+
 ## v3.9.3
 
 - **Description:** Redesigned the Markdown Viewer workspace around a professional document Explorer, streamlined toolbar, responsive navigation, consistent icon system, and complete interface localization.

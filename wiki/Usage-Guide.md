@@ -89,11 +89,13 @@ Scope matching uses Marked's lexer and is best-effort for unusual Markdown.
 
 ### Local Files
 
-Use Import > From files, the mobile import button, or drag and drop to open local Markdown files.
+Use Import > From files, the mobile import button, or drag and drop to open local Markdown files. Dropping a file on an Explorer folder imports it there; dropping it elsewhere imports it at the default workspace root. Folders expand after a short drag hover, and the Explorer scrolls automatically near its top and bottom edges.
+
+Paste an image from the clipboard or drop an image file into the app to insert it at the current editor cursor as Markdown image syntax.
 
 - Supported file types are `.md`, `.markdown`, and `text/markdown`.
 - Extension matching is case-insensitive.
-- Dragging over the app shows a drop overlay.
+- Dragging over the app shows a compact notice without blocking the editor or Explorer drop targets.
 - The app scans the first 8 KB for null bytes and rejects likely binary files.
 - Local file content stays on the device unless you later share it.
 

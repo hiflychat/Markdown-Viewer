@@ -1297,12 +1297,12 @@
           </div>
         </div>
 
-        <!-- Full-screen drag overlay (shown when a file is dragged over the window) -->
-        <div id="drag-overlay" class="drag-overlay" aria-hidden="true">
+        <!-- Compact, non-blocking drag notice shown while files are over the window -->
+        <div id="drag-overlay" class="drag-overlay" role="status" aria-live="polite" aria-hidden="true">
             <div class="drag-overlay-inner">
                 <i class="lucide lucide-cloud-upload drag-overlay-icon"></i>
-                <p class="drag-overlay-text">Drop your Markdown files anywhere</p>
-                <p class="drag-overlay-sub">.md or .markdown files supported</p>
+                <p class="drag-overlay-text">Drop to import or insert</p>
+                <p class="drag-overlay-sub">Markdown files and images are supported</p>
             </div>
         </div>
 
@@ -1370,7 +1370,7 @@
                 </div>
                 <textarea id="markdown-editor" placeholder="Type, paste, or import Markdown here..." aria-label="Markdown editor input with live preview"></textarea>
                 <div class="drop-hint" aria-hidden="true">
-                    <i class="lucide lucide-cloud-upload me-1"></i>Drop .md files anywhere to open them
+                    <i class="lucide lucide-cloud-upload me-1"></i>Drop Markdown files or images to add them
                 </div>
             </div>
             <!-- Resize Divider - Story 1.3 -->

@@ -570,6 +570,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const GLOBAL_STATE_KEY = 'markdownViewerGlobalState';
   let referenceCounter = 1;
   const imageObjectUrls = new Set();
+  const MAX_LOCAL_IMAGE_BYTES = 25 * 1024 * 1024;
   const EMOJI_API_URL = 'https://api.github.com/emojis';
   let emojiLoadPromise = null;
   let emojiEntries = [];
@@ -2501,6 +2502,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   let documentSidebarInitialized = false;
   let isDocumentSidebarResizing = false;
   let draggedSidebarDocumentId = null;
+  let documentTreeDragExpandTimer = null;
+  let documentTreeDragExpandRow = null;
+  let documentTreeAutoScrollFrame = null;
+  let documentTreeAutoScrollSpeed = 0;
   let secretWorkspaceKey = null;
   let secretWorkspaceSalt = null;
   let secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
@@ -3932,6 +3937,88 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
+  function clearDocumentTreeDragExpansion() {
+    if (documentTreeDragExpandTimer) clearTimeout(documentTreeDragExpandTimer);
+    documentTreeDragExpandTimer = null;
+    documentTreeDragExpandRow = null;
+  }
+
+  function stopDocumentTreeAutoScroll() {
+    documentTreeAutoScrollSpeed = 0;
+    if (documentTreeAutoScrollFrame) cancelAnimationFrame(documentTreeAutoScrollFrame);
+    documentTreeAutoScrollFrame = null;
+  }
+
+  function runDocumentTreeAutoScroll() {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !documentTreeAutoScrollSpeed) {
+      documentTreeAutoScrollFrame = null;
+      return;
+    }
+    tree.scrollTop += documentTreeAutoScrollSpeed;
+    documentTreeAutoScrollFrame = requestAnimationFrame(runDocumentTreeAutoScroll);
+  }
+
+  function updateDocumentTreeAutoScroll(event) {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !event || !Number.isFinite(event.clientY)) return;
+    const rect = tree.getBoundingClientRect();
+    const edgeSize = Math.min(56, Math.max(32, rect.height * 0.16));
+    let speed = 0;
+    if (event.clientY < rect.top + edgeSize) {
+      speed = -Math.max(3, Math.round((rect.top + edgeSize - event.clientY) / 4));
+    } else if (event.clientY > rect.bottom - edgeSize) {
+      speed = Math.max(3, Math.round((event.clientY - (rect.bottom - edgeSize)) / 4));
+    }
+    documentTreeAutoScrollSpeed = Math.max(-14, Math.min(14, speed));
+    if (documentTreeAutoScrollSpeed && !documentTreeAutoScrollFrame) {
+      documentTreeAutoScrollFrame = requestAnimationFrame(runDocumentTreeAutoScroll);
+    } else if (!documentTreeAutoScrollSpeed) {
+      stopDocumentTreeAutoScroll();
+    }
+  }
+
+  function expandDocumentTreeRowForDrag(row, location) {
+    if (!row || !location || row.getAttribute('aria-expanded') !== 'false') return;
+    const item = location.folderId ? getFolderById(location.folderId) : getWorkspaceById(location.workspaceId);
+    if (!item || (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked())) return;
+    item.expanded = true;
+    saveDocumentOrganization();
+    row.setAttribute('aria-expanded', 'true');
+    const toggle = row.querySelector('.document-tree-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-label', 'Collapse ' + (item.name || 'folder'));
+      const toggleIcon = toggle.querySelector('i');
+      if (toggleIcon) toggleIcon.className = 'lucide lucide-chevron-down';
+    }
+    const folderIcon = row.querySelector('.document-tree-main > i:first-child');
+    if (folderIcon && location.workspaceId !== SECRET_WORKSPACE_ID) folderIcon.className = 'lucide lucide-folder-open';
+    const group = row.nextElementSibling;
+    if (group && group.classList.contains('document-tree-group')) group.hidden = false;
+    announceToScreenReader((item.name || 'Folder') + ' expanded.');
+  }
+
+  function scheduleDocumentTreeDragExpansion(row, location) {
+    if (!row || row.getAttribute('aria-expanded') !== 'false') {
+      clearDocumentTreeDragExpansion();
+      return;
+    }
+    if (documentTreeDragExpandRow === row && documentTreeDragExpandTimer) return;
+    clearDocumentTreeDragExpansion();
+    documentTreeDragExpandRow = row;
+    documentTreeDragExpandTimer = setTimeout(function() {
+      documentTreeDragExpandTimer = null;
+      documentTreeDragExpandRow = null;
+      expandDocumentTreeRowForDrag(row, location);
+    }, 650);
+  }
+
+  function resetDocumentTreeDragFeedback() {
+    clearDocumentDropTargets();
+    clearDocumentTreeDragExpansion();
+    stopDocumentTreeAutoScroll();
+  }
+
   function attachDocumentDropTarget(row, location) {
     if (!row || !location) return;
     row.setAttribute('data-drop-workspace-id', location.workspaceId);
@@ -3944,20 +4031,23 @@ document.addEventListener("DOMContentLoaded", async function () {
       const hasFiles = transferTypes.includes('Files') || Boolean(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length);
       if (!draggedSidebarDocumentId && !hasFiles) return;
       event.preventDefault();
-      event.stopPropagation();
       if (event.dataTransfer) event.dataTransfer.dropEffect = draggedSidebarDocumentId ? 'move' : 'copy';
       clearDocumentDropTargets();
       row.classList.add('is-drop-target');
+      scheduleDocumentTreeDragExpansion(row, location);
     });
 
     row.addEventListener('dragleave', function(event) {
-      if (!event.relatedTarget || !row.contains(event.relatedTarget)) row.classList.remove('is-drop-target');
+      if (!event.relatedTarget || !row.contains(event.relatedTarget)) {
+        row.classList.remove('is-drop-target');
+        if (documentTreeDragExpandRow === row) clearDocumentTreeDragExpansion();
+      }
     });
 
     row.addEventListener('drop', function(event) {
       event.preventDefault();
       event.stopPropagation();
-      row.classList.remove('is-drop-target');
+      resetDocumentTreeDragFeedback();
       const files = event.dataTransfer && event.dataTransfer.files;
       if (files && files.length) {
         dragDepth = 0;
@@ -3966,7 +4056,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           dragOverlay.setAttribute('aria-hidden', 'true');
         }
         const importFiles = function() {
-          importMarkdownFiles(files, { location: location });
+          handleIncomingDroppedFiles(files, { location: location });
         };
         if (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
           withUnlockedSecretWorkspace(importFiles);
@@ -4087,7 +4177,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       row.addEventListener('dragend', function() {
         draggedSidebarDocumentId = null;
         row.classList.remove('is-dragging');
-        clearDocumentDropTargets();
+        resetDocumentTreeDragFeedback();
       });
     }
     if (options.dropLocation) attachDocumentDropTarget(row, options.dropLocation);
@@ -4559,6 +4649,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       tree.addEventListener('click', function(event) {
         if (!event.target.closest('.document-tree-row')) clearDocumentTreeSelection({ announce: false });
       });
+      tree.addEventListener('dragover', updateDocumentTreeAutoScroll);
+      tree.addEventListener('dragleave', function(event) {
+        if (!event.relatedTarget || !tree.contains(event.relatedTarget)) stopDocumentTreeAutoScroll();
+      });
+      tree.addEventListener('drop', stopDocumentTreeAutoScroll);
     }
 
     if (resizer && sidebar) {
@@ -10327,6 +10422,54 @@ ${selector} .arrowheadPath {
     lastInputType = 'programmatic';
   }
 
+  function isImageFile(file) {
+    if (!file) return false;
+    if (typeof file.type === 'string' && file.type.toLowerCase().startsWith('image/')) return true;
+    return /\.(avif|bmp|gif|jpe?g|png|webp)$/i.test(file.name || '');
+  }
+
+  function getLocalImageAltText(file, source, index, total) {
+    let label = source === 'clipboard'
+      ? 'Pasted image'
+      : String(file && file.name ? file.name : 'Dropped image').replace(/\.[^.]+$/, '');
+    label = label.replace(/[\[\]\r\n]+/g, ' ').trim() || 'Image';
+    return total > 1 ? label + ' ' + (index + 1) : label;
+  }
+
+  function createLocalImageMarkdown(file, altText) {
+    const objectUrl = URL.createObjectURL(file);
+    imageObjectUrls.add(objectUrl);
+    return '![' + altText + '](' + objectUrl + ')';
+  }
+
+  function insertImageFilesIntoEditor(fileList, options) {
+    const settings = options || {};
+    const imageFiles = Array.from(fileList || []).filter(isImageFile);
+    if (!imageFiles.length) return 0;
+    if (!hasActiveOpenDocument() || !canMutateEditor()) {
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return 0;
+    }
+
+    const acceptedFiles = imageFiles.filter(function(file) {
+      return !Number.isFinite(file.size) || file.size <= MAX_LOCAL_IMAGE_BYTES;
+    });
+    if (acceptedFiles.length !== imageFiles.length) {
+      alert('Images larger than 25MB cannot be inserted.');
+    }
+    if (!acceptedFiles.length) return 0;
+
+    const start = Number.isFinite(settings.selectionStart) ? settings.selectionStart : markdownEditor.selectionStart;
+    const end = Number.isFinite(settings.selectionEnd) ? settings.selectionEnd : markdownEditor.selectionEnd;
+    const source = settings.source === 'clipboard' ? 'clipboard' : 'drop';
+    const markdown = acceptedFiles.map(function(file, index) {
+      return createLocalImageMarkdown(file, getLocalImageAltText(file, source, index, acceptedFiles.length));
+    }).join('\n\n');
+    replaceEditorRange(start, end, markdown, start + markdown.length, start + markdown.length);
+    announceToScreenReader(acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' inserted.');
+    return acceptedFiles.length;
+  }
+
   function wrapEditorSelection(prefix, suffix, placeholder) {
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
@@ -15350,6 +15493,26 @@ ${selector} .arrowheadPath {
     });
   });
 
+  markdownEditor.addEventListener('paste', function(event) {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const itemFiles = Array.from(clipboard.items || []).map(function(item) {
+      return item.kind === 'file' ? item.getAsFile() : null;
+    }).filter(Boolean);
+    const imageFiles = (itemFiles.length ? itemFiles : Array.from(clipboard.files || [])).filter(isImageFile);
+    if (!imageFiles.length) return;
+    event.preventDefault();
+    if (!canMutateEditor()) {
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return;
+    }
+    insertImageFilesIntoEditor(imageFiles, {
+      source: 'clipboard',
+      selectionStart: markdownEditor.selectionStart,
+      selectionEnd: markdownEditor.selectionEnd
+    });
+  });
+
   markdownEditor.addEventListener('keydown', updateLastCursor);
   markdownEditor.addEventListener('keyup', updateLastCursor);
   markdownEditor.addEventListener('mousedown', updateLastCursor);
@@ -20193,6 +20356,7 @@ ${selector} .arrowheadPath {
     dragDepth = 0;
     dragOverlay.classList.remove("active");
     dragOverlay.setAttribute("aria-hidden", "true");
+    resetDocumentTreeDragFeedback();
     handleDrop(e);
   }, false);
 
@@ -20200,8 +20364,36 @@ ${selector} .arrowheadPath {
     const dt = e.dataTransfer;
     const files = dt && dt.files;
     if (files && files.length) {
-      await importMarkdownFiles(files);
+      await handleIncomingDroppedFiles(files, {
+        location: { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null }
+      });
     }
+  }
+
+  async function handleIncomingDroppedFiles(fileList, options) {
+    const settings = options || {};
+    const files = Array.from(fileList || []);
+    const imageFiles = files.filter(isImageFile);
+    const markdownFiles = files.filter(isMarkdownFile);
+    let handledCount = 0;
+
+    if (imageFiles.length) {
+      const insertedCount = insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
+      handledCount += insertedCount;
+      if (!insertedCount && !markdownFiles.length) {
+        alert('Open an editable Markdown file before inserting images.');
+      }
+    }
+    if (markdownFiles.length) {
+      handledCount += await importMarkdownFiles(markdownFiles, {
+        location: settings.location || { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null },
+        showInvalidAlert: false
+      });
+    }
+    if (!imageFiles.length && !markdownFiles.length) {
+      alert('Drop Markdown files or images to add them.');
+    }
+    return handledCount;
   }
 
   document.addEventListener("keydown", function (e) {

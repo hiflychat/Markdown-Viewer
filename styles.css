@@ -31,6 +31,7 @@
   --segmented-surface: #ffffff;
   --segmented-shadow: 0 1px 2px rgba(31, 35, 40, 0.12), 0 0 0 0.5px rgba(31, 35, 40, 0.06);
   --layer-menu: 1100;
+  --layer-notice: 1200;
   --button-bg: #f6f8fa;
   --button-hover: #e1e4e8;
   --button-active: #d1d5da;
@@ -2206,61 +2207,67 @@ body.document-sidebar-collapsed .document-sidebar {
   display: none;
 }
 
-/* Drag overlay: full-screen drop target shown when user drags a file over the window */
+/* Compact drag notice that leaves the Explorer and editor available as drop targets. */
 .drag-overlay {
   display: none;
   position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background-color: rgba(0, 0, 0, 0.45);
+  inset: auto 20px 20px auto;
+  width: min(360px, calc(100vw - 40px));
+  z-index: var(--layer-notice);
   pointer-events: none;
-  align-items: center;
-  justify-content: center;
 }
 
 .drag-overlay.active {
-  display: flex;
-  pointer-events: auto;
+  display: block;
+  pointer-events: none;
 }
 
 .drag-overlay-inner {
-  border: 3px dashed var(--accent-color);
-  border-radius: 12px;
-  padding: 48px 64px;
-  text-align: center;
-  color: #ffffff;
-  background-color: rgba(3, 102, 214, 0.15);
-  animation: overlayPulse 1.4s ease-in-out infinite;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 55%, var(--border-color));
+  border-radius: 9px;
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--header-bg) 94%, transparent);
+  box-shadow: 0 10px 30px rgba(31, 35, 40, 0.2);
+  backdrop-filter: blur(10px);
+  animation: dragNoticeIn 0.18s ease-out;
 }
 
 .drag-overlay-icon {
-  display: block;
-  font-size: 3rem;
-  margin-bottom: 12px;
+  grid-row: 1 / span 2;
+  justify-self: center;
+  font-size: 21px;
   color: var(--accent-color);
 }
 
 .drag-overlay-text {
-  font-size: 1.4rem;
+  margin: 0;
+  font-size: 13px;
   font-weight: 600;
-  margin-bottom: 4px;
+  line-height: 1.35;
 }
 
 .drag-overlay-sub {
-  font-size: 0.85rem;
-  opacity: 0.75;
-  margin-bottom: 0;
+  margin: 1px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
-@keyframes overlayPulse {
-
-  0%,
-  100% {
-    transform: scale(1);
+@keyframes dragNoticeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 
-  50% {
-    transform: scale(1.015);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
