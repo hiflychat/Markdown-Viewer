@@ -30,7 +30,7 @@ Normal typing, previewing, local file import, tab autosave, and most exports hap
 
 - GitHub import contacts GitHub.
 - Remote diagram renderers can receive diagram source.
-- Pasting, dropping, or uploading a device image sends an optimized raster copy to managed image storage after first-use consent.
+- Pasting, dropping, or uploading a device image, animated GIF, or supported video sends a managed copy to public media storage after first-use consent.
 - Large Share Snapshot links upload a temporary copy to Cloudflare KV.
 - Live Share relays real-time updates through Cloudflare Durable Objects.
 - External images, links, map tiles, and CDN libraries can be requested by the browser.
@@ -53,9 +53,9 @@ They are bearer links. Anyone with the link can open the snapshot. Large stored 
 
 Small snapshots keep compressed content inside the URL hash. Large snapshots use `/api/share`, which stores content, mode, title, creation time, and size in Cloudflare KV for 90 days. Editable snapshots are not collaborative; they only let the recipient edit their opened copy.
 
-### Are uploaded image links private?
+### Are uploaded media links private?
 
-No. Device images are optimized and uploaded only after first-use consent, then referenced by a short content-addressed HTTPS link. The id is difficult to guess, but anyone who receives the image URL can view it for up to 90 days. Cloudflare KV deletes the image after that TTL, so the link stops rendering. Duplicate image content reuses the same link and refreshes its 90-day expiry; legacy inline raster data can be converted to managed links after the same consent.
+No. Device images are optimized and images, animated GIFs, and supported videos are uploaded only after first-use consent, then referenced by a short content-addressed HTTPS link. The id is difficult to guess, but anyone who receives the URL can retrieve the media for up to 90 days. Cloudflare KV deletes it after that TTL, so the link stops rendering. Duplicate content reuses the same link and refreshes its 90-day expiry; legacy inline raster data can be converted to managed links after the same consent. The duration is the same 90-day limit used by stored Share Snapshot links, but their storage records are separate.
 
 ### Is Live Share saved permanently?
 
@@ -128,7 +128,7 @@ Yes, with limits.
 - The web/PWA build can work offline after the app shell and CDN libraries have been loaded and cached.
 - First use of CDN-based libraries still requires network access unless they are already cached.
 - The prepared desktop build bundles external libraries into `resources/libs` and points dynamic library loading there.
-- Features that inherently use the network, such as managed image upload, GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, and external images, still need connectivity.
+- Features that inherently use the network, such as managed media upload, GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, and external images, still need connectivity.
 
 ### Can I open `index.html` directly?
 

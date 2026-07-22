@@ -1,9 +1,12 @@
 const MAX_IMAGE_BYTES = 300 * 1024;
-const MAX_DATA_URL_CHARS = 420000;
-const IMAGE_TTL_SECONDS = 60 * 60 * 24 * 90;
-const IMAGE_TTL_MILLISECONDS = IMAGE_TTL_SECONDS * 1000;
-const IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{20,32}$/;
-const IMAGE_KEY_PREFIX = "managed-image-v1:";
+const MAX_GIF_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
+const MAX_DATA_URL_CHARS = 14_100_000;
+const MEDIA_TTL_SECONDS = 60 * 60 * 24 * 90;
+const MEDIA_TTL_MILLISECONDS = MEDIA_TTL_SECONDS * 1000;
+const MEDIA_ID_PATTERN = /^[A-Za-z0-9_-]{20,32}$/;
+// Keep the established prefix so links created before video support remain valid.
+const MEDIA_KEY_PREFIX = "managed-image-v1:";
 const ALLOWED_ORIGINS = new Set([
   "https://markdownviewer.pages.dev",
   "null"
@@ -16,6 +19,12 @@ const ALLOWED_IMAGE_TYPES = new Set([
   "image/png",
   "image/webp"
 ]);
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/ogg",
+  "video/webm"
+]);
+const ALLOWED_MEDIA_TYPES = new Set([...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES]);
 
 function isAllowedOrigin(origin) {
   if (!origin) return true;
@@ -46,7 +55,7 @@ function jsonResponse(body, init, request) {
   });
 }
 
-function getImageId(params) {
+function getMediaId(params) {
   const raw = params && params.id;
   if (Array.isArray(raw)) return raw.join("/");
   return typeof raw === "string" ? raw : "";
@@ -72,7 +81,7 @@ function asciiSlice(bytes, start, end) {
   return String.fromCharCode.apply(null, bytes.subarray(start, end));
 }
 
-function hasValidImageSignature(mimeType, bytes) {
+function hasValidMediaSignature(mimeType, bytes) {
   if (!bytes || !bytes.length) return false;
   if (mimeType === "image/png") return bytesStartWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   if (mimeType === "image/jpeg") return bytesStartWith(bytes, [0xff, 0xd8, 0xff]);
@@ -83,21 +92,30 @@ function hasValidImageSignature(mimeType, bytes) {
     const brand = asciiSlice(bytes, 8, 12);
     return asciiSlice(bytes, 4, 8) === "ftyp" && (brand === "avif" || brand === "avis");
   }
+  if (mimeType === "video/mp4") return asciiSlice(bytes, 4, 8) === "ftyp";
+  if (mimeType === "video/webm") return bytesStartWith(bytes, [0x1a, 0x45, 0xdf, 0xa3]);
+  if (mimeType === "video/ogg") return asciiSlice(bytes, 0, 4) === "OggS";
   return false;
 }
 
-function parseImageDataUrl(value) {
+function getMediaByteLimit(mimeType) {
+  if (ALLOWED_VIDEO_TYPES.has(mimeType)) return MAX_VIDEO_BYTES;
+  if (mimeType === "image/gif") return MAX_GIF_BYTES;
+  return MAX_IMAGE_BYTES;
+}
+
+function parseMediaDataUrl(value) {
   if (typeof value !== "string" || value.length > MAX_DATA_URL_CHARS) return null;
-  const match = value.match(/^data:(image\/(?:avif|bmp|gif|jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/i);
+  const match = value.match(/^data:((?:image\/(?:avif|bmp|gif|jpeg|png|webp))|(?:video\/(?:mp4|ogg|webm)));base64,([A-Za-z0-9+/]+={0,2})$/i);
   if (!match) return null;
   const mimeType = match[1].toLowerCase();
-  if (!ALLOWED_IMAGE_TYPES.has(mimeType)) return null;
+  if (!ALLOWED_MEDIA_TYPES.has(mimeType)) return null;
   const bytes = decodeBase64(match[2]);
-  if (!bytes || bytes.byteLength > MAX_IMAGE_BYTES || !hasValidImageSignature(mimeType, bytes)) return null;
+  if (!bytes || bytes.byteLength > getMediaByteLimit(mimeType) || !hasValidMediaSignature(mimeType, bytes)) return null;
   return { mimeType, base64: match[2], bytes };
 }
 
-async function createImageId(mimeType, bytes) {
+async function createMediaId(mimeType, bytes) {
   const typeBytes = new TextEncoder().encode(mimeType + "\0");
   const input = new Uint8Array(typeBytes.length + bytes.length);
   input.set(typeBytes, 0);
@@ -108,16 +126,16 @@ async function createImageId(mimeType, bytes) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "").slice(0, 24);
 }
 
-function getPublicImageUrl(request, id) {
+function getPublicMediaUrl(request, id) {
   const url = new URL(request.url);
-  url.pathname = "/api/image/" + id;
+  url.pathname = url.pathname.startsWith("/api/media") ? "/api/media/" + id : "/api/image/" + id;
   url.search = "";
   url.hash = "";
   return url.toString();
 }
 
 export async function onRequest({ request, env, params }) {
-  const id = getImageId(params);
+  const id = getMediaId(params);
 
   if (request.method === "OPTIONS") {
     const headers = new Headers({
@@ -132,7 +150,7 @@ export async function onRequest({ request, env, params }) {
   }
 
   if (!env || !env.SHARE_KV) {
-    return jsonResponse({ error: "image storage is not configured" }, { status: 503 }, request);
+    return jsonResponse({ error: "media storage is not configured" }, { status: 503 }, request);
   }
 
   if (request.method === "POST" && !id) {
@@ -140,7 +158,7 @@ export async function onRequest({ request, env, params }) {
     if (!isAllowedOrigin(origin)) return jsonResponse({ error: "origin not allowed" }, { status: 403 }, request);
     const contentLength = Number(request.headers.get("Content-Length"));
     if (Number.isFinite(contentLength) && contentLength > MAX_DATA_URL_CHARS + 1024) {
-      return jsonResponse({ error: "image upload is too large" }, { status: 413 }, request);
+      return jsonResponse({ error: "media upload is too large" }, { status: 413 }, request);
     }
     let body;
     try {
@@ -148,65 +166,65 @@ export async function onRequest({ request, env, params }) {
     } catch (_) {
       return jsonResponse({ error: "invalid json" }, { status: 400 }, request);
     }
-    const image = parseImageDataUrl(body && body.dataUrl);
-    if (!image) return jsonResponse({ error: "invalid or oversized raster image" }, { status: 400 }, request);
+    const media = parseMediaDataUrl(body && body.dataUrl);
+    if (!media) return jsonResponse({ error: "invalid or oversized image, GIF, or video" }, { status: 400 }, request);
 
-    const imageId = await createImageId(image.mimeType, image.bytes);
-    const storageKey = IMAGE_KEY_PREFIX + imageId;
+    const mediaId = await createMediaId(media.mimeType, media.bytes);
+    const storageKey = MEDIA_KEY_PREFIX + mediaId;
     const existing = await env.SHARE_KV.get(storageKey);
     const createdAt = Date.now();
-    const expiresAt = createdAt + IMAGE_TTL_MILLISECONDS;
+    const expiresAt = createdAt + MEDIA_TTL_MILLISECONDS;
     await env.SHARE_KV.put(storageKey, JSON.stringify({
       version: 2,
-      mimeType: image.mimeType,
-      base64: image.base64,
-      size: image.bytes.byteLength,
+      mimeType: media.mimeType,
+      base64: media.base64,
+      size: media.bytes.byteLength,
       createdAt,
       expiresAt
-    }), { expirationTtl: IMAGE_TTL_SECONDS });
+    }), { expirationTtl: MEDIA_TTL_SECONDS });
 
     return jsonResponse({
-      id: imageId,
-      url: getPublicImageUrl(request, imageId),
-      mimeType: image.mimeType,
-      size: image.bytes.byteLength,
+      id: mediaId,
+      url: getPublicMediaUrl(request, mediaId),
+      mimeType: media.mimeType,
+      size: media.bytes.byteLength,
       expiresAt
     }, { status: existing ? 200 : 201 }, request);
   }
 
-  if ((request.method === "GET" || request.method === "HEAD") && IMAGE_ID_PATTERN.test(id)) {
-    const raw = await env.SHARE_KV.get(IMAGE_KEY_PREFIX + id);
-    if (!raw) return jsonResponse({ error: "image not found" }, { status: 404 }, request);
+  if ((request.method === "GET" || request.method === "HEAD") && MEDIA_ID_PATTERN.test(id)) {
+    const raw = await env.SHARE_KV.get(MEDIA_KEY_PREFIX + id);
+    if (!raw) return jsonResponse({ error: "media not found" }, { status: 404 }, request);
     let record;
     try {
       record = JSON.parse(raw);
     } catch (_) {
-      return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
+      return jsonResponse({ error: "media unavailable" }, { status: 500 }, request);
     }
-    if (!record || !ALLOWED_IMAGE_TYPES.has(record.mimeType)) {
-      return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
+    if (!record || !ALLOWED_MEDIA_TYPES.has(record.mimeType)) {
+      return jsonResponse({ error: "media unavailable" }, { status: 500 }, request);
     }
     const createdAt = Number(record.createdAt);
     const storedExpiresAt = Number(record.expiresAt);
     const expiresAt = Number.isFinite(storedExpiresAt) && storedExpiresAt > 0
       ? storedExpiresAt
-      : createdAt + IMAGE_TTL_MILLISECONDS;
+      : createdAt + MEDIA_TTL_MILLISECONDS;
     if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt)) {
-      return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
+      return jsonResponse({ error: "media unavailable" }, { status: 500 }, request);
     }
     const remainingTtl = Math.floor((expiresAt - Date.now()) / 1000);
     if (remainingTtl < 60) {
-      await env.SHARE_KV.delete(IMAGE_KEY_PREFIX + id);
-      return jsonResponse({ error: "image expired" }, { status: 404 }, request);
+      await env.SHARE_KV.delete(MEDIA_KEY_PREFIX + id);
+      return jsonResponse({ error: "media expired" }, { status: 404 }, request);
     }
     if (!Number.isFinite(storedExpiresAt) || storedExpiresAt <= 0) {
       record.version = 2;
       record.expiresAt = expiresAt;
-      await env.SHARE_KV.put(IMAGE_KEY_PREFIX + id, JSON.stringify(record), { expirationTtl: remainingTtl });
+      await env.SHARE_KV.put(MEDIA_KEY_PREFIX + id, JSON.stringify(record), { expirationTtl: remainingTtl });
     }
     const bytes = decodeBase64(record.base64);
-    if (!bytes || bytes.byteLength > MAX_IMAGE_BYTES || !hasValidImageSignature(record.mimeType, bytes)) {
-      return jsonResponse({ error: "image unavailable" }, { status: 500 }, request);
+    if (!bytes || bytes.byteLength > getMediaByteLimit(record.mimeType) || !hasValidMediaSignature(record.mimeType, bytes)) {
+      return jsonResponse({ error: "media unavailable" }, { status: 500 }, request);
     }
     const headers = new Headers({
       "Content-Type": record.mimeType,

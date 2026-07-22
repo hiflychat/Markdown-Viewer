@@ -235,15 +235,22 @@ Local file import:
 - The first 8 KB of a file are scanned for null bytes to avoid loading binary files as text.
 - Imported local files open in the active tab or a new tab depending on the action.
 
-Image insertion:
+Media insertion:
 
-- Uploading from the image dialog, pasting from the clipboard, and dropping an image all use the same insertion pipeline.
-- Small raster files retain their safe raster format; larger images are resized and converted to WebP with a bounded upload size.
-- After first-use consent, optimized images are stored in Cloudflare KV under a content-derived id and inserted as short HTTPS URLs. Identical content reuses the same id.
-- Anyone with a managed image URL can retrieve the image. The URL is unguessable but is not an access-control boundary.
-- Managed images expire 90 days after their most recent upload. After expiry, the Markdown link remains but the image no longer renders.
+- Uploading from the media dialog, pasting from the clipboard, and dropping an image, animated GIF, or supported video all use the same insertion pipeline and a visible progress toast.
+- Small raster files retain their safe raster format; larger still images are resized and converted to WebP with a bounded upload size. GIF bytes are retained so animation is not lost.
+- Supported managed video formats are MP4, WebM, and Ogg. Videos are inserted as sanitized HTML5 `<video controls>` elements; external media URLs can use the same format.
+- After first-use consent, managed media is stored in Cloudflare KV under a content-derived id and inserted as a short HTTPS URL. Identical content reuses the same id.
+- Anyone with a managed media URL can retrieve the file. The URL is unguessable but is not an access-control boundary.
+- Managed images, GIFs, and videos expire 90 days after their most recent upload, matching the stored Share Snapshot retention period. After expiry, the Markdown or HTML reference remains but the media no longer renders.
 - Existing inline base64 raster images are detected when a normal document opens and can be converted to managed short links without changing alt text or titles.
-- Individual source images are limited to 25 MiB and managed image payloads are limited to 300 KiB after optimization.
+- Individual source files are limited to 25 MiB before processing. Managed still-image payloads are limited to 300 KiB after optimization, GIFs to 5 MiB, and videos to 10 MiB.
+
+Application feedback:
+
+- GitHub imports and media uploads use compact progress toasts with item counts, status details, and a progress bar.
+- User-facing errors, warnings, and informational alerts use the same accessible toast surface instead of blocking browser alert dialogs.
+- Toasts include text and Lucide icons rather than relying on color alone, and respect reduced-motion preferences.
 
 GitHub import:
 
@@ -362,7 +369,7 @@ Implementation:
 
 Limits:
 
-- A live message can be at most 8 MB. Managed images synchronize as short HTTPS links rather than binary document content.
+- A live message can be at most 8 MB. Managed images, GIFs, and videos synchronize as short HTTPS links rather than binary document content.
 - A live room can have at most 64 WebSocket participants.
 - Participant presence is considered stale after 45 seconds without updates.
 - Join waits up to 8 seconds for initial room state before showing an expired/unavailable room message.
@@ -518,7 +525,7 @@ Security limitations:
 | Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
-| Managed image upload | Yes, after first-use consent | Cloudflare KV, content-addressed, 90-day TTL | Publicly retrievable by its unguessable HTTPS URL until expiry; raster formats only, 300 KiB optimized limit. |
+| Managed media upload | Yes, after first-use consent | Cloudflare KV, content-addressed, 90-day TTL | Publicly retrievable by its unguessable HTTPS URL until expiry; still images 300 KiB optimized, GIF 5 MiB, video 10 MiB. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
 | GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
 | Emoji lookup | Yes | GitHub emoji API response in memory | Used for shortcode picker/lookup. |
@@ -533,7 +540,7 @@ Security limitations:
 
 - Browser storage quotas can reject very large saved workspaces.
 - The GitHub importer shows a maximum of 30 Markdown files.
-- Stored Share Snapshot content is limited to 8,000,000 characters. Managed images remain separate and travel as short HTTPS links.
+- Stored Share Snapshot content is limited to 8,000,000 characters. Managed media remains separate and travels as short HTTPS links.
 - STL source is limited to 2 MiB and parsed geometry to 300,000 vertices.
 - Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
 - Remote renderer availability depends on third-party services and network conditions.

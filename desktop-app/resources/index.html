@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME=' 'sha256-NnbK2LG1LUwYyZ1xgJN7k3oK4oTvHY4o9852VxwNA/o='; script-src-attr 'none'; worker-src 'self'; connect-src 'self' https://markdownviewer.pages.dev https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io wss://markdownviewer.pages.dev ws://localhost:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src-attr 'unsafe-inline'; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data:; manifest-src 'self'; frame-src 'none'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh 'sha256-DgMFO4QE+qqf2xNgeNb5gMKG6BtiiQFniYj21c88yME=' 'sha256-NnbK2LG1LUwYyZ1xgJN7k3oK4oTvHY4o9852VxwNA/o='; script-src-attr 'none'; worker-src 'self'; connect-src 'self' https://markdownviewer.pages.dev https://api.github.com https://raw.githubusercontent.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://kroki.io https://www.plantuml.com https://mermaid.ink https://paulrosen.github.io wss://markdownviewer.pages.dev ws://localhost:* ws://127.0.0.1:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src-attr 'unsafe-inline'; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; media-src 'self' blob: data: https:; manifest-src 'self'; frame-src 'none'; upgrade-insecure-requests">
     <!-- PERF-015: Preload critical-path resources for faster discovery -->
     <link rel="preload" href="/styles.css" as="style">
     <link rel="preload" href="/js/script.js" as="script">
@@ -344,7 +344,7 @@
               <span id="document-tree-heading-label">Workspaces</span>
               <span id="document-tree-heading-hint">Drag files to move</span>
             </div>
-            <div id="document-tree" class="document-tree" role="tree" aria-multiselectable="true" aria-label="Workspaces, folders, and Markdown files"></div>
+            <div id="document-tree" class="document-tree" role="tree" aria-multiselectable="true" aria-label="Workspaces, folders, and Markdown files" tabindex="0"></div>
 
             <div class="document-sidebar-footer">
               <span id="document-sidebar-count">0 of 50 files</span>
@@ -418,7 +418,7 @@
             <button type="button" class="markdown-tool-btn" data-md-action="inline-code" title="Inline code" aria-label="Inline code"><i class="lucide lucide-code-2" aria-hidden="true"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="table" title="Table" aria-label="Table"><i class="lucide lucide-table-2" aria-hidden="true"></i></button>
             <button type="button" class="markdown-tool-btn" data-md-action="link" title="Link" aria-label="Link"><i class="lucide lucide-link-2"></i></button>
-            <button type="button" class="markdown-tool-btn" data-md-action="image" title="Image" aria-label="Image"><i class="lucide lucide-image" aria-hidden="true"></i></button>
+            <button type="button" class="markdown-tool-btn" data-md-action="image" title="Image, GIF, or video" aria-label="Insert image, GIF, or video"><i class="lucide lucide-image" aria-hidden="true"></i></button>
           </div>
           <div class="markdown-toolbar-group" role="group" aria-label="Advanced insertion">
             <button type="button" class="markdown-tool-btn" data-md-action="diagram" title="Diagram and more" aria-label="Diagram and more"><i class="lucide lucide-workflow" aria-hidden="true"></i></button>
@@ -1005,33 +1005,33 @@
         <div id="image-modal" class="reset-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="image-modal-title" aria-hidden="true" style="display:none;">
           <div class="reset-modal-box reset-modal-box--wide app-modal-box">
             <div class="modal-header">
-              <p id="image-modal-title" class="reset-modal-message">Insert image</p>
+              <p id="image-modal-title" class="reset-modal-message">Insert image, GIF, or video</p>
               <button type="button" class="modal-close-btn" data-modal-cancel="image-modal-cancel" aria-label="Close image dialog"><i class="lucide lucide-x" aria-hidden="true"></i></button>
             </div>
             <div class="modal-body">
               <div class="reset-modal-toggle-group">
                 <label class="reset-modal-option">
                   <input type="radio" name="image-source" id="image-source-upload" value="upload">
-                  Upload from Device
+                  Upload Image, GIF, or Video
                 </label>
                 <label class="reset-modal-option">
                   <input type="radio" name="image-source" id="image-source-url" value="url" checked>
-                  External Image (URL)
+                  External Media (URL)
                 </label>
               </div>
               <div id="image-upload-fields" class="reset-modal-field-group" style="display:none;">
-                <p class="modal-subtext" role="note">Device images are optimized and uploaded to create a short public link that expires after 90 days. Anyone with the image URL can view it until then.</p>
-                <input type="file" id="image-modal-file" class="rename-modal-input" accept="image/*" />
+                <p class="modal-subtext" role="note">Images, GIFs, and videos are uploaded to create a short public link that expires after 90 days. Anyone with the media URL can view it until then. GIF limit: 5 MB; video limit: 10 MB.</p>
+                <input type="file" id="image-modal-file" class="rename-modal-input" accept="image/*,video/mp4,video/webm,video/ogg" />
               </div>
               <div id="image-url-fields" class="reset-modal-field-group">
                 <div class="reset-modal-field">
-                  <label class="reset-modal-label" for="image-modal-url">Image URL</label>
+                  <label class="reset-modal-label" for="image-modal-url">Media URL</label>
                   <input type="url" id="image-modal-url" class="rename-modal-input" value="https://" />
                 </div>
               </div>
               <div class="reset-modal-field">
-                <label class="reset-modal-label" for="image-modal-alt">Alt Text (used for title)</label>
-                <input type="text" id="image-modal-alt" class="rename-modal-input" placeholder="Image description" />
+                <label class="reset-modal-label" for="image-modal-alt">Description</label>
+                <input type="text" id="image-modal-alt" class="rename-modal-input" placeholder="Media description" />
               </div>
             </div>
             <div class="reset-modal-actions">
@@ -1210,7 +1210,7 @@
             <div class="drag-overlay-inner">
                 <i class="lucide lucide-cloud-upload drag-overlay-icon"></i>
                 <p class="drag-overlay-text">Drop to import or insert</p>
-                <p class="drag-overlay-sub">Markdown files and images are supported</p>
+                <p class="drag-overlay-sub">Markdown files, images, GIFs, and videos are supported</p>
             </div>
         </div>
 
@@ -1278,7 +1278,7 @@
                 </div>
                 <textarea id="markdown-editor" placeholder="Type, paste, or import Markdown here..." aria-label="Markdown editor input with live preview"></textarea>
                 <div class="drop-hint" aria-hidden="true">
-                    <i class="lucide lucide-cloud-upload me-1"></i>Drop Markdown files or images to add them
+                    <i class="lucide lucide-cloud-upload me-1"></i>Drop Markdown files, images, GIFs, or videos to add them
                 </div>
             </div>
             <!-- Resize Divider - Story 1.3 -->
@@ -1403,14 +1403,32 @@
       <div class="import-progress-content">
         <div class="import-progress-copy">
           <span id="import-progress-title">Importing files</span>
-          <span id="import-progress-count">0 of 0</span>
+          <span id="import-progress-count" class="import-progress-count">0 of 0</span>
         </div>
         <span id="import-progress-detail" class="import-progress-detail">Preparing import…</span>
         <div id="import-progress-bar" class="import-progress-track" role="progressbar" aria-label="Markdown file import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <span id="import-progress-value"></span>
+          <span id="import-progress-value" class="import-progress-value"></span>
         </div>
       </div>
     </div>
+
+    <div id="media-progress-toast" class="import-progress-toast media-progress-toast" role="status" aria-live="polite" aria-atomic="true" data-state="loading" hidden>
+      <span class="import-progress-icon-shell" aria-hidden="true">
+        <i id="media-progress-icon" class="lucide lucide-refresh-cw import-progress-icon"></i>
+      </span>
+      <div class="import-progress-content">
+        <div class="import-progress-copy">
+          <span id="media-progress-title">Uploading media</span>
+          <span id="media-progress-count" class="import-progress-count">0 of 0</span>
+        </div>
+        <span id="media-progress-detail" class="import-progress-detail">Preparing upload...</span>
+        <div id="media-progress-bar" class="import-progress-track" role="progressbar" aria-label="Media upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span id="media-progress-value" class="import-progress-value"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="app-toast-region" class="app-toast-region" aria-label="Notifications" aria-live="polite" aria-relevant="additions"></div>
 
     <div id="document-name-modal" class="reset-modal-overlay modal-overlay" role="dialog" aria-modal="true" aria-labelledby="document-name-modal-title" aria-describedby="document-name-modal-description" aria-hidden="true" style="display:none;">
       <div class="reset-modal-box reset-modal-box--wide app-modal-box modal-box">

@@ -75,9 +75,11 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 | Server share threshold | 3,000 bytes |
 | Stored Share Snapshot max content | 8,000,000 characters |
 | Stored Share Snapshot TTL | 90 days |
-| Managed image max source file | 25 MiB |
-| Managed image max optimized payload | 300 KiB |
-| Managed image TTL | 90 days from the most recent upload of that content |
+| Managed media max source file | 25 MiB |
+| Managed still-image optimized payload | 300 KiB |
+| Managed GIF payload | 5 MiB |
+| Managed video payload | 10 MiB |
+| Managed media TTL | 90 days from the most recent upload of that content |
 | Live Share max participants | 64 |
 | Live Share max message | 8 MB |
 | STL source limit | 2 MiB |
@@ -87,8 +89,8 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 
 The main preview path calls DOMPurify with additional tags and attributes needed by renderers:
 
-- Additional tags include `mjx-container` and `input`.
-- Additional attributes include `id`, `class`, `style`, `align`, `type`, `checked`, `disabled`, `data-original-code`, `role`, `aria-labelledby`, and `aria-describedby`.
+- Additional tags include `mjx-container`, `input`, `video`, and `source`.
+- Additional attributes include `id`, `class`, `style`, `align`, `type`, `checked`, `disabled`, `data-original-code`, `role`, `aria-labelledby`, `aria-describedby`, `aria-label`, `controls`, `preload`, and `playsinline`.
 - Allowed URI schemes include HTTP(S), `mailto:`, `tel:`, `blob:`, relative URLs, safe non-script values, and base64 raster image data for AVIF, BMP, GIF, JPEG, PNG, and WebP. SVG data URLs remain blocked.
 
 Export paths use similar expanded sanitizer settings for SVG/math capture. Scripts and unsafe event handlers are still removed.
@@ -132,7 +134,7 @@ class_name = "LiveRoom"
 script_name = "markdown-viewer-live-room"
 ```
 
-`SHARE_KV` stores large Share Snapshot records and content-addressed managed images for 90 days. Re-uploading identical image content refreshes that image's 90-day expiry. The two record types use separate key prefixes. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot, managed image storage, and Live Share are separate data paths.
+`SHARE_KV` stores large Share Snapshot records and content-addressed managed media for 90 days. Re-uploading identical content refreshes that media item's 90-day expiry. The snapshot and media record types use separate key prefixes. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot, managed media storage, and Live Share are separate data paths.
 
 `wrangler.live-room.toml` deploys `workers/live-room-worker.js` with the `LiveRoom` Durable Object migration.
 
@@ -147,15 +149,16 @@ script_name = "markdown-viewer-live-room"
 
 Responses set `Cache-Control: no-store` and vary CORS by request origin. The allowed origins are the production app, `null`, and localhost/127.0.0.1 development origins; unsupported origins receive `403`. Stored records contain content, mode, title, creation time, size, and a hash of the creator deletion token. The token is returned only when the snapshot is created. Invalid ids, missing content, oversized content, invalid deletion tokens, missing KV binding, and unknown routes return JSON errors.
 
-## Managed Image API
+## Managed Media API
 
-`functions/api/image/[[id]].js` supports:
+`functions/api/image/[[id]].js` and its video-friendly route alias `functions/api/media/[[id]].js` support:
 
-- `POST /api/image` to validate, deduplicate, and permanently store an optimized raster image.
-- `GET /api/image/<id>` and `HEAD /api/image/<id>` to serve the image through its content-addressed public URL.
+- `POST /api/image` for AVIF, BMP, GIF, JPEG, PNG, and WebP data URLs.
+- `POST /api/media` for MP4, WebM, and Ogg video data URLs.
+- `GET` and `HEAD` on `/api/image/<id>` or `/api/media/<id>` to serve content through its content-addressed public URL.
 - `OPTIONS` for CORS preflight.
 
-Uploads accept AVIF, BMP, GIF, JPEG, PNG, and WebP data URLs up to 300 KiB after client-side optimization. The API validates both the declared media type and file signature, derives an unguessable 24-character id from SHA-256 content, and stores the record under a managed-image key prefix in `SHARE_KV` with a 90-day TTL. Duplicate content returns the existing id and refreshes its TTL. Image responses are public, immutable, cross-origin raster responses until expiry; possession of the URL is sufficient to view an image.
+The API accepts still images up to 300 KiB after client-side optimization, GIFs up to 5 MiB, and videos up to 10 MiB. It validates both the declared media type and file signature, derives an unguessable 24-character id from SHA-256 content, and stores the record in `SHARE_KV` with a 90-day TTL. Duplicate content returns the existing id and refreshes its TTL. Responses are public, immutable, and cross-origin until expiry; possession of the URL is sufficient to retrieve the media. This is the same 90-day retention duration used for stored Share Snapshot links, though the two features store separate records.
 
 ## Live Room API
 

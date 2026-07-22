@@ -5,7 +5,7 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## Unreleased
 
-- **File and image drag-and-drop:** Replaced the blocking full-window drop overlay with a compact notice, made folder-targeted Markdown imports land in the selected folder, kept untargeted imports at the default workspace root, added hover-to-expand folders and Explorer edge auto-scrolling, added a Markdown-style file drag preview, and made uploaded, pasted, and dropped images optimized and stored behind short 90-day content-addressed links. Existing embedded raster images can be converted automatically after consent, and short links remain usable across refreshes, Snapshot, and Live Share until expiry.
+- **Media upload and file drag-and-drop:** Replaced the blocking full-window drop overlay with a compact notice, made folder-targeted Markdown imports land in the selected folder, kept untargeted imports at the default workspace root, added hover-to-expand folders and Explorer edge auto-scrolling, and added a Markdown-style file drag preview. Uploaded, pasted, and dropped images now use short 90-day content-addressed links; animated GIFs retain animation, and MP4, WebM, and Ogg videos insert as sanitized playable media. Uploads report progress in the same toast pattern as GitHub imports, user-facing alerts use accessible app toasts, and right-clicking blank Explorer space offers New file and New folder. Existing embedded raster images can still be converted automatically after consent.
 
 ## v3.9.3
 

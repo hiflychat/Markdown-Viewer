@@ -36,12 +36,13 @@ Run `npm run setup` or `node prepare.js` after changing root assets that the des
 
 ## Cloudflare Features
 
-Managed images and stored Share Snapshot require `SHARE_KV`. Live Share requires `LIVE_ROOMS` and the `LiveRoom` Durable Object.
+Managed media and stored Share Snapshot require `SHARE_KV`. Live Share requires `LIVE_ROOMS` and the `LiveRoom` Durable Object.
 
 When changing share or live behavior, update:
 
 - `script.js`
 - `functions/api/image/[[id]].js`
+- `functions/api/media/[[id]].js`
 - `functions/api/share/[[id]].js`
 - `functions/live-room/[[room]].js`
 - `workers/live-room-worker.js`
@@ -105,7 +106,8 @@ Please do not open public issues for vulnerabilities. Use GitHub Security Adviso
 | `preview-worker.js` | Worker Markdown rendering path. |
 | `styles.css` | Layout, themes, renderer styles, modals, responsive UI. |
 | `sw.js` | PWA/service-worker cache behavior. |
-| `functions/api/image/[[id]].js` | Content-addressed managed image API. |
+| `functions/api/image/[[id]].js` | Content-addressed managed raster image and GIF API. |
+| `functions/api/media/[[id]].js` | Route alias for content-addressed managed video uploads and delivery. |
 | `functions/api/share/[[id]].js` | Stored Share Snapshot API. |
 | `functions/live-room/[[room]].js` | Cloudflare Pages Live Share WebSocket entry. |
 | `workers/live-room-worker.js` | Live Share Durable Object relay. |

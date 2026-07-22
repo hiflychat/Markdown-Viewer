@@ -84,7 +84,7 @@ Live Share does not write document content to Cloudflare KV or a database. State
 
 ## Required Configuration
 
-`wrangler.toml` binds `LIVE_ROOMS` for the Pages project and binds `SHARE_KV` for Share Snapshot plus managed image records. `wrangler.live-room.toml` deploys the standalone Durable Object worker:
+`wrangler.toml` binds `LIVE_ROOMS` for the Pages project and binds `SHARE_KV` for Share Snapshot plus managed media records. `wrangler.live-room.toml` deploys the standalone Durable Object worker:
 
 ```toml
 name = "markdown-viewer-live-room"
@@ -100,4 +100,4 @@ tag = "v1"
 new_sqlite_classes = ["LiveRoom"]
 ```
 
-Share Snapshot and managed images use separate key prefixes in `SHARE_KV`; Live Share uses `LIVE_ROOMS`. They should not be described as the same storage path.
+Share Snapshot and managed media use separate key prefixes in `SHARE_KV`; Live Share uses `LIVE_ROOMS`. They should not be described as the same storage path.
