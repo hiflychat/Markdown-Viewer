@@ -3753,11 +3753,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', label + ' options');
     actions.forEach(function(action) {
+      if (action.separator) {
+        const separator = document.createElement('div');
+        separator.className = 'tab-menu-separator';
+        separator.setAttribute('role', 'separator');
+        menu.appendChild(separator);
+        return;
+      }
       const actionButton = document.createElement('button');
       actionButton.type = 'button';
       actionButton.className = 'tab-menu-item' + (action.danger ? ' tab-menu-item-danger' : '');
       actionButton.setAttribute('role', 'menuitem');
       actionButton.setAttribute('data-action', action.id);
+      actionButton.disabled = action.disabled === true;
       const actionIcon = document.createElement('i');
       actionIcon.className = 'lucide ' + action.icon;
       actionIcon.setAttribute('aria-hidden', 'true');
@@ -3767,12 +3775,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         event.preventDefault();
         event.stopPropagation();
         closeDocumentSidebarMenus();
-        action.run();
+        if (!actionButton.disabled) action.run();
       });
       menu.appendChild(actionButton);
     });
     menu.addEventListener('keydown', function(event) {
-      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+      const items = Array.from(menu.querySelectorAll('[role="menuitem"]:not(:disabled)'));
       const currentIndex = items.indexOf(document.activeElement);
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -4020,6 +4028,141 @@ document.addEventListener("DOMContentLoaded", async function () {
       ? { x: event.clientX, y: event.clientY }
       : { x: Math.min(rect.left + 24, window.innerWidth - 8), y: Math.min(rect.top + 24, window.innerHeight - 8) };
     openDocumentMenu(virtualButton, virtualButton._documentMenu, position, tree);
+  }
+
+  function getContextMenuPosition(event, fallbackElement) {
+    if (event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)) {
+      return { x: event.clientX, y: event.clientY };
+    }
+    const rect = fallbackElement && typeof fallbackElement.getBoundingClientRect === 'function'
+      ? fallbackElement.getBoundingClientRect()
+      : { left: 8, top: 8 };
+    return {
+      x: Math.min(rect.left + 24, window.innerWidth - 8),
+      y: Math.min(rect.top + 24, window.innerHeight - 8)
+    };
+  }
+
+  function openQuickStartContextMenu(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const actions = [
+      { id: 'open-explorer', icon: 'lucide-panel-left-open', label: 'Open Explorer', run: function() { noOpenDocumentExplorer.click(); } },
+      { id: 'new-document', icon: 'lucide-file-plus-2', label: 'New document', run: function() { noOpenDocumentNew.click(); } },
+      { id: 'open-device', icon: 'lucide-upload', label: 'Open from device', run: function() { noOpenDocumentOpenFile.click(); } },
+      { id: 'import-github', icon: 'bi bi-github', label: 'Import from GitHub', run: function() { noOpenDocumentGithub.click(); } },
+      { id: 'welcome-template', icon: 'lucide-panels-top-left', label: 'Welcome template', run: function() { noOpenDocumentWelcome.click(); } }
+    ];
+    const virtualButton = createDocumentMenuButton('Quick start', actions);
+    openDocumentMenu(
+      virtualButton,
+      virtualButton._documentMenu,
+      getContextMenuPosition(event, noOpenDocument),
+      noOpenDocument
+    );
+  }
+
+  function selectionBelongsToElement(selection, element) {
+    if (!selection || !element || !selection.anchorNode || !selection.focusNode) return false;
+    return element.contains(selection.anchorNode) && element.contains(selection.focusNode);
+  }
+
+  function getDocumentSurfaceContext(surface) {
+    const isSecondary = surface === documentSplitEditor || surface === documentSplitPreview;
+    const tabId = isSecondary ? secondarySplitTabId : activeTabId;
+    const tab = tabs.find(function(item) { return item.id === tabId && isTabOpen(item); });
+    if (!tab) return null;
+    const editor = surface === markdownEditor || surface === documentSplitEditor ? surface : null;
+    let selectedText = '';
+    let selectionStart = null;
+    let selectionEnd = null;
+    if (editor) {
+      selectionStart = editor.selectionStart;
+      selectionEnd = editor.selectionEnd;
+      selectedText = editor.value.slice(selectionStart, selectionEnd);
+    } else {
+      const selection = window.getSelection();
+      if (selectionBelongsToElement(selection, surface)) selectedText = selection.toString();
+    }
+    return {
+      tab: tab,
+      tabId: tabId,
+      editor: editor,
+      selectedText: selectedText,
+      selectionStart: selectionStart,
+      selectionEnd: selectionEnd,
+      editable: Boolean(editor && !editor.readOnly && (isSecondary || canMutateEditor()))
+    };
+  }
+
+  function replaceDocumentSurfaceSelection(context, replacement) {
+    if (!context || !context.editor || !context.editable) return;
+    const start = context.selectionStart;
+    const end = context.selectionEnd;
+    if (context.editor === markdownEditor) {
+      replaceEditorRange(start, end, replacement);
+      return;
+    }
+    context.editor.focus();
+    context.editor.setRangeText(replacement, start, end, 'end');
+    context.editor.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  async function copyDocumentSurfaceSelection(context, cut) {
+    if (!context || !context.selectedText) return;
+    try {
+      await copyTextToClipboard(context.selectedText);
+      if (cut) replaceDocumentSurfaceSelection(context, '');
+      showAppToast(cut ? 'Selection cut to clipboard.' : 'Selection copied to clipboard.', {
+        tone: 'success',
+        title: cut ? 'Cut' : 'Copied',
+        icon: cut ? 'lucide-square-pen' : 'lucide-copy'
+      });
+    } catch (error) {
+      showAppToast('Clipboard access failed: ' + error.message, { tone: 'error', title: 'Clipboard unavailable' });
+    }
+  }
+
+  async function pasteIntoDocumentSurface(context) {
+    if (!context || !context.editable) return;
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.readText !== 'function') {
+        throw new Error('Paste permission is not available in this browser');
+      }
+      const text = await navigator.clipboard.readText();
+      replaceDocumentSurfaceSelection(context, text);
+    } catch (error) {
+      showAppToast('Paste failed: ' + error.message, { tone: 'error', title: 'Clipboard unavailable' });
+    }
+  }
+
+  function openDocumentSurfaceContextMenu(surface, event) {
+    const context = getDocumentSurfaceContext(surface);
+    if (!context) return;
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const actions = [
+      { id: 'new-document', icon: 'lucide-file-plus-2', label: 'New file', run: function() { newTab(); } },
+      { separator: true },
+      { id: 'cut', icon: 'lucide-square-pen', label: 'Cut', disabled: !context.editable || !context.selectedText, run: function() { copyDocumentSurfaceSelection(context, true); } },
+      { id: 'copy', icon: 'lucide-copy', label: 'Copy', disabled: !context.selectedText, run: function() { copyDocumentSurfaceSelection(context, false); } },
+      { id: 'paste', icon: 'lucide-file-plus-2', label: 'Paste', disabled: !context.editable, run: function() { pasteIntoDocumentSurface(context); } },
+      { separator: true }
+    ];
+    getDocumentMenuActions(context.tab).forEach(function(action) {
+      if (action.id !== 'open' && action.id !== 'split' && action.id !== 'split-close') actions.push(action);
+    });
+    const virtualButton = createDocumentMenuButton(context.tab.title || 'Untitled', actions);
+    openDocumentMenu(
+      virtualButton,
+      virtualButton._documentMenu,
+      getContextMenuPosition(event, surface),
+      surface
+    );
   }
 
   async function moveDocumentToLocation(tabId, workspaceId, folderId) {
@@ -4384,6 +4527,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     const folder = getFolderById(tab.folderId);
     if (folder && workspace) return workspace.name + ' / ' + getFolderPath(folder.id);
     return workspace ? workspace.name : 'Workspace';
+  }
+
+  function getDocumentTabHoverTitle(tab) {
+    const title = tab && tab.title ? tab.title : 'Untitled';
+    const folder = tab ? getFolderById(tab.folderId) : null;
+    return folder ? getFolderPath(folder.id) + ' / ' + title : title;
   }
 
   function documentMatchesSidebarSearch(tab) {
@@ -6788,11 +6937,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         titleSpan.appendChild(primaryTitle);
         titleSpan.appendChild(separator);
         titleSpan.appendChild(secondaryTitle);
-        titleSpan.title = (tab.title || 'Untitled') + ' / ' + (splitPartner.title || 'Untitled');
+        titleSpan.title = getDocumentTabHoverTitle(tab) + ' / ' + getDocumentTabHoverTitle(splitPartner);
         item.setAttribute('aria-label', 'Split view: ' + titleSpan.title);
       } else {
         titleSpan.textContent = tab.title || 'Untitled';
-        titleSpan.title = tab.title || 'Untitled';
+        titleSpan.title = getDocumentTabHoverTitle(tab);
       }
 
       const tabMenu = createTabActionMenu(tab, { menuIdPrefix: 'desktop-tab-menu' });
@@ -7794,6 +7943,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         else newTab(sampleMarkdown, 'Welcome to Markdown');
       };
     }
+    if (noOpenDocument) {
+      noOpenDocument.addEventListener('contextmenu', openQuickStartContextMenu);
+    }
+    [markdownEditor, markdownPreview, documentSplitEditor, documentSplitPreview].forEach(function(surface) {
+      if (!surface) return;
+      surface.addEventListener('contextmenu', function(event) {
+        openDocumentSurfaceContextMenu(surface, event);
+      });
+    });
   }
 
   // Late-load callback hook for Neutralino command-line files

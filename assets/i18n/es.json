@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Este archivo Markdown es demasiado grande. El tamaño máximo admitido es 10 MB.",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Este archivo multimedia excede el límite admitido: imágenes fijas 25 MB antes de la optimización, GIF 5 MB y videos 10 MB.",
   "Create a folder inside": "Crea una carpeta dentro",
-  "Create a folder inside this workspace.": "Crea una carpeta dentro de este espacio de trabajo."
+  "Create a folder inside this workspace.": "Crea una carpeta dentro de este espacio de trabajo.",
+  "Clipboard access failed:": "Error al acceder al portapapeles:",
+  "Clipboard unavailable": "Portapapeles no disponible",
+  "copy": "copia",
+  "Mermaid diagram": "Diagrama de sirena",
+  "Mermaid diagram actions": "Acciones del diagrama de sirena",
+  "Paste failed:": "Error al pegar:",
+  "Selection copied to clipboard.": "Selección copiada al portapapeles.",
+  "Selection cut to clipboard.": "Selección cortada al portapapeles."
 }

@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Bu Markdown dosyası çok büyük. Desteklenen maksimum boyut 10 MB'tır.",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Bu medya dosyası desteklenen sınırı aşıyor: optimizasyondan önce hareketsiz görüntüler 25 MB, GIF'ler 5 MB ve videolar 10 MB.",
   "Create a folder inside": "İçinde bir klasör oluştur",
-  "Create a folder inside this workspace.": "Bu çalışma alanının içinde bir klasör oluşturun."
+  "Create a folder inside this workspace.": "Bu çalışma alanının içinde bir klasör oluşturun.",
+  "Clipboard access failed:": "Pano erişimi başarısız oldu:",
+  "Clipboard unavailable": "Pano kullanılamıyor",
+  "copy": "kopyala",
+  "Mermaid diagram": "Denizkızı diyagramı",
+  "Mermaid diagram actions": "Denizkızı diyagramı eylemleri",
+  "Paste failed:": "Yapıştırma başarısız oldu:",
+  "Selection copied to clipboard.": "Seçim panoya kopyalandı.",
+  "Selection cut to clipboard.": "Seçim panoya kesildi."
 }

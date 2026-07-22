@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "此 Markdown 文件太大。支援的最大大小為 10 MB。",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "此媒體檔案超出了支援的限制：優化前靜態影像 25 MB、GIF 5 MB 和影片 10 MB。",
   "Create a folder inside": "裡面建立一個資料夾",
-  "Create a folder inside this workspace.": "在此工作區中建立一個資料夾。"
+  "Create a folder inside this workspace.": "在此工作區中建立一個資料夾。",
+  "Clipboard access failed:": "剪貼簿存取失敗：",
+  "Clipboard unavailable": "剪貼簿不可用",
+  "copy": "複製",
+  "Mermaid diagram": "人魚圖",
+  "Mermaid diagram actions": "人魚圖動作",
+  "Paste failed:": "貼上失敗：",
+  "Selection copied to clipboard.": "所選內容已複製到剪貼簿。",
+  "Selection cut to clipboard.": "所選內容剪下到剪貼簿。"
 }

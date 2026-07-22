@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "이 Markdown 파일이 너무 큽니다. 지원되는 최대 크기는 10MB입니다.",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "이 미디어 파일은 지원되는 제한(최적화 전 정지 이미지 25MB, GIF 5MB, 비디오 10MB)을 초과합니다.",
   "Create a folder inside": "폴더를 생성하세요",
-  "Create a folder inside this workspace.": "이 작업 공간 내에 폴더를 만듭니다."
+  "Create a folder inside this workspace.": "이 작업 공간 내에 폴더를 만듭니다.",
+  "Clipboard access failed:": "클립보드 액세스 실패:",
+  "Clipboard unavailable": "클립보드를 사용할 수 없습니다.",
+  "copy": "복사",
+  "Mermaid diagram": "인어 그림",
+  "Mermaid diagram actions": "인어 다이어그램 액션",
+  "Paste failed:": "붙여넣기 실패:",
+  "Selection copied to clipboard.": "선택 항목이 클립보드에 복사되었습니다.",
+  "Selection cut to clipboard.": "선택 항목을 클립보드로 잘라냈습니다."
 }

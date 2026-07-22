@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Ten plik Markdown jest za duży. Maksymalny obsługiwany rozmiar to 10 MB.",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Ten plik multimedialny przekracza obsługiwany limit: zdjęcia 25 MB przed optymalizacją, pliki GIF 5 MB i filmy 10 MB.",
   "Create a folder inside": "Utwórz folder w środku",
-  "Create a folder inside this workspace.": "Utwórz folder w tym obszarze roboczym."
+  "Create a folder inside this workspace.": "Utwórz folder w tym obszarze roboczym.",
+  "Clipboard access failed:": "Dostęp do schowka nie powiódł się:",
+  "Clipboard unavailable": "Schowek niedostępny",
+  "copy": "kopia",
+  "Mermaid diagram": "Schemat syreny",
+  "Mermaid diagram actions": "Działania na diagramie syreny",
+  "Paste failed:": "Wklejanie nie powiodło się:",
+  "Selection copied to clipboard.": "Zaznaczenie skopiowane do schowka.",
+  "Selection cut to clipboard.": "Zaznaczenie wycięte do schowka."
 }

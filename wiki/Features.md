@@ -36,6 +36,8 @@ Users can work with multiple documents at once.
 - New files can be created from the sidebar, tab bar, mobile menu, imports, shared snapshots, and Live Share joins. Multi-file imports show a compact bottom progress indicator.
 - The sidebar supports file open, rename, duplicate, favorite, move, Markdown download, and delete actions. Recent and Favorites are filtered references to the original files, not copies.
 - Tabs can be renamed, duplicated, deleted, and reordered by drag and drop.
+- Right-clicking the no-document workspace opens the same five Quick Start commands shown in the empty state. Right-clicking an editor or preview surface opens New file, selection-aware clipboard commands, and the current document's management actions; unavailable editing commands remain visible but disabled in preview and read-only contexts.
+- Hovering a tab shows its containing folder path and filename. Files stored directly at the Workspace root show only their filename.
 - The app enforces a consistent limit of 50 open documents. New documents, duplication, local/GitHub imports, Share Snapshot, and Live Share joins all use this limit.
 - Each normal tab stores a title, content, workspace/folder location, favorite state, recent activity metadata, scroll position, view mode, local review threads, and creation time.
 - The active tab id and untitled-document counter are stored separately.

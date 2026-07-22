@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "Этот файл Markdown слишком велик. Максимальный поддерживаемый размер — 10 МБ.",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "Этот медиафайл превышает поддерживаемый лимит: неподвижные изображения 25 МБ до оптимизации, GIF-файлы 5 МБ и видео 10 МБ.",
   "Create a folder inside": "Создайте папку внутри",
-  "Create a folder inside this workspace.": "Создайте папку внутри этого рабочего пространства."
+  "Create a folder inside this workspace.": "Создайте папку внутри этого рабочего пространства.",
+  "Clipboard access failed:": "Не удалось получить доступ к буферу обмена:",
+  "Clipboard unavailable": "Буфер обмена недоступен",
+  "copy": "копия",
+  "Mermaid diagram": "Схема русалки",
+  "Mermaid diagram actions": "Действия на диаграмме русалки",
+  "Paste failed:": "Не удалось вставить:",
+  "Selection copied to clipboard.": "Выделение скопировано в буфер обмена.",
+  "Selection cut to clipboard.": "Выделенный фрагмент вырезан в буфер обмена."
 }

@@ -1062,5 +1062,13 @@
   "This Markdown file is too large. The maximum supported size is 10 MB.": "この Markdown ファイルは大きすぎます。サポートされる最大サイズは 10 MB です。",
   "This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.": "このメディア ファイルはサポートされている制限を超えています: 最適化前の静止画は 25 MB、GIF は 5 MB、ビデオは 10 MB です。",
   "Create a folder inside": "内にフォルダーを作成",
-  "Create a folder inside this workspace.": "このワークスペース内にフォルダーを作成します。"
+  "Create a folder inside this workspace.": "このワークスペース内にフォルダーを作成します。",
+  "Clipboard access failed:": "クリップボードへのアクセスに失敗しました:",
+  "Clipboard unavailable": "クリップボードが使用できません",
+  "copy": "コピー",
+  "Mermaid diagram": "マーメイドダイアグラム",
+  "Mermaid diagram actions": "マーメイドダイアグラムのアクション",
+  "Paste failed:": "貼り付けに失敗しました:",
+  "Selection copied to clipboard.": "選択範囲がクリップボードにコピーされました。",
+  "Selection cut to clipboard.": "選択範囲がクリップボードに切り取られました。"
 }
