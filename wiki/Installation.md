@@ -9,7 +9,7 @@ Markdown Viewer is a browser-based Markdown editor and viewer that can run as a 
 | Local web | Modern browser and a local HTTP server. |
 | PWA/offline web | HTTPS or localhost for Service Worker support. |
 | Docker | Docker Engine and port access to the container. |
-| Cloudflare sharing/live | Cloudflare Pages, `SHARE_KV`, and `LIVE_ROOMS` Durable Object bindings. |
+| Cloudflare sharing/media/live | Cloudflare Pages, `SHARE_KV`, and `LIVE_ROOMS` Durable Object bindings. |
 | Desktop build | Node.js/npm, Neutralino binaries, and internet access during setup/prepare. |
 
 Do not rely on `file://` for normal use. Web Workers and Service Workers can be blocked from local files.
@@ -30,7 +30,7 @@ npx serve . -p 8080
 
 Open `http://localhost:8080`.
 
-This runs the editor, split live preview, sync scrolling, local storage, local `.md` file imports, exports, PWA registration, and CDN-loaded renderers. Cloudflare-only features such as stored Share Snapshot and Live Share require their matching deployed endpoints.
+This runs the editor, split live preview, sync scrolling, local storage, local `.md` file imports, exports, PWA registration, and CDN-loaded renderers. The default local client sends consented managed-media uploads to the production image/media API. Other Cloudflare-only features such as stored Share Snapshot and Live Share require their matching deployed endpoints.
 
 ## Docker
 
@@ -72,8 +72,10 @@ Serve at least these root files:
 - `manifest.json`
 - `assets/`
 
-For Cloudflare Pages with stored Share Snapshot and Live Share, also deploy:
+For Cloudflare Pages with managed media, stored Share Snapshot, and Live Share, also deploy:
 
+- `functions/api/image/[[id]].js`
+- `functions/api/media/[[id]].js`
 - `functions/api/share/[[id]].js`
 - `functions/live-room/[[room]].js`
 - `workers/live-room-worker.js`
@@ -84,7 +86,7 @@ If you host under a sub-path, test worker, service-worker, manifest, and dynamic
 
 ## Cloudflare Setup
 
-Share Snapshot storage needs a KV namespace bound as `SHARE_KV`.
+Managed media and Share Snapshot storage need a KV namespace bound as `SHARE_KV`. Their records use separate key prefixes.
 
 Live Share needs a Durable Object binding named `LIVE_ROOMS` using the `LiveRoom` class from `workers/live-room-worker.js`.
 
@@ -133,7 +135,7 @@ Web/PWA:
 
 - First load requires the app shell and any needed CDN libraries.
 - After caching, the app shell and previously fetched CDN libraries can work offline.
-- Features that require live network access still need it: GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and map tiles.
+- Features that require live network access still need it: managed media upload, GitHub import, stored Share Snapshot, Live Share, remote diagram rendering, external images, and map tiles.
 
 Desktop:
 

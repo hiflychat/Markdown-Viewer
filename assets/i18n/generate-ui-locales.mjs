@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { chromium } from '@playwright/test';
 
-const ROOT = new URL('../', import.meta.url);
+const ROOT = new URL('../../', import.meta.url);
 const ROOT_PATH = fileURLToPath(ROOT);
-const OUTPUT_DIR = new URL('../assets/i18n/', import.meta.url);
+const OUTPUT_DIR = new URL('./', import.meta.url);
 const PORT = 4197;
 const HOST = '127.0.0.1';
 const FORCE = process.argv.includes('--force');
@@ -414,7 +414,7 @@ async function main() {
     return;
   }
   const domStrings = await collectDomStrings();
-  const scriptSource = await readFile(new URL('../script.js', import.meta.url), 'utf8');
+  const scriptSource = await readFile(new URL('../../script.js', import.meta.url), 'utf8');
   const allStrings = new Set([...domStrings, ...extractScriptStrings(scriptSource), ...EXTRA_STRINGS]);
   const strings = Array.from(allStrings).map(normalize).filter(isTranslatable).sort((a, b) => a.localeCompare(b));
 

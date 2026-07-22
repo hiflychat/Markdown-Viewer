@@ -231,9 +231,26 @@ Local file import:
 
 - Accepts `.md`, `.markdown`, and `text/markdown`.
 - Extension checks are case-insensitive.
-- Dragging a file over the app shows a full-window drop overlay.
+- Dragging files over the app shows a compact drop notice. Explorer document drags use a Markdown file preview, folders expand on hover, and the Explorer scrolls near its top and bottom edges.
 - The first 8 KB of a file are scanned for null bytes to avoid loading binary files as text.
 - Imported local files open in the active tab or a new tab depending on the action.
+
+Media insertion:
+
+- Uploading from the media dialog, pasting from the clipboard, and dropping an image, animated GIF, or supported video all use the same insertion pipeline and a visible progress toast.
+- Small raster files retain their safe raster format; larger still images are resized and converted to WebP with a bounded upload size. GIF bytes are retained so animation is not lost.
+- Supported managed video formats are MP4, WebM, and Ogg. Videos are inserted as sanitized HTML5 `<video controls>` elements; external media URLs can use the same format.
+- After first-use consent, managed media is stored in Cloudflare KV under a content-derived id and inserted as a short HTTPS URL. Identical content reuses the same id.
+- Anyone with a managed media URL can retrieve the file. The URL is unguessable but is not an access-control boundary.
+- Managed images, GIFs, and videos expire 90 days after their most recent upload, matching the stored Share Snapshot retention period. After expiry, the Markdown or HTML reference remains but the media no longer renders.
+- Existing inline base64 raster images are detected when a normal document opens and can be converted to managed short links without changing alt text or titles.
+- Individual source files are limited to 25 MiB before processing. Managed still-image payloads are limited to 300 KiB after optimization, GIFs to 5 MiB, and videos to 10 MiB.
+
+Application feedback:
+
+- GitHub imports, media uploads, and general notifications use one shared bottom-corner toast position. Progress toasts include item counts, status details, and a progress bar.
+- User-facing errors, warnings, and informational alerts use the same accessible toast surface instead of blocking browser alert dialogs. Unsupported files use a red alert icon, a "File not supported" title, and format or size recovery guidance.
+- Toasts include text and Lucide icons rather than relying on color alone, and respect reduced-motion preferences.
 
 GitHub import:
 
@@ -241,6 +258,7 @@ GitHub import:
 - Direct Markdown file URLs import immediately.
 - Repository or folder URLs query GitHub's public API to find Markdown files.
 - The modal shows a tree and supports selecting multiple files.
+- Imports create a repository-named folder and reproduce each selected file's nested GitHub directory path inside it.
 - Only the first 30 Markdown files are shown if a repository contains more.
 - Requests are rate-limited by the app to avoid hammering GitHub.
 - Selected files are fetched as raw content and opened as separate tabs.
@@ -308,7 +326,7 @@ Storage behavior:
 - If the encoded legacy URL is too long, or if the Markdown is at least 3,000 bytes, the app stores the snapshot through `/api/share`.
 - Stored snapshots receive an id in `#id=...` form.
 - Stored snapshots are saved in Cloudflare KV for 90 days.
-- The server accepts up to 500,000 characters per stored snapshot.
+- The server accepts up to 8,000,000 characters per stored snapshot.
 - Snapshot ids are random 10-character values using a reduced alphabet and must match the app's id pattern.
 - Stored snapshot responses use `Cache-Control: no-store`.
 - The Share API allows CORS only for the production app, `null`, and `localhost`/`127.0.0.1` development origins; unsupported origins are rejected.
@@ -352,7 +370,7 @@ Implementation:
 
 Limits:
 
-- A live message can be at most 1 MB.
+- A live message can be at most 8 MB. Managed images, GIFs, and videos synchronize as short HTTPS links rather than binary document content.
 - A live room can have at most 64 WebSocket participants.
 - Participant presence is considered stale after 45 seconds without updates.
 - Join waits up to 8 seconds for initial room state before showing an expired/unavailable room message.
@@ -508,6 +526,7 @@ Security limitations:
 | Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
+| Managed media upload | Yes, after first-use consent | Cloudflare KV, content-addressed, 90-day TTL | Publicly retrievable by its unguessable HTTPS URL until expiry; still images 300 KiB optimized, GIF 5 MiB, video 10 MiB. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
 | GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
 | Emoji lookup | Yes | GitHub emoji API response in memory | Used for shortcode picker/lookup. |
@@ -522,7 +541,7 @@ Security limitations:
 
 - Browser storage quotas can reject very large saved workspaces.
 - The GitHub importer shows a maximum of 30 Markdown files.
-- Stored Share Snapshot content is limited to 500,000 characters.
+- Stored Share Snapshot content is limited to 8,000,000 characters. Managed media remains separate and travels as short HTTPS links.
 - STL source is limited to 2 MiB and parsed geometry to 300,000 vertices.
 - Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
 - Remote renderer availability depends on third-party services and network conditions.

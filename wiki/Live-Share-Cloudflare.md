@@ -48,7 +48,7 @@ The Durable Object:
 
 | Limit | Value |
 | :--- | :--- |
-| Max live message size | 1 MB |
+| Max live message size | 8 MB |
 | Max WebSocket participants per room | 64 |
 | Participant stale timeout in client UI | 45 seconds |
 | Client join timeout | 8 seconds |
@@ -84,7 +84,7 @@ Live Share does not write document content to Cloudflare KV or a database. State
 
 ## Required Configuration
 
-`wrangler.toml` binds `LIVE_ROOMS` for the Pages project and binds `SHARE_KV` for Share Snapshot. `wrangler.live-room.toml` deploys the standalone Durable Object worker:
+`wrangler.toml` binds `LIVE_ROOMS` for the Pages project and binds `SHARE_KV` for Share Snapshot plus managed media records. `wrangler.live-room.toml` deploys the standalone Durable Object worker:
 
 ```toml
 name = "markdown-viewer-live-room"
@@ -100,4 +100,4 @@ tag = "v1"
 new_sqlite_classes = ["LiveRoom"]
 ```
 
-Share Snapshot uses `SHARE_KV`; Live Share uses `LIVE_ROOMS`. They should not be described as the same storage path.
+Share Snapshot and managed media use separate key prefixes in `SHARE_KV`; Live Share uses `LIVE_ROOMS`. They should not be described as the same storage path.

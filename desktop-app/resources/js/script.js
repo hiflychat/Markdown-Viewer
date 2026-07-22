@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", async function () {
+  window.alert = function(message) { showAppToast(message); };
   const PRIVATE_MODE_KEY = 'markdownViewerPrivateMode';
   const DOCUMENT_STORAGE_KEYS = new Set([
     'markdownViewerGlobalState',
@@ -254,10 +255,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   const PREVIEW_WORKER_TIMEOUT = 12000;
   const PREVIEW_SEGMENT_MIN_BLOCKS = 8;
   const PREVIEW_BLOCK_REUSE_LIMIT = 12000;
+  const SAFE_MARKDOWN_URI_REGEXP = /^(?:(?:https?|mailto|tel|blob):|data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
   const PREVIEW_SANITIZE_OPTIONS = {
-    ADD_TAGS: ['mjx-container', 'input'],
-    ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code', 'role', 'aria-labelledby', 'aria-describedby'],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    ADD_TAGS: ['mjx-container', 'input', 'video', 'source'],
+    ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code', 'role', 'aria-label', 'aria-labelledby', 'aria-describedby', 'controls', 'preload', 'playsinline'],
+    ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
   };
   const RENDER_DELAY = 100;
   const LARGE_RENDER_DELAY = 160;
@@ -569,7 +571,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   // ========================================
   const GLOBAL_STATE_KEY = 'markdownViewerGlobalState';
   let referenceCounter = 1;
-  const imageObjectUrls = new Set();
+  const MAX_LOCAL_IMAGE_BYTES = 25 * 1024 * 1024;
+  const EMBEDDED_IMAGE_TARGET_BYTES = 180 * 1024;
+  const EMBEDDED_IMAGE_MAX_BYTES = 280 * 1024;
+  const EMBEDDED_IMAGE_MAX_DIMENSION = 1600;
+  const MANAGED_GIF_MAX_BYTES = 5 * 1024 * 1024;
+  const MANAGED_VIDEO_MAX_BYTES = 10 * 1024 * 1024;
+  const MANAGED_IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{20,32}$/;
+  const managedImageMigrationOfferedTabIds = new Set();
+  const managedImageMigrationInProgressTabIds = new Set();
   const EMOJI_API_URL = 'https://api.github.com/emojis';
   let emojiLoadPromise = null;
   let emojiEntries = [];
@@ -2478,7 +2488,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const UNTITLED_COUNTER_KEY = 'markdownViewerUntitledCounter';
   const DOCUMENT_ORGANIZATION_KEY = 'markdownViewerDocumentOrganization';
   const SECRET_WORKSPACE_STORAGE_KEY = 'markdownViewerSecretWorkspace';
-  const DOCUMENT_ORGANIZATION_VERSION = 2;
+  const DOCUMENT_ORGANIZATION_VERSION = 3;
   const SECRET_WORKSPACE_VERSION = 1;
   const SECRET_KDF_ITERATIONS = 250000;
   const MAX_DOCUMENTS = 50;
@@ -2501,6 +2511,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   let documentSidebarInitialized = false;
   let isDocumentSidebarResizing = false;
   let draggedSidebarDocumentId = null;
+  let activeDocumentDragPreview = null;
+  let documentTreeDragExpandTimer = null;
+  let documentTreeDragExpandRow = null;
+  let documentTreeAutoScrollFrame = null;
+  let documentTreeAutoScrollSpeed = 0;
   let secretWorkspaceKey = null;
   let secretWorkspaceSalt = null;
   let secretWorkspaceIterations = SECRET_KDF_ITERATIONS;
@@ -2508,6 +2523,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   let secretWorkspaceSaveTimeout = null;
   let secretWorkspaceSaveChain = Promise.resolve();
   let importProgressHideTimeout = null;
+  let mediaProgressHideTimeout = null;
   let liveCollaboration = null;
   let liveShareUiReady = false;
   let liveCollaborationModulesPromise = null;
@@ -2575,11 +2591,31 @@ document.addEventListener("DOMContentLoaded", async function () {
       return {
         id: id,
         workspaceId: workspaceId,
+        parentFolderId: String(folder.parentFolderId || '').slice(0, 120) || null,
         name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
         expanded: folder.expanded !== false,
         createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
       };
     }).filter(Boolean);
+
+    const foldersById = new Map(folders.map(function(folder) { return [folder.id, folder]; }));
+    folders.forEach(function(folder) {
+      const parent = foldersById.get(folder.parentFolderId);
+      if (!parent || parent.workspaceId !== folder.workspaceId || parent.id === folder.id) {
+        folder.parentFolderId = null;
+        return;
+      }
+      const visited = new Set([folder.id]);
+      let ancestor = parent;
+      while (ancestor) {
+        if (visited.has(ancestor.id)) {
+          folder.parentFolderId = null;
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = foldersById.get(ancestor.parentFolderId);
+      }
+    });
 
     const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
     const allowedFilters = new Set(['all', 'recent', 'favorites']);
@@ -2808,10 +2844,32 @@ document.addEventListener("DOMContentLoaded", async function () {
       documentOrganization.folders.push({
         id: id,
         workspaceId: SECRET_WORKSPACE_ID,
+        parentFolderId: String(folder.parentFolderId || '').slice(0, 120) || null,
         name: String(folder.name || '').trim().slice(0, 160) || 'Folder',
         expanded: folder.expanded !== false,
         createdAt: Number.isFinite(Number(folder.createdAt)) ? Number(folder.createdAt) : Date.now()
       });
+    });
+
+    const secretFoldersById = new Map(documentOrganization.folders.filter(function(folder) {
+      return folder.workspaceId === SECRET_WORKSPACE_ID;
+    }).map(function(folder) { return [folder.id, folder]; }));
+    secretFoldersById.forEach(function(folder) {
+      const parent = secretFoldersById.get(folder.parentFolderId);
+      if (!parent || parent.id === folder.id) {
+        folder.parentFolderId = null;
+        return;
+      }
+      const visited = new Set([folder.id]);
+      let ancestor = parent;
+      while (ancestor) {
+        if (visited.has(ancestor.id)) {
+          folder.parentFolderId = null;
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = secretFoldersById.get(ancestor.parentFolderId);
+      }
     });
 
     const existingTabIds = new Set(tabs.map(function(tab) { return tab.id; }));
@@ -3116,19 +3174,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     return documentOrganization.folders.find(function(folder) { return folder.id === folderId; }) || null;
   }
 
-  function ensureWorkspaceFolder(workspaceId, folderName) {
+  function ensureWorkspaceFolder(workspaceId, folderName, parentFolderId) {
     if (!documentOrganization) return null;
     const workspace = getWorkspaceById(workspaceId);
     const normalizedName = String(folderName || '').trim();
     if (!workspace || !normalizedName) return null;
 
+    const parent = getFolderById(parentFolderId);
+    const normalizedParentId = parent && parent.workspaceId === workspace.id ? parent.id : null;
     let folder = documentOrganization.folders.find(function(item) {
-      return item.workspaceId === workspace.id && String(item.name || '').trim().toLowerCase() === normalizedName.toLowerCase();
+      return item.workspaceId === workspace.id
+        && (item.parentFolderId || null) === normalizedParentId
+        && String(item.name || '').trim().toLowerCase() === normalizedName.toLowerCase();
     });
     if (!folder) {
       folder = {
         id: createDocumentEntityId('folder'),
         workspaceId: workspace.id,
+        parentFolderId: normalizedParentId,
         name: normalizedName,
         expanded: true,
         createdAt: Date.now()
@@ -3139,11 +3202,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     workspace.expanded = true;
+    getFolderAncestors(folder.id).forEach(function(ancestor) { ancestor.expanded = true; });
     documentOrganization.ui.lastWorkspaceId = workspace.id;
     documentOrganization.ui.lastFolderId = folder.id;
     saveDocumentOrganization();
     renderDocumentSidebar();
     return folder;
+  }
+
+  function getFolderAncestors(folderId) {
+    const ancestors = [];
+    const visited = new Set();
+    let folder = getFolderById(folderId);
+    while (folder && !visited.has(folder.id)) {
+      ancestors.unshift(folder);
+      visited.add(folder.id);
+      folder = getFolderById(folder.parentFolderId);
+    }
+    return ancestors;
+  }
+
+  function getFolderDescendantIds(folderIds) {
+    const descendantIds = new Set(folderIds || []);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      documentOrganization.folders.forEach(function(folder) {
+        if (!descendantIds.has(folder.id) && descendantIds.has(folder.parentFolderId)) {
+          descendantIds.add(folder.id);
+          changed = true;
+        }
+      });
+    }
+    return descendantIds;
+  }
+
+  function getFolderPath(folderId) {
+    return getFolderAncestors(folderId).map(function(folder) { return folder.name; }).join(' / ');
   }
 
   function normalizeTabDocumentMetadata(tab, options) {
@@ -3193,6 +3288,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     documentOrganization.ui.lastFolderId = tab.folderId;
     workspace.expanded = true;
     if (folder) folder.expanded = true;
+    if (folder) getFolderAncestors(folder.id).forEach(function(ancestor) { ancestor.expanded = true; });
     saveDocumentOrganization();
     return true;
   }
@@ -3313,30 +3409,35 @@ document.addEventListener("DOMContentLoaded", async function () {
     openAppModal(modal, { focusTarget: cancelButton, onClose: cancel });
   }
 
-  function createFolder(workspaceId) {
+  function createFolder(workspaceId, parentFolderId) {
     const workspace = getWorkspaceById(workspaceId);
     if (!workspace) return;
+    const parentFolder = getFolderById(parentFolderId);
+    const normalizedParentId = parentFolder && parentFolder.workspaceId === workspaceId ? parentFolder.id : null;
     if (workspace.id === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
-      withUnlockedSecretWorkspace(function() { createFolder(workspaceId); });
+      withUnlockedSecretWorkspace(function() { createFolder(workspaceId, parentFolderId); });
       return;
     }
     openDocumentNameDialog({
       title: 'Create folder',
-      description: 'Folders stay one level deep inside a workspace.',
+      description: normalizedParentId ? 'Create a folder inside ' + getFolderPath(normalizedParentId) + '.' : 'Create a folder inside this workspace.',
       label: 'Folder name',
       placeholder: 'Research',
       confirmText: 'Create folder',
       validate: function(value) {
         if (!value) return 'Enter a folder name.';
         if (documentOrganization.folders.some(function(folder) {
-          return folder.workspaceId === workspaceId && folder.name.toLowerCase() === value.toLowerCase();
-        })) return 'A folder with this name already exists in the workspace.';
+          return folder.workspaceId === workspaceId
+            && (folder.parentFolderId || null) === normalizedParentId
+            && folder.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in this location.';
         return '';
       },
       onConfirm: function(value) {
         const folder = {
           id: createDocumentEntityId('folder'),
           workspaceId: workspaceId,
+          parentFolderId: normalizedParentId,
           name: value,
           expanded: true,
           createdAt: Date.now()
@@ -3363,8 +3464,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       validate: function(value) {
         if (!value) return 'Enter a folder name.';
         if (documentOrganization.folders.some(function(item) {
-          return item.id !== folderId && item.workspaceId === folder.workspaceId && item.name.toLowerCase() === value.toLowerCase();
-        })) return 'A folder with this name already exists in the workspace.';
+          return item.id !== folderId
+            && item.workspaceId === folder.workspaceId
+            && (item.parentFolderId || null) === (folder.parentFolderId || null)
+            && item.name.toLowerCase() === value.toLowerCase();
+        })) return 'A folder with this name already exists in this location.';
         return '';
       },
       onConfirm: function(value) {
@@ -3379,17 +3483,18 @@ document.addEventListener("DOMContentLoaded", async function () {
   function deleteFolder(folderId) {
     const folder = getFolderById(folderId);
     if (!folder) return;
-    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && tab.folderId === folderId; });
+    const folderIds = getFolderDescendantIds([folderId]);
+    const documents = tabs.filter(function(tab) { return !isTemporaryDocument(tab) && folderIds.has(tab.folderId); });
     openDocumentConfirmation({
       title: 'Delete folder?',
       description: documents.length
-        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' will move to the workspace root so no content is lost.'
-        : 'This empty folder will be removed.',
+        ? documents.length + ' document' + (documents.length === 1 ? '' : 's') + ' in this folder tree will move to the workspace root so no content is lost.'
+        : 'This empty folder tree will be removed.',
       confirmText: 'Delete folder',
       onConfirm: function() {
         documents.forEach(function(tab) { tab.folderId = null; });
-        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return item.id !== folderId; });
-        if (documentOrganization.ui.lastFolderId === folderId) documentOrganization.ui.lastFolderId = null;
+        documentOrganization.folders = documentOrganization.folders.filter(function(item) { return !folderIds.has(item.id); });
+        if (folderIds.has(documentOrganization.ui.lastFolderId)) documentOrganization.ui.lastFolderId = null;
         saveDocumentOrganization();
         saveTabsToStorage(tabs);
         renderTabBar(tabs, activeTabId);
@@ -3420,10 +3525,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (locked) return;
       documentOrganization.folders.filter(function(folder) {
         return folder.workspaceId === workspace.id;
+      }).sort(function(left, right) {
+        return getFolderPath(left.id).localeCompare(getFolderPath(right.id));
       }).forEach(function(folder) {
         const option = document.createElement('option');
         option.value = workspace.id + '|' + folder.id;
-        option.textContent = workspace.name + ' / ' + folder.name;
+        option.textContent = workspace.name + ' / ' + getFolderPath(folder.id);
         select.appendChild(option);
       });
     });
@@ -3772,6 +3879,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getFolderMenuActions(folder) {
     return [
       { id: 'new-document', icon: 'lucide-file-text', label: 'New file', run: function() { newTab('', null, { workspaceId: folder.workspaceId, folderId: folder.id }); } },
+      { id: 'new-folder', icon: 'lucide-folder-plus', label: 'New folder', run: function() { createFolder(folder.workspaceId, folder.id); } },
       { id: 'rename', icon: 'lucide-square-pen', label: 'Rename', run: function() { renameFolder(folder.id); } },
       { id: 'delete', icon: 'lucide-trash-2', label: 'Delete', danger: true, run: function() { deleteFolder(folder.id); } }
     ];
@@ -3818,13 +3926,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const entities = getSelectedDocumentTreeEntities();
     if (entities.length < 2) return;
     const documentIds = entities.filter(function(entity) { return entity.type === 'document'; }).map(function(entity) { return entity.id; });
-    const folderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const selectedFolderIds = new Set(entities.filter(function(entity) { return entity.type === 'folder'; }).map(function(entity) { return entity.id; }));
+    const folderIds = getFolderDescendantIds(selectedFolderIds);
     const movedDocumentCount = tabs.filter(function(tab) {
       return !isTemporaryDocument(tab) && folderIds.has(tab.folderId) && !documentIds.includes(tab.id);
     }).length;
     const consequences = [];
     if (documentIds.length) consequences.push('permanently deletes ' + documentIds.length + ' file' + (documentIds.length === 1 ? '' : 's'));
-    if (folderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
+    if (selectedFolderIds.size) consequences.push('removes ' + folderIds.size + ' folder' + (folderIds.size === 1 ? '' : 's'));
     let description = 'This ' + consequences.join(' and ') + '.';
     if (movedDocumentCount) {
       description += ' ' + movedDocumentCount + ' file' + (movedDocumentCount === 1 ? '' : 's') + ' inside selected folders will move to the workspace root.';
@@ -3883,6 +3992,36 @@ document.addEventListener("DOMContentLoaded", async function () {
     openDocumentMenu(virtualButton, menu, position, row);
   }
 
+  function openDocumentTreeBackgroundContextMenu(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    clearDocumentTreeSelection({ announce: false });
+    const location = getPreferredDocumentLocation();
+    const actions = [
+      {
+        id: 'new-document',
+        icon: 'lucide-file-text',
+        label: 'New file',
+        run: function() { newTab('', null, location); }
+      },
+      {
+        id: 'new-folder',
+        icon: 'lucide-folder-plus',
+        label: 'New folder',
+        run: function() { createFolder(location.workspaceId); }
+      }
+    ];
+    const tree = document.getElementById('document-tree');
+    const virtualButton = createDocumentMenuButton('Explorer', actions);
+    const rect = tree ? tree.getBoundingClientRect() : { left: 8, top: 8, right: 220, bottom: 120 };
+    const position = event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)
+      ? { x: event.clientX, y: event.clientY }
+      : { x: Math.min(rect.left + 24, window.innerWidth - 8), y: Math.min(rect.top + 24, window.innerHeight - 8) };
+    openDocumentMenu(virtualButton, virtualButton._documentMenu, position, tree);
+  }
+
   async function moveDocumentToLocation(tabId, workspaceId, folderId) {
     const tab = tabs.find(function(item) { return item.id === tabId; });
     if (!tab || isTemporaryDocument(tab)) return false;
@@ -3932,6 +4071,124 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
+  function clearDocumentTreeDragExpansion() {
+    if (documentTreeDragExpandTimer) clearTimeout(documentTreeDragExpandTimer);
+    documentTreeDragExpandTimer = null;
+    documentTreeDragExpandRow = null;
+  }
+
+  function stopDocumentTreeAutoScroll() {
+    documentTreeAutoScrollSpeed = 0;
+    if (documentTreeAutoScrollFrame) cancelAnimationFrame(documentTreeAutoScrollFrame);
+    documentTreeAutoScrollFrame = null;
+  }
+
+  function runDocumentTreeAutoScroll() {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !documentTreeAutoScrollSpeed) {
+      documentTreeAutoScrollFrame = null;
+      return;
+    }
+    tree.scrollTop += documentTreeAutoScrollSpeed;
+    documentTreeAutoScrollFrame = requestAnimationFrame(runDocumentTreeAutoScroll);
+  }
+
+  function updateDocumentTreeAutoScroll(event) {
+    const tree = document.getElementById('document-tree');
+    if (!tree || !event || !Number.isFinite(event.clientY)) return;
+    const rect = tree.getBoundingClientRect();
+    const edgeSize = Math.min(56, Math.max(32, rect.height * 0.16));
+    let speed = 0;
+    if (event.clientY < rect.top + edgeSize) {
+      speed = -Math.max(3, Math.round((rect.top + edgeSize - event.clientY) / 4));
+    } else if (event.clientY > rect.bottom - edgeSize) {
+      speed = Math.max(3, Math.round((event.clientY - (rect.bottom - edgeSize)) / 4));
+    }
+    documentTreeAutoScrollSpeed = Math.max(-14, Math.min(14, speed));
+    if (documentTreeAutoScrollSpeed && !documentTreeAutoScrollFrame) {
+      documentTreeAutoScrollFrame = requestAnimationFrame(runDocumentTreeAutoScroll);
+    } else if (!documentTreeAutoScrollSpeed) {
+      stopDocumentTreeAutoScroll();
+    }
+  }
+
+  function expandDocumentTreeRowForDrag(row, location) {
+    if (!row || !location || row.getAttribute('aria-expanded') !== 'false') return;
+    const item = location.folderId ? getFolderById(location.folderId) : getWorkspaceById(location.workspaceId);
+    if (!item || (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked())) return;
+    item.expanded = true;
+    saveDocumentOrganization();
+    row.setAttribute('aria-expanded', 'true');
+    const toggle = row.querySelector('.document-tree-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-label', 'Collapse ' + (item.name || 'folder'));
+      const toggleIcon = toggle.querySelector('i');
+      if (toggleIcon) toggleIcon.className = 'lucide lucide-chevron-down';
+    }
+    const folderIcon = row.querySelector('.document-tree-main > i:first-child');
+    if (folderIcon && location.workspaceId !== SECRET_WORKSPACE_ID) folderIcon.className = 'lucide lucide-folder-open';
+    const group = row.nextElementSibling;
+    if (group && group.classList.contains('document-tree-group')) group.hidden = false;
+    announceToScreenReader((item.name || 'Folder') + ' expanded.');
+  }
+
+  function scheduleDocumentTreeDragExpansion(row, location) {
+    if (!row || row.getAttribute('aria-expanded') !== 'false') {
+      clearDocumentTreeDragExpansion();
+      return;
+    }
+    if (documentTreeDragExpandRow === row && documentTreeDragExpandTimer) return;
+    clearDocumentTreeDragExpansion();
+    documentTreeDragExpandRow = row;
+    documentTreeDragExpandTimer = setTimeout(function() {
+      documentTreeDragExpandTimer = null;
+      documentTreeDragExpandRow = null;
+      expandDocumentTreeRowForDrag(row, location);
+    }, 650);
+  }
+
+  function resetDocumentTreeDragFeedback() {
+    clearDocumentDropTargets();
+    clearDocumentTreeDragExpansion();
+    stopDocumentTreeAutoScroll();
+  }
+
+  function removeDocumentDragPreview() {
+    if (activeDocumentDragPreview && activeDocumentDragPreview.parentNode) {
+      activeDocumentDragPreview.parentNode.removeChild(activeDocumentDragPreview);
+    }
+    activeDocumentDragPreview = null;
+  }
+
+  function createDocumentDragPreview(title) {
+    removeDocumentDragPreview();
+    const normalizedTitle = String(title || 'Untitled').trim() || 'Untitled';
+    const filename = /\.md$/i.test(normalizedTitle) ? normalizedTitle : normalizedTitle + '.md';
+    const preview = document.createElement('div');
+    preview.className = 'document-drag-preview';
+    preview.setAttribute('aria-hidden', 'true');
+
+    const page = document.createElement('span');
+    page.className = 'document-drag-preview-page';
+    const icon = document.createElement('i');
+    icon.className = 'lucide lucide-download';
+    icon.setAttribute('aria-hidden', 'true');
+    const badge = document.createElement('span');
+    badge.className = 'document-drag-preview-badge';
+    badge.textContent = 'MD';
+    page.appendChild(icon);
+    page.appendChild(badge);
+
+    const label = document.createElement('span');
+    label.className = 'document-drag-preview-label';
+    label.textContent = filename;
+    preview.appendChild(page);
+    preview.appendChild(label);
+    document.body.appendChild(preview);
+    activeDocumentDragPreview = preview;
+    return preview;
+  }
+
   function attachDocumentDropTarget(row, location) {
     if (!row || !location) return;
     row.setAttribute('data-drop-workspace-id', location.workspaceId);
@@ -3944,20 +4201,23 @@ document.addEventListener("DOMContentLoaded", async function () {
       const hasFiles = transferTypes.includes('Files') || Boolean(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length);
       if (!draggedSidebarDocumentId && !hasFiles) return;
       event.preventDefault();
-      event.stopPropagation();
       if (event.dataTransfer) event.dataTransfer.dropEffect = draggedSidebarDocumentId ? 'move' : 'copy';
       clearDocumentDropTargets();
       row.classList.add('is-drop-target');
+      scheduleDocumentTreeDragExpansion(row, location);
     });
 
     row.addEventListener('dragleave', function(event) {
-      if (!event.relatedTarget || !row.contains(event.relatedTarget)) row.classList.remove('is-drop-target');
+      if (!event.relatedTarget || !row.contains(event.relatedTarget)) {
+        row.classList.remove('is-drop-target');
+        if (documentTreeDragExpandRow === row) clearDocumentTreeDragExpansion();
+      }
     });
 
     row.addEventListener('drop', function(event) {
       event.preventDefault();
       event.stopPropagation();
-      row.classList.remove('is-drop-target');
+      resetDocumentTreeDragFeedback();
       const files = event.dataTransfer && event.dataTransfer.files;
       if (files && files.length) {
         dragDepth = 0;
@@ -3966,7 +4226,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           dragOverlay.setAttribute('aria-hidden', 'true');
         }
         const importFiles = function() {
-          importMarkdownFiles(files, { location: location });
+          handleIncomingDroppedFiles(files, { location: location });
         };
         if (location.workspaceId === SECRET_WORKSPACE_ID && !isSecretWorkspaceUnlocked()) {
           withUnlockedSecretWorkspace(importFiles);
@@ -4082,12 +4342,17 @@ document.addEventListener("DOMContentLoaded", async function () {
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('application/x-markdown-viewer-document', options.documentId);
           event.dataTransfer.setData('text/plain', options.documentId);
+          const preview = createDocumentDragPreview(options.label);
+          try {
+            event.dataTransfer.setDragImage(preview, 36, 34);
+          } catch (_) {}
         }
       });
       row.addEventListener('dragend', function() {
         draggedSidebarDocumentId = null;
         row.classList.remove('is-dragging');
-        clearDocumentDropTargets();
+        removeDocumentDragPreview();
+        resetDocumentTreeDragFeedback();
       });
     }
     if (options.dropLocation) attachDocumentDropTarget(row, options.dropLocation);
@@ -4117,7 +4382,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function getDocumentLocationLabel(tab) {
     const workspace = getWorkspaceById(tab.workspaceId);
     const folder = getFolderById(tab.folderId);
-    if (folder && workspace) return workspace.name + ' / ' + folder.name;
+    if (folder && workspace) return workspace.name + ' / ' + getFolderPath(folder.id);
     return workspace ? workspace.name : 'Workspace';
   }
 
@@ -4212,17 +4477,24 @@ document.addEventListener("DOMContentLoaded", async function () {
       workspaceGroup.setAttribute('role', 'group');
       workspaceGroup.hidden = !expanded;
 
-      folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); }).forEach(function(folder) {
+      const sortedFolders = folders.sort(function(left, right) { return left.createdAt - right.createdAt || left.name.localeCompare(right.name); });
+      const folderSubtreeMatches = function(folder) {
         const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
-        const folderMatchesSearch = !documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase());
-        if (documentSidebarSearch && !folderMatchesSearch && !folderDocuments.length) return;
+        if (!documentSidebarSearch || folder.name.toLocaleLowerCase().includes(documentSidebarSearch.toLocaleLowerCase()) || folderDocuments.length) return true;
+        return sortedFolders.some(function(child) {
+          return child.parentFolderId === folder.id && folderSubtreeMatches(child);
+        });
+      };
+      const appendFolderBranch = function(folder, container, depth) {
+        const folderDocuments = matchingDocuments.filter(function(tab) { return tab.folderId === folder.id; });
+        if (!folderSubtreeMatches(folder)) return;
         const folderExpanded = documentSidebarSearch ? true : folder.expanded !== false;
         const folderRow = createDocumentTreeRow({
           type: 'folder',
           id: folder.id,
           label: folder.name,
           icon: folderExpanded ? 'lucide-folder-open' : 'lucide-folder',
-          depth: 1,
+          depth: depth,
           expanded: folderExpanded,
           meta: String(workspaceDocuments.filter(function(tab) { return tab.folderId === folder.id; }).length),
           dropLocation: { workspaceId: workspace.id, folderId: folder.id },
@@ -4240,16 +4512,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             renderDocumentSidebar();
           }
         });
-        workspaceGroup.appendChild(folderRow);
+        container.appendChild(folderRow);
         const folderGroup = document.createElement('div');
         folderGroup.className = 'document-tree-group document-tree-group--folder';
         folderGroup.setAttribute('role', 'group');
         folderGroup.hidden = !folderExpanded;
+        sortedFolders.filter(function(child) { return child.parentFolderId === folder.id; }).forEach(function(child) {
+          appendFolderBranch(child, folderGroup, depth + 1);
+        });
         folderDocuments.sort(function(left, right) { return (left.title || '').localeCompare(right.title || ''); }).forEach(function(tab) {
-          appendDocumentTreeItem(folderGroup, tab, 2);
+          appendDocumentTreeItem(folderGroup, tab, depth + 1);
           renderedDocuments++;
         });
-        workspaceGroup.appendChild(folderGroup);
+        container.appendChild(folderGroup);
+      };
+      sortedFolders.filter(function(folder) { return !folder.parentFolderId; }).forEach(function(folder) {
+        appendFolderBranch(folder, workspaceGroup, 1);
       });
 
       matchingDocuments.filter(function(tab) { return !tab.folderId; }).sort(function(left, right) {
@@ -4433,7 +4711,12 @@ document.addEventListener("DOMContentLoaded", async function () {
   function handleDocumentTreeKeydown(event) {
     const tree = document.getElementById('document-tree');
     const row = event.target.closest('.document-tree-row');
-    if (!tree || !row || event.target.closest('.document-menu-btn')) return;
+    if (!tree || event.target.closest('.document-menu-btn')) return;
+    if (!row && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) {
+      openDocumentTreeBackgroundContextMenu(event);
+      return;
+    }
+    if (!row) return;
     const rows = Array.from(tree.querySelectorAll('.document-tree-row')).filter(function(item) {
       return item.offsetParent !== null;
     });
@@ -4559,7 +4842,21 @@ document.addEventListener("DOMContentLoaded", async function () {
       tree.addEventListener('click', function(event) {
         if (!event.target.closest('.document-tree-row')) clearDocumentTreeSelection({ announce: false });
       });
+      tree.addEventListener('dragover', updateDocumentTreeAutoScroll);
+      tree.addEventListener('dragleave', function(event) {
+        if (!event.relatedTarget || !tree.contains(event.relatedTarget)) stopDocumentTreeAutoScroll();
+      });
+      tree.addEventListener('drop', stopDocumentTreeAutoScroll);
+      tree.addEventListener('contextmenu', function(event) {
+        if (event.target.closest('.document-tree-row, input, button, a, textarea, select')) return;
+        openDocumentTreeBackgroundContextMenu(event);
+      });
     }
+
+    if (sidebar) sidebar.addEventListener('contextmenu', function(event) {
+      if (event.defaultPrevented || event.target.closest('.document-tree-row, input, button, a, textarea, select, [role="menu"]')) return;
+      openDocumentTreeBackgroundContextMenu(event);
+    });
 
     if (resizer && sidebar) {
       function applyResize(clientX) {
@@ -7049,6 +7346,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       renderLiveCursors();
     });
     renderTabBar(tabs, activeTabId);
+    scheduleEmbeddedImageMigrationOffer(tabId);
   }
 
   function newTab(content, title, location) {
@@ -7453,6 +7751,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderTabBar(tabs, activeTabId);
     initDocumentSidebar();
     setupTabOverflow();
+    if (activeTab) scheduleEmbeddedImageMigrationOffer(activeTab.id);
 
     const staticNewBtn = document.getElementById('tab-new-btn');
     if (staticNewBtn) {
@@ -9237,7 +9536,6 @@ ${selector} .arrowheadPath {
     decorateReviewTargets();
     updateDocumentStats();
     updateFindHighlights();
-    cleanupImageObjectUrls();
     scheduleLineNumberUpdate();
     scheduleAdvancedPostProcessRecovery(rawVal, context);
   }
@@ -9376,6 +9674,160 @@ ${selector} .arrowheadPath {
     return (file && file.name ? file.name : "document.md").replace(/\.(md|markdown)$/i, "");
   }
 
+  function getAppToastTone(message) {
+    const text = String(message || '');
+    if (/\b(?:failed|failure|error|corrupt|unavailable|could not|cannot be opened|network error)\b/i.test(text)) return 'error';
+    if (/\b(?:blocked|cannot|only|too large|limit|unsupported|invalid|expired|read only|read-only)\b/i.test(text)) return 'warning';
+    return 'info';
+  }
+
+  function showAppToast(message, options) {
+    const settings = options || {};
+    const region = document.getElementById('app-toast-region');
+    if (!region) return null;
+    function translateToastText(value) {
+      try { return translateUiString(String(value || '')); }
+      catch (_) { return String(value || ''); }
+    }
+    const translatedMessage = translateToastText(message);
+    const tone = settings.tone || getAppToastTone(message);
+    const dedupeKey = settings.dedupeKey || tone + ':' + translatedMessage;
+    const existing = Array.from(region.querySelectorAll('.app-toast')).find(function(item) {
+      return item.dataset.dedupeKey === dedupeKey;
+    });
+    if (existing) {
+      existing.remove();
+    }
+    const activeToasts = Array.from(region.querySelectorAll('.app-toast'));
+    while (activeToasts.length >= 4) activeToasts.shift().remove();
+
+    const toast = document.createElement('section');
+    toast.className = 'app-toast';
+    toast.dataset.tone = tone;
+    toast.dataset.dedupeKey = dedupeKey;
+    toast.setAttribute('role', tone === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-atomic', 'true');
+
+    const iconShell = document.createElement('span');
+    iconShell.className = 'app-toast-icon-shell';
+    iconShell.setAttribute('aria-hidden', 'true');
+    const icon = document.createElement('i');
+    icon.className = 'lucide ' + (settings.icon || ({
+      error: 'lucide-circle-alert',
+      warning: 'lucide-triangle-alert',
+      success: 'lucide-circle-check',
+      info: 'lucide-info'
+    }[tone] || 'lucide-info'));
+    iconShell.appendChild(icon);
+
+    const copy = document.createElement('div');
+    copy.className = 'app-toast-copy';
+    const title = document.createElement('strong');
+    title.className = 'app-toast-title';
+    title.textContent = translateToastText(settings.title || ({
+      error: 'Something went wrong',
+      warning: 'Attention needed',
+      success: 'Complete',
+      info: 'Notification'
+    }[tone] || 'Notification'));
+    const messageNode = document.createElement('span');
+    messageNode.className = 'app-toast-message';
+    messageNode.textContent = translatedMessage;
+    copy.append(title, messageNode);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'app-toast-close';
+    close.setAttribute('aria-label', translateToastText('Dismiss notification'));
+    close.innerHTML = '<i class="lucide lucide-x" aria-hidden="true"></i>';
+
+    let hideTimeout = null;
+    let dismissed = false;
+    function dismiss(reason) {
+      if (dismissed) return;
+      dismissed = true;
+      clearTimeout(hideTimeout);
+      toast.remove();
+      if (typeof settings.onDismiss === 'function') settings.onDismiss(reason || 'dismiss');
+    }
+    close.addEventListener('click', function() { dismiss('close'); });
+    toast.append(iconShell, copy, close);
+
+    if (Array.isArray(settings.actions) && settings.actions.length) {
+      toast.setAttribute('role', 'alertdialog');
+      toast.setAttribute('aria-label', title.textContent);
+      const actions = document.createElement('div');
+      actions.className = 'app-toast-actions';
+      settings.actions.forEach(function(action) {
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.className = 'app-toast-action' + (action.primary ? ' is-primary' : '');
+        actionButton.textContent = translateToastText(action.label);
+        actionButton.addEventListener('click', function() {
+          if (typeof action.run === 'function') action.run();
+          dismiss(action.id || action.label);
+        });
+        actions.appendChild(actionButton);
+      });
+      toast.appendChild(actions);
+      toast.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          dismiss('escape');
+        }
+      });
+    }
+
+    region.appendChild(toast);
+    if (settings.focusAction) {
+      requestAnimationFrame(function() {
+        const target = toast.querySelector('.app-toast-action.is-primary, .app-toast-action');
+        if (target) target.focus();
+      });
+    }
+    if (settings.duration !== 0 && !(settings.actions && settings.actions.length)) {
+      hideTimeout = setTimeout(function() { dismiss('timeout'); }, settings.duration || (tone === 'error' ? 7200 : 4800));
+    }
+    return toast;
+  }
+
+  function showAppToastConfirmation(message, options) {
+    const settings = options || {};
+    return new Promise(function(resolve) {
+      let settled = false;
+      function finish(value) {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      }
+      showAppToast(message, {
+        title: settings.title || 'Confirm action',
+        tone: settings.tone || 'warning',
+        duration: 0,
+        focusAction: true,
+        dedupeKey: settings.dedupeKey || 'confirmation:' + message,
+        actions: [
+          { id: 'continue', label: settings.confirmLabel || 'Continue', primary: true, run: function() { finish(true); } },
+          { id: 'cancel', label: settings.cancelLabel || 'Cancel', run: function() { finish(false); } }
+        ],
+        onDismiss: function() { finish(false); }
+      });
+    });
+  }
+
+  function showUnsupportedFileToast(message) {
+    return showAppToast(
+      message || 'This file type is not supported. Use Markdown, image, GIF, MP4, WebM, or Ogg files.',
+      {
+        title: 'File not supported',
+        tone: 'error',
+        icon: 'lucide-triangle-alert',
+        dedupeKey: 'unsupported-file:' + String(message || 'generic'),
+        duration: 5200
+      }
+    );
+  }
+
   function showImportProgress(total, options) {
     const settings = options || {};
     const toast = document.getElementById('import-progress-toast');
@@ -9433,6 +9885,58 @@ ${selector} .arrowheadPath {
     }, 4200);
   }
 
+  function showMediaProgress(total) {
+    const toast = document.getElementById('media-progress-toast');
+    const title = document.getElementById('media-progress-title');
+    const count = document.getElementById('media-progress-count');
+    const detail = document.getElementById('media-progress-detail');
+    const icon = document.getElementById('media-progress-icon');
+    const bar = document.getElementById('media-progress-bar');
+    const value = document.getElementById('media-progress-value');
+    if (!toast || !title || !count || !bar || !value) return;
+    clearTimeout(mediaProgressHideTimeout);
+    toast.dataset.state = 'loading';
+    if (icon) icon.className = 'lucide lucide-refresh-cw import-progress-icon';
+    title.textContent = total === 1 ? 'Uploading media file' : 'Uploading media files';
+    count.textContent = '0 of ' + total;
+    if (detail) detail.textContent = 'Preparing upload...';
+    value.style.width = '0%';
+    bar.setAttribute('aria-valuenow', '0');
+    toast.hidden = false;
+  }
+
+  function updateMediaProgress(processed, total, detailText) {
+    const count = document.getElementById('media-progress-count');
+    const detail = document.getElementById('media-progress-detail');
+    const bar = document.getElementById('media-progress-bar');
+    const value = document.getElementById('media-progress-value');
+    const percent = total ? Math.round((processed / total) * 100) : 0;
+    if (count) count.textContent = processed + ' of ' + total;
+    if (detail && detailText) detail.textContent = detailText;
+    if (value) value.style.width = percent + '%';
+    if (bar) bar.setAttribute('aria-valuenow', String(percent));
+  }
+
+  function finishMediaProgress(completed, total, options) {
+    const settings = options || {};
+    const toast = document.getElementById('media-progress-toast');
+    const title = document.getElementById('media-progress-title');
+    const count = document.getElementById('media-progress-count');
+    const detail = document.getElementById('media-progress-detail');
+    const icon = document.getElementById('media-progress-icon');
+    if (!toast || !title || !count) return;
+    updateMediaProgress(total, total);
+    const succeeded = completed === total;
+    toast.dataset.state = succeeded ? 'complete' : 'partial';
+    if (icon) icon.className = 'lucide ' + (succeeded ? 'lucide-check' : 'lucide-triangle-alert') + ' import-progress-icon';
+    title.textContent = settings.title || (succeeded ? 'Media upload complete' : 'Media upload failed');
+    count.textContent = completed + ' uploaded';
+    if (detail) detail.textContent = settings.detail || (succeeded
+      ? (total === 1 ? 'Your media file is ready.' : 'Your media files are ready.')
+      : 'Check the notification for recovery steps.');
+    mediaProgressHideTimeout = setTimeout(function() { toast.hidden = true; }, 4200);
+  }
+
   function importMarkdownFile(file, location) {
     return new Promise(function(resolve) {
       if (!file) {
@@ -9441,7 +9945,7 @@ ${selector} .arrowheadPath {
       }
 
       if (file.size > 10 * 1024 * 1024) {
-        alert('File is too large (maximum 10MB supported).');
+        showUnsupportedFileToast('This Markdown file is too large. The maximum supported size is 10 MB.');
         resolve(false);
         return;
       }
@@ -9454,7 +9958,7 @@ ${selector} .arrowheadPath {
         const checkLength = Math.min(text.length, 8000);
         for (let i = 0; i < checkLength; i++) {
           if (text.charCodeAt(i) === 0) {
-            alert('Cannot import: The selected file appears to be a binary file.');
+            showUnsupportedFileToast('This file appears to be binary. Choose a Markdown file (.md or .markdown).');
             resolve(false);
             return;
           }
@@ -9477,9 +9981,12 @@ ${selector} .arrowheadPath {
 
     if (!markdownFiles.length) {
       if (settings.showInvalidAlert !== false) {
-        alert("Please upload Markdown files (.md or .markdown)");
+        showUnsupportedFileToast('Choose a Markdown file (.md or .markdown).');
       }
       return 0;
+    }
+    if (markdownFiles.length !== files.length && settings.showInvalidAlert !== false) {
+      showUnsupportedFileToast('Some files were skipped. Choose Markdown files (.md or .markdown).');
     }
 
     const remainingCapacity = Math.max(0, MAX_DOCUMENTS - getDocumentCountForLimit());
@@ -9529,6 +10036,16 @@ ${selector} .arrowheadPath {
     return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(ref)}/${encodedPath}`;
   }
 
+  function ensureGitHubFolderPath(workspaceId, repositoryFolder, filePath) {
+    const directorySegments = String(filePath || '').split('/').filter(Boolean);
+    directorySegments.pop();
+    let parentFolder = repositoryFolder;
+    directorySegments.forEach(function(segment) {
+      parentFolder = ensureWorkspaceFolder(workspaceId, segment, parentFolder && parentFolder.id);
+    });
+    return parentFolder || repositoryFolder;
+  }
+
   async function importGitHubFilesInBackground(owner, repo, ref, filePaths) {
     const paths = Array.from(filePaths || []).filter(Boolean);
     if (!paths.length) return 0;
@@ -9541,7 +10058,6 @@ ${selector} .arrowheadPath {
       return 0;
     }
 
-    const destination = { workspaceId: DEFAULT_WORKSPACE_ID, folderId: folder.id };
     showImportProgress(paths.length, {
       title: 'Importing from GitHub',
       detail: 'Saving to Workspace / ' + folder.name
@@ -9553,6 +10069,8 @@ ${selector} .arrowheadPath {
       updateImportProgress(index, paths.length, 'Importing ' + getFileName(filePath));
       try {
         const markdown = await fetchTextContent(buildRawGitHubUrl(owner, repo, ref, filePath));
+        const destinationFolder = ensureGitHubFolderPath(DEFAULT_WORKSPACE_ID, folder, filePath);
+        const destination = { workspaceId: DEFAULT_WORKSPACE_ID, folderId: destinationFolder.id };
         if (newTab(markdown, getFileName(filePath).replace(/\.(md|markdown)$/i, ''), destination)) {
           imported++;
         }
@@ -9787,7 +10305,9 @@ ${selector} .arrowheadPath {
       githubImportSubmitBtn.dataset.loadingText = githubImportSubmitBtn.textContent;
       githubImportSubmitBtn.textContent = "Importing...";
     } else if (githubImportSubmitBtn.dataset.loadingText) {
-      githubImportSubmitBtn.textContent = githubImportSubmitBtn.dataset.loadingText;
+      githubImportSubmitBtn.textContent = githubImportSubmitBtn.dataset.step === "select"
+        ? "Import Selected"
+        : githubImportSubmitBtn.dataset.loadingText;
       delete githubImportSubmitBtn.dataset.loadingText;
     }
   }
@@ -10325,6 +10845,415 @@ ${selector} .arrowheadPath {
     markdownEditor.dispatchEvent(new Event('input', { bubbles: true }));
     lastPushedValue = markdownEditor.value;
     lastInputType = 'programmatic';
+  }
+
+  function isImageFile(file) {
+    if (!file) return false;
+    if (typeof file.type === 'string' && file.type.toLowerCase().startsWith('image/')) return true;
+    return /\.(avif|bmp|gif|jpe?g|png|webp)$/i.test(file.name || '');
+  }
+
+  function isVideoFile(file) {
+    if (!file) return false;
+    const type = String(file.type || '').toLowerCase();
+    if (/^video\/(?:mp4|ogg|webm)$/.test(type)) return true;
+    return /\.(mp4|ogg|ogv|webm)$/i.test(file.name || '');
+  }
+
+  function isMediaFile(file) {
+    return isImageFile(file) || isVideoFile(file);
+  }
+
+  function getLocalImageAltText(file, source, index, total) {
+    let label = source === 'clipboard'
+      ? 'Pasted image'
+      : String(file && file.name ? file.name : 'Dropped image').replace(/\.[^.]+$/, '');
+    label = label.replace(/[\[\]\r\n]+/g, ' ').trim() || 'Image';
+    return total > 1 ? label + ' ' + (index + 1) : label;
+  }
+
+  function getEmbeddedRasterMime(file) {
+    const suppliedType = String(file && file.type ? file.type : '').toLowerCase();
+    const normalizedType = suppliedType === 'image/jpg' ? 'image/jpeg' : suppliedType;
+    if (/^image\/(?:avif|bmp|gif|jpeg|png|webp)$/.test(normalizedType)) return normalizedType;
+    const extension = String(file && file.name ? file.name : '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return {
+      avif: 'image/avif',
+      bmp: 'image/bmp',
+      gif: 'image/gif',
+      jpeg: 'image/jpeg',
+      jpg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp'
+    }[extension ? extension[1] : ''] || '';
+  }
+
+  function getManagedVideoMime(file) {
+    const suppliedType = String(file && file.type ? file.type : '').toLowerCase();
+    if (/^video\/(?:mp4|ogg|webm)$/.test(suppliedType)) return suppliedType;
+    const extension = String(file && file.name ? file.name : '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return { mp4: 'video/mp4', ogg: 'video/ogg', ogv: 'video/ogg', webm: 'video/webm' }[extension ? extension[1] : ''] || '';
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise(function(resolve, reject) {
+      const reader = new FileReader();
+      reader.addEventListener('load', function() { resolve(String(reader.result || '')); }, { once: true });
+      reader.addEventListener('error', function() { reject(reader.error || new Error('Image could not be read.')); }, { once: true });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function getEmbeddedDataByteLength(dataUrl) {
+    const separatorIndex = String(dataUrl || '').indexOf(',');
+    if (separatorIndex === -1) return Number.POSITIVE_INFINITY;
+    const encodedLength = dataUrl.length - separatorIndex - 1;
+    return Math.ceil(encodedLength * 0.75);
+  }
+
+  function loadImageForEmbedding(file) {
+    if (typeof createImageBitmap === 'function') {
+      return createImageBitmap(file).then(function(bitmap) {
+        return {
+          source: bitmap,
+          width: bitmap.width,
+          height: bitmap.height,
+          release: function() { bitmap.close(); }
+        };
+      }).catch(function() {
+        return loadImageElementForEmbedding(file);
+      });
+    }
+    return loadImageElementForEmbedding(file);
+  }
+
+  function loadImageElementForEmbedding(file) {
+    return new Promise(function(resolve, reject) {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.addEventListener('load', function() {
+        resolve({
+          source: image,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+          release: function() { URL.revokeObjectURL(objectUrl); }
+        });
+      }, { once: true });
+      image.addEventListener('error', function() {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('The selected file is not a supported image.'));
+      }, { once: true });
+      image.src = objectUrl;
+    });
+  }
+
+  async function createEmbeddedImageDataUrl(file) {
+    const rasterMime = getEmbeddedRasterMime(file);
+    if (rasterMime && file.size <= EMBEDDED_IMAGE_TARGET_BYTES) {
+      const originalDataUrl = await readFileAsDataUrl(file);
+      const encoded = originalDataUrl.slice(originalDataUrl.indexOf(',') + 1);
+      if (encoded && getEmbeddedDataByteLength(originalDataUrl) <= EMBEDDED_IMAGE_MAX_BYTES) {
+        return 'data:' + rasterMime + ';base64,' + encoded;
+      }
+    }
+
+    const decoded = await loadImageForEmbedding(file);
+    try {
+      if (!decoded.width || !decoded.height) throw new Error('The selected image has no visible pixels.');
+      const initialScale = Math.min(1, EMBEDDED_IMAGE_MAX_DIMENSION / Math.max(decoded.width, decoded.height));
+      let width = Math.max(1, Math.round(decoded.width * initialScale));
+      let height = Math.max(1, Math.round(decoded.height * initialScale));
+      let quality = 0.84;
+      let dataUrl = '';
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { alpha: true });
+      if (!context) throw new Error('This browser cannot prepare the image.');
+
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(decoded.source, 0, 0, width, height);
+        dataUrl = canvas.toDataURL('image/webp', quality);
+        const preparedBytes = getEmbeddedDataByteLength(dataUrl);
+        if (preparedBytes <= EMBEDDED_IMAGE_TARGET_BYTES) break;
+
+        if (quality > 0.58) {
+          quality = Math.max(0.58, quality - 0.08);
+        } else {
+          const reduction = Math.max(0.68, Math.min(0.86, Math.sqrt(EMBEDDED_IMAGE_TARGET_BYTES / preparedBytes) * 0.96));
+          width = Math.max(1, Math.round(width * reduction));
+          height = Math.max(1, Math.round(height * reduction));
+          quality = 0.76;
+        }
+      }
+
+      if (!/^data:image\/webp;base64,/i.test(dataUrl) || getEmbeddedDataByteLength(dataUrl) > EMBEDDED_IMAGE_MAX_BYTES) {
+        throw new Error('The image remains too large after optimization.');
+      }
+      return dataUrl;
+    } finally {
+      decoded.release();
+    }
+  }
+
+  async function createManagedMediaDataUrl(file) {
+    const videoMime = getManagedVideoMime(file);
+    if (videoMime) {
+      if (file.size > MANAGED_VIDEO_MAX_BYTES) throw new Error('Videos larger than 10MB cannot be uploaded. Compress the video or use an external media URL.');
+      const videoDataUrl = await readFileAsDataUrl(file);
+      const encoded = videoDataUrl.slice(videoDataUrl.indexOf(',') + 1);
+      if (!encoded) throw new Error('The selected video could not be read.');
+      return { dataUrl: 'data:' + videoMime + ';base64,' + encoded, endpoint: '/api/media', kind: 'video' };
+    }
+
+    const rasterMime = getEmbeddedRasterMime(file);
+    if (rasterMime === 'image/gif') {
+      if (file.size > MANAGED_GIF_MAX_BYTES) throw new Error('GIFs larger than 5MB cannot be uploaded. Compress the GIF or use an external media URL.');
+      const gifDataUrl = await readFileAsDataUrl(file);
+      const encoded = gifDataUrl.slice(gifDataUrl.indexOf(',') + 1);
+      if (!encoded) throw new Error('The selected GIF could not be read.');
+      return { dataUrl: 'data:image/gif;base64,' + encoded, endpoint: '/api/image', kind: 'image' };
+    }
+
+    return { dataUrl: await createEmbeddedImageDataUrl(file), endpoint: '/api/image', kind: 'image' };
+  }
+
+  async function requestManagedImageUploadConsent() {
+    if (loadGlobalState().managedImageUploadAcknowledged === true) return true;
+    const accepted = await showAppToastConfirmation(
+      'Images, GIFs, and videos are uploaded to Markdown Viewer public media storage for up to 90 days. Anyone with a media URL can view it during that time.',
+      { title: 'Upload media?', confirmLabel: 'Continue', cancelLabel: 'Cancel', dedupeKey: 'managed-media-consent' }
+    );
+    if (accepted) saveGlobalState({ managedImageUploadAcknowledged: true });
+    return accepted;
+  }
+
+  async function uploadManagedImageDataUrl(dataUrl, endpoint) {
+    const apiPath = endpoint === '/api/media' ? '/api/media' : '/api/image';
+    let response;
+    try {
+      response = await fetch(getShareApiBaseUrl() + apiPath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl: dataUrl })
+      });
+    } catch (_) {
+      throw new Error('The media file could not be uploaded. Check your connection and try again, or use External Media (URL).');
+    }
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_) {}
+    if (!response.ok) {
+      throw new Error((payload && payload.error) || 'The media host rejected this file. Try a smaller file or use External Media (URL).');
+    }
+    if (!payload || !MANAGED_IMAGE_ID_PATTERN.test(payload.id || '')) {
+      throw new Error('The media host returned an invalid short link. Please try again.');
+    }
+
+    const expectedBase = new URL(getShareApiBaseUrl());
+    const fallbackUrl = new URL(apiPath + '/' + payload.id, expectedBase);
+    let managedUrl;
+    try {
+      managedUrl = new URL(payload.url || fallbackUrl.toString());
+    } catch (_) {
+      managedUrl = fallbackUrl;
+    }
+    if (managedUrl.origin !== expectedBase.origin || managedUrl.pathname !== apiPath + '/' + payload.id) {
+      throw new Error('The media host returned an invalid short link. Please try again.');
+    }
+    return managedUrl.toString();
+  }
+
+  function getEmbeddedMarkdownImageRegex() {
+    return /(!\[[^\]\r\n]*\]\()(data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,[A-Za-z0-9+/]+={0,2})((?:\s+"[^"\r\n]*")?\))/gi;
+  }
+
+  function hasEmbeddedMarkdownImages(markdown) {
+    return getEmbeddedMarkdownImageRegex().test(String(markdown || ''));
+  }
+
+  async function migrateEmbeddedImagesToManagedUrls(tabId) {
+    if (managedImageMigrationInProgressTabIds.has(tabId) || activeTabId !== tabId || !canMutateEditor()) return false;
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab) || !hasEmbeddedMarkdownImages(markdownEditor.value)) return false;
+    managedImageMigrationInProgressTabIds.add(tabId);
+    const originalValue = markdownEditor.value;
+    const selectionStart = markdownEditor.selectionStart;
+    const selectionEnd = markdownEditor.selectionEnd;
+    let didReplaceEditorContent = false;
+
+    try {
+      if (!(await requestManagedImageUploadConsent())) return false;
+      const dataUrls = [];
+      let match;
+      const scanPattern = getEmbeddedMarkdownImageRegex();
+      while ((match = scanPattern.exec(originalValue)) !== null) {
+        if (!dataUrls.includes(match[2])) dataUrls.push(match[2]);
+      }
+      if (!dataUrls.length) return false;
+      announceToScreenReader('Converting embedded images to short links.');
+      const shortLinks = new Map();
+      for (const dataUrl of dataUrls) {
+        shortLinks.set(dataUrl, await uploadManagedImageDataUrl(dataUrl));
+      }
+      if (activeTabId !== tabId || markdownEditor.value !== originalValue || !canMutateEditor()) {
+        announceToScreenReader('Image conversion was cancelled because the document changed.');
+        return false;
+      }
+
+      const nextValue = originalValue.replace(getEmbeddedMarkdownImageRegex(), function(full, prefix, dataUrl, suffix) {
+        return prefix + shortLinks.get(dataUrl) + suffix;
+      });
+      replaceEditorRange(
+        0,
+        originalValue.length,
+        nextValue,
+        Math.min(selectionStart, nextValue.length),
+        Math.min(selectionEnd, nextValue.length)
+      );
+      didReplaceEditorContent = true;
+      const persisted = await persistImageInsertion(tabId);
+      if (!persisted) throw new Error('The browser could not save the converted image links.');
+      announceToScreenReader(dataUrls.length + ' embedded image' + (dataUrls.length === 1 ? '' : 's') + ' converted to short links.');
+      return true;
+    } catch (error) {
+      if (didReplaceEditorContent) {
+        restoreEditorAfterFailedImageInsertion(tabId, originalValue, selectionStart, selectionEnd);
+      }
+      console.warn('Embedded image conversion failed:', error);
+      alert(error && error.message ? error.message : 'Embedded images could not be converted. Please try again.');
+      return false;
+    } finally {
+      managedImageMigrationInProgressTabIds.delete(tabId);
+    }
+  }
+
+  function scheduleEmbeddedImageMigrationOffer(tabId) {
+    if (!tabId || managedImageMigrationOfferedTabIds.has(tabId)) return;
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab) || !hasEmbeddedMarkdownImages(tab.content)) return;
+    managedImageMigrationOfferedTabIds.add(tabId);
+    setTimeout(function() {
+      if (activeTabId === tabId) migrateEmbeddedImagesToManagedUrls(tabId);
+    }, 700);
+  }
+
+  async function persistImageInsertion(targetTabId) {
+    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
+    if (!targetTab || isTemporaryDocument(targetTab) || isPrivateStorageMode()) return true;
+    if (liveCollaboration && liveCollaboration.tabId === targetTabId) return true;
+    saveCurrentTabState();
+    if (targetTab.workspaceId === SECRET_WORKSPACE_ID) {
+      await flushSecretWorkspaceToStorage();
+      return true;
+    }
+    return _flushTabsToStorage(tabs);
+  }
+
+  function restoreEditorAfterFailedImageInsertion(targetTabId, originalValue, selectionStart, selectionEnd) {
+    if (activeTabId !== targetTabId) return;
+    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
+    markdownEditor.value = originalValue;
+    markdownEditor.setSelectionRange(selectionStart, selectionEnd);
+    lastPushedValue = originalValue;
+    if (targetTab) targetTab.content = originalValue;
+    renderMarkdown({ reason: 'image-storage-rollback', force: true });
+    updateDocumentStats();
+    scheduleLineNumberUpdate({ force: true });
+  }
+
+  async function insertImageFilesIntoEditor(fileList, options) {
+    const settings = options || {};
+    const suppliedFiles = Array.from(fileList || []);
+    const mediaFiles = suppliedFiles.filter(isMediaFile);
+    if (mediaFiles.length !== suppliedFiles.length) {
+      showUnsupportedFileToast('Choose an image, GIF, MP4, WebM, or Ogg video file.');
+    }
+    if (!mediaFiles.length) return 0;
+    if (!hasActiveOpenDocument() || !canMutateEditor()) {
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return 0;
+    }
+
+    const acceptedFiles = mediaFiles.filter(function(file) {
+      if (!Number.isFinite(file.size)) return true;
+      if (isVideoFile(file)) return file.size <= MANAGED_VIDEO_MAX_BYTES;
+      if (getEmbeddedRasterMime(file) === 'image/gif') return file.size <= MANAGED_GIF_MAX_BYTES;
+      return file.size <= MAX_LOCAL_IMAGE_BYTES;
+    });
+    if (acceptedFiles.length !== mediaFiles.length) {
+      showUnsupportedFileToast('This media file exceeds the supported limit: still images 25 MB before optimization, GIFs 5 MB, and videos 10 MB.');
+    }
+    if (!acceptedFiles.length) return 0;
+    if (!(await requestManagedImageUploadConsent())) {
+      announceToScreenReader('Media upload cancelled.');
+      return 0;
+    }
+
+    const targetTabId = activeTabId;
+    const originalValue = markdownEditor.value;
+    const start = Number.isFinite(settings.selectionStart) ? settings.selectionStart : markdownEditor.selectionStart;
+    const end = Number.isFinite(settings.selectionEnd) ? settings.selectionEnd : markdownEditor.selectionEnd;
+    const source = settings.source === 'clipboard'
+      ? 'clipboard'
+      : (settings.source === 'upload' ? 'upload' : 'drop');
+    let didInsert = false;
+    let uploadedCount = 0;
+    showMediaProgress(acceptedFiles.length);
+    if (typeof settings.onStage === 'function') settings.onStage('preparing');
+    announceToScreenReader('Preparing ' + acceptedFiles.length + ' media file' + (acceptedFiles.length === 1 ? '' : 's') + '.');
+
+    try {
+      const managedItems = [];
+      for (let index = 0; index < acceptedFiles.length; index += 1) {
+        const file = acceptedFiles[index];
+        updateMediaProgress(index, acceptedFiles.length, 'Preparing ' + (file.name || 'media file') + '...');
+        const prepared = await createManagedMediaDataUrl(file);
+        if (typeof settings.onStage === 'function') settings.onStage('uploading');
+        updateMediaProgress(index, acceptedFiles.length, 'Uploading ' + (file.name || 'media file') + '...');
+        const managedUrl = await uploadManagedImageDataUrl(prepared.dataUrl, prepared.endpoint);
+        managedItems.push({ url: managedUrl, kind: prepared.kind });
+        uploadedCount = index + 1;
+        updateMediaProgress(uploadedCount, acceptedFiles.length, (file.name || 'Media file') + ' uploaded');
+      }
+      if (activeTabId !== targetTabId || markdownEditor.value !== originalValue || !canMutateEditor()) {
+        finishMediaProgress(uploadedCount, acceptedFiles.length, { title: 'Media insertion cancelled', detail: 'The document changed during upload.' });
+        announceToScreenReader('Media insertion was cancelled because the document changed.');
+        return 0;
+      }
+
+      const markdown = managedItems.map(function(managedItem, index) {
+        const file = acceptedFiles[index];
+        const altText = typeof settings.altText === 'string' && acceptedFiles.length === 1
+          ? (settings.altText.trim() || 'alt text')
+          : getLocalImageAltText(file, source, index, acceptedFiles.length);
+        if (typeof settings.markdownFactory === 'function') {
+          return settings.markdownFactory(managedItem.url, altText, file, index, acceptedFiles.length);
+        }
+        if (managedItem.kind === 'video') {
+          return '<video controls preload="metadata" src="' + escapeHtmlAttribute(managedItem.url) + '" aria-label="' + escapeHtmlAttribute(altText) + '"></video>';
+        }
+        return '![' + altText + '](' + managedItem.url + ')';
+      }).join('\n\n');
+
+      replaceEditorRange(start, end, markdown, start + markdown.length, start + markdown.length);
+      didInsert = true;
+      const persisted = await persistImageInsertion(targetTabId);
+      if (!persisted) throw new Error('The browser could not save the short media link.');
+      finishMediaProgress(acceptedFiles.length, acceptedFiles.length);
+      announceToScreenReader(acceptedFiles.length + ' media file' + (acceptedFiles.length === 1 ? '' : 's') + ' uploaded and inserted with short links.');
+      return acceptedFiles.length;
+    } catch (error) {
+      if (didInsert) {
+        restoreEditorAfterFailedImageInsertion(targetTabId, originalValue, start, end);
+      }
+      finishMediaProgress(uploadedCount, acceptedFiles.length);
+      console.warn('Media insertion failed:', error);
+      alert(error && error.message ? error.message : 'The media file could not be inserted.');
+      return 0;
+    }
   }
 
   function wrapEditorSelection(prefix, suffix, placeholder) {
@@ -10960,25 +11889,6 @@ ${selector} .arrowheadPath {
       const after = text.slice(lastIndex);
       if (after) fragment.appendChild(document.createTextNode(after));
       node.parentNode.replaceChild(fragment, node);
-    });
-  }
-
-  function cleanupImageObjectUrls() {
-    if (imageObjectUrls.size === 0) return;
-    const contents = [markdownEditor.value];
-    if (Array.isArray(tabs)) {
-      tabs.forEach(function(tab) {
-        if (tab && typeof tab.content === 'string' && tab.content) {
-          contents.push(tab.content);
-        }
-      });
-    }
-    const snapshot = contents.join('\n');
-    Array.from(imageObjectUrls).forEach(function(url) {
-      if (!snapshot.includes(url)) {
-        URL.revokeObjectURL(url);
-        imageObjectUrls.delete(url);
-      }
     });
   }
 
@@ -12999,10 +13909,16 @@ ${selector} .arrowheadPath {
     urlOption.checked = true;
     uploadOption.checked = false;
     modal.style.display = 'flex';
+    let isProcessing = false;
+    const confirmButtonLabel = confirmBtn.textContent;
 
-    function buildImageMarkdown(url) {
+    function buildMediaMarkdown(url, file) {
       const titleText = altInput.value.trim();
       const altText = titleText || 'alt text';
+      const fileIsVideo = file ? isVideoFile(file) : /\.(?:mp4|ogg|ogv|webm)(?:[?#].*)?$/i.test(url);
+      if (fileIsVideo) {
+        return '<video controls preload="metadata" src="' + escapeHtmlAttribute(url) + '" aria-label="' + escapeHtmlAttribute(titleText || 'Video') + '"></video>';
+      }
       const safeTitle = sanitizeMarkdownTitle(titleText);
       const titlePart = safeTitle ? ' "' + safeTitle + '"' : '';
       return '![' + altText + '](' + url + titlePart + ')';
@@ -13010,16 +13926,44 @@ ${selector} .arrowheadPath {
 
     function insertImage(url) {
       const safeUrl = url.trim() || 'https://';
-      const replacement = buildImageMarkdown(safeUrl);
+      const replacement = buildMediaMarkdown(safeUrl);
       modal.style.display = 'none';
       cleanup();
       replaceEditorRange(start, end, replacement, start + replacement.length, start + replacement.length);
     }
 
-    function insertFromFile(file) {
-      const objectUrl = URL.createObjectURL(file);
-      imageObjectUrls.add(objectUrl);
-      insertImage(objectUrl);
+    function setProcessing(processing, stage) {
+      isProcessing = processing;
+      modal.setAttribute('aria-busy', processing ? 'true' : 'false');
+      confirmBtn.disabled = processing;
+      confirmBtn.textContent = processing
+        ? translateUiString(stage === 'uploading' ? 'Uploading' : 'Preparing') + '...'
+        : confirmButtonLabel;
+      cancelBtn.disabled = processing;
+      uploadOption.disabled = processing;
+      urlOption.disabled = processing;
+      fileInput.disabled = processing;
+      urlInput.disabled = processing;
+      altInput.disabled = processing;
+    }
+
+    async function insertFromFile(file) {
+      if (isProcessing) return;
+      setProcessing(true);
+      const insertedCount = await insertImageFilesIntoEditor([file], {
+        source: 'upload',
+        selectionStart: start,
+        selectionEnd: end,
+        altText: altInput.value,
+        onStage: function(stage) {
+          setProcessing(true, stage);
+        },
+        markdownFactory: function(dataUrl, altText, file) {
+          return buildMediaMarkdown(dataUrl, file);
+        }
+      });
+      setProcessing(false);
+      if (insertedCount) closeModal();
     }
 
     function updateMode(shouldFocus) {
@@ -13050,6 +13994,10 @@ ${selector} .arrowheadPath {
     }
 
     function onKey(e) {
+      if (isProcessing) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         if (uploadOption.checked) {
@@ -13066,7 +14014,9 @@ ${selector} .arrowheadPath {
     }
 
     function closeModal() {
+      if (isProcessing) return;
       modal.style.display = 'none';
+      modal.removeAttribute('aria-busy');
       cleanup();
     }
 
@@ -15350,6 +16300,32 @@ ${selector} .arrowheadPath {
     });
   });
 
+  markdownEditor.addEventListener('paste', async function(event) {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const itemFiles = Array.from(clipboard.items || []).map(function(item) {
+      return item.kind === 'file' ? item.getAsFile() : null;
+    }).filter(Boolean);
+
+    const clipboardFiles = itemFiles.length ? itemFiles : Array.from(clipboard.files || []);
+    const mediaFiles = clipboardFiles.filter(isMediaFile);
+    if (clipboardFiles.length !== mediaFiles.length) {
+      event.preventDefault();
+      showUnsupportedFileToast('Clipboard files must be an image, GIF, MP4, WebM, or Ogg video.');
+    }
+    if (!mediaFiles.length) return;
+    event.preventDefault();
+    if (!canMutateEditor()) {
+      announceToScreenReader(getEditorReadOnlyMessage());
+      return;
+    }
+    await insertImageFilesIntoEditor(mediaFiles, {
+      source: 'clipboard',
+      selectionStart: markdownEditor.selectionStart,
+      selectionEnd: markdownEditor.selectionEnd
+    });
+  });
+
   markdownEditor.addEventListener('keydown', updateLastCursor);
   markdownEditor.addEventListener('keyup', updateLastCursor);
   markdownEditor.addEventListener('mousedown', updateLastCursor);
@@ -15637,9 +16613,9 @@ ${selector} .arrowheadPath {
       const referenceData = extractReferenceDefinitions(body);
       const html = tableHtml + marked.parse(referenceData.cleanedMarkdown);
       const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container', 'input'], 
-        ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ADD_TAGS: ['mjx-container', 'input', 'video', 'source'],
+        ADD_ATTR: ['id', 'class', 'style', 'align', 'type', 'checked', 'disabled', 'data-original-code', 'aria-label', 'controls', 'preload', 'playsinline'],
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       const tempContainer = document.createElement("div");
       tempContainer.innerHTML = sanitizedHtml;
@@ -15659,7 +16635,7 @@ ${selector} .arrowheadPath {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdnjs.cloudflare.com; img-src data: blob: https:; font-src data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdnjs.cloudflare.com; img-src data: blob: https:; media-src data: blob: https:; font-src data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;">
   <title>Markdown Export</title>
   <link rel="stylesheet" href="${cssTheme}" integrity="${cssIntegrity}" crossorigin="anonymous">
   <script>
@@ -17053,9 +18029,9 @@ ${selector} .arrowheadPath {
       const markdown = markdownEditor.value;
       const html = marked.parse(markdown);
       const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input'],
-        ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input', 'video', 'source'],
+        ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code', 'aria-label', 'controls', 'preload', 'playsinline'],
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       throwIfPdfExportAborted(progressState.signal);
 
@@ -17370,9 +18346,9 @@ ${selector} .arrowheadPath {
       const markdown = markdownEditor.value;
       const html = marked.parse(markdown);
       const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input'],
-        ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code'],
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath', 'input', 'video', 'source'],
+        ADD_ATTR: ['id', 'class', 'style', 'align', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start', 'type', 'checked', 'disabled', 'data-original-code', 'aria-label', 'controls', 'preload', 'playsinline'],
+        ALLOWED_URI_REGEXP: SAFE_MARKDOWN_URI_REGEXP
       });
       throwIfPdfExportAborted(progressState.signal);
 
@@ -20159,7 +21135,7 @@ ${selector} .arrowheadPath {
   loadFromShareHash();
   loadFromLiveHash();
 
-  // Full-window drag-and-drop: track nesting level for reliable enter/leave detection
+  // Document-wide drag-and-drop: track nesting level for reliable enter/leave detection
   let dragDepth = 0;
 
   document.addEventListener("dragenter", function(e) {
@@ -20193,6 +21169,7 @@ ${selector} .arrowheadPath {
     dragDepth = 0;
     dragOverlay.classList.remove("active");
     dragOverlay.setAttribute("aria-hidden", "true");
+    resetDocumentTreeDragFeedback();
     handleDrop(e);
   }, false);
 
@@ -20200,8 +21177,40 @@ ${selector} .arrowheadPath {
     const dt = e.dataTransfer;
     const files = dt && dt.files;
     if (files && files.length) {
-      await importMarkdownFiles(files);
+      await handleIncomingDroppedFiles(files, {
+        location: { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null }
+      });
     }
+  }
+
+  async function handleIncomingDroppedFiles(fileList, options) {
+    const settings = options || {};
+    const files = Array.from(fileList || []);
+    const imageFiles = files.filter(isMediaFile);
+    const markdownFiles = files.filter(isMarkdownFile);
+    const supportedFileCount = files.filter(function(file) {
+      return isMediaFile(file) || isMarkdownFile(file);
+    }).length;
+    let handledCount = 0;
+
+    if (supportedFileCount !== files.length) {
+      showUnsupportedFileToast('Dropped files must be Markdown, image, GIF, MP4, WebM, or Ogg files.');
+    }
+
+    if (imageFiles.length) {
+      const insertedCount = await insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
+      handledCount += insertedCount;
+      if (!insertedCount && !markdownFiles.length && (!hasActiveOpenDocument() || !canMutateEditor())) {
+        alert('Open an editable Markdown file before inserting images.');
+      }
+    }
+    if (markdownFiles.length) {
+      handledCount += await importMarkdownFiles(markdownFiles, {
+        location: settings.location || { workspaceId: DEFAULT_WORKSPACE_ID, folderId: null },
+        showInvalidAlert: false
+      });
+    }
+    return handledCount;
   }
 
   document.addEventListener("keydown", function (e) {
@@ -21564,7 +22573,7 @@ ${selector} .arrowheadPath {
       renameTitle: "Rename file",
       insertLink: "Insert link",
       insertRef: "Insert reference",
-      insertImg: "Insert image",
+      insertImg: "Insert image, GIF, or video",
       insertTable: "Insert table",
       findReplace: "Find & Replace",
       placeholder: "Type your markdown here...",
@@ -22449,7 +23458,7 @@ ${selector} .arrowheadPath {
     const modalRefTitle = document.getElementById('reference-modal-title');
     if (modalRefTitle) modalRefTitle.textContent = translateUiString('Insert reference');
     const modalImgTitle = document.getElementById('image-modal-title');
-    if (modalImgTitle) modalImgTitle.textContent = translateUiString('Insert image');
+    if (modalImgTitle) modalImgTitle.textContent = translateUiString('Insert image, GIF, or video');
     const modalTableTitle = document.getElementById('table-modal-title');
     if (modalTableTitle) modalTableTitle.textContent = translateUiString('Insert table');
     const modalFindTitle = document.getElementById('find-replace-title');
@@ -22553,10 +23562,8 @@ ${selector} .arrowheadPath {
     }
   });
 
-  const nativeAlert = window.alert.bind(window);
   const nativeConfirm = window.confirm.bind(window);
   const nativePrompt = window.prompt.bind(window);
-  window.alert = message => nativeAlert(translateUiString(message));
   window.confirm = message => nativeConfirm(translateUiString(message));
   window.prompt = (message, defaultValue) => nativePrompt(translateUiString(message), defaultValue);
 
