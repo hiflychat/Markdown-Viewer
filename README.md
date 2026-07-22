@@ -107,7 +107,7 @@ For the full feature list, details, limitations, and privacy notes, see the [fea
 
 - Write plain Markdown in a focused editor while the live preview renders GitHub-Flavored Markdown, syntax highlighting, math, alerts, footnotes, tables, task lists, and sanitized HTML.
 - Organize up to 50 Markdown files in a closable, responsive left sidebar with a persistent tab-strip toggle, fixed Default and Secret workspaces, one-level folders, search, Recent, Favorites, single-click opening, precise drag-and-drop moves, hover-to-expand folders, and edge auto-scrolling. Secret Workspace content is password-encrypted on the device, and multi-file imports show compact progress without blocking the editor.
-- Paste, upload, or drop image files to insert optimized image data directly into the Markdown at the editor cursor. Embedded images survive refreshes and travel with Share Snapshot and Live Share documents; very large collections may need external image URLs to stay within browser storage limits.
+- Paste, upload, or drop image files to insert optimized, content-addressed HTTPS image links at the editor cursor. The app explains on first use that managed images are publicly retrievable by their unguessable link; links remain short across refreshes, Share Snapshot, Live Share, and Markdown export. Existing inline raster data can be converted after the same consent.
 - Use WYSIWYG-style toolbar helpers for common Markdown syntax while keeping full control of the plain-text Markdown source.
 - Preview large documents with debounced rendering and a background worker so typing stays responsive.
 
@@ -234,8 +234,8 @@ Markdown-Viewer/
 +-- styles.css              # App and preview styles
 +-- preview-worker.js       # Markdown preview worker
 +-- sw.js                   # Service worker cache behavior
-+-- generate-ui-locales.mjs # Root-level interface locale generator
 +-- assets/                 # App images and icons
+|   +-- i18n/              # Interface catalogs and locale generator
 +-- functions/              # Cloudflare Pages Functions
 +-- workers/                # Live Share Worker source
 +-- desktop-app/            # Neutralinojs desktop build
@@ -273,14 +273,14 @@ Some advanced diagram engines use remote renderers such as PlantUML, Kroki, or m
 
 Markdown Viewer is not a cloud workspace. Normal typing, preview rendering, local file import, tab autosave, theme settings, and most exports happen on your device. No login is required, and the app does not implement analytics, telemetry, ads, or tracking cookies.
 
-Network use is user-triggered for features such as GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode in Workspace settings keeps document content, workspace state, and review feedback session-only while editing and review tools remain available. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
+Network use is user-triggered for features such as consented managed-image upload, GitHub import, remote diagram renderers, Share Snapshot, Live Share, CDN libraries, and external document assets. Private mode in Workspace settings keeps document content, workspace state, and review feedback session-only while editing and review tools remain available. For the full reference, read the [data handling summary](wiki/Features.md#data-handling-summary).
 
 ## Security and Privacy Controls
 
 - Preview HTML is sanitized before insertion, and exported HTML includes a restrictive CSP plus SRI metadata for its external assets.
 - Secret Workspace derives a local encryption key from the user's password with PBKDF2-SHA-256 and encrypts its files and folder names with AES-GCM. The key is kept only for the unlocked browser session, and forgotten passwords cannot be recovered.
 - Cloudflare Pages deployments use `_headers` for CSP, clickjacking protection, referrer and permissions policies, and no-sniff protection; sensitive paths are redirected to 404 responses.
-- Stored Share Snapshot API CORS is limited to the production app, `null`, and local development origins. Stored responses are `no-store`, and creators receive a deletion token from the API.
+- Managed image and stored Share Snapshot API uploads are limited to the production app, previews, `null`, and local development origins. Managed images are public through unguessable immutable links; stored snapshot responses are `no-store`, and snapshot creators receive a deletion token from the API.
 - STL rendering rejects oversized sources, non-finite geometry, and excessive vertex counts before WebGL rendering.
 - The Neutralino desktop build removes the default `os.execCommand` exposure and keeps native APIs on an explicit allowlist. See the [security model](wiki/Features.md#security-model) and [configuration reference](wiki/Configuration.md#share-api).
 

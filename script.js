@@ -574,8 +574,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const EMBEDDED_IMAGE_TARGET_BYTES = 180 * 1024;
   const EMBEDDED_IMAGE_MAX_BYTES = 280 * 1024;
   const EMBEDDED_IMAGE_MAX_DIMENSION = 1600;
-  const MAX_NORMAL_WORKSPACE_STORAGE_CHARS = 4 * 1024 * 1024;
-  const MAX_SECRET_WORKSPACE_STORAGE_CHARS = 3 * 1024 * 1024;
+  const MANAGED_IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{20,32}$/;
+  const managedImageMigrationOfferedTabIds = new Set();
+  const managedImageMigrationInProgressTabIds = new Set();
   const EMOJI_API_URL = 'https://api.github.com/emojis';
   let emojiLoadPromise = null;
   let emojiEntries = [];
@@ -7191,6 +7192,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       renderLiveCursors();
     });
     renderTabBar(tabs, activeTabId);
+    scheduleEmbeddedImageMigrationOffer(tabId);
   }
 
   function newTab(content, title, location) {
@@ -7595,6 +7597,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderTabBar(tabs, activeTabId);
     initDocumentSidebar();
     setupTabOverflow();
+    if (activeTab) scheduleEmbeddedImageMigrationOffer(activeTab.id);
 
     const staticNewBtn = document.getElementById('tab-new-btn');
     if (staticNewBtn) {
@@ -10599,23 +10602,124 @@ ${selector} .arrowheadPath {
     }
   }
 
-  function canPersistImageInsertion(targetTabId, nextContent) {
-    if (isPrivateStorageMode() || (liveCollaboration && liveCollaboration.tabId === targetTabId)) return true;
-    const targetTab = tabs.find(function(tab) { return tab.id === targetTabId; });
-    if (!targetTab || isTemporaryDocument(targetTab)) return true;
+  function requestManagedImageUploadConsent() {
+    if (loadGlobalState().managedImageUploadAcknowledged === true) return true;
+    const accepted = confirm(
+      'To create short persistent links, images are optimized and uploaded to Markdown Viewer public image storage. Anyone with an image URL can view it. Continue?'
+    );
+    if (accepted) saveGlobalState({ managedImageUploadAcknowledged: true });
+    return accepted;
+  }
 
-    if (targetTab.workspaceId === SECRET_WORKSPACE_ID) {
-      const payload = getSecretWorkspacePayload();
-      payload.documents = payload.documents.map(function(tab) {
-        return tab.id === targetTabId ? Object.assign({}, tab, { content: nextContent }) : tab;
+  async function uploadManagedImageDataUrl(dataUrl) {
+    let response;
+    try {
+      response = await fetch(getShareApiBaseUrl() + '/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl: dataUrl })
       });
-      return JSON.stringify(payload).length <= MAX_SECRET_WORKSPACE_STORAGE_CHARS;
+    } catch (_) {
+      throw new Error('The image could not be uploaded. Check your connection and try again, or use External Image (URL).');
     }
 
-    const storageTabs = getTabsForStorage(tabs).map(function(tab) {
-      return tab.id === targetTabId ? Object.assign({}, tab, { content: nextContent }) : tab;
-    });
-    return JSON.stringify(storageTabs).length <= MAX_NORMAL_WORKSPACE_STORAGE_CHARS;
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_) {}
+    if (!response.ok) {
+      throw new Error((payload && payload.error) || 'The image host rejected this file. Try a smaller image or use External Image (URL).');
+    }
+    if (!payload || !MANAGED_IMAGE_ID_PATTERN.test(payload.id || '')) {
+      throw new Error('The image host returned an invalid short link. Please try again.');
+    }
+
+    const expectedBase = new URL(getShareApiBaseUrl());
+    const fallbackUrl = new URL('/api/image/' + payload.id, expectedBase);
+    let managedUrl;
+    try {
+      managedUrl = new URL(payload.url || fallbackUrl.toString());
+    } catch (_) {
+      managedUrl = fallbackUrl;
+    }
+    if (managedUrl.origin !== expectedBase.origin || managedUrl.pathname !== '/api/image/' + payload.id) {
+      throw new Error('The image host returned an invalid short link. Please try again.');
+    }
+    return managedUrl.toString();
+  }
+
+  function getEmbeddedMarkdownImageRegex() {
+    return /(!\[[^\]\r\n]*\]\()(data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,[A-Za-z0-9+/]+={0,2})((?:\s+"[^"\r\n]*")?\))/gi;
+  }
+
+  function hasEmbeddedMarkdownImages(markdown) {
+    return getEmbeddedMarkdownImageRegex().test(String(markdown || ''));
+  }
+
+  async function migrateEmbeddedImagesToManagedUrls(tabId) {
+    if (managedImageMigrationInProgressTabIds.has(tabId) || activeTabId !== tabId || !canMutateEditor()) return false;
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab) || !hasEmbeddedMarkdownImages(markdownEditor.value)) return false;
+    managedImageMigrationInProgressTabIds.add(tabId);
+    const originalValue = markdownEditor.value;
+    const selectionStart = markdownEditor.selectionStart;
+    const selectionEnd = markdownEditor.selectionEnd;
+    let didReplaceEditorContent = false;
+
+    try {
+      if (!requestManagedImageUploadConsent()) return false;
+      const dataUrls = [];
+      let match;
+      const scanPattern = getEmbeddedMarkdownImageRegex();
+      while ((match = scanPattern.exec(originalValue)) !== null) {
+        if (!dataUrls.includes(match[2])) dataUrls.push(match[2]);
+      }
+      if (!dataUrls.length) return false;
+      announceToScreenReader('Converting embedded images to short links.');
+      const shortLinks = new Map();
+      for (const dataUrl of dataUrls) {
+        shortLinks.set(dataUrl, await uploadManagedImageDataUrl(dataUrl));
+      }
+      if (activeTabId !== tabId || markdownEditor.value !== originalValue || !canMutateEditor()) {
+        announceToScreenReader('Image conversion was cancelled because the document changed.');
+        return false;
+      }
+
+      const nextValue = originalValue.replace(getEmbeddedMarkdownImageRegex(), function(full, prefix, dataUrl, suffix) {
+        return prefix + shortLinks.get(dataUrl) + suffix;
+      });
+      replaceEditorRange(
+        0,
+        originalValue.length,
+        nextValue,
+        Math.min(selectionStart, nextValue.length),
+        Math.min(selectionEnd, nextValue.length)
+      );
+      didReplaceEditorContent = true;
+      const persisted = await persistImageInsertion(tabId);
+      if (!persisted) throw new Error('The browser could not save the converted image links.');
+      announceToScreenReader(dataUrls.length + ' embedded image' + (dataUrls.length === 1 ? '' : 's') + ' converted to short links.');
+      return true;
+    } catch (error) {
+      if (didReplaceEditorContent) {
+        restoreEditorAfterFailedImageInsertion(tabId, originalValue, selectionStart, selectionEnd);
+      }
+      console.warn('Embedded image conversion failed:', error);
+      alert(error && error.message ? error.message : 'Embedded images could not be converted. Please try again.');
+      return false;
+    } finally {
+      managedImageMigrationInProgressTabIds.delete(tabId);
+    }
+  }
+
+  function scheduleEmbeddedImageMigrationOffer(tabId) {
+    if (!tabId || managedImageMigrationOfferedTabIds.has(tabId)) return;
+    const tab = tabs.find(function(item) { return item.id === tabId; });
+    if (!tab || isTemporaryDocument(tab) || !hasEmbeddedMarkdownImages(tab.content)) return;
+    managedImageMigrationOfferedTabIds.add(tabId);
+    setTimeout(function() {
+      if (activeTabId === tabId) migrateEmbeddedImagesToManagedUrls(tabId);
+    }, 700);
   }
 
   async function persistImageInsertion(targetTabId) {
@@ -10658,13 +10762,20 @@ ${selector} .arrowheadPath {
       alert('Images larger than 25MB cannot be inserted.');
     }
     if (!acceptedFiles.length) return 0;
+    if (!requestManagedImageUploadConsent()) {
+      announceToScreenReader('Image upload cancelled.');
+      return 0;
+    }
 
     const targetTabId = activeTabId;
     const originalValue = markdownEditor.value;
     const start = Number.isFinite(settings.selectionStart) ? settings.selectionStart : markdownEditor.selectionStart;
     const end = Number.isFinite(settings.selectionEnd) ? settings.selectionEnd : markdownEditor.selectionEnd;
-    const source = settings.source === 'clipboard' ? 'clipboard' : 'drop';
+    const source = settings.source === 'clipboard'
+      ? 'clipboard'
+      : (settings.source === 'upload' ? 'upload' : 'drop');
     let didInsert = false;
+    if (typeof settings.onStage === 'function') settings.onStage('preparing');
     announceToScreenReader('Preparing ' + acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + '.');
 
     try {
@@ -10672,32 +10783,33 @@ ${selector} .arrowheadPath {
       for (const file of acceptedFiles) {
         preparedImages.push(await createEmbeddedImageDataUrl(file));
       }
+      if (typeof settings.onStage === 'function') settings.onStage('uploading');
+      announceToScreenReader('Uploading ' + acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' for short links.');
+      const managedUrls = [];
+      for (const dataUrl of preparedImages) {
+        managedUrls.push(await uploadManagedImageDataUrl(dataUrl));
+      }
       if (activeTabId !== targetTabId || markdownEditor.value !== originalValue || !canMutateEditor()) {
         announceToScreenReader('Image insertion was cancelled because the document changed.');
         return 0;
       }
 
-      const markdown = preparedImages.map(function(dataUrl, index) {
+      const markdown = managedUrls.map(function(managedUrl, index) {
         const file = acceptedFiles[index];
         const altText = typeof settings.altText === 'string' && acceptedFiles.length === 1
           ? (settings.altText.trim() || 'alt text')
           : getLocalImageAltText(file, source, index, acceptedFiles.length);
         if (typeof settings.markdownFactory === 'function') {
-          return settings.markdownFactory(dataUrl, altText, file, index, acceptedFiles.length);
+          return settings.markdownFactory(managedUrl, altText, file, index, acceptedFiles.length);
         }
-        return '![' + altText + '](' + dataUrl + ')';
+        return '![' + altText + '](' + managedUrl + ')';
       }).join('\n\n');
-      const nextValue = originalValue.slice(0, start) + markdown + originalValue.slice(end);
-      if (!canPersistImageInsertion(targetTabId, nextValue)) {
-        alert('These images would exceed safe local browser storage. Insert fewer images, use smaller files, or use external image URLs.');
-        return 0;
-      }
 
       replaceEditorRange(start, end, markdown, start + markdown.length, start + markdown.length);
       didInsert = true;
       const persisted = await persistImageInsertion(targetTabId);
-      if (!persisted) throw new Error('The browser could not save the embedded image.');
-      announceToScreenReader(acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' inserted and saved with the document.');
+      if (!persisted) throw new Error('The browser could not save the short image link.');
+      announceToScreenReader(acceptedFiles.length + ' image' + (acceptedFiles.length === 1 ? '' : 's') + ' uploaded and inserted with short links.');
       return acceptedFiles.length;
     } catch (error) {
       if (didInsert) {
@@ -13381,11 +13493,13 @@ ${selector} .arrowheadPath {
       replaceEditorRange(start, end, replacement, start + replacement.length, start + replacement.length);
     }
 
-    function setProcessing(processing) {
+    function setProcessing(processing, stage) {
       isProcessing = processing;
       modal.setAttribute('aria-busy', processing ? 'true' : 'false');
       confirmBtn.disabled = processing;
-      confirmBtn.textContent = processing ? translateUiString('Preparing') + '…' : confirmButtonLabel;
+      confirmBtn.textContent = processing
+        ? translateUiString(stage === 'uploading' ? 'Uploading' : 'Preparing') + '...'
+        : confirmButtonLabel;
       cancelBtn.disabled = processing;
       uploadOption.disabled = processing;
       urlOption.disabled = processing;
@@ -13402,6 +13516,9 @@ ${selector} .arrowheadPath {
         selectionStart: start,
         selectionEnd: end,
         altText: altInput.value,
+        onStage: function(stage) {
+          setProcessing(true, stage);
+        },
         markdownFactory: function(dataUrl) {
           return buildImageMarkdown(dataUrl);
         }
@@ -20631,7 +20748,7 @@ ${selector} .arrowheadPath {
     if (imageFiles.length) {
       const insertedCount = await insertImageFilesIntoEditor(imageFiles, { source: 'drop' });
       handledCount += insertedCount;
-      if (!insertedCount && !markdownFiles.length) {
+      if (!insertedCount && !markdownFiles.length && (!hasActiveOpenDocument() || !canMutateEditor())) {
         alert('Open an editable Markdown file before inserting images.');
       }
     }

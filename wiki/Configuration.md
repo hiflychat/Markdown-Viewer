@@ -75,6 +75,8 @@ When running inside Neutralino, dynamic library URLs are rewritten to local `/li
 | Server share threshold | 3,000 bytes |
 | Stored Share Snapshot max content | 8,000,000 characters |
 | Stored Share Snapshot TTL | 90 days |
+| Managed image max source file | 25 MiB |
+| Managed image max optimized payload | 300 KiB |
 | Live Share max participants | 64 |
 | Live Share max message | 8 MB |
 | STL source limit | 2 MiB |
@@ -129,7 +131,7 @@ class_name = "LiveRoom"
 script_name = "markdown-viewer-live-room"
 ```
 
-`SHARE_KV` stores large Share Snapshot records for 90 days. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot and Live Share are separate systems.
+`SHARE_KV` stores large Share Snapshot records for 90 days and content-addressed managed images without an automatic expiry. The two record types use separate key prefixes. `LIVE_ROOMS` routes Live Share WebSocket rooms to Durable Objects. Share Snapshot, managed image storage, and Live Share are separate data paths.
 
 `wrangler.live-room.toml` deploys `workers/live-room-worker.js` with the `LiveRoom` Durable Object migration.
 
@@ -143,6 +145,16 @@ script_name = "markdown-viewer-live-room"
 - `DELETE /api/share/<id>` to delete a stored snapshot when the creator supplies its deletion token.
 
 Responses set `Cache-Control: no-store` and vary CORS by request origin. The allowed origins are the production app, `null`, and localhost/127.0.0.1 development origins; unsupported origins receive `403`. Stored records contain content, mode, title, creation time, size, and a hash of the creator deletion token. The token is returned only when the snapshot is created. Invalid ids, missing content, oversized content, invalid deletion tokens, missing KV binding, and unknown routes return JSON errors.
+
+## Managed Image API
+
+`functions/api/image/[[id]].js` supports:
+
+- `POST /api/image` to validate, deduplicate, and permanently store an optimized raster image.
+- `GET /api/image/<id>` and `HEAD /api/image/<id>` to serve the image through its content-addressed public URL.
+- `OPTIONS` for CORS preflight.
+
+Uploads accept AVIF, BMP, GIF, JPEG, PNG, and WebP data URLs up to 300 KiB after client-side optimization. The API validates both the declared media type and file signature, derives an unguessable 24-character id from SHA-256 content, and stores the record under a managed-image key prefix in `SHARE_KV`. Duplicate content returns the existing id. Image responses are public, immutable, cross-origin raster responses; possession of the URL is sufficient to view an image.
 
 ## Live Room API
 

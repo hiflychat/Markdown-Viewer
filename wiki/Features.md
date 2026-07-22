@@ -238,9 +238,11 @@ Local file import:
 Image insertion:
 
 - Uploading from the image dialog, pasting from the clipboard, and dropping an image all use the same insertion pipeline.
-- Small raster files are embedded directly; larger images are resized and converted to WebP with a bounded embedded size.
-- Embedded image data is stored inside the Markdown, so it survives refreshes and is included in Share Snapshot and Live Share document content.
-- Individual source images are limited to 25 MiB, and the app rejects an insertion before it would exceed a conservative browser-storage budget.
+- Small raster files retain their safe raster format; larger images are resized and converted to WebP with a bounded upload size.
+- After first-use consent, optimized images are stored in Cloudflare KV under a content-derived id and inserted as short HTTPS URLs. Identical content reuses the same id.
+- Anyone with a managed image URL can retrieve the image. The URL is unguessable but is not an access-control boundary.
+- Existing inline base64 raster images are detected when a normal document opens and can be converted to managed short links without changing alt text or titles.
+- Individual source images are limited to 25 MiB and managed image payloads are limited to 300 KiB after optimization.
 
 GitHub import:
 
@@ -359,7 +361,7 @@ Implementation:
 
 Limits:
 
-- A live message can be at most 8 MB so optimized embedded images can synchronize with the Markdown.
+- A live message can be at most 8 MB. Managed images synchronize as short HTTPS links rather than binary document content.
 - A live room can have at most 64 WebSocket participants.
 - Participant presence is considered stale after 45 seconds without updates.
 - Join waits up to 8 seconds for initial room state before showing an expired/unavailable room message.
@@ -515,6 +517,7 @@ Security limitations:
 | Comments and suggestions | Only during Live Share | Normal saved tabs plus temporary Live Share relay state | Excluded from document exports and Share Snapshot; synchronized between active Live Share participants. |
 | Private mode | No | No document-state persistence | Clears existing document state when enabled and prevents normal document-state writes until disabled. |
 | Local file import | No | Current tab/workspace | Reads selected files only. |
+| Managed image upload | Yes, after first-use consent | Cloudflare KV, content-addressed | Publicly retrievable by its unguessable HTTPS URL; raster formats only, 300 KiB optimized limit. |
 | Markdown/HTML/PDF/PNG export | No, except remote assets already referenced | User download location | Browser may request external images/fonts used by content. |
 | GitHub import | Yes | GitHub API/raw URLs | Public repos only; no token flow. |
 | Emoji lookup | Yes | GitHub emoji API response in memory | Used for shortcode picker/lookup. |
@@ -529,7 +532,7 @@ Security limitations:
 
 - Browser storage quotas can reject very large saved workspaces.
 - The GitHub importer shows a maximum of 30 Markdown files.
-- Stored Share Snapshot content is limited to 8,000,000 characters so optimized embedded images can travel with the Markdown.
+- Stored Share Snapshot content is limited to 8,000,000 characters. Managed images remain separate and travel as short HTTPS links.
 - STL source is limited to 2 MiB and parsed geometry to 300,000 vertices.
 - Legacy raster PDF and PNG exports can fail on extremely tall documents because canvas size and memory are browser-limited.
 - Remote renderer availability depends on third-party services and network conditions.

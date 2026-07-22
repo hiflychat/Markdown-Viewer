@@ -5,7 +5,7 @@ Non-code commits (documentation, planning, README-only updates) are excluded.
 
 ## Unreleased
 
-- **File and image drag-and-drop:** Replaced the blocking full-window drop overlay with a compact notice, made folder-targeted Markdown imports land in the selected folder, kept untargeted imports at the default workspace root, added hover-to-expand folders and Explorer edge auto-scrolling, added a Markdown-style file drag preview, and made uploaded, pasted, and dropped images optimized, embedded, persistent, and available in Snapshot and Live Share documents.
+- **File and image drag-and-drop:** Replaced the blocking full-window drop overlay with a compact notice, made folder-targeted Markdown imports land in the selected folder, kept untargeted imports at the default workspace root, added hover-to-expand folders and Explorer edge auto-scrolling, added a Markdown-style file drag preview, and made uploaded, pasted, and dropped images optimized and stored behind short content-addressed links. Existing embedded raster images can be converted automatically after consent, and short links remain usable across refreshes, Snapshot, and Live Share.
 
 ## v3.9.3
 
