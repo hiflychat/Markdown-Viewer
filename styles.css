@@ -496,8 +496,15 @@ body {
 }
 
 .document-tree-row:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: -2px;
+  outline: none;
+}
+
+.document-tree-row:focus-visible > .document-tree-main {
+  box-shadow: inset 2px 0 0 var(--accent-color);
+}
+
+[dir="rtl"] .document-tree-row:focus-visible > .document-tree-main {
+  box-shadow: inset -2px 0 0 var(--accent-color);
 }
 
 .document-tree-row:hover {
@@ -523,7 +530,6 @@ body {
 
 .document-tree-row.is-selected:not(.is-active) > .document-tree-main {
   background: color-mix(in srgb, var(--accent-color) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 18%, var(--border-color));
 }
 
 .document-tree-row[data-tree-type="document"].is-selected > .document-tree-main > i:first-child,

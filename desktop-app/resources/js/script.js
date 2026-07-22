@@ -4737,6 +4737,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     function focusRow(target) {
       rows.forEach(function(item) { item.setAttribute('tabindex', item === target ? '0' : '-1'); });
       target.focus();
+      if (isDocumentTreeRowSelectable(target)) selectDocumentTreeRow(target, event);
     }
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
