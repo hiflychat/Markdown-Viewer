@@ -7,7 +7,7 @@
 
   function loadPandoc() {
     if (!pandocModPromise) {
-      pandocModPromise = import('https://pandoc.org/app/pandoc.js');
+            pandocModPromise = import('/pandoc/pandoc.js');
     }
     return pandocModPromise;
   }
