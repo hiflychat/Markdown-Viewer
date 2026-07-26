@@ -9,12 +9,14 @@ export async function onRequest(context) {
 
   const upstreamResp = await fetch(upstreamUrl, {
     method: 'GET',
-    headers: { 'Accept': request.headers.get('Accept') || '*/*' }
+    headers: { 'Accept': request.headers.get('Accept') || '*/*' },
+    cf: { cacheTtl: 0, cacheEverything: false }
   });
 
   const headers = new Headers(upstreamResp.headers);
   headers.set('Access-Control-Allow-Origin', '*');
   headers.delete('content-security-policy');
+  headers.set('Cache-Control', 'no-store');
 
   // Force correct MIME types regardless of what upstream sends, since
   // WebAssembly.instantiateStreaming and ES module imports require
