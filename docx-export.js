@@ -1,14 +1,13 @@
 // Word (.docx) export for Markdown Viewer
-// Uses ESM dynamic import from esm.sh (already allowlisted in CSP connect-src/script-src)
+// Converts the rendered HTML preview (not raw markdown) to preserve
+// headings, tables, formatting, superscripts, highlights, etc.
+// Uses html-docx-js (altChunk-based HTML->DOCX) via esm.sh dynamic import.
 (function () {
-  function getMdViewerMarkdown() {
-    try {
-      if (typeof markdownEditor !== 'undefined' && markdownEditor && typeof markdownEditor.value === 'string') {
-        return markdownEditor.value;
-      }
-    } catch (e) {}
-    var ta = document.getElementById('markdown-editor') || document.querySelector('textarea#editor');
-    if (ta && typeof ta.value === 'string') return ta.value;
+  function getPreviewHtml() {
+    var el = document.getElementById('markdown-preview') ||
+      document.querySelector('.markdown-preview') ||
+      document.querySelector('[aria-label="Rendered Markdown live preview"]');
+    if (el) return el.innerHTML;
     return '';
   }
 
@@ -19,22 +18,28 @@
     return 'document.docx';
   }
 
+  function buildFullHtml(bodyHtml) {
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' +
+      bodyHtml + '</body></html>';
+  }
+
   async function handleExportDocx(evt) {
     evt.preventDefault();
     try {
-      var md = getMdViewerMarkdown();
-      if (!md) { alert('No document content to export.'); return; }
-
-      var mod = await import('https://esm.sh/markdown-docx@1.2.0');
-      var markdownDocx = mod.default || mod;
-      var Packer = mod.Packer;
-      if (!Packer) {
-        var docxMod = await import('https://esm.sh/docx@8.5.0');
-        Packer = docxMod.Packer;
+      var bodyHtml = getPreviewHtml();
+      if (!bodyHtml || !bodyHtml.trim()) {
+        alert('No document content to export.');
+        return;
       }
 
-      var doc = await markdownDocx(md, { gfm: true });
-      var blob = await Packer.toBlob(doc);
+      var mod = await import('https://esm.sh/html-docx-js@0.3.1');
+      var htmlDocx = mod.default || mod;
+      if (!htmlDocx || typeof htmlDocx.asBlob !== 'function') {
+        throw new Error('html-docx-js failed to load');
+      }
+
+      var fullHtml = buildFullHtml(bodyHtml);
+      var blob = htmlDocx.asBlob(fullHtml);
 
       var filename = getMdViewerFilename();
       if (!/\.docx$/i.test(filename)) filename = filename.replace(/\.[^.]+$/, '') + '.docx';
@@ -44,8 +49,11 @@
       } else {
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
     } catch (err) {
