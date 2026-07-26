@@ -1,8 +1,17 @@
 // Word (.docx) export for Markdown Viewer
-// Converts the rendered HTML preview (not raw markdown) to preserve
-// headings, tables, formatting, superscripts, highlights, etc.
-// Uses html-docx-js (altChunk-based HTML->DOCX) via esm.sh dynamic import.
+// Converts the rendered HTML preview (not raw markdown) into DOCX using
+// the official Pandoc WASM build (pandoc.org/app), giving high-fidelity
+// conversion for headings, tables, code blocks, highlights, footnotes, etc.
 (function () {
+  var pandocModPromise = null;
+
+  function loadPandoc() {
+    if (!pandocModPromise) {
+      pandocModPromise = import('https://pandoc.org/app/pandoc.js');
+    }
+    return pandocModPromise;
+  }
+
   function getPreviewHtml() {
     var el = document.getElementById('markdown-preview') ||
       document.querySelector('.markdown-preview') ||
@@ -32,15 +41,25 @@
         return;
       }
 
-      var mod = await import('https://esm.sh/html-docx-js@0.3.1');
-      var htmlDocx = mod.default || mod;
-      if (!htmlDocx || typeof htmlDocx.asBlob !== 'function') {
-        throw new Error('html-docx-js failed to load');
+      var pandoc = await loadPandoc();
+      var fullHtml = buildFullHtml(bodyHtml);
+
+      var files = {};
+      var result = await pandoc.convert(
+        {
+          reader: 'html',
+          writer: 'docx',
+          'output-file': 'output.docx'
+        },
+        fullHtml,
+        files
+      );
+
+      if (!files['output.docx']) {
+        throw new Error((result && result.stderr) || 'Pandoc produced no output');
       }
 
-      var fullHtml = buildFullHtml(bodyHtml);
-      var blob = htmlDocx.asBlob(fullHtml);
-
+      var blob = files['output.docx'];
       var filename = getMdViewerFilename();
       if (!/\.docx$/i.test(filename)) filename = filename.replace(/\.[^.]+$/, '') + '.docx';
 
