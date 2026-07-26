@@ -1,5 +1,4 @@
-const CACHE_NAME = 'markdown-viewer-cache-v3.9.3-context-menus1';
-
+const CACHE_NAME = 'markdown-viewer-cache-v3.9.4-fix-pandoc-mime';
 // PERF-011: Split precache into critical (local files) and lazy (CDN libraries)
 // Critical assets are precached during SW install for instant offline startup
 const CRITICAL_ASSETS = [
@@ -55,6 +54,12 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   const isLocal = url.origin === self.location.origin;
   const isCDN = CDN_ORIGINS.some(origin => url.hostname.includes(origin));
+  
+  // pandoc wasm/js require exact MIME type; never let SW cache/serve stale responses
+  if (isLocal && url.pathname.startsWith('/pandoc/')) {
+    return;
+  }
+
 
   if (isLocal) {
     const localPath = url.pathname.endsWith('/') ? '/' : url.pathname;
