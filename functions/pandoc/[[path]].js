@@ -16,6 +16,15 @@ export async function onRequest(context) {
   headers.set('Access-Control-Allow-Origin', '*');
   headers.delete('content-security-policy');
 
+  // Force correct MIME types regardless of what upstream sends, since
+  // WebAssembly.instantiateStreaming and ES module imports require
+  // strict content-type matching.
+  if (path.endsWith('.wasm')) {
+    headers.set('Content-Type', 'application/wasm');
+  } else if (path.endsWith('.js') || path.endsWith('.mjs')) {
+    headers.set('Content-Type', 'text/javascript; charset=utf-8');
+  }
+
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
     statusText: upstreamResp.statusText,
